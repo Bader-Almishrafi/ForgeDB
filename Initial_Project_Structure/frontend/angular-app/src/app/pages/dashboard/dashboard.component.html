@@ -1,0 +1,133 @@
+<section>
+  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="page-title">Welcome back, Ahmed! 👋</h1>
+      <p class="page-subtitle">Here’s an overview of your projects and system activity.</p>
+    </div>
+    <a routerLink="/data-sources" class="btn-primary">+ New Project</a>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    @for (stat of stats; track stat.label) {
+      <article class="card p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-sm font-medium text-slate-500">{{ stat.label }}</p>
+            <p class="mt-2 text-3xl font-bold text-slate-900">{{ stat.value }}</p>
+          </div>
+          <div class="grid h-11 w-11 place-items-center rounded-xl" [class]="stat.tone">
+            <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"><path [attr.d]="stat.icon"></path></svg>
+          </div>
+        </div>
+        <p class="mt-4 text-xs font-semibold text-emerald-600">↑ {{ stat.change }}</p>
+      </article>
+    }
+  </div>
+
+  <div class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,.65fr)_minmax(280px,.65fr)_320px]">
+    <article class="card p-5 xl:col-span-1">
+      <div class="mb-4 flex items-center justify-between">
+        <div>
+          <h2 class="font-semibold text-slate-900">Analyses Over Time</h2>
+          <p class="text-xs text-slate-500">Completed analyses during the last seven days</p>
+        </div>
+        <span class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600">Last 7 days</span>
+      </div>
+      <div class="h-56">
+        <svg viewBox="0 0 620 250" class="h-full w-full" preserveAspectRatio="none" aria-label="Analyses completed over time">
+          <defs>
+            <linearGradient id="analysisFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#6366f1" stop-opacity="0.25"></stop>
+              <stop offset="100%" stop-color="#6366f1" stop-opacity="0"></stop>
+            </linearGradient>
+          </defs>
+          @for (y of [35,80,125,170,215]; track y) {
+            <line x1="30" [attr.y1]="y" x2="600" [attr.y2]="y" stroke="#e2e8f0" stroke-width="1"></line>
+          }
+          <path d="M35 178 L125 208 L215 145 L305 140 L395 80 L485 150 L595 58 L595 220 L35 220 Z" fill="url(#analysisFill)"></path>
+          <polyline points="35,178 125,208 215,145 305,140 395,80 485,150 595,58" fill="none" stroke="#5b5cf6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+          @for (point of [[35,178],[125,208],[215,145],[305,140],[395,80],[485,150],[595,58]]; track point[0]) {
+            <circle [attr.cx]="point[0]" [attr.cy]="point[1]" r="5" fill="#fff" stroke="#5b5cf6" stroke-width="3"></circle>
+          }
+        </svg>
+      </div>
+      <div class="mt-2 grid grid-cols-7 text-center text-[11px] text-slate-400">
+        @for (day of ['May 10','May 11','May 12','May 13','May 14','May 15','May 16']; track day) { <span>{{ day }}</span> }
+      </div>
+      <div class="mt-5 flex items-end justify-between border-t border-slate-100 pt-4">
+        <div><p class="text-xs text-slate-500">Total Analyses</p><p class="text-xl font-bold">24</p></div>
+        <div class="text-right"><p class="text-xs text-slate-500">Average Analysis Time</p><p class="text-xl font-bold">2m 34s</p></div>
+      </div>
+    </article>
+
+    <article class="card p-5">
+      <h2 class="font-semibold text-slate-900">Data Sources Distribution</h2>
+      <p class="text-xs text-slate-500">How imported sources are distributed</p>
+      <div class="mt-6 flex flex-col items-center gap-5">
+        <div class="relative h-40 w-40 rounded-full" style="background: conic-gradient(#34d399 0 49%, #3b82f6 49% 81%, #7c3aed 81% 100%);">
+          <div class="absolute inset-5 grid place-items-center rounded-full bg-white text-center"><div><p class="text-3xl font-bold">37</p><p class="text-xs text-slate-500">Total Sources</p></div></div>
+        </div>
+        <div class="w-full space-y-2 text-sm">
+          <div class="flex justify-between"><span><i class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-emerald-400"></i>CSV</span><strong>18 (49%)</strong></div>
+          <div class="flex justify-between"><span><i class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-blue-500"></i>Excel</span><strong>12 (32%)</strong></div>
+          <div class="flex justify-between"><span><i class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-violet-600"></i>API</span><strong>7 (19%)</strong></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card p-5">
+      <h2 class="font-semibold text-slate-900">Analyses by Status</h2>
+      <p class="text-xs text-slate-500">Current completion state of analyses</p>
+      <div class="mt-6 flex flex-col items-center gap-5">
+        <div class="relative h-40 w-40 rounded-full" style="background: conic-gradient(#34d399 0 71%, #fbbf24 71% 88%, #fb7185 88% 100%);">
+          <div class="absolute inset-5 grid place-items-center rounded-full bg-white text-center"><div><p class="text-3xl font-bold">24</p><p class="text-xs text-slate-500">Total</p></div></div>
+        </div>
+        <div class="w-full space-y-2 text-sm">
+          <div class="flex justify-between"><span><i class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-emerald-400"></i>Completed</span><strong>17</strong></div>
+          <div class="flex justify-between"><span><i class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-amber-400"></i>In Progress</span><strong>4</strong></div>
+          <div class="flex justify-between"><span><i class="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-rose-400"></i>Failed</span><strong>3</strong></div>
+        </div>
+        <div class="w-full"><div class="mb-1 flex justify-between text-xs"><span>Success Rate</span><strong>71%</strong></div><div class="h-2 rounded-full bg-slate-100"><div class="h-2 w-[71%] rounded-full bg-emerald-400"></div></div></div>
+      </div>
+    </article>
+
+    <aside class="space-y-5 xl:row-span-2">
+      <article class="card p-4">
+        <h2 class="font-semibold text-slate-900">Quick Actions</h2>
+        <div class="mt-3 space-y-2">
+          <a routerLink="/data-sources" class="flex items-center justify-between rounded-xl border border-slate-100 p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40"><div><p class="text-sm font-semibold">New Project</p><p class="text-xs text-slate-500">Create a new project</p></div><span>›</span></a>
+          <a routerLink="/data-sources" class="flex items-center justify-between rounded-xl border border-slate-100 p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40"><div><p class="text-sm font-semibold">Upload Data</p><p class="text-xs text-slate-500">Import CSV, Excel or API</p></div><span>›</span></a>
+          <a routerLink="/analysis" class="flex items-center justify-between rounded-xl border border-slate-100 p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40"><div><p class="text-sm font-semibold">Analyze Data</p><p class="text-xs text-slate-500">Run a new analysis</p></div><span>›</span></a>
+          <a routerLink="/schema-review" class="flex items-center justify-between rounded-xl border border-slate-100 p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40"><div><p class="text-sm font-semibold">Generate Schema</p><p class="text-xs text-slate-500">Generate database schema</p></div><span>›</span></a>
+          <a routerLink="/deployment" class="flex items-center justify-between rounded-xl border border-slate-100 p-3 transition hover:border-indigo-200 hover:bg-indigo-50/40"><div><p class="text-sm font-semibold">Deploy Database</p><p class="text-xs text-slate-500">Deploy to PostgreSQL</p></div><span>›</span></a>
+        </div>
+      </article>
+
+      <article class="card p-4">
+        <h2 class="font-semibold text-slate-900">Recent Activity</h2>
+        <div class="mt-3 divide-y divide-slate-100">
+          @for (activity of activities; track activity.text) {
+            <div class="flex gap-3 py-3">
+              <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-bold" [class]="activity.tone">{{ activity.icon }}</span>
+              <div class="min-w-0 flex-1"><p class="text-xs font-medium leading-5 text-slate-700">{{ activity.text }}</p><p class="mt-0.5 text-[11px] text-slate-400">{{ activity.time }}</p></div>
+            </div>
+          }
+        </div>
+      </article>
+    </aside>
+  </div>
+
+  <article class="card mt-5 overflow-hidden xl:mr-[340px]">
+    <div class="flex items-center justify-between px-5 py-4"><h2 class="font-semibold">Recent Projects</h2><button class="text-sm font-semibold text-indigo-600">View all projects</button></div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-5 py-3 text-left">Project Name</th><th class="px-5 py-3 text-left">Data Sources</th><th class="px-5 py-3 text-left">Last Analysis</th><th class="px-5 py-3 text-left">Schema Status</th><th class="px-5 py-3 text-left">Deployment Status</th><th class="px-5 py-3 text-left">Actions</th></tr></thead>
+        <tbody>
+          @for (project of projects; track project.name) {
+            <tr class="border-t border-slate-100"><td class="px-5 py-3 font-medium">📁 {{ project.name }}</td><td class="px-5 py-3">{{ project.sources }}</td><td class="px-5 py-3">{{ project.date }}</td><td class="px-5 py-3"><span [class]="project.schema === 'Generated' ? 'badge-success' : 'badge-warning'">{{ project.schema }}</span></td><td class="px-5 py-3"><span [class]="project.deployment === 'Deployed' ? 'badge-success' : 'rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600'">{{ project.deployment }}</span></td><td class="px-5 py-3">•••</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>

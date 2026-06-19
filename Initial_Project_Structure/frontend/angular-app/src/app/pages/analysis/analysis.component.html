@@ -1,0 +1,42 @@
+<section>
+  <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div><p class="mb-3 text-sm text-slate-500">Projects <span class="mx-2">›</span> Sales Data Project <span class="mx-2">›</span> Analysis #24</p><h1 class="page-title">Data Analysis Results</h1><p class="page-subtitle">Review the quality and structure of your imported data.</p></div>
+    <button class="btn-secondary">↓ Download Report</button>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    @for (card of [
+      ['Total Rows','125,430','In dataset','text-violet-600 bg-violet-50'],
+      ['Total Columns','18','In dataset','text-emerald-600 bg-emerald-50'],
+      ['Missing Values','2,345','Across all columns','text-amber-600 bg-amber-50'],
+      ['Duplicate Rows','1,234','0.98% of total rows','text-rose-600 bg-rose-50'],
+      ['Data Quality Score','85%','Good','text-emerald-600 bg-emerald-50']
+    ]; track card[0]) {
+      <article class="card p-5"><div class="flex items-start gap-3"><span class="grid h-11 w-11 place-items-center rounded-xl text-xl font-bold" [class]="card[3]">{{ card[0] === 'Missing Values' ? '!' : card[0] === 'Duplicate Rows' ? '×' : card[0] === 'Data Quality Score' ? '✓' : '#' }}</span><div><p class="text-sm text-slate-500">{{ card[0] }}</p><p class="mt-1 text-2xl font-bold">{{ card[1] }}</p><p class="mt-1 text-xs text-slate-500">{{ card[2] }}</p></div></div></article>
+    }
+  </div>
+
+  <div class="my-5 flex gap-6 overflow-x-auto border-b border-slate-200 text-sm font-semibold text-slate-500"><span class="border-b-2 border-indigo-600 px-2 pb-3 text-indigo-600">Overview</span><span>Columns (18)</span><span>Missing Values</span><span>Duplicates</span><span>Data Types</span></div>
+
+  <div class="grid gap-5 xl:grid-cols-[1.35fr_.85fr]">
+    <article class="card p-5">
+      <div class="mb-5 flex items-center justify-between"><div><h2 class="font-semibold">Missing Values by Column</h2><p class="text-xs text-slate-500">Top five columns requiring cleanup</p></div><span class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs">Top 5</span></div>
+      <div class="space-y-4">
+        @for (bar of [['email',542,90],['phone',389,65],['address',321,54],['company',287,48],['title',108,18]]; track bar[0]) {
+          <div class="grid grid-cols-[80px_1fr_45px] items-center gap-3 text-sm"><span class="text-right font-medium">{{ bar[0] }}</span><div class="h-5 rounded-r bg-slate-100"><div class="h-5 rounded-r bg-gradient-to-r from-indigo-600 to-violet-500" [style.width.%]="bar[2]"></div></div><strong>{{ bar[1] }}</strong></div>
+        }
+      </div>
+    </article>
+
+    <article class="card p-5">
+      <h2 class="font-semibold">Data Types Distribution</h2><p class="text-xs text-slate-500">Detected types across all columns</p>
+      <div class="mt-6 flex flex-col items-center gap-5 sm:flex-row sm:justify-center">
+        <div class="relative h-44 w-44 shrink-0 rounded-full" style="background: conic-gradient(#5b5cf6 0 44%, #34d399 44% 72%, #fbbf24 72% 89%, #60a5fa 89% 100%);"><div class="absolute inset-6 grid place-items-center rounded-full bg-white text-center"><div><p class="text-3xl font-bold">18</p><p class="text-xs text-slate-500">Total Columns</p></div></div></div>
+        <div class="w-full max-w-xs space-y-3 text-sm"><div class="flex justify-between"><span>● String</span><strong>8 (44%)</strong></div><div class="flex justify-between text-emerald-600"><span>● Integer</span><strong>5 (28%)</strong></div><div class="flex justify-between text-amber-600"><span>● Date</span><strong>3 (17%)</strong></div><div class="flex justify-between text-blue-500"><span>● Float</span><strong>2 (11%)</strong></div></div>
+      </div>
+    </article>
+  </div>
+
+  <article class="card mt-5 p-5"><h2 class="font-semibold">Preview Data (First 5 Rows)</h2><div class="table-wrap mt-4"><table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Created At</th><th>Amount</th></tr></thead><tbody>@for (row of rows; track row.id) {<tr><td>{{ row.id }}</td><td>{{ row.name }}</td><td>{{ row.email }}</td><td>{{ row.phone }}</td><td>{{ row.date }}</td><td>{{ row.amount }}</td></tr>}</tbody></table></div></article>
+  <div class="mt-5 flex justify-end"><a routerLink="/schema-review" class="btn-primary">Next: Review Schema →</a></div>
+</section>

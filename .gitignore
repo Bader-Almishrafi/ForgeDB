@@ -1,0 +1,17 @@
+# Node / Angular
+**/node_modules/
+**/.angular/
+**/dist/
+**/coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files
+.env
+.env.*
+
+# System files
+.DS_Store
+Thumbs.db

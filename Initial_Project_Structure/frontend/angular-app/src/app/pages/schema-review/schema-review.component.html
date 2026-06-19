@@ -1,0 +1,63 @@
+<section>
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div><p class="mb-3 text-sm text-slate-500">Projects <span class="mx-2">›</span> Sales Data Project <span class="mx-2">›</span> Schema Review</p><h1 class="page-title">Review Generated Schema</h1><p class="page-subtitle">Review and customize your database schema before deployment.</p></div>
+    <div class="flex gap-3"><button class="btn-secondary">Import Schema</button><button class="btn-primary">Save Changes</button></div>
+  </div>
+
+  <div class="mt-6 flex gap-7 border-b border-slate-200 text-sm font-semibold">
+    <button type="button" class="border-b-2 px-2 pb-3" [class]="activeTab() === 'tables' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'" (click)="setTab('tables')">Tables (6)</button>
+    <button type="button" class="border-b-2 px-2 pb-3" [class]="activeTab() === 'sql' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'" (click)="setTab('sql')">SQL Preview</button>
+    <button type="button" class="border-b-2 px-2 pb-3" [class]="activeTab() === 'constraints' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500'" (click)="setTab('constraints')">Constraints (18)</button>
+  </div>
+
+  @if (activeTab() === 'tables') {
+    <div class="mt-5 grid gap-5 xl:grid-cols-[305px_minmax(0,1fr)_340px]">
+      <aside class="card p-4">
+        <div class="flex items-center justify-between"><h2 class="font-semibold">Detected Tables</h2><span class="rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-600">6</span></div>
+        <input class="input-field mt-4" placeholder="Search tables..." />
+        <button class="btn-secondary mt-3 w-full">+ Add Table</button>
+        <div class="mt-4 space-y-2">
+          @for (table of tables; track table.name) {
+            <button type="button" class="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left text-sm transition" [class]="selectedTable === table.name ? 'bg-indigo-50 font-semibold text-indigo-700 ring-1 ring-indigo-200' : 'hover:bg-slate-50'" (click)="selectedTable = table.name"><span>▦ &nbsp; {{ table.name }}</span><span class="rounded-full bg-violet-50 px-2 py-1 text-[11px] text-violet-600">{{ table.rows }}</span></button>
+          }
+        </div>
+      </aside>
+
+      <article class="card p-4 sm:p-5">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-lg font-semibold">Editing Table: {{ selectedTable }}</h2><p class="text-xs text-slate-500">Define names, data types, and constraints.</p></div><span class="badge-success">12,540 rows estimated</span></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Column Name</th><th>Data Type</th><th>Constraints</th><th>Nullable</th><th>Actions</th></tr></thead>
+            <tbody>
+              @for (column of columns; track column.name) {
+                <tr><td><input class="input-field min-w-36" [(ngModel)]="column.name" /></td><td><select class="input-field min-w-36" [(ngModel)]="column.type"><option>BIGINT</option><option>VARCHAR(255)</option><option>VARCHAR(20)</option><option>TEXT</option><option>TIMESTAMP</option><option>NUMERIC(12,2)</option></select></td><td><div class="flex min-w-48 flex-wrap gap-1">@for (constraint of column.constraints; track constraint) {<span class="rounded-md bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700">{{ constraint }}</span>}</div></td><td><button type="button" class="relative h-6 w-11 rounded-full transition" [class]="column.nullable ? 'bg-indigo-600' : 'bg-slate-200'" (click)="column.nullable = !column.nullable"><span class="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition" [class]="column.nullable ? 'left-5' : 'left-0.5'"></span></button></td><td class="whitespace-nowrap">✎ &nbsp; 🗑</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <button class="btn-secondary mt-4">+ Add Column</button>
+      </article>
+
+      <aside class="space-y-5">
+        <article class="card p-5"><h2 class="font-semibold">Table Properties</h2><label class="mt-4 block"><span class="mb-1.5 block text-sm">Table Name</span><input class="input-field" [(ngModel)]="selectedTable" /></label><label class="mt-4 block"><span class="mb-1.5 block text-sm">Description</span><textarea class="input-field min-h-24">Customer master records and contact information.</textarea></label><div class="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p class="text-slate-500">Primary Key</p><strong>id</strong></div><div><p class="text-slate-500">Row Count</p><strong>12,540</strong></div></div></article>
+        <article class="card p-5"><h2 class="font-semibold">Data Quality</h2><div class="mt-4 space-y-4 text-sm"><div class="flex justify-between"><span>Missing Values</span><strong class="text-amber-600">1.24%</strong></div><div class="flex justify-between"><span>Duplicate Rows</span><strong class="text-rose-600">0.18%</strong></div><div class="flex justify-between"><span>Unique Values (avg)</span><strong class="text-emerald-600">98.76%</strong></div></div></article>
+      </aside>
+    </div>
+  }
+
+  @if (activeTab() === 'sql') {
+    <article class="card mt-5 p-5">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-lg font-semibold">SQL Preview</h2><p class="text-sm text-slate-500">Review the PostgreSQL statements that will create the generated schema.</p></div><div class="flex gap-2"><button class="btn-secondary">Copy SQL</button><button class="btn-secondary">Download SQL</button></div></div>
+      <pre class="max-h-[650px] overflow-auto rounded-2xl border border-slate-200 bg-[#fbfcff] p-5 text-[13px] leading-6 text-slate-700 scrollbar-thin"><code>{{ sql }}</code></pre>
+    </article>
+  }
+
+  @if (activeTab() === 'constraints') {
+    <div class="mt-5 grid gap-5 xl:grid-cols-[270px_minmax(0,1fr)]">
+      <aside class="card p-5"><h2 class="font-semibold">Constraints Overview</h2><div class="mt-4 space-y-3 text-sm"><div class="flex justify-between rounded-xl bg-violet-50 p-3"><span>🔑 Primary Keys</span><strong>6</strong></div><div class="flex justify-between rounded-xl bg-emerald-50 p-3"><span>🔗 Foreign Keys</span><strong>8</strong></div><div class="flex justify-between rounded-xl bg-amber-50 p-3"><span>✓ Unique</span><strong>3</strong></div><div class="flex justify-between rounded-xl bg-blue-50 p-3"><span>◉ Check</span><strong>1</strong></div></div><h3 class="mt-6 text-sm font-semibold">By Table</h3><div class="mt-3 space-y-2 text-sm">@for (table of tables; track table.name; let i = $index) {<div class="flex justify-between border-b border-slate-100 py-2"><span>{{ table.name }}</span><strong>{{ i === 0 ? 4 : i === 1 ? 5 : i === 2 ? 2 : 2 }}</strong></div>}</div></aside>
+      <article class="card p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-lg font-semibold">Constraints (18)</h2><p class="text-sm text-slate-500">Review all constraints that will be applied.</p></div><input class="input-field max-w-xs" placeholder="Search constraints..." /></div><div class="table-wrap mt-4"><table class="data-table"><thead><tr><th>Constraint Name</th><th>Type</th><th>Table</th><th>Columns</th><th>Definition / Reference</th><th>Actions</th></tr></thead><tbody>@for (constraint of constraints; track constraint.name) {<tr><td class="font-medium">{{ constraint.name }}</td><td><span class="rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">{{ constraint.type }}</span></td><td>{{ constraint.table }}</td><td>{{ constraint.columns }}</td><td class="min-w-64">{{ constraint.definition }}</td><td>👁 &nbsp; 🗑</td></tr>}</tbody></table></div></article>
+    </div>
+  }
+
+  <div class="mt-5 flex justify-between"><button class="btn-secondary">Cancel</button><a routerLink="/relationships" class="btn-primary">Next: Relationships →</a></div>
+</section>
