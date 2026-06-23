@@ -1,4 +1,5 @@
 using ForgeDB.API.Clients;
+using ForgeDB.API.Data;
 using ForgeDB.API.Repositories;
 using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services;
@@ -7,6 +8,8 @@ using ForgeDB.API.Services.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+
+builder.Services.AddScoped<ForgeDbContext>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();

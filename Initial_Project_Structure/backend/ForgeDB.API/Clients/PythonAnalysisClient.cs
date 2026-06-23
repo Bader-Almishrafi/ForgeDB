@@ -1,5 +1,4 @@
 using ForgeDB.API.Models.DTOs;
-using ForgeDB.API.Services.Interfaces;
 
 namespace ForgeDB.API.Clients;
 

@@ -1,9 +1,10 @@
 namespace ForgeDB.API.Data;
 
-public class ForgeDbDataContext
+public class ForgeDbContext
 {
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 }
+
