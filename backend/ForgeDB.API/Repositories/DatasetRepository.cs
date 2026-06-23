@@ -27,4 +27,9 @@ public class DatasetRepository : IDatasetRepository
     {
         throw new NotImplementedException();
     }
+
+    public Task SaveAnalysisResultAsync(int datasetId, string analysisResultJson, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
 }

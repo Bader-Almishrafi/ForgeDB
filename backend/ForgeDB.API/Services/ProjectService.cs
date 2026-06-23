@@ -22,9 +22,4 @@ public class ProjectService : IProjectService
     {
         throw new NotImplementedException();
     }
-
-    public Task<IEnumerable<ProjectResponseDto>> GetProjectsByUserIdAsync(int userId, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
 }

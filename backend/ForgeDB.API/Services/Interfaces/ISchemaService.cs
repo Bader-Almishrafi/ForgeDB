@@ -4,6 +4,7 @@ namespace ForgeDB.API.Services.Interfaces;
 
 public interface ISchemaService
 {
-    Task<SchemaResponseDto> GenerateSchemaAsync(SchemaGenerateRequestDto request, CancellationToken cancellationToken = default);
-    Task<IEnumerable<SchemaResponseDto>> GetProjectSchemasAsync(int projectId, CancellationToken cancellationToken = default);
+    Task<SchemaResponseDto> GenerateSchemaAsync(int datasetId, SchemaGenerateRequestDto request, CancellationToken cancellationToken = default);
+    Task<SchemaResponseDto?> GetSchemaByIdAsync(int schemaId, CancellationToken cancellationToken = default);
+    Task<SchemaResponseDto> UpdateRelationshipsAsync(int schemaId, SchemaRelationshipsUpdateDto request, CancellationToken cancellationToken = default);
 }

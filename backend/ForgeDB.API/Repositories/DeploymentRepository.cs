@@ -18,11 +18,6 @@ public class DeploymentRepository : IDeploymentRepository
         throw new NotImplementedException();
     }
 
-    public Task<IEnumerable<DatabaseDeployment>> GetByProjectIdAsync(int projectId, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
-
     public Task AddAsync(DatabaseDeployment deployment, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();

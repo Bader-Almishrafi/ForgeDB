@@ -13,8 +13,11 @@ public class Dataset
     public int MissingValuesCount { get; set; }
     public int DuplicateRowsCount { get; set; }
     public string Status { get; set; } = string.Empty;
+    public string? AnalysisResultJson { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime? AnalyzedAt { get; set; }
     public Project? Project { get; set; }
     public ICollection<DatasetColumn> Columns { get; set; } = new List<DatasetColumn>();
     public ICollection<DatasetRow> Rows { get; set; } = new List<DatasetRow>();
+    public ICollection<DatabaseSchema> DatabaseSchemas { get; set; } = new List<DatabaseSchema>();
 }

@@ -4,7 +4,6 @@ namespace ForgeDB.API.Models.DTOs;
 
 public class DatasetUploadDto
 {
-    public int ProjectId { get; set; }
     public string TableName { get; set; } = string.Empty;
     public string SourceType { get; set; } = string.Empty;
     public string? SourceName { get; set; }

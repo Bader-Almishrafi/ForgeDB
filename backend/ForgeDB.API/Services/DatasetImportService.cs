@@ -13,12 +13,22 @@ public class DatasetImportService : IDatasetImportService
         _datasetRepository = datasetRepository;
     }
 
-    public Task<DatasetResponseDto> ImportDatasetAsync(DatasetUploadDto request, CancellationToken cancellationToken = default)
+    public Task<DatasetResponseDto> UploadDatasetAsync(int projectId, DatasetUploadDto request, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
     public Task<IEnumerable<DatasetResponseDto>> GetProjectDatasetsAsync(int projectId, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<DatasetPreviewDto> GetDatasetPreviewAsync(int datasetId, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<DatasetAnalysisResponseDto> AnalyzeDatasetAsync(int datasetId, DatasetAnalysisRequestDto request, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

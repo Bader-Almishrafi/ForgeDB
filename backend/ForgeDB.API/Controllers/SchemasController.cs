@@ -5,25 +5,39 @@ using Microsoft.AspNetCore.Mvc;
 namespace ForgeDB.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api")]
 public class SchemasController : ControllerBase
 {
     private readonly ISchemaService _schemaService;
+    private readonly IDeploymentService _deploymentService;
 
-    public SchemasController(ISchemaService schemaService)
+    public SchemasController(ISchemaService schemaService, IDeploymentService deploymentService)
     {
         _schemaService = schemaService;
+        _deploymentService = deploymentService;
     }
 
-    [HttpPost("generate")]
-    public async Task<ActionResult<SchemaResponseDto>> Generate(SchemaGenerateRequestDto request, CancellationToken cancellationToken)
+    [HttpPost("datasets/{datasetId:int}/schema/generate")]
+    public async Task<ActionResult<SchemaResponseDto>> Generate(int datasetId, SchemaGenerateRequestDto request, CancellationToken cancellationToken)
     {
-        return Ok(await _schemaService.GenerateSchemaAsync(request, cancellationToken));
+        return Ok(await _schemaService.GenerateSchemaAsync(datasetId, request, cancellationToken));
     }
 
-    [HttpGet("project/{projectId:int}")]
-    public async Task<ActionResult<IEnumerable<SchemaResponseDto>>> GetByProject(int projectId, CancellationToken cancellationToken)
+    [HttpGet("schemas/{schemaId:int}")]
+    public async Task<ActionResult<SchemaResponseDto>> GetById(int schemaId, CancellationToken cancellationToken)
     {
-        return Ok(await _schemaService.GetProjectSchemasAsync(projectId, cancellationToken));
+        return Ok(await _schemaService.GetSchemaByIdAsync(schemaId, cancellationToken));
+    }
+
+    [HttpPut("schemas/{schemaId:int}/relationships")]
+    public async Task<ActionResult<SchemaResponseDto>> UpdateRelationships(int schemaId, SchemaRelationshipsUpdateDto request, CancellationToken cancellationToken)
+    {
+        return Ok(await _schemaService.UpdateRelationshipsAsync(schemaId, request, cancellationToken));
+    }
+
+    [HttpPost("schemas/{schemaId:int}/deploy")]
+    public async Task<ActionResult<DeploymentResponseDto>> Deploy(int schemaId, DeploymentRequestDto request, CancellationToken cancellationToken)
+    {
+        return Ok(await _deploymentService.DeploySchemaAsync(schemaId, request, cancellationToken));
     }
 }

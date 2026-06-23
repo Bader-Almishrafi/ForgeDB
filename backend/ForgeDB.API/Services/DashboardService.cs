@@ -13,7 +13,7 @@ public class DashboardService : IDashboardService
         _datasetRepository = datasetRepository;
     }
 
-    public Task<DashboardResponseDto> GetProjectDashboardAsync(int projectId, CancellationToken cancellationToken = default)
+    public Task<DashboardResponseDto> GetDatasetDashboardAsync(int datasetId, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

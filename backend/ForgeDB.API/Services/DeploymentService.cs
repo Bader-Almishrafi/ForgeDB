@@ -13,12 +13,7 @@ public class DeploymentService : IDeploymentService
         _deploymentRepository = deploymentRepository;
     }
 
-    public Task<DeploymentResponseDto> DeploySchemaAsync(DeploymentRequestDto request, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<IEnumerable<DeploymentResponseDto>> GetProjectDeploymentsAsync(int projectId, CancellationToken cancellationToken = default)
+    public Task<DeploymentResponseDto> DeploySchemaAsync(int schemaId, DeploymentRequestDto request, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
