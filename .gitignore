@@ -4,6 +4,10 @@
 **/dist/
 **/coverage/
 
+# .NET build output
+**/bin/
+**/obj/
+
 # Logs
 *.log
 npm-debug.log*

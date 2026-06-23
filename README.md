@@ -128,3 +128,24 @@ ForgeDB simplifies the process of creating relational databases from raw data so
 ### Version Control
 
 * Git & GitHub
+
+---
+
+## Repository Structure
+
+```text
+backend/
+  ForgeDB.API/
+frontend/
+  angular-app/
+python-analysis-service/
+docs/
+  submissions/
+```
+
+## Local Development Paths
+
+* Backend API: `backend/ForgeDB.API`
+* Frontend Angular app: `frontend/angular-app`
+* Python analysis service: `python-analysis-service`
+* Submission documents: `docs/submissions`

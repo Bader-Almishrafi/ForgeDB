@@ -86,11 +86,11 @@ docker --version
 
 # Frontend Setup
 
-cd frontend
+cd frontend/angular-app
 
 npm install
 
-ng serve
+npm start
 
 ---
 
@@ -106,7 +106,7 @@ dotnet run
 
 # Python Analysis Service Setup
 
-cd analysis-service
+cd python-analysis-service
 
 python -m venv venv
 
