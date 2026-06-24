@@ -13,7 +13,7 @@ public class SchemaRepository : ISchemaRepository
         _context = context;
     }
 
-    public Task<DatabaseSchema?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    public Task<DatabaseSchema?> GetByIdAsync(int schemaId, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

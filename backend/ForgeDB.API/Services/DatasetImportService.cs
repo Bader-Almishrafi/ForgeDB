@@ -1,3 +1,4 @@
+using ForgeDB.API.Clients;
 using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services.Interfaces;
@@ -7,10 +8,12 @@ namespace ForgeDB.API.Services;
 public class DatasetImportService : IDatasetImportService
 {
     private readonly IDatasetRepository _datasetRepository;
+    private readonly IPythonAnalysisClient _pythonAnalysisClient;
 
-    public DatasetImportService(IDatasetRepository datasetRepository)
+    public DatasetImportService(IDatasetRepository datasetRepository, IPythonAnalysisClient pythonAnalysisClient)
     {
         _datasetRepository = datasetRepository;
+        _pythonAnalysisClient = pythonAnalysisClient;
     }
 
     public Task<DatasetResponseDto> UploadDatasetAsync(int projectId, DatasetUploadDto request, CancellationToken cancellationToken = default)

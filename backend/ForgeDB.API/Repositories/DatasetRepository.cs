@@ -13,7 +13,7 @@ public class DatasetRepository : IDatasetRepository
         _context = context;
     }
 
-    public Task<Dataset?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    public Task<Dataset?> GetByIdAsync(int datasetId, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

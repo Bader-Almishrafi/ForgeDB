@@ -18,7 +18,7 @@ public class ProjectService : IProjectService
         throw new NotImplementedException();
     }
 
-    public Task<ProjectResponseDto?> GetProjectByIdAsync(int id, CancellationToken cancellationToken = default)
+    public Task<ProjectResponseDto?> GetProjectByIdAsync(int projectId, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

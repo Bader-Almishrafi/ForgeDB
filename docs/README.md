@@ -28,8 +28,10 @@ Read it here: `stage-3-technical-documentation/README.md`
 
 Original submission files are preserved by stage:
 
-* Stage 1 files: `submissions/stage-1/`
-* Stage 2 files: `submissions/stage-2/`
-* Stage 3 files: `submissions/stage-3/`
+| Stage | Folder | Source files |
+| --- | --- | --- |
+| Stage 1 | `submissions/stage-1/` | `Stage 1.pdf` |
+| Stage 2 | `submissions/stage-2/` | `ForgeDB Project Charter (Stage 2).pdf` |
+| Stage 3 | `submissions/stage-3/` | `ForgeDB – Technical Documentation (Stage 3).docx`, `ForgeDB – Technical Documentation (Stage 3).pdf`, `ForgeDB_Technical_Documentation_Stage3_Updated1.docx` |
 
 These files are kept as source artifacts. The stage READMEs provide clean Markdown summaries and converted content for easier reading and development reference.

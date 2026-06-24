@@ -13,7 +13,7 @@ public class ProjectRepository : IProjectRepository
         _context = context;
     }
 
-    public Task<Project?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    public Task<Project?> GetByIdAsync(int projectId, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

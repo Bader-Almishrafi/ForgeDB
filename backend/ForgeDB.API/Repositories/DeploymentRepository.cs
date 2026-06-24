@@ -13,7 +13,7 @@ public class DeploymentRepository : IDeploymentRepository
         _context = context;
     }
 
-    public Task<DatabaseDeployment?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    public Task<DatabaseDeployment?> GetByIdAsync(int deploymentId, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

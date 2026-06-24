@@ -4,6 +4,6 @@ namespace ForgeDB.API.Repositories.Interfaces;
 
 public interface IDeploymentRepository
 {
-    Task<DatabaseDeployment?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<DatabaseDeployment?> GetByIdAsync(int deploymentId, CancellationToken cancellationToken = default);
     Task AddAsync(DatabaseDeployment deployment, CancellationToken cancellationToken = default);
 }

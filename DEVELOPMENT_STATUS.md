@@ -12,6 +12,7 @@
 - Frontend dependency install was validated with `npm.cmd install`.
 - Frontend production build was validated with `npm.cmd run build`.
 - Python service requirements were validated with `python -m pip install -r requirements.txt` from `python-analysis-service/`.
+- Backend validation was completed with `dotnet build backend/ForgeDB.sln`.
 - Backend solution and project paths were checked for the cleaned layout.
 - Backend routes have been aligned to the documented ForgeDB flow:
   - `POST /api/projects`
@@ -26,8 +27,10 @@
   - `PUT /api/schemas/{schemaId}/relationships`
   - `POST /api/schemas/{schemaId}/deploy`
 - Dataset, schema, dashboard, deployment, and relationship DTOs now reflect route-owned project, dataset, and schema IDs.
+- Service and repository contracts now follow the documented flow from project creation through dataset upload, preview, analysis, analysis-result storage, schema generation, relationship review, and deployment.
+- The Python analysis client dependency is aligned with dataset analysis through `DatasetImportService`; schema generation remains separate from direct Python calls.
 - Dataset and schema entities include placeholder fields for stored analysis results and reviewed relationships.
-- Documentation has been organized by project stage under `docs/`, with Stage 1, Stage 2, and Stage 3 README files created from the original submission files.
+- Documentation has been organized by project stage under `docs/`, with Stage 1, Stage 2, and Stage 3 README files created and verified from the original submission files.
 - Original submission PDFs and DOCX files have been moved into `docs/submissions/stage-1/`, `docs/submissions/stage-2/`, and `docs/submissions/stage-3/`.
 
 ## Still Skeleton
@@ -35,6 +38,7 @@
 - ASP.NET Core controllers are present as route/API skeletons.
 - Backend services are registered and wired through interfaces, but methods intentionally throw `NotImplementedException`.
 - Backend repositories and repository interfaces are present, but persistence logic is not implemented.
+- `DatasetImportService` is wired for the future Python analysis call, but the call is not implemented yet.
 - DTOs and entity classes are present as structural models.
 - `ForgeDbContext` is a placeholder and is not yet an Entity Framework Core database context.
 - `PythonAnalysisClient` is wired as an HTTP client but does not call the Python service yet.
@@ -77,7 +81,8 @@
 
 ## Validation Notes
 
-- `dotnet build backend/ForgeDB.sln` could not run because `dotnet` is not available on this machine's PATH.
+- `dotnet build backend/ForgeDB.sln` completed successfully after installing the .NET SDK, with 0 warnings and 0 errors.
+- Backend alignment was revalidated with `dotnet build backend/ForgeDB.sln`, which completed with 0 warnings and 0 errors.
+- Generated backend `bin/` and `obj/` folders are ignored by `.gitignore` and are not tracked by Git.
 - `npm.cmd install` and `npm.cmd run build` completed successfully in `frontend/angular-app`.
 - `python -m pip install -r requirements.txt` completed successfully in `python-analysis-service` after network access was allowed for PyPI.
-- Backend validation for the route-alignment pass was limited to static code and reference checks because the .NET SDK is not installed on this machine.
