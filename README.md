@@ -4,6 +4,8 @@
 
 ForgeDB is a platform that helps users transform raw data from Excel files, CSV files, and APIs into structured relational databases. The system analyzes uploaded data, suggests tables, relationships, and database constraints, then allows users to review and modify the proposed schema before generating a PostgreSQL database.
 
+## ALL STAGES
+
 ---
 
 # Project Charter
@@ -140,7 +142,10 @@ frontend/
   angular-app/
 python-analysis-service/
 docs/
-  submissions/
+  README.md
+  stage-1/
+  stage-2/
+  stage-3/
 ```
 
 ## Local Development Paths
@@ -148,4 +153,7 @@ docs/
 * Backend API: `backend/ForgeDB.API`
 * Frontend Angular app: `frontend/angular-app`
 * Python analysis service: `python-analysis-service`
-* Submission documents: `docs/submissions`
+* Documentation: `docs/`
+* Stage 1 source documents: `docs/stage-1/source`
+* Stage 2 source documents: `docs/stage-2/source`
+* Stage 3 source documents: `docs/stage-3/source`

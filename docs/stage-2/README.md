@@ -119,4 +119,4 @@ The following items are outside the MVP scope:
 
 ## Original Submission Files
 
-* ../submissions/stage-2/ForgeDB Project Charter (Stage 2).pdf
+* ./source/ForgeDB Project Charter (Stage 2).pdf

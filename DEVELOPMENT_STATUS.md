@@ -7,7 +7,7 @@
   - `frontend/`
   - `python-analysis-service/`
   - `docs/`
-- Submission PDFs and DOCX files are stored in `docs/submissions/`.
+- Submission PDFs and DOCX files are stored in the stage-local `source/` folders under `docs/stage-1/`, `docs/stage-2/`, and `docs/stage-3/`.
 - Generated build and dependency folders are ignored by `.gitignore`.
 - Frontend dependency install was validated with `npm.cmd install`.
 - Frontend production build was validated with `npm.cmd run build`.
@@ -30,8 +30,8 @@
 - Service and repository contracts now follow the documented flow from project creation through dataset upload, preview, analysis, analysis-result storage, schema generation, relationship review, and deployment.
 - The Python analysis client dependency is aligned with dataset analysis through `DatasetImportService`; schema generation remains separate from direct Python calls.
 - Dataset and schema entities include placeholder fields for stored analysis results and reviewed relationships.
-- Documentation has been organized by project stage under `docs/`, with Stage 1, Stage 2, and Stage 3 README files created and verified from the original submission files.
-- Original submission PDFs and DOCX files have been moved into `docs/submissions/stage-1/`, `docs/submissions/stage-2/`, and `docs/submissions/stage-3/`.
+- Documentation has been organized by project stage under `docs/stage-1/`, `docs/stage-2/`, and `docs/stage-3/`, with README files created and verified from the original submission files.
+- Original submission PDFs and DOCX files have been moved into the matching stage `source/` folders.
 
 ## Still Skeleton
 

@@ -2,7 +2,7 @@
 
 ForgeDB is a platform for transforming raw data from CSV files, Excel spreadsheets, and external REST APIs into structured PostgreSQL database designs. The system imports data, analyzes its structure and quality, suggests database tables and relationships, lets users review the generated design, and then supports deployment to PostgreSQL.
 
-This folder organizes the project documentation by academic project stage. Each stage has its own README with clean Markdown content derived from the original submitted PDF or Word files, while the original submitted files are preserved under `docs/submissions/`.
+This folder organizes the project documentation by academic project stage. Each stage has its own README with Markdown content derived from the original submitted PDF or Word files, while the original submitted files are preserved under the matching stage `source/` folder.
 
 ## Documentation Stages
 
@@ -10,19 +10,19 @@ This folder organizes the project documentation by academic project stage. Each 
 
 Stage 1 defines the original ForgeDB idea and MVP direction. It describes the project concept, problem, proposed solution, target users, core features, technology stack, roadmap, and success criteria.
 
-Read it here: `stage-1-idea-development/README.md`
+Read it here: `stage-1/README.md`
 
 ### Stage 2: Project Charter
 
 Stage 2 formalizes the project purpose, SMART objectives, stakeholders, team roles, scope, risks, mitigation strategies, project timeline, milestones, and simplified Gantt plan.
 
-Read it here: `stage-2-project-charter/README.md`
+Read it here: `stage-2/README.md`
 
 ### Stage 3: Technical Documentation
 
 Stage 3 describes the technical plan for ForgeDB. It covers user stories, architecture, frontend, backend, Python analysis service, database design, API endpoints, sequence diagrams, source control, QA strategy, technical decisions, and MVP scope control.
 
-Read it here: `stage-3-technical-documentation/README.md`
+Read it here: `stage-3/README.md`
 
 ## Submitted Files
 
@@ -30,8 +30,8 @@ Original submission files are preserved by stage:
 
 | Stage | Folder | Source files |
 | --- | --- | --- |
-| Stage 1 | `submissions/stage-1/` | `Stage 1.pdf` |
-| Stage 2 | `submissions/stage-2/` | `ForgeDB Project Charter (Stage 2).pdf` |
-| Stage 3 | `submissions/stage-3/` | `ForgeDB – Technical Documentation (Stage 3).docx`, `ForgeDB – Technical Documentation (Stage 3).pdf`, `ForgeDB_Technical_Documentation_Stage3_Updated1.docx` |
+| Stage 1 | `stage-1/source/` | `Stage 1.pdf` |
+| Stage 2 | `stage-2/source/` | `ForgeDB Project Charter (Stage 2).pdf` |
+| Stage 3 | `stage-3/source/` | `ForgeDB – Technical Documentation (Stage 3).docx`, `ForgeDB – Technical Documentation (Stage 3).pdf`, `ForgeDB_Technical_Documentation_Stage3_Updated1.docx` |
 
 These files are kept as source artifacts. The stage READMEs provide clean Markdown summaries and converted content for easier reading and development reference.

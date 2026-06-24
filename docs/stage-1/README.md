@@ -93,4 +93,4 @@ The Stage 1 submission positions ForgeDB as an Angular, ASP.NET Core, Python Fas
 
 ## Original Submission Files
 
-* ../submissions/stage-1/Stage 1.pdf
+* ./source/Stage 1.pdf
