@@ -4,12 +4,14 @@ using ForgeDB.API.Repositories;
 using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services;
 using ForgeDB.API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-builder.Services.AddScoped<ForgeDbContext>();
+builder.Services.AddDbContext<ForgeDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();

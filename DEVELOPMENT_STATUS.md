@@ -30,6 +30,7 @@
 - Service and repository contracts now follow the documented flow from project creation through dataset upload, preview, analysis, analysis-result storage, schema generation, relationship review, and deployment.
 - The Python analysis client dependency is aligned with dataset analysis through `DatasetImportService`; schema generation remains separate from direct Python calls.
 - Dataset and schema entities include placeholder fields for stored analysis results and reviewed relationships.
+- Backend database foundation has been prepared with Entity Framework Core, Npgsql PostgreSQL provider registration, a placeholder PostgreSQL connection string, `ForgeDbContext` `DbSet` properties, and initial relationship configuration.
 - Documentation has been organized by project stage under `docs/stage-1/`, `docs/stage-2/`, and `docs/stage-3/`, with README files created and verified from the original submission files.
 - Original submission PDFs and DOCX files have been moved into the matching stage `source/` folders.
 
@@ -40,7 +41,7 @@
 - Backend repositories and repository interfaces are present, but persistence logic is not implemented.
 - `DatasetImportService` is wired for the future Python analysis call, but the call is not implemented yet.
 - DTOs and entity classes are present as structural models.
-- `ForgeDbContext` is a placeholder and is not yet an Entity Framework Core database context.
+- `ForgeDbContext` is an Entity Framework Core context, but no migrations have been created and no database has been applied.
 - `PythonAnalysisClient` is wired as an HTTP client but does not call the Python service yet.
 - Python analysis service modules are present as initial service/router/model skeletons.
 - Existing authentication files remain skeletons and are not part of the current implementation flow.
@@ -55,29 +56,25 @@
 - Schema generation workflow.
 - Relationship review and update behavior.
 - Python analysis integration from the backend.
-- PostgreSQL database connection and migrations.
+- PostgreSQL database creation, migrations, and update/apply steps.
 - Deployment/generation of PostgreSQL databases.
 - Dashboard aggregation and chart recommendation integration.
 - End-to-end frontend/backend API integration.
 
 ## Next Recommended Backend Tasks
 
-1. Add the backend persistence foundation:
-   - Add Entity Framework Core packages.
-   - Convert `ForgeDbContext` into a real `DbContext`.
-   - Add `DbSet` properties for users, projects, datasets, schemas, and deployments.
-2. Configure PostgreSQL connection settings in `appsettings.json`.
-3. Add the first migration and validate database creation.
-4. Implement repository methods with EF Core.
-5. Implement `ProjectService` and the project repository methods.
-6. Implement dataset upload metadata storage and dataset preview retrieval.
-7. Wire `DatasetImportService.AnalyzeDatasetAsync` to `PythonAnalysisClient`.
-8. Store Python analysis results on datasets.
-9. Implement schema generation from stored analysis results.
-10. Implement relationship review updates on schemas.
-11. Implement schema deployment as a separate final step.
-12. Add backend validation and consistent error responses.
-13. Wire backend endpoints to the Angular app one feature at a time.
+1. Add the first EF Core migration when ready to create the physical database schema.
+2. Validate database creation in a local PostgreSQL environment.
+3. Implement repository methods with EF Core.
+4. Implement `ProjectService` and the project repository methods.
+5. Implement dataset upload metadata storage and dataset preview retrieval.
+6. Wire `DatasetImportService.AnalyzeDatasetAsync` to `PythonAnalysisClient`.
+7. Store Python analysis results on datasets.
+8. Implement schema generation from stored analysis results.
+9. Implement relationship review updates on schemas.
+10. Implement schema deployment as a separate final step.
+11. Add backend validation and consistent error responses.
+12. Wire backend endpoints to the Angular app one feature at a time.
 
 ## Validation Notes
 
