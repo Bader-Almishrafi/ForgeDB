@@ -1,6 +1,7 @@
 using ForgeDB.API.Data;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace ForgeDB.API.Repositories;
 
@@ -15,11 +16,21 @@ public class ProjectRepository : IProjectRepository
 
     public Task<Project?> GetByIdAsync(int projectId, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return _context.Projects
+            .AsNoTracking()
+            .FirstOrDefaultAsync(project => project.Id == projectId, cancellationToken);
     }
 
-    public Task AddAsync(Project project, CancellationToken cancellationToken = default)
+    public Task<bool> UserExistsAsync(int userId, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return _context.Users
+            .AsNoTracking()
+            .AnyAsync(user => user.Id == userId, cancellationToken);
+    }
+
+    public async Task AddAsync(Project project, CancellationToken cancellationToken = default)
+    {
+        await _context.Projects.AddAsync(project, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 }

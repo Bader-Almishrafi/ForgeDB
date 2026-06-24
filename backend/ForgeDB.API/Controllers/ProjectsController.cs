@@ -18,12 +18,29 @@ public class ProjectsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ProjectResponseDto>> Create(ProjectCreateDto request, CancellationToken cancellationToken)
     {
-        return Ok(await _projectService.CreateProjectAsync(request, cancellationToken));
+        try
+        {
+            var project = await _projectService.CreateProjectAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(GetById), new { projectId = project.Id }, project);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
     }
 
     [HttpGet("{projectId:int}")]
     public async Task<ActionResult<ProjectResponseDto>> GetById(int projectId, CancellationToken cancellationToken)
     {
-        return Ok(await _projectService.GetProjectByIdAsync(projectId, cancellationToken));
+        try
+        {
+            var project = await _projectService.GetProjectByIdAsync(projectId, cancellationToken);
+
+            return project is null ? NotFound() : Ok(project);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
     }
 }

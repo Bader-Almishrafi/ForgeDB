@@ -31,14 +31,19 @@
 - The Python analysis client dependency is aligned with dataset analysis through `DatasetImportService`; schema generation remains separate from direct Python calls.
 - Dataset and schema entities include placeholder fields for stored analysis results and reviewed relationships.
 - Backend database foundation has been prepared with Entity Framework Core, Npgsql PostgreSQL provider registration, a placeholder PostgreSQL connection string, `ForgeDbContext` `DbSet` properties, and initial relationship configuration.
+- Project module create and get-by-id flow is implemented through `ProjectsController`, `ProjectService`, `ProjectRepository`, and `ForgeDbContext`.
+- Implemented Project endpoints:
+  - `POST /api/projects`
+  - `GET /api/projects/{projectId}`
 - Documentation has been organized by project stage under `docs/stage-1/`, `docs/stage-2/`, and `docs/stage-3/`, with README files created and verified from the original submission files.
 - Original submission PDFs and DOCX files have been moved into the matching stage `source/` folders.
 
 ## Still Skeleton
 
 - ASP.NET Core controllers are present as route/API skeletons.
-- Backend services are registered and wired through interfaces, but methods intentionally throw `NotImplementedException`.
-- Backend repositories and repository interfaces are present, but persistence logic is not implemented.
+- Project controller, service, and repository create/get-by-id behavior is implemented.
+- Non-project backend services are registered and wired through interfaces, but methods intentionally throw `NotImplementedException`.
+- Non-project backend repositories and repository interfaces are present, but persistence logic is not implemented.
 - `DatasetImportService` is wired for the future Python analysis call, but the call is not implemented yet.
 - DTOs and entity classes are present as structural models.
 - `ForgeDbContext` is an Entity Framework Core context, but no migrations have been created and no database has been applied.
@@ -49,7 +54,7 @@
 ## Not Implemented Yet
 
 - Authentication and password handling.
-- Project CRUD behavior.
+- Project update/delete behavior and project list-by-user behavior.
 - Dataset upload, parsing, validation, and storage.
 - Dataset preview generation.
 - Dataset analysis result storage.
@@ -65,16 +70,15 @@
 
 1. Add the first EF Core migration when ready to create the physical database schema.
 2. Validate database creation in a local PostgreSQL environment.
-3. Implement repository methods with EF Core.
-4. Implement `ProjectService` and the project repository methods.
-5. Implement dataset upload metadata storage and dataset preview retrieval.
-6. Wire `DatasetImportService.AnalyzeDatasetAsync` to `PythonAnalysisClient`.
-7. Store Python analysis results on datasets.
-8. Implement schema generation from stored analysis results.
-9. Implement relationship review updates on schemas.
-10. Implement schema deployment as a separate final step.
-11. Add backend validation and consistent error responses.
-12. Wire backend endpoints to the Angular app one feature at a time.
+3. Implement user/auth persistence or a clear temporary ownership strategy before broader project workflows.
+4. Implement dataset upload metadata storage and dataset preview retrieval.
+5. Wire `DatasetImportService.AnalyzeDatasetAsync` to `PythonAnalysisClient`.
+6. Store Python analysis results on datasets.
+7. Implement schema generation from stored analysis results.
+8. Implement relationship review updates on schemas.
+9. Implement schema deployment as a separate final step.
+10. Add backend validation and consistent error responses.
+11. Wire backend endpoints to the Angular app one feature at a time.
 
 ## Validation Notes
 
