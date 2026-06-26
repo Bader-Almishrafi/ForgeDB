@@ -9,15 +9,15 @@ import { DeploymentComponent } from './pages/deployment/deployment.component';
 import { PlaceholderComponent } from './pages/placeholder/placeholder.component';
 import { LoginComponent } from './pages/login/login.component';
 import { SignupComponent } from './pages/signup/signup.component';
-import { Landing } from './pages/landing/landing.component';
+import { LandingComponent } from './pages/landing/landing.component';
 
 
 export const routes: Routes = [
-	{ path: '', component: Landing },
+	{ path: '', component: LandingComponent },
 	{ path: 'signup', component: SignupComponent },
 	{ path: 'login', component: LoginComponent },
 	{
-		path: '',
+		path: 'app',
 		component: AppShellComponent,
 		children: [
 			{ path: 'dashboard', component: DashboardComponent },
