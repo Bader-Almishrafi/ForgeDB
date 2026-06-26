@@ -7,36 +7,41 @@
 			<p class="page-subtitle">Get started with ForgeDB today</p>
 		</div>
 
-		<form style="display: flex; flex-direction: column; gap: 1.25rem;">
+		<form #signupForm="ngForm" (ngSubmit)="signupForm.form.valid && onRegister()"
+			style="display: flex; flex-direction: column; gap: 1.25rem;">
 
 			<div>
 				<label
 					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Full
 					Name</label>
-				<input type="text" class="input-field" placeholder="John Doe" required>
+				<input type="text" name="fullName" [(ngModel)]="fullName" class="input-field" placeholder="John Doe"
+					required>
 			</div>
 
 			<div>
 				<label
 					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Email
 					Address</label>
-				<input type="email" class="input-field" placeholder="name@example.com" required>
+				<input type="email" name="email" [(ngModel)]="email" class="input-field" placeholder="name@example.com"
+					required>
 			</div>
 
 			<div>
 				<label
 					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Password</label>
-				<input type="password" class="input-field" placeholder="••••••••" required>
+				<input type="password" name="password" [(ngModel)]="password" class="input-field" placeholder="••••••••"
+					required minlength="6">
 			</div>
 
 			<div>
 				<label
 					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Confirm
 					Password</label>
-				<input type="password" class="input-field" placeholder="••••••••" required>
+				<input type="password" name="confirmPassword" [(ngModel)]="confirmPassword" class="input-field"
+					placeholder="••••••••" required>
 			</div>
 
-			<button type="submit" class="btn-primary" style="margin-top: 0.5rem;">
+			<button type="submit" [disabled]="!signupForm.form.valid" class="btn-primary" style="margin-top: 0.5rem;">
 				Register
 			</button>
 
