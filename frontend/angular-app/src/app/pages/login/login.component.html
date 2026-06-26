@@ -1,42 +1,70 @@
 <div style="display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 1rem;">
-
 	<div class="card" style="width: 100%; max-width: 440px; padding: 2.5rem;">
+
+		@if (!showForgotPasswordState) {
 
 		<div style="text-align: center; margin-bottom: 2rem;">
 			<h1 class="page-title">Welcome back!</h1>
 			<p class="page-subtitle">Please enter your details to sign in</p>
 		</div>
 
-		<form style="display: flex; flex-direction: column; gap: 1.25rem;">
-
+		<form (ngSubmit)="onLogin()" style="display: flex; flex-direction: column; gap: 1.25rem;">
 			<div>
 				<label
 					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Email
 					Address</label>
-				<input type="email" class="input-field" placeholder="name@example.com" required>
+				<input type="email" name="email" [(ngModel)]="email" class="input-field" placeholder="name@example.com"
+					required>
 			</div>
 
 			<div>
 				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
 					<label
 						style="display: block; font-size: 0.875rem; font-weight: 600; color: #13213c;">Password</label>
-					<a href="#"
-						style="font-size: 0.875rem; color: #4f46e5; font-weight: 500; text-decoration: none;">Forgot
-						password?</a>
+					<button type="button" (click)="showForgotPasswordState = true"
+						style="background: none; border: none; font-size: 0.875rem; color: #4f46e5; font-weight: 500; padding: 0;">Forgot
+						password?</button>
 				</div>
-				<input type="password" class="input-field" placeholder="••••••••" required>
+				<input type="password" name="password" [(ngModel)]="password" class="input-field" placeholder="••••••••"
+					required>
 			</div>
 
-			<button type="submit" class="btn-primary" style="margin-top: 0.5rem;">
-				Sign in
-			</button>
+			<button type="submit" class="btn-primary" style="margin-top: 0.5rem;">Sign in</button>
 
 			<p style="text-align: center; font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">
 				Don't have an account?
-				<a href="/signup" style="color: #4f46e5; font-weight: 600; text-decoration: none;">Sign up for free</a>
+				<a routerLink="/signup" style="color: #4f46e5; font-weight: 600; text-decoration: none;">Sign up for
+					free</a>
 			</p>
-
 		</form>
+
+		} @else {
+
+		<div style="text-align: center; margin-bottom: 2rem;">
+			<h1 class="page-title">Reset Password</h1>
+			<p class="page-subtitle">Enter your email to receive a reset link</p>
+		</div>
+
+		<form (ngSubmit)="onResetPassword()" style="display: flex; flex-direction: column; gap: 1.25rem;">
+			<div>
+				<label
+					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Email
+					Address</label>
+				<input type="email" name="forgotEmail" [(ngModel)]="forgotEmail" class="input-field"
+					placeholder="name@example.com" required>
+			</div>
+
+			<button type="submit" class="btn-primary" style="margin-top: 0.5rem;">Send Reset Link</button>
+
+			<p style="text-align: center; font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">
+				Remember your password?
+				<button type="button" (click)="showForgotPasswordState = false"
+					style="background: none; border: none; color: #4f46e5; font-weight: 600; padding: 0;">Back to Sign
+					In</button>
+			</p>
+		</form>
+
+		}
 
 	</div>
 </div>
