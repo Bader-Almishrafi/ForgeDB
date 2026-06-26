@@ -9,17 +9,13 @@ import { DeploymentComponent } from './pages/deployment/deployment.component';
 import { PlaceholderComponent } from './pages/placeholder/placeholder.component';
 import { LoginComponent } from './pages/login/login.component';
 import { SignupComponent } from './pages/signup/signup.component';
-
+import { Landing } from './pages/landing/landing.component';
 
 
 export const routes: Routes = [
-	{
-		path: 'signup', component: SignupComponent
-	},
-	{
-		path: 'login',
-		component: LoginComponent
-	},
+	{ path: '', component: Landing },
+	{ path: 'signup', component: SignupComponent },
+	{ path: 'login', component: LoginComponent },
 	{
 		path: '',
 		component: AppShellComponent,
@@ -36,5 +32,5 @@ export const routes: Routes = [
 			{ path: '', pathMatch: 'full', redirectTo: 'dashboard' },
 		],
 	},
-	{ path: '**', redirectTo: 'dashboard' },
+	{ path: '**', redirectTo: '' },
 ];
