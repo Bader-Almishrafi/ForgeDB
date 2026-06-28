@@ -25,7 +25,6 @@ export class SignupComponent {
 		console.log('Registration Data:', {
 			name: this.fullName,
 			email: this.email,
-			password: this.password
 		});
 
 		alert('Registration successful! (Check Console)');
