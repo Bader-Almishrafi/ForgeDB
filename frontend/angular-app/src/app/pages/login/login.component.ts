@@ -18,10 +18,8 @@ export class LoginComponent {
 
 
 	onLogin() {
-		// Handle login logic here
+		// TODO: Integrate with authentication API/service.
 		console.log('Email:', this.email);
-		console.log('Password:', this.password);
-
 	}
 	onResetPassword() {
 		console.log('Reset Link Sent to:', this.forgotEmail);
