@@ -1,0 +1,61 @@
+<div class="min-h-screen bg-[#f7f9fc] text-slate-900 flex flex-col justify-between">
+  
+  <header class="flex h-[72px] items-center justify-between border-b border-slate-200/80 bg-white px-6 lg:px-12">
+    <div class="flex items-center gap-3">
+      <div class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg">
+        <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-white" stroke-width="1.8">
+          <ellipse cx="12" cy="5.5" rx="7" ry="3"></ellipse>
+          <path d="M5 5.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6M5 11.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6"></path>
+        </svg>
+      </div>
+      <span class="text-xl font-bold tracking-tight text-[#0d213f]">ForgeDB</span>
+    </div>
+    
+    <div class="flex items-center gap-4">
+      <a routerLink="/login" class="text-sm font-medium text-slate-600 hover:text-[#4f46e5] transition">Sign In</a>
+      <a routerLink="/signup" class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-700 transition">Get Started</a>
+    </div>
+  </header>
+
+  <main class="flex-1 flex flex-col items-center justify-center text-center px-6 py-16 lg:py-24">
+    <div class="max-w-3xl mx-auto space-y-6">
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#0d213f] tracking-tight leading-none">
+        Forge and Optimize Your <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">Databases</span> Effortlessly
+      </h1>
+      <p class="text-lg sm:text-xl text-slate-500 max-w-2xl mx-auto">
+        Analyze schemas, manage relationships, and review your data structures in one comprehensive dashboard designed for developers.
+      </p>
+      <div class="flex flex-wrap justify-center gap-4 pt-4">
+        <a routerLink="/signup" class="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3 text-base font-semibold text-white shadow-xl shadow-indigo-950/10 hover:opacity-95 transition">
+          Start for Free
+        </a>
+        <a routerLink="/login" class="rounded-xl border border-slate-300 bg-white px-6 py-3 text-base font-semibold text-slate-700 hover:bg-slate-50 transition">
+          Live Demo
+        </a>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-5xl mx-auto mt-16 lg:mt-24 w-full">
+      <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm text-left">
+        <div class="text-indigo-600 font-bold text-lg mb-2">01. Analysis</div>
+        <h3 class="text-base font-bold text-[#0d213f] mb-1">Schema Review</h3>
+        <p class="text-sm text-slate-500">Inspect and evaluate database structures for maximum optimization.</p>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm text-left">
+        <div class="text-indigo-600 font-bold text-lg mb-2">02. Relations</div>
+        <h3 class="text-base font-bold text-[#0d213f] mb-1">Relationship Mapping</h3>
+        <p class="text-sm text-slate-500">Visualize and structure foreign keys and table connections smoothly.</p>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm text-left">
+        <div class="text-indigo-600 font-bold text-lg mb-2">03. Deploy</div>
+        <h3 class="text-base font-bold text-[#0d213f] mb-1">Easy Deployment</h3>
+        <p class="text-sm text-slate-500">Generate optimized SQL scripts and push to production with confidence.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-200/60 bg-white py-6 text-center text-sm text-slate-400">
+    &copy; 2026 ForgeDB. All rights reserved.
+  </footer>
+
+</div>

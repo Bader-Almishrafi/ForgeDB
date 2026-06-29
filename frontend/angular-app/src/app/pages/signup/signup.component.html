@@ -1,0 +1,75 @@
+<div style="display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 1rem;">
+
+	<div class="card" style="width: 100%; max-width: 480px; padding: 2.5rem;">
+
+		<div style="text-align: center; margin-bottom: 2rem;">
+			<h1 class="page-title">Create an account</h1>
+			<p class="page-subtitle">Get started with ForgeDB today</p>
+		</div>
+
+		<form #signupForm="ngForm" (ngSubmit)="signupForm.form.valid && onRegister()"
+			style="display: flex; flex-direction: column; gap: 1.25rem;">
+
+			<div>
+				<label
+					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Full
+					Name</label>
+				<input type="text" name="fullName" [(ngModel)]="fullName" #nameInput="ngModel" class="input-field"
+					placeholder="John Doe" required>
+				@if (nameInput.invalid && (nameInput.dirty || nameInput.touched)) {
+				<p style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; font-weight: 500;">Full name is
+					required.</p>
+				}
+			</div>
+
+			<div>
+				<label
+					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Email
+					Address</label>
+				<input type="email" name="email" [(ngModel)]="email" #emailInput="ngModel" class="input-field"
+					placeholder="name@example.com" required email>
+				@if (emailInput.invalid && (emailInput.dirty || emailInput.touched)) {
+				<p style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; font-weight: 500;">Please enter a
+					valid email.</p>
+				}
+			</div>
+
+			<div>
+				<label
+					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Password</label>
+				<input type="password" name="password" [(ngModel)]="password" #passInput="ngModel" class="input-field"
+					placeholder="••••••••" required minlength="6">
+				@if (passInput.invalid && (passInput.dirty || passInput.touched)) {
+				<p style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; font-weight: 500;">Password must be
+					at least 6 characters.</p>
+				}
+			</div>
+
+			<div>
+				<label
+					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Confirm
+					Password</label>
+				<input type="password" name="confirmPassword" [(ngModel)]="confirmPassword" #confirmInput="ngModel"
+					class="input-field" placeholder="••••••••" required>
+
+				@if (confirmInput.touched && (confirmInput.invalid || password !== confirmPassword)) {
+				<p style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; font-weight: 500;">
+					@if (confirmInput.errors?.['required']) { Confirm password is required. }
+					@else if (password !== confirmPassword) { Passwords do not match! }
+				</p>
+				}
+			</div>
+
+			<button type="submit" [disabled]="!signupForm.form.valid || password !== confirmPassword"
+				class="btn-primary" style="margin-top: 0.5rem;">
+				Register
+			</button>
+
+			<p style="text-align: center; font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">
+				Already have an account?
+				<a routerLink="/login" style="color: #4f46e5; font-weight: 600; text-decoration: none;">Sign in</a>
+			</p>
+		</form>
+
+	</div>
+</div>
