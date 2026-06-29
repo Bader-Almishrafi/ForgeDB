@@ -31,6 +31,20 @@
 - The Python analysis client dependency is aligned with dataset analysis through `DatasetImportService`; schema generation remains separate from direct Python calls.
 - Dataset and schema entities include placeholder fields for stored analysis results and reviewed relationships.
 - Backend database foundation has been prepared with Entity Framework Core, Npgsql PostgreSQL provider registration, a placeholder PostgreSQL connection string, `ForgeDbContext` `DbSet` properties, and initial relationship configuration.
+- Local PostgreSQL is configured with Docker Compose using the `forgedb-postgres` container and the `forgedb-postgres-data` named volume.
+- The backend connection string targets the Docker PostgreSQL database at `Host=localhost;Port=5433;Database=forgedb;Username=postgres;Password=postgres`.
+- A repo-local `dotnet-ef` tool manifest is available under `.config/`.
+- The first EF Core migration, `InitialCreate`, has been created under `backend/ForgeDB.API/Data/Migrations/`.
+- `InitialCreate` has been applied to the local Docker PostgreSQL database.
+- Created database tables:
+  - `users`
+  - `projects`
+  - `datasets`
+  - `dataset_columns`
+  - `dataset_rows`
+  - `database_schemas`
+  - `database_deployments`
+  - `__EFMigrationsHistory`
 - Project module create and get-by-id flow is implemented through `ProjectsController`, `ProjectService`, `ProjectRepository`, and `ForgeDbContext`.
 - Implemented Project endpoints:
   - `POST /api/projects`
@@ -46,7 +60,7 @@
 - Non-project backend repositories and repository interfaces are present, but persistence logic is not implemented.
 - `DatasetImportService` is wired for the future Python analysis call, but the call is not implemented yet.
 - DTOs and entity classes are present as structural models.
-- `ForgeDbContext` is an Entity Framework Core context, but no migrations have been created and no database has been applied.
+- `ForgeDbContext` is an Entity Framework Core context and the initial local Docker database schema has been applied.
 - `PythonAnalysisClient` is wired as an HTTP client but does not call the Python service yet.
 - Python analysis service modules are present as initial service/router/model skeletons.
 - Existing authentication files remain skeletons and are not part of the current implementation flow.
@@ -61,29 +75,30 @@
 - Schema generation workflow.
 - Relationship review and update behavior.
 - Python analysis integration from the backend.
-- PostgreSQL database creation, migrations, and update/apply steps.
+- Additional PostgreSQL migrations beyond the initial schema.
 - Deployment/generation of PostgreSQL databases.
 - Dashboard aggregation and chart recommendation integration.
 - End-to-end frontend/backend API integration.
 
 ## Next Recommended Backend Tasks
 
-1. Add the first EF Core migration when ready to create the physical database schema.
-2. Validate database creation in a local PostgreSQL environment.
-3. Implement user/auth persistence or a clear temporary ownership strategy before broader project workflows.
-4. Implement dataset upload metadata storage and dataset preview retrieval.
-5. Wire `DatasetImportService.AnalyzeDatasetAsync` to `PythonAnalysisClient`.
-6. Store Python analysis results on datasets.
-7. Implement schema generation from stored analysis results.
-8. Implement relationship review updates on schemas.
-9. Implement schema deployment as a separate final step.
-10. Add backend validation and consistent error responses.
-11. Wire backend endpoints to the Angular app one feature at a time.
+1. Implement user/auth persistence or a clear temporary ownership strategy before broader project workflows.
+2. Implement dataset upload metadata storage and dataset preview retrieval.
+3. Wire `DatasetImportService.AnalyzeDatasetAsync` to `PythonAnalysisClient`.
+4. Store Python analysis results on datasets.
+5. Implement schema generation from stored analysis results.
+6. Implement relationship review updates on schemas.
+7. Implement schema deployment as a separate final step.
+8. Add backend validation and consistent error responses.
+9. Wire backend endpoints to the Angular app one feature at a time.
 
 ## Validation Notes
 
 - `dotnet build backend/ForgeDB.sln` completed successfully after installing the .NET SDK, with 0 warnings and 0 errors.
 - Backend alignment was revalidated with `dotnet build backend/ForgeDB.sln`, which completed with 0 warnings and 0 errors.
+- Docker PostgreSQL was started with `docker compose up -d`.
+- `dotnet ef database update --project backend/ForgeDB.API --startup-project backend/ForgeDB.API` applied the `InitialCreate` migration successfully.
+- Table creation was verified in the Docker PostgreSQL `forgedb` database.
 - Generated backend `bin/` and `obj/` folders are ignored by `.gitignore` and are not tracked by Git.
 - `npm.cmd install` and `npm.cmd run build` completed successfully in `frontend/angular-app`.
 - `python -m pip install -r requirements.txt` completed successfully in `python-analysis-service` after network access was allowed for PyPI.

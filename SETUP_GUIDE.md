@@ -48,15 +48,23 @@ python --version
 
 ---
 
-### 6. PostgreSQL
+### 6. Docker Desktop
 Download:
-https://www.postgresql.org/download/
-
-Recommended:
-pgAdmin 4 included
+https://www.docker.com/products/docker-desktop/
 
 Check:
-psql --version
+docker --version
+docker compose version
+
+ForgeDB uses Docker Compose for the local PostgreSQL database so every developer can use the same local database setup.
+
+Local PostgreSQL connection used by the backend:
+
+```text
+Host=localhost;Port=5433;Database=forgedb;Username=postgres;Password=postgres
+```
+
+The container uses PostgreSQL port `5432` internally and publishes it on host port `5433` to avoid conflicts with manually installed local PostgreSQL services.
 
 ---
 
@@ -75,15 +83,6 @@ Recommended Extensions:
 
 ---
 
-### 8. Docker Desktop (Optional)
-Download:
-https://www.docker.com/products/docker-desktop/
-
-Check:
-docker --version
-
----
-
 # Frontend Setup
 
 cd frontend/angular-app
@@ -96,11 +95,47 @@ npm start
 
 # Backend Setup
 
-cd backend/ForgeDB.API
+Start local PostgreSQL:
 
-dotnet restore
+```bash
+docker compose up -d
+```
 
-dotnet run
+Restore local .NET tools:
+
+```bash
+dotnet tool restore
+```
+
+Apply EF Core migrations:
+
+```bash
+dotnet ef database update --project backend/ForgeDB.API --startup-project backend/ForgeDB.API
+```
+
+Build backend:
+
+```bash
+dotnet build backend/ForgeDB.sln
+```
+
+Run backend API:
+
+```bash
+dotnet run --project backend/ForgeDB.API
+```
+
+Stop local PostgreSQL:
+
+```bash
+docker compose down
+```
+
+Delete local PostgreSQL data only when a full local reset is needed:
+
+```bash
+docker compose down -v
+```
 
 ---
 

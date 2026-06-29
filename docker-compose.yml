@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres
+    container_name: forgedb-postgres
+    environment:
+      POSTGRES_DB: forgedb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - forgedb-postgres-data:/var/lib/postgresql
+
+volumes:
+  forgedb-postgres-data:
