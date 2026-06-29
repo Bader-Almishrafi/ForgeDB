@@ -4,7 +4,7 @@
 
 ForgeDB is a platform that helps users transform raw data from Excel files, CSV files, and APIs into structured relational databases. The system analyzes uploaded data, suggests tables, relationships, and database constraints, then allows users to review and modify the proposed schema before generating a PostgreSQL database.
 
-
+## STAGE 1,2,3 IN DOC
 
 ---
 
