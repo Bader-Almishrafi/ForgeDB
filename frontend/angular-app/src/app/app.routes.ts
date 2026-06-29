@@ -7,23 +7,30 @@ import { SchemaReviewComponent } from './pages/schema-review/schema-review.compo
 import { RelationshipsComponent } from './pages/relationships/relationships.component';
 import { DeploymentComponent } from './pages/deployment/deployment.component';
 import { PlaceholderComponent } from './pages/placeholder/placeholder.component';
+import { LoginComponent } from './pages/login/login.component';
+import { SignupComponent } from './pages/signup/signup.component';
+import { LandingComponent } from './pages/landing/landing.component';
+
 
 export const routes: Routes = [
-  {
-    path: '',
-    component: AppShellComponent,
-    children: [
-      { path: 'dashboard', component: DashboardComponent },
-      { path: 'data-sources', component: DataSourcesComponent },
-      { path: 'analysis', component: AnalysisComponent },
-      { path: 'schema-review', component: SchemaReviewComponent },
-      { path: 'relationships', component: RelationshipsComponent },
-      { path: 'deployment', component: DeploymentComponent },
-      { path: 'projects', component: PlaceholderComponent, data: { title: 'Projects' } },
-      { path: 'sql-scripts', component: PlaceholderComponent, data: { title: 'SQL Scripts' } },
-      { path: 'settings', component: PlaceholderComponent, data: { title: 'Settings' } },
-      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
-    ],
-  },
-  { path: '**', redirectTo: 'dashboard' },
+	{ path: '', component: LandingComponent },
+	{ path: 'signup', component: SignupComponent },
+	{ path: 'login', component: LoginComponent },
+	{
+		path: 'app',
+		component: AppShellComponent,
+		children: [
+			{ path: 'dashboard', component: DashboardComponent },
+			{ path: 'data-sources', component: DataSourcesComponent },
+			{ path: 'analysis', component: AnalysisComponent },
+			{ path: 'schema-review', component: SchemaReviewComponent },
+			{ path: 'relationships', component: RelationshipsComponent },
+			{ path: 'deployment', component: DeploymentComponent },
+			{ path: 'projects', component: PlaceholderComponent, data: { title: 'Projects' } },
+			{ path: 'sql-scripts', component: PlaceholderComponent, data: { title: 'SQL Scripts' } },
+			{ path: 'settings', component: PlaceholderComponent, data: { title: 'Settings' } },
+			{ path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+		],
+	},
+	{ path: '**', redirectTo: '' },
 ];
