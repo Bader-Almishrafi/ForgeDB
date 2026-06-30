@@ -125,6 +125,170 @@ Run backend API:
 dotnet run --project backend/ForgeDB.API
 ```
 
+For a stable local Postman URL, you can also run:
+
+```bash
+dotnet run --project backend/ForgeDB.API --urls http://localhost:5000
+```
+
+## Manual Auth and Project API Testing with Postman
+
+Set a Postman variable:
+
+```text
+baseUrl = http://localhost:5000
+```
+
+### Register User
+
+```text
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "firstName": "Manual",
+  "lastName": "Tester",
+  "email": "manual.tester@example.com",
+  "password": "ForgeDB123!"
+}
+```
+
+Expected result:
+
+```text
+201 Created
+```
+
+The response body contains `user.id`, `user.firstName`, `user.lastName`, `user.email`, `user.role`, and `user.createdAt`. It does not include `password` or `passwordHash`. Save `user.id` as `userId`.
+
+If this email has already been registered, use a new email or run the login request below. Duplicate registration returns:
+
+```text
+409 Conflict
+```
+
+### Login User
+
+```text
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "email": "manual.tester@example.com",
+  "password": "ForgeDB123!"
+}
+```
+
+Expected result:
+
+```text
+200 OK
+```
+
+The response body contains user data only. JWT/token authentication is not implemented yet.
+
+Invalid credentials return:
+
+```text
+401 Unauthorized
+```
+
+### Create Project
+
+```text
+POST {{baseUrl}}/api/projects
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "userId": {{userId}},
+  "name": " Sales Analytics MVP ",
+  "description": " First real ForgeDB project "
+}
+```
+
+Expected result:
+
+```text
+201 Created
+```
+
+The response body contains the new project `id`, trimmed `name`, trimmed `description`, and timestamps. Save the returned `id` as `projectId`.
+
+Use the registered user's `user.id` value for `userId`.
+
+### Get Project by ID
+
+```text
+GET {{baseUrl}}/api/projects/{{projectId}}
+```
+
+Expected result:
+
+```text
+200 OK
+```
+
+### Get Projects by User ID
+
+```text
+GET {{baseUrl}}/api/projects/user/{{userId}}
+```
+
+Expected result:
+
+```text
+200 OK
+```
+
+The response body is an array of projects owned by that user.
+
+### Validation Checks
+
+Blank project name:
+
+```text
+POST {{baseUrl}}/api/projects
+Content-Type: application/json
+```
+
+```json
+{
+  "userId": {{userId}},
+  "name": "   ",
+  "description": "Invalid project"
+}
+```
+
+Expected result:
+
+```text
+400 Bad Request
+```
+
+Missing project:
+
+```text
+GET {{baseUrl}}/api/projects/999999
+```
+
+Expected result:
+
+```text
+404 Not Found
+```
+
 Stop local PostgreSQL:
 
 ```bash
