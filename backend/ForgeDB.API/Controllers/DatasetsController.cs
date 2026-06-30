@@ -20,19 +20,53 @@ public class DatasetsController : ControllerBase
     [HttpPost("projects/{projectId:int}/datasets/upload")]
     public async Task<ActionResult<DatasetResponseDto>> Upload(int projectId, [FromForm] DatasetUploadDto request, CancellationToken cancellationToken)
     {
-        return Ok(await _datasetImportService.UploadDatasetAsync(projectId, request, cancellationToken));
+        try
+        {
+            var dataset = await _datasetImportService.UploadDatasetAsync(projectId, request, cancellationToken);
+            return CreatedAtAction(nameof(GetPreview), new { datasetId = dataset.Id }, dataset);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
     }
 
     [HttpGet("projects/{projectId:int}/datasets")]
     public async Task<ActionResult<IEnumerable<DatasetResponseDto>>> GetByProject(int projectId, CancellationToken cancellationToken)
     {
-        return Ok(await _datasetImportService.GetProjectDatasetsAsync(projectId, cancellationToken));
+        try
+        {
+            return Ok(await _datasetImportService.GetProjectDatasetsAsync(projectId, cancellationToken));
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
     }
 
     [HttpGet("datasets/{datasetId:int}/preview")]
     public async Task<ActionResult<DatasetPreviewDto>> GetPreview(int datasetId, CancellationToken cancellationToken)
     {
-        return Ok(await _datasetImportService.GetDatasetPreviewAsync(datasetId, cancellationToken));
+        try
+        {
+            return Ok(await _datasetImportService.GetDatasetPreviewAsync(datasetId, cancellationToken));
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
     }
 
     [HttpPost("datasets/{datasetId:int}/analyze")]

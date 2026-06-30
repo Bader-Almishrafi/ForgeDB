@@ -131,7 +131,7 @@ For a stable local Postman URL, you can also run:
 dotnet run --project backend/ForgeDB.API --urls http://localhost:5000
 ```
 
-## Manual Auth and Project API Testing with Postman
+## Manual Auth, Project, and Dataset API Testing with Postman
 
 Set a Postman variable:
 
@@ -253,6 +253,177 @@ Expected result:
 ```
 
 The response body is an array of projects owned by that user.
+
+### Example CSV File
+
+Create a local file named `sales-example.csv` with this content:
+
+```csv
+OrderId,Customer,Amount,Region
+1,Ada,120.50,North
+2,Grace,85.00,West
+3,Linus,,South
+2,Grace,85.00,West
+```
+
+This sample has 4 rows, 4 columns, 1 missing value, and 1 duplicate row.
+
+### Upload CSV Dataset to Project
+
+```text
+POST {{baseUrl}}/api/projects/{{projectId}}/datasets/upload
+Content-Type: multipart/form-data
+```
+
+In Postman, use `Body` > `form-data`:
+
+```text
+TableName   Text   sales_orders
+SourceType  Text   csv
+SourceName  Text   sales-example.csv
+File        File   sales-example.csv
+```
+
+Expected result:
+
+```text
+201 Created
+```
+
+Example response:
+
+```json
+{
+  "id": 1,
+  "projectId": 1,
+  "tableName": "sales_orders",
+  "sourceType": "csv",
+  "sourceName": "sales-example.csv",
+  "rowCount": 4,
+  "columnCount": 4,
+  "missingValuesCount": 1,
+  "duplicateRowsCount": 1,
+  "status": "Imported",
+  "createdAt": "2026-06-30T00:00:00Z"
+}
+```
+
+Save the returned `id` as `datasetId`.
+
+Invalid uploads return:
+
+```text
+400 Bad Request
+```
+
+Examples: no file attached, empty file, non-`.csv` file extension, unsupported `SourceType`, empty headers, duplicate headers, or rows with a different number of values than the header row.
+
+Uploading to a missing project returns:
+
+```text
+404 Not Found
+```
+
+### Get Project Datasets
+
+```text
+GET {{baseUrl}}/api/projects/{{projectId}}/datasets
+```
+
+Expected result:
+
+```text
+200 OK
+```
+
+The response body is an array of dataset metadata for the project.
+
+Example response:
+
+```json
+[
+  {
+    "id": 1,
+    "projectId": 1,
+    "tableName": "sales_orders",
+    "sourceType": "csv",
+    "sourceName": "sales-example.csv",
+    "rowCount": 4,
+    "columnCount": 4,
+    "missingValuesCount": 1,
+    "duplicateRowsCount": 1,
+    "status": "Imported",
+    "createdAt": "2026-06-30T00:00:00Z"
+  }
+]
+```
+
+Requesting datasets for a missing project returns:
+
+```text
+404 Not Found
+```
+
+### Get Dataset Preview
+
+```text
+GET {{baseUrl}}/api/datasets/{{datasetId}}/preview
+```
+
+Expected result:
+
+```text
+200 OK
+```
+
+The preview returns column names and up to 50 stored rows.
+
+Example response:
+
+```json
+{
+  "datasetId": 1,
+  "tableName": "sales_orders",
+  "columns": [
+    "OrderId",
+    "Customer",
+    "Amount",
+    "Region"
+  ],
+  "rows": [
+    {
+      "OrderId": "1",
+      "Customer": "Ada",
+      "Amount": "120.50",
+      "Region": "North"
+    },
+    {
+      "OrderId": "2",
+      "Customer": "Grace",
+      "Amount": "85.00",
+      "Region": "West"
+    },
+    {
+      "OrderId": "3",
+      "Customer": "Linus",
+      "Amount": null,
+      "Region": "South"
+    },
+    {
+      "OrderId": "2",
+      "Customer": "Grace",
+      "Amount": "85.00",
+      "Region": "West"
+    }
+  ]
+}
+```
+
+Requesting a missing dataset returns:
+
+```text
+404 Not Found
+```
 
 ### Validation Checks
 
