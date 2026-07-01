@@ -1,4 +1,5 @@
 using ForgeDB.API.Models.DTOs;
+using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,16 +17,38 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<ActionResult> Register(RegisterRequestDto request, CancellationToken cancellationToken)
+    public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
     {
-        await _authService.RegisterAsync(request, cancellationToken);
-        return StatusCode(StatusCodes.Status501NotImplemented);
+        try
+        {
+            var response = await _authService.RegisterAsync(request, cancellationToken);
+            return StatusCode(StatusCodes.Status201Created, response);
+        }
+        catch (DuplicateEmailException exception)
+        {
+            return Conflict(new { message = exception.Message });
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
     }
 
     [HttpPost("login")]
-    public async Task<ActionResult> Login(LoginRequestDto request, CancellationToken cancellationToken)
+    public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginRequestDto request, CancellationToken cancellationToken)
     {
-        await _authService.LoginAsync(request, cancellationToken);
-        return StatusCode(StatusCodes.Status501NotImplemented);
+        try
+        {
+            var response = await _authService.LoginAsync(request, cancellationToken);
+            return Ok(response);
+        }
+        catch (InvalidCredentialsException exception)
+        {
+            return Unauthorized(new { message = exception.Message });
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
     }
 }

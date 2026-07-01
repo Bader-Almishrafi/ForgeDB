@@ -16,7 +16,7 @@ public class ProjectsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<ProjectResponseDto>> Create(ProjectCreateDto request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ProjectResponseDto>> Create([FromBody] ProjectCreateDto request, CancellationToken cancellationToken)
     {
         try
         {
@@ -36,7 +36,22 @@ public class ProjectsController : ControllerBase
         {
             var project = await _projectService.GetProjectByIdAsync(projectId, cancellationToken);
 
-            return project is null ? NotFound() : Ok(project);
+            return project is null ? NotFound(new { message = "Project not found." }) : Ok(project);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpGet("user/{userId:int}")]
+    public async Task<ActionResult<IEnumerable<ProjectResponseDto>>> GetByUserId(int userId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var projects = await _projectService.GetProjectsByUserIdAsync(userId, cancellationToken);
+
+            return projects is null ? NotFound(new { message = "User not found." }) : Ok(projects);
         }
         catch (ArgumentException exception)
         {

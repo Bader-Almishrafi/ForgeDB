@@ -13,8 +13,20 @@ public class DashboardService : IDashboardService
         _datasetRepository = datasetRepository;
     }
 
-    public Task<DashboardResponseDto> GetDatasetDashboardAsync(int datasetId, CancellationToken cancellationToken = default)
+    public async Task<DashboardResponseDto> GetDatasetDashboardAsync(int datasetId, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        if (datasetId <= 0)
+        {
+            throw new ArgumentException("DatasetId must be greater than zero.", nameof(datasetId));
+        }
+
+        var dataset = await _datasetRepository.GetByIdWithRowsAndColumnsAsync(datasetId, cancellationToken);
+
+        if (dataset is null)
+        {
+            throw new KeyNotFoundException("Dataset not found.");
+        }
+
+        return DatasetAnalysisBuilder.Build(dataset).Dashboard;
     }
 }

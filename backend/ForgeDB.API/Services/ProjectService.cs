@@ -18,7 +18,7 @@ public class ProjectService : IProjectService
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var projectName = request.Name.Trim();
+        var projectName = request.Name?.Trim();
         if (request.UserId <= 0)
         {
             throw new ArgumentException("UserId is required.", nameof(request));
@@ -57,6 +57,23 @@ public class ProjectService : IProjectService
         var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken);
 
         return project is null ? null : MapToResponse(project);
+    }
+
+    public async Task<IReadOnlyList<ProjectResponseDto>?> GetProjectsByUserIdAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        if (userId <= 0)
+        {
+            throw new ArgumentException("UserId must be greater than zero.", nameof(userId));
+        }
+
+        if (!await _projectRepository.UserExistsAsync(userId, cancellationToken))
+        {
+            return null;
+        }
+
+        var projects = await _projectRepository.GetByUserIdAsync(userId, cancellationToken);
+
+        return projects.Select(MapToResponse).ToList();
     }
 
     private static ProjectResponseDto MapToResponse(Project project)
