@@ -65,6 +65,14 @@
 - CSV upload currently supports comma-separated CSV files only. It trims headers and values, skips empty lines, stores row data as JSONB in `dataset_rows.RowData`, stores column sample values as JSONB in `dataset_columns.SampleValues`, and computes row count, column count, missing value count, duplicate row count, basic unique counts, nullable flags, and lightweight detected data types.
 - Dataset controller remains thin and returns `201 Created`, `200 OK`, `400 Bad Request`, and `404 Not Found` for the implemented Dataset routes.
 - Dataset upload/preview did not require a new migration because the existing `InitialCreate` schema already includes `datasets`, `dataset_columns`, and `dataset_rows` with JSONB storage for row data and sample values.
+- Dataset analysis and dashboard generation are implemented backend-only from stored PostgreSQL dataset rows and columns.
+- Implemented Dataset analysis/dashboard endpoints:
+  - `POST /api/datasets/{datasetId}/analyze`
+  - `GET /api/datasets/{datasetId}/dashboard`
+- Dataset analysis calculates row count, column count, missing values per column, total missing values, exact full-row duplicate count, detected column data types, numeric statistics, text unique counts, and most common values.
+- Dataset analysis updates existing dataset metadata fields: `MissingValuesCount`, `DuplicateRowsCount`, `Status`, `AnalysisResultJson`, and `AnalyzedAt`. The dataset entity has no `UpdatedAt` field.
+- Dataset dashboard returns summary metrics, column type distribution, numeric summaries, top value summaries, and chart recommendations derived from real stored data.
+- Dataset analysis/dashboard did not require a new migration because all calculations use existing `datasets`, `dataset_columns`, and `dataset_rows` fields.
 - Auth/User module register and login flow is implemented through `AuthController`, `AuthService`, `UserRepository`, and `ForgeDbContext`.
 - Implemented Auth endpoints:
   - `POST /api/auth/register`
@@ -83,10 +91,9 @@
 - ASP.NET Core controllers are present as route/API skeletons.
 - Project controller, service, and repository create/get-by-id/list-by-user behavior is implemented.
 - Auth controller, service, and user repository register/login behavior is implemented.
-- Dataset upload/list/preview behavior is implemented.
-- Schema, dashboard, and deployment services are registered and wired through interfaces, but methods intentionally throw `NotImplementedException`.
+- Dataset upload/list/preview/analyze/dashboard behavior is implemented.
+- Schema and deployment services are registered and wired through interfaces, but methods intentionally throw `NotImplementedException`.
 - Schema and deployment repositories and repository interfaces are present, but persistence logic is not implemented.
-- `DatasetImportService.AnalyzeDatasetAsync` remains skeleton and does not call the Python service yet.
 - DTOs and entity classes are present as structural models.
 - `ForgeDbContext` is an Entity Framework Core context and the initial local Docker database schema has been applied.
 - `PythonAnalysisClient` is wired as an HTTP client but does not call the Python service yet.
@@ -96,25 +103,22 @@
 
 - JWT/token authentication and route authorization.
 - Project update/delete behavior.
-- Dataset analysis endpoint behavior.
 - Schema generation workflow.
 - Relationship review and update behavior.
 - Python analysis integration from the backend.
 - Additional PostgreSQL migrations beyond the initial schema.
 - Deployment/generation of PostgreSQL databases.
-- Dashboard aggregation and chart recommendation integration.
 - End-to-end frontend/backend API integration.
 
 ## Next Recommended Backend Tasks
 
-1. Wire `DatasetImportService.AnalyzeDatasetAsync` to `PythonAnalysisClient`.
-2. Store Python analysis results on datasets.
-3. Implement schema generation from stored analysis results.
-4. Implement relationship review updates on schemas.
-5. Implement schema deployment as a separate final step.
-6. Add JWT/token authentication and route authorization when protected frontend flows are ready.
-7. Add broader backend validation and consistent error response contracts across remaining skeleton modules.
-8. Wire backend endpoints to the Angular app one feature at a time.
+1. Implement schema generation from stored analysis results.
+2. Implement relationship review updates on schemas.
+3. Implement schema deployment as a separate final step.
+4. Decide whether Python analysis should replace or augment the backend-only analysis.
+5. Add JWT/token authentication and route authorization when protected frontend flows are ready.
+6. Add broader backend validation and consistent error response contracts across remaining skeleton modules.
+7. Wire backend endpoints to the Angular app one feature at a time.
 
 ## Validation Notes
 
@@ -144,3 +148,16 @@
   - A local API smoke run verified register, create project, upload CSV dataset, get project datasets, and get dataset preview.
   - The smoke CSV produced `201 Created` for upload with 4 rows, 4 columns, 1 missing value, and 1 duplicate row; dataset list and preview returned `200 OK`.
   - Manual Postman instructions for dataset upload and preview are documented in `SETUP_GUIDE.md`.
+- Dataset analysis/dashboard integration validation for this pass:
+  - `docker compose up -d` completed successfully; `forgedb-postgres` was already running.
+  - `dotnet tool restore` completed successfully.
+  - `dotnet ef database update --project backend/ForgeDB.API --startup-project backend/ForgeDB.API --no-build` completed successfully; no migrations were applied because the database was already up to date.
+  - `dotnet ef migrations has-pending-model-changes --project backend/ForgeDB.API --startup-project backend/ForgeDB.API --no-build` confirmed no model changes since `InitialCreate`; no new migration is needed.
+  - `dotnet build backend/ForgeDB.API/ForgeDB.API.csproj --no-restore -o %TEMP%\forgedb-api-build-check-*` completed successfully with 0 warnings and 0 errors.
+  - `dotnet build backend/ForgeDB.sln` could not complete while an existing `ForgeDB.API.exe` process held the default build output files open.
+  - A local API smoke run from the separate build output verified register, create project, upload CSV dataset, get dataset preview, analyze dataset, and get dataset dashboard.
+  - The analysis smoke CSV produced `201 Created` for upload with 5 rows and 4 columns; preview returned `200 OK`.
+  - Analysis returned `200 OK` with 5 rows, 4 columns, 2 missing values, `total` detected as `integer` with numeric average `200`, and 1 missing value in `name`.
+  - Duplicate rows returned `0` because the implemented rule is exact full-row matching across all stored columns; the repeated Ahmed row has a different `customer_id`.
+  - Dashboard returned `200 OK` with 4 metrics, 2 numeric summaries, and 2 column type buckets.
+  - Manual Postman instructions for dataset analysis and dashboard are documented in `SETUP_GUIDE.md`.

@@ -72,12 +72,34 @@ public class DatasetsController : ControllerBase
     [HttpPost("datasets/{datasetId:int}/analyze")]
     public async Task<ActionResult<DatasetAnalysisResponseDto>> Analyze(int datasetId, DatasetAnalysisRequestDto request, CancellationToken cancellationToken)
     {
-        return Ok(await _datasetImportService.AnalyzeDatasetAsync(datasetId, request, cancellationToken));
+        try
+        {
+            return Ok(await _datasetImportService.AnalyzeDatasetAsync(datasetId, request, cancellationToken));
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
     }
 
     [HttpGet("datasets/{datasetId:int}/dashboard")]
     public async Task<ActionResult<DashboardResponseDto>> GetDashboard(int datasetId, CancellationToken cancellationToken)
     {
-        return Ok(await _dashboardService.GetDatasetDashboardAsync(datasetId, cancellationToken));
+        try
+        {
+            return Ok(await _dashboardService.GetDatasetDashboardAsync(datasetId, cancellationToken));
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
     }
 }

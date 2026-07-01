@@ -43,6 +43,18 @@ public class DatasetRepository : IDatasetRepository
             .FirstOrDefaultAsync(dataset => dataset.Id == datasetId, cancellationToken);
     }
 
+    public Task<Dataset?> GetByIdWithRowsAndColumnsAsync(int datasetId, CancellationToken cancellationToken = default)
+    {
+        return _context.Datasets
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(dataset => dataset.Columns.OrderBy(column => column.Id))
+            .Include(dataset => dataset.Rows
+                .OrderBy(row => row.RowNumber)
+                .ThenBy(row => row.Id))
+            .FirstOrDefaultAsync(dataset => dataset.Id == datasetId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Dataset>> GetByProjectIdAsync(int projectId, CancellationToken cancellationToken = default)
     {
         return await _context.Datasets
@@ -59,7 +71,13 @@ public class DatasetRepository : IDatasetRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task SaveAnalysisResultAsync(int datasetId, string analysisResultJson, CancellationToken cancellationToken = default)
+    public async Task SaveAnalysisResultAsync(
+        int datasetId,
+        string analysisResultJson,
+        int missingValuesCount,
+        int duplicateRowsCount,
+        DateTime analyzedAt,
+        CancellationToken cancellationToken = default)
     {
         var dataset = await _context.Datasets
             .FirstOrDefaultAsync(dataset => dataset.Id == datasetId, cancellationToken);
@@ -70,7 +88,9 @@ public class DatasetRepository : IDatasetRepository
         }
 
         dataset.AnalysisResultJson = analysisResultJson;
-        dataset.AnalyzedAt = DateTime.UtcNow;
+        dataset.MissingValuesCount = missingValuesCount;
+        dataset.DuplicateRowsCount = duplicateRowsCount;
+        dataset.AnalyzedAt = analyzedAt;
         dataset.Status = "Analyzed";
 
         await _context.SaveChangesAsync(cancellationToken);

@@ -118,9 +118,32 @@ public class DatasetImportService : IDatasetImportService
         };
     }
 
-    public Task<DatasetAnalysisResponseDto> AnalyzeDatasetAsync(int datasetId, DatasetAnalysisRequestDto request, CancellationToken cancellationToken = default)
+    public async Task<DatasetAnalysisResponseDto> AnalyzeDatasetAsync(int datasetId, DatasetAnalysisRequestDto request, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("Dataset analysis is not implemented yet.");
+        if (datasetId <= 0)
+        {
+            throw new ArgumentException("DatasetId must be greater than zero.", nameof(datasetId));
+        }
+
+        var dataset = await _datasetRepository.GetByIdWithRowsAndColumnsAsync(datasetId, cancellationToken);
+
+        if (dataset is null)
+        {
+            throw new KeyNotFoundException("Dataset not found.");
+        }
+
+        var analyzedAt = DateTime.UtcNow;
+        var analysis = DatasetAnalysisBuilder.Build(dataset, analyzedAt);
+
+        await _datasetRepository.SaveAnalysisResultAsync(
+            datasetId,
+            analysis.AnalysisResultJson,
+            analysis.Analysis.AnalysisResult.MissingValuesCount,
+            analysis.Analysis.AnalysisResult.DuplicateRowsCount,
+            analyzedAt,
+            cancellationToken);
+
+        return analysis.Analysis;
     }
 
     private static void ValidateCsvFile(IFormFile? file)

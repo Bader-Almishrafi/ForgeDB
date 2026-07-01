@@ -425,6 +425,222 @@ Requesting a missing dataset returns:
 404 Not Found
 ```
 
+### Analysis and Dashboard CSV File
+
+For the analysis/dashboard test, create a local file named `customer-totals.csv` with this content:
+
+```csv
+customer_id,name,email,total
+1,Bader,bader@example.com,250
+2,Ahmed,ahmed@example.com,120
+3,Nora,nora@example.com,310
+4,Ahmed,ahmed@example.com,120
+5,,missing@example.com,
+```
+
+Upload it using the same multipart endpoint:
+
+```text
+POST {{baseUrl}}/api/projects/{{projectId}}/datasets/upload
+Content-Type: multipart/form-data
+```
+
+In Postman, use `Body` > `form-data`:
+
+```text
+TableName   Text   customer_totals
+SourceType  Text   csv
+SourceName  Text   customer-totals.csv
+File        File   customer-totals.csv
+```
+
+Expected upload result:
+
+```text
+201 Created
+```
+
+Save the returned `id` as `datasetId`.
+
+This sample should produce 5 rows, 4 columns, 2 missing values, `total` as a numeric column, and `name`/`email` as text columns.
+
+Duplicate rows are counted as exact full-row matches across all stored columns. In this sample, the repeated Ahmed row has a different `customer_id`, so the duplicate row count is expected to be `0`.
+
+### Analyze Dataset
+
+```text
+POST {{baseUrl}}/api/datasets/{{datasetId}}/analyze
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "analysisType": "summary"
+}
+```
+
+Expected result:
+
+```text
+200 OK
+```
+
+Example response excerpt:
+
+```json
+{
+  "datasetId": 1,
+  "tableName": "customer_totals",
+  "status": "Analyzed",
+  "analysisResult": {
+    "rowCount": 5,
+    "columnCount": 4,
+    "missingValuesCount": 2,
+    "duplicateRowsCount": 0,
+    "duplicateRowRule": "Exact full-row match across all stored columns.",
+    "columns": [
+      {
+        "columnName": "name",
+        "detectedDataType": "string",
+        "missingValuesCount": 1,
+        "uniqueValuesCount": 3,
+        "isNullable": true,
+        "sampleValues": ["Bader", "Ahmed", "Nora"],
+        "numericStats": null,
+        "mostCommonValues": [
+          {
+            "value": "Ahmed",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "columnName": "total",
+        "detectedDataType": "integer",
+        "missingValuesCount": 1,
+        "uniqueValuesCount": 3,
+        "isNullable": true,
+        "numericStats": {
+          "columnName": "total",
+          "min": 120,
+          "max": 310,
+          "average": 200,
+          "count": 4
+        }
+      }
+    ],
+    "columnTypeDistribution": [
+      {
+        "dataType": "integer",
+        "count": 2
+      },
+      {
+        "dataType": "string",
+        "count": 2
+      }
+    ]
+  },
+  "chartRecommendations": [],
+  "analyzedAt": "2026-06-30T00:00:00Z"
+}
+```
+
+The actual `chartRecommendations` array may include histogram, bar, or scatter recommendations based on the detected columns.
+
+Missing dataset:
+
+```text
+404 Not Found
+```
+
+Dataset with no rows or no columns:
+
+```text
+400 Bad Request
+```
+
+### Get Dataset Dashboard
+
+```text
+GET {{baseUrl}}/api/datasets/{{datasetId}}/dashboard
+```
+
+Expected result:
+
+```text
+200 OK
+```
+
+Example response excerpt:
+
+```json
+{
+  "datasetId": 1,
+  "tableName": "customer_totals",
+  "rowCount": 5,
+  "columnCount": 4,
+  "missingValuesCount": 2,
+  "duplicateRowsCount": 0,
+  "metrics": [
+    {
+      "key": "rowCount",
+      "label": "Rows",
+      "value": 5
+    },
+    {
+      "key": "missingValues",
+      "label": "Missing Values",
+      "value": 2
+    }
+  ],
+  "columnTypeDistribution": [
+    {
+      "dataType": "integer",
+      "count": 2
+    },
+    {
+      "dataType": "string",
+      "count": 2
+    }
+  ],
+  "numericSummaries": [
+    {
+      "columnName": "total",
+      "min": 120,
+      "max": 310,
+      "average": 200,
+      "count": 4
+    }
+  ],
+  "topValueSummaries": [
+    {
+      "columnName": "name",
+      "values": [
+        {
+          "value": "Ahmed",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "chartRecommendations": []
+}
+```
+
+Missing dataset:
+
+```text
+404 Not Found
+```
+
+Dataset with no rows or no columns:
+
+```text
+400 Bad Request
+```
+
 ### Validation Checks
 
 Blank project name:
