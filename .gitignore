@@ -19,4 +19,4 @@ npm-debug.log*
 # System files
 .DS_Store
 Thumbs.db
-ForgeDB.API/appsettings.json
+backend/ForgeDB.API/appsettings.json
