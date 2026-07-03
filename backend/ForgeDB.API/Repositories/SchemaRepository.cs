@@ -1,6 +1,7 @@
 using ForgeDB.API.Data;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace ForgeDB.API.Repositories;
 
@@ -15,16 +16,40 @@ public class SchemaRepository : ISchemaRepository
 
     public Task<DatabaseSchema?> GetByIdAsync(int schemaId, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return _context.DatabaseSchemas
+            .AsNoTracking()
+            .FirstOrDefaultAsync(schema => schema.Id == schemaId, cancellationToken);
     }
 
-    public Task AddAsync(DatabaseSchema schema, CancellationToken cancellationToken = default)
+    public async Task AddAsync(DatabaseSchema schema, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        await _context.DatabaseSchemas.AddAsync(schema, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public Task UpdateRelationshipsAsync(int schemaId, string relationshipsJson, CancellationToken cancellationToken = default)
+    public async Task<DatabaseSchema?> UpdateRelationshipsAsync(
+        int schemaId,
+        string relationshipsJson,
+        string schemaJson,
+        string sqlContent,
+        DateTime updatedAt,
+        CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var schema = await _context.DatabaseSchemas
+            .FirstOrDefaultAsync(schema => schema.Id == schemaId, cancellationToken);
+
+        if (schema is null)
+        {
+            return null;
+        }
+
+        schema.RelationshipsJson = relationshipsJson;
+        schema.SchemaJson = schemaJson;
+        schema.SqlContent = sqlContent;
+        schema.UpdatedAt = updatedAt;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return schema;
     }
 }

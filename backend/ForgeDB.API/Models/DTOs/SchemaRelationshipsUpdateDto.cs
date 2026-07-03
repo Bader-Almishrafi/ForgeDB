@@ -2,5 +2,5 @@ namespace ForgeDB.API.Models.DTOs;
 
 public class SchemaRelationshipsUpdateDto
 {
-    public object? Relationships { get; set; }
+    public IReadOnlyList<SchemaRelationshipDto>? Relationships { get; set; }
 }

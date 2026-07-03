@@ -73,6 +73,16 @@
 - Dataset analysis updates existing dataset metadata fields: `MissingValuesCount`, `DuplicateRowsCount`, `Status`, `AnalysisResultJson`, and `AnalyzedAt`. The dataset entity has no `UpdatedAt` field.
 - Dataset dashboard returns summary metrics, column type distribution, numeric summaries, top value summaries, and chart recommendations derived from real stored data.
 - Dataset analysis/dashboard did not require a new migration because all calculations use existing `datasets`, `dataset_columns`, and `dataset_rows` fields.
+- Schema generation is implemented for the backend MVP through `SchemasController`, `SchemaService`, `SchemaRepository`, and `ForgeDbContext`.
+- Implemented Schema endpoints:
+  - `POST /api/datasets/{datasetId}/schema/generate`
+  - `GET /api/schemas/{schemaId}`
+  - `PUT /api/schemas/{schemaId}/relationships`
+  - `POST /api/schemas/{schemaId}/deploy`
+- Schema generation validates the dataset, uses stored dataset columns and detected data types, creates a generated table from `Dataset.TableName`, maps ForgeDB detected data types to PostgreSQL SQL types, stores the generated schema document as JSONB, and stores the SQL preview on the schema record.
+- Relationship editing is implemented for MVP as a manual update flow. Relationships are validated for required table/column fields, stored on the schema record as JSONB, and rendered into the generated SQL as foreign key statements.
+- Deployment SQL generation is implemented for MVP. The backend generates deployment-ready SQL from the stored schema document, saves a `database_deployments` metadata record with `Generated` status, generated SQL, and creation time, and returns the generated script without connecting to an external database.
+- A small EF Core migration, `AddDeploymentSqlMetadata`, adds deployment `GeneratedSql` and `CreatedAt` columns because the existing deployment table did not have storage for the generated SQL artifact.
 - Auth/User module register and login flow is implemented through `AuthController`, `AuthService`, `UserRepository`, and `ForgeDbContext`.
 - Implemented Auth endpoints:
   - `POST /api/auth/register`
@@ -80,7 +90,7 @@
 - User repository now performs real async PostgreSQL-backed read/create operations through `ForgeDbContext`.
 - Auth service validates and trims register/login inputs, lightly validates email format, normalizes stored email addresses, checks duplicate emails, hashes passwords before saving, verifies passwords on login, and maps users to response DTOs without exposing `PasswordHash`.
 - Auth controller remains thin and returns `201 Created`, `200 OK`, `400 Bad Request`, `409 Conflict`, and `401 Unauthorized` for the implemented Auth routes.
-- JWT/token authentication is not implemented yet; auth responses currently return user data only.
+- JWT token responses and bearer authentication wiring are implemented; route-level authorization attributes can be added as protected flows require them.
 - Local API startup is configured to disable Windows EventLog logging so non-admin local Postman testing does not fail when framework warnings are logged.
 - Manual Auth and Project API Postman testing instructions have been added to `SETUP_GUIDE.md`.
 - Documentation has been organized by project stage under `docs/stage-1/`, `docs/stage-2/`, and `docs/stage-3/`, with README files created and verified from the original submission files.
@@ -92,33 +102,28 @@
 - Project controller, service, and repository create/get-by-id/list-by-user behavior is implemented.
 - Auth controller, service, and user repository register/login behavior is implemented.
 - Dataset upload/list/preview/analyze/dashboard behavior is implemented.
-- Schema and deployment services are registered and wired through interfaces, but methods intentionally throw `NotImplementedException`.
-- Schema and deployment repositories and repository interfaces are present, but persistence logic is not implemented.
-- DTOs and entity classes are present as structural models.
+- Schema generation, relationship editing, and deployment SQL generation behavior is implemented for the backend MVP.
+- Remaining DTOs and entity classes outside the MVP path may still be structural models.
 - `ForgeDbContext` is an Entity Framework Core context and the initial local Docker database schema has been applied.
 - `PythonAnalysisClient` is wired as an HTTP client but does not call the Python service yet.
 - Python analysis service modules are present as initial service/router/model skeletons.
 
 ## Not Implemented Yet
 
-- JWT/token authentication and route authorization.
+- Route-level authorization attributes are not broadly applied yet.
 - Project update/delete behavior.
-- Schema generation workflow.
-- Relationship review and update behavior.
 - Python analysis integration from the backend.
-- Additional PostgreSQL migrations beyond the initial schema.
-- Deployment/generation of PostgreSQL databases.
+- Actual external database deployment, provisioning, or SQL execution.
 - End-to-end frontend/backend API integration.
 
 ## Next Recommended Backend Tasks
 
-1. Implement schema generation from stored analysis results.
-2. Implement relationship review updates on schemas.
-3. Implement schema deployment as a separate final step.
-4. Decide whether Python analysis should replace or augment the backend-only analysis.
-5. Add JWT/token authentication and route authorization when protected frontend flows are ready.
-6. Add broader backend validation and consistent error response contracts across remaining skeleton modules.
-7. Wire backend endpoints to the Angular app one feature at a time.
+1. Apply the latest EF Core migration locally with `dotnet ef database update --project backend/ForgeDB.API --startup-project backend/ForgeDB.API`.
+2. Decide whether Python analysis should replace or augment the backend-only analysis.
+3. Add route authorization attributes when protected frontend flows are ready.
+4. Implement actual external database deployment or SQL execution behind the generated deployment SQL.
+5. Add broader backend validation and consistent error response contracts across remaining skeleton modules.
+6. Wire backend endpoints to the Angular app one feature at a time.
 
 ## Validation Notes
 
@@ -161,3 +166,8 @@
   - Duplicate rows returned `0` because the implemented rule is exact full-row matching across all stored columns; the repeated Ahmed row has a different `customer_id`.
   - Dashboard returned `200 OK` with 4 metrics, 2 numeric summaries, and 2 column type buckets.
   - Manual Postman instructions for dataset analysis and dashboard are documented in `SETUP_GUIDE.md`.
+- Schema, relationship, and deployment SQL MVP validation for this pass:
+  - `dotnet ef migrations add AddDeploymentSqlMetadata --project backend/ForgeDB.API --startup-project backend/ForgeDB.API` created the deployment SQL metadata migration. Temporary JWT environment variables were used for design-time startup only; no secret was written to the repo.
+  - `dotnet ef migrations has-pending-model-changes --project backend/ForgeDB.API --startup-project backend/ForgeDB.API` confirmed no model changes since the latest migration.
+  - `dotnet build backend/ForgeDB.sln` completed successfully with 0 warnings and 0 errors.
+  - Manual Postman instructions for schema generation, relationship editing, and deployment SQL generation are documented in `SETUP_GUIDE.md`.

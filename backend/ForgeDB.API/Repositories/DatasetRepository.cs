@@ -28,6 +28,15 @@ public class DatasetRepository : IDatasetRepository
             .FirstOrDefaultAsync(dataset => dataset.Id == datasetId, cancellationToken);
     }
 
+    public Task<Dataset?> GetByIdWithColumnsAsync(int datasetId, CancellationToken cancellationToken = default)
+    {
+        return _context.Datasets
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(dataset => dataset.Columns.OrderBy(column => column.Id))
+            .FirstOrDefaultAsync(dataset => dataset.Id == datasetId, cancellationToken);
+    }
+
     public Task<Dataset?> GetByIdWithPreviewAsync(int datasetId, int rowLimit, CancellationToken cancellationToken = default)
     {
         var safeRowLimit = Math.Max(0, rowLimit);

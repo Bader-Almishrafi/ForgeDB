@@ -6,5 +6,11 @@ public interface ISchemaRepository
 {
     Task<DatabaseSchema?> GetByIdAsync(int schemaId, CancellationToken cancellationToken = default);
     Task AddAsync(DatabaseSchema schema, CancellationToken cancellationToken = default);
-    Task UpdateRelationshipsAsync(int schemaId, string relationshipsJson, CancellationToken cancellationToken = default);
+    Task<DatabaseSchema?> UpdateRelationshipsAsync(
+        int schemaId,
+        string relationshipsJson,
+        string schemaJson,
+        string sqlContent,
+        DateTime updatedAt,
+        CancellationToken cancellationToken = default);
 }
