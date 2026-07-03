@@ -95,6 +95,14 @@ npm start
 
 # Backend Setup
 
+Create local backend configuration:
+
+```bash
+cp backend/ForgeDB.API/appsettings.Example.json backend/ForgeDB.API/appsettings.json
+```
+
+Then replace `Jwt:Key` in `backend/ForgeDB.API/appsettings.json` with a local secret longer than 32 characters.
+
 Start local PostgreSQL:
 
 ```bash
