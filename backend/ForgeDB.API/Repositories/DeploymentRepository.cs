@@ -1,6 +1,7 @@
 using ForgeDB.API.Data;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace ForgeDB.API.Repositories;
 
@@ -15,11 +16,14 @@ public class DeploymentRepository : IDeploymentRepository
 
     public Task<DatabaseDeployment?> GetByIdAsync(int deploymentId, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return _context.DatabaseDeployments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(deployment => deployment.Id == deploymentId, cancellationToken);
     }
 
-    public Task AddAsync(DatabaseDeployment deployment, CancellationToken cancellationToken = default)
+    public async Task AddAsync(DatabaseDeployment deployment, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        await _context.DatabaseDeployments.AddAsync(deployment, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 }

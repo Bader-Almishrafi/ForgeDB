@@ -171,7 +171,7 @@ Expected result:
 201 Created
 ```
 
-The response body contains `user.id`, `user.firstName`, `user.lastName`, `user.email`, `user.role`, and `user.createdAt`. It does not include `password` or `passwordHash`. Save `user.id` as `userId`.
+The response body contains `user.id`, `user.firstName`, `user.lastName`, `user.email`, `user.role`, `user.createdAt`, and `token`. It does not include `password` or `passwordHash`. Save `user.id` as `userId` and `token` as `authToken`.
 
 If this email has already been registered, use a new email or run the login request below. Duplicate registration returns:
 
@@ -201,7 +201,7 @@ Expected result:
 200 OK
 ```
 
-The response body contains user data only. JWT/token authentication is not implemented yet.
+The response body contains `user` and `token`. Save `token` as `authToken`.
 
 Invalid credentials return:
 
@@ -647,6 +647,140 @@ Dataset with no rows or no columns:
 
 ```text
 400 Bad Request
+```
+
+### Generate Schema
+
+```text
+POST {{baseUrl}}/api/datasets/{{datasetId}}/schema/generate
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "schemaName": "Customer Totals Schema"
+}
+```
+
+Expected result:
+
+```text
+201 Created
+```
+
+The response contains `schemaId`, `datasetId`, `schemaName`, `generatedTableName`, `generatedColumns`, `sqlPreview`, and an empty `relationships` array. Save `schemaId`.
+
+Missing dataset:
+
+```text
+404 Not Found
+```
+
+Dataset with no columns:
+
+```text
+400 Bad Request
+```
+
+### Get Generated Schema
+
+```text
+GET {{baseUrl}}/api/schemas/{{schemaId}}
+```
+
+Expected result:
+
+```text
+200 OK
+```
+
+Missing schema:
+
+```text
+404 Not Found
+```
+
+### Update Schema Relationships
+
+```text
+PUT {{baseUrl}}/api/schemas/{{schemaId}}/relationships
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "relationships": [
+    {
+      "name": "fk_customer_totals_customer",
+      "fromTable": "customer_totals",
+      "fromColumn": "customer_id",
+      "toTable": "customers",
+      "toColumn": "id",
+      "relationshipType": "many-to-one"
+    }
+  ]
+}
+```
+
+Expected result:
+
+```text
+200 OK
+```
+
+The response returns the updated schema and SQL preview with the manual relationship rendered as a foreign key statement. For MVP, the API stores the relationship definition and does not validate that the referenced external table already exists.
+
+To clear relationships, send:
+
+```json
+{
+  "relationships": []
+}
+```
+
+Missing schema:
+
+```text
+404 Not Found
+```
+
+Invalid relationship fields:
+
+```text
+400 Bad Request
+```
+
+### Generate Deployment SQL
+
+```text
+POST {{baseUrl}}/api/schemas/{{schemaId}}/deploy
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "databaseName": "customer_totals_mvp"
+}
+```
+
+Expected result:
+
+```text
+201 Created
+```
+
+The response contains `deploymentId`, `schemaId`, `status`, `sqlScript`, and `createdAt`. `status` is `Generated`; the backend does not connect to or create an external database yet.
+
+Missing schema:
+
+```text
+404 Not Found
 ```
 
 ### Validation Checks
