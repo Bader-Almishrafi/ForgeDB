@@ -189,6 +189,15 @@ public class AuthService : IAuthService
 	 */
 	private string GenerateJwtToken(User user)
 	{
+		var jwtKey = GetRequiredJwtConfiguration("Jwt:Key");
+		if (jwtKey.Length < 32)
+		{
+			throw new InvalidOperationException("Jwt:Key must be at least 32 characters.");
+		}
+
+		var jwtIssuer = GetRequiredJwtConfiguration("Jwt:Issuer");
+		var jwtAudience = GetRequiredJwtConfiguration("Jwt:Audience");
+
 		var claims = new[]
 		{
 			new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
@@ -197,20 +206,31 @@ public class AuthService : IAuthService
 			new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
 		};
 
-		var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+		var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 		var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
 		var tokenDescriptor = new SecurityTokenDescriptor
 		{
 			Subject = new ClaimsIdentity(claims),
 			Expires = DateTime.UtcNow.AddHours(1),
-			Issuer = _configuration["Jwt:Issuer"],
-			Audience = _configuration["Jwt:Audience"],
+			Issuer = jwtIssuer,
+			Audience = jwtAudience,
 			SigningCredentials = creds
 		};
 
 		var tokenHandler = new JwtSecurityTokenHandler();
 		var token = tokenHandler.CreateToken(tokenDescriptor);
 		return tokenHandler.WriteToken(token);
+	}
+
+	private string GetRequiredJwtConfiguration(string key)
+	{
+		var value = _configuration[key];
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			throw new InvalidOperationException($"{key} configuration is required.");
+		}
+
+		return value;
 	}
 }

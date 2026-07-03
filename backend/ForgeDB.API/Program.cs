@@ -32,6 +32,29 @@ builder.Services.AddScoped<ISchemaRepository, SchemaRepository>();
 builder.Services.AddScoped<IDeploymentRepository, DeploymentRepository>();
 builder.Services.AddScoped<IPasswordHasher<ForgeDB.API.Models.Entities.User>, PasswordHasher<ForgeDB.API.Models.Entities.User>>();
 
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+	throw new InvalidOperationException("Jwt:Key configuration is required.");
+}
+
+if (jwtKey.Length < 32)
+{
+	throw new InvalidOperationException("Jwt:Key must be at least 32 characters.");
+}
+
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+if (string.IsNullOrWhiteSpace(jwtIssuer))
+{
+	throw new InvalidOperationException("Jwt:Issuer configuration is required.");
+}
+
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+if (string.IsNullOrWhiteSpace(jwtAudience))
+{
+	throw new InvalidOperationException("Jwt:Audience configuration is required.");
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 	.AddJwtBearer(options =>
 	{
@@ -41,11 +64,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 			ValidateAudience = true,
 			ValidateLifetime = true,
 			ValidateIssuerSigningKey = true,
-			ValidIssuer = builder.Configuration["Jwt:Issuer"],
-			ValidAudience = builder.Configuration["Jwt:Audience"],
-			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+			ValidIssuer = jwtIssuer,
+			ValidAudience = jwtAudience,
+			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
 		};
 	});
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
