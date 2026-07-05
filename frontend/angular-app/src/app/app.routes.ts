@@ -1,36 +1,46 @@
 import { Routes } from '@angular/router';
 import { AppShellComponent } from './layout/app-shell.component';
+import { AnalyzeDataComponent } from './pages/analyze-data/analyze-data.component';
+import { AnalysisComponent } from './pages/analysis/analysis.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { DataSourcesComponent } from './pages/data-sources/data-sources.component';
-import { AnalysisComponent } from './pages/analysis/analysis.component';
-import { SchemaReviewComponent } from './pages/schema-review/schema-review.component';
-import { RelationshipsComponent } from './pages/relationships/relationships.component';
 import { DeploymentComponent } from './pages/deployment/deployment.component';
-import { PlaceholderComponent } from './pages/placeholder/placeholder.component';
-import { LoginComponent } from './pages/login/login.component';
-import { SignupComponent } from './pages/signup/signup.component';
 import { LandingComponent } from './pages/landing/landing.component';
-
+import { LoginComponent } from './pages/login/login.component';
+import { ProjectsComponent } from './pages/projects/projects.component';
+import { RelationshipsComponent } from './pages/relationships/relationships.component';
+import { SchemaReviewComponent } from './pages/schema-review/schema-review.component';
+import { SignupComponent } from './pages/signup/signup.component';
+import { WorkspaceComponent } from './pages/workspace/workspace.component';
 
 export const routes: Routes = [
-	{ path: '', component: LandingComponent },
-	{ path: 'signup', component: SignupComponent },
-	{ path: 'login', component: LoginComponent },
-	{
-		path: 'app',
-		component: AppShellComponent,
-		children: [
-			{ path: 'dashboard', component: DashboardComponent },
-			{ path: 'data-sources', component: DataSourcesComponent },
-			{ path: 'analysis', component: AnalysisComponent },
-			{ path: 'schema-review', component: SchemaReviewComponent },
-			{ path: 'relationships', component: RelationshipsComponent },
-			{ path: 'deployment', component: DeploymentComponent },
-			{ path: 'projects', component: PlaceholderComponent, data: { title: 'Projects' } },
-			{ path: 'sql-scripts', component: PlaceholderComponent, data: { title: 'SQL Scripts' } },
-			{ path: 'settings', component: PlaceholderComponent, data: { title: 'Settings' } },
-			{ path: '', pathMatch: 'full', redirectTo: 'dashboard' },
-		],
-	},
-	{ path: '**', redirectTo: '' },
+  { path: '', pathMatch: 'full', component: LandingComponent },
+  { path: 'login', component: LoginComponent },
+  { path: 'register', component: SignupComponent },
+  { path: 'signup', redirectTo: 'register', pathMatch: 'full' },
+  { path: 'app', redirectTo: 'projects', pathMatch: 'full' },
+  { path: 'app/dashboard', redirectTo: 'projects', pathMatch: 'full' },
+  { path: 'app/projects', redirectTo: 'projects', pathMatch: 'full' },
+  { path: 'app/data-sources', redirectTo: 'projects', pathMatch: 'full' },
+  { path: 'app/analysis', redirectTo: 'projects', pathMatch: 'full' },
+  { path: 'app/schema-review', redirectTo: 'projects', pathMatch: 'full' },
+  { path: 'app/relationships', redirectTo: 'projects', pathMatch: 'full' },
+  { path: 'app/deployment', redirectTo: 'projects', pathMatch: 'full' },
+  { path: 'projects/:projectId/datasets', redirectTo: 'projects/:projectId/upload', pathMatch: 'full' },
+  {
+    path: '',
+    component: AppShellComponent,
+    children: [
+      { path: 'projects', component: ProjectsComponent },
+      { path: 'projects/:projectId/workspace', component: WorkspaceComponent },
+      { path: 'projects/:projectId/upload', component: DataSourcesComponent },
+      { path: 'datasets/:datasetId/preview', component: AnalysisComponent },
+      { path: 'datasets/:datasetId/analyze', component: AnalyzeDataComponent },
+      { path: 'datasets/:datasetId/dashboard', component: DashboardComponent },
+      { path: 'datasets/:datasetId/schema', component: SchemaReviewComponent },
+      { path: 'schemas/:schemaId/relationships', component: RelationshipsComponent },
+      { path: 'schemas/:schemaId/deploy', component: DeploymentComponent },
+    ],
+  },
+  { path: '**', redirectTo: '' },
 ];

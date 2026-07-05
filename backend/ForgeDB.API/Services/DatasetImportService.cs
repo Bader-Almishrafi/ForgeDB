@@ -17,11 +17,16 @@ public class DatasetImportService : IDatasetImportService
 
     private readonly IDatasetRepository _datasetRepository;
     private readonly IPythonAnalysisClient _pythonAnalysisClient;
+    private readonly ILogger<DatasetImportService> _logger;
 
-    public DatasetImportService(IDatasetRepository datasetRepository, IPythonAnalysisClient pythonAnalysisClient)
+    public DatasetImportService(
+        IDatasetRepository datasetRepository,
+        IPythonAnalysisClient pythonAnalysisClient,
+        ILogger<DatasetImportService> logger)
     {
         _datasetRepository = datasetRepository;
         _pythonAnalysisClient = pythonAnalysisClient;
+        _logger = logger;
     }
 
     public async Task<DatasetResponseDto> UploadDatasetAsync(int projectId, DatasetUploadDto request, CancellationToken cancellationToken = default)
@@ -133,7 +138,8 @@ public class DatasetImportService : IDatasetImportService
         }
 
         var analyzedAt = DateTime.UtcNow;
-        var analysis = DatasetAnalysisBuilder.Build(dataset, analyzedAt);
+        var analysis = await TryAnalyzeWithPythonAsync(dataset, analyzedAt, cancellationToken)
+            ?? DatasetAnalysisBuilder.Build(dataset, analyzedAt);
 
         await _datasetRepository.SaveAnalysisResultAsync(
             datasetId,
@@ -144,6 +150,74 @@ public class DatasetImportService : IDatasetImportService
             cancellationToken);
 
         return analysis.Analysis;
+    }
+
+    private async Task<DatasetAnalysisBuilder.DatasetAnalysisComputation?> TryAnalyzeWithPythonAsync(
+        Dataset dataset,
+        DateTime analyzedAt,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var pythonRequest = BuildPythonAnalysisRequest(dataset);
+            var pythonAnalysis = await _pythonAnalysisClient.AnalyzeDatasetAsync(pythonRequest, cancellationToken);
+
+            _logger.LogInformation(
+                "Python analysis service completed analysis for dataset {DatasetId}.",
+                dataset.Id);
+
+            return DatasetAnalysisBuilder.BuildFromPython(dataset, pythonAnalysis, analyzedAt);
+        }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                exception,
+                "Python analysis service timed out while analyzing dataset {DatasetId}. Falling back to .NET analysis.",
+                dataset.Id);
+
+            return null;
+        }
+        catch (Exception exception) when (IsPythonAnalysisFailure(exception) && !cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                exception,
+                "Python analysis service failed while analyzing dataset {DatasetId}. Falling back to .NET analysis.",
+                dataset.Id);
+
+            return null;
+        }
+    }
+
+    private static bool IsPythonAnalysisFailure(Exception exception)
+    {
+        return exception is HttpRequestException
+            or JsonException
+            or InvalidOperationException
+            or NotSupportedException;
+    }
+
+    private static PythonAnalysisRequestDto BuildPythonAnalysisRequest(Dataset dataset)
+    {
+        return new PythonAnalysisRequestDto
+        {
+            DatasetId = dataset.Id,
+            TableName = dataset.TableName,
+            Columns = dataset.Columns
+                .OrderBy(column => column.Id)
+                .Select(column => new PythonAnalysisColumnRequestDto
+                {
+                    Name = column.ColumnName,
+                    DataType = string.IsNullOrWhiteSpace(column.DetectedDataType)
+                        ? null
+                        : column.DetectedDataType.Trim().ToLowerInvariant()
+                })
+                .ToList(),
+            Rows = dataset.Rows
+                .OrderBy(row => row.RowNumber)
+                .ThenBy(row => row.Id)
+                .Select(row => DeserializeRowData(row.RowData))
+                .ToList()
+        };
     }
 
     private static void ValidateCsvFile(IFormFile? file)

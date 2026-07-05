@@ -1,41 +1,124 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
-
-interface StatCard {
-  label: string;
-  value: number;
-  change: string;
-  icon: string;
-  tone: string;
-}
+import { NgClass } from '@angular/common';
+import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
+import { ApiErrorBody, DashboardResponse, DashboardTopValues } from '../../services/api.models';
+import { ForgeApiService } from '../../services/forge-api.service';
+import { WorkflowStateService } from '../../services/workflow-state.service';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink],
+  imports: [NgClass, RouterLink],
   templateUrl: './dashboard.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DashboardComponent {
-  readonly stats: StatCard[] = [
-    { label: 'Total Projects', value: 12, change: '20% vs last month', icon: 'M4 7.5h5l1.5 2H20v9H4v-11Z', tone: 'bg-violet-50 text-violet-600' },
-    { label: 'Analyses Completed', value: 24, change: '18% vs last month', icon: 'M4 18V9m5 9V5m5 13v-7m5 7V3', tone: 'bg-emerald-50 text-emerald-600' },
-    { label: 'Schemas Generated', value: 18, change: '15% vs last month', icon: 'M4.5 5.25h15v13.5h-15V5.25Zm0 4.5h15M9 5.25v13.5', tone: 'bg-amber-50 text-amber-600' },
-    { label: 'Deployments', value: 9, change: '12% vs last month', icon: 'm12 3 4.5 4.5L12 12 7.5 7.5 12 3Zm0 9v8.5m-5-4.5 5 4.5 5-4.5', tone: 'bg-blue-50 text-blue-600' },
-  ];
+export class DashboardComponent implements OnInit {
+  readonly dashboard = signal<DashboardResponse | null>(null);
+  readonly loading = signal(false);
+  readonly analyzing = signal(false);
 
-  readonly projects = [
-    { name: 'Sales Data Project', sources: 3, date: 'May 16, 2026', schema: 'Generated', deployment: 'Deployed' },
-    { name: 'Inventory System', sources: 2, date: 'May 15, 2026', schema: 'Generated', deployment: 'Deployed' },
-    { name: 'Customer Insights', sources: 1, date: 'May 14, 2026', schema: 'In Review', deployment: 'Not Deployed' },
-    { name: 'HR Analytics', sources: 2, date: 'May 13, 2026', schema: 'Generated', deployment: 'Deployed' },
-    { name: 'E-commerce Data', sources: 4, date: 'May 12, 2026', schema: 'In Review', deployment: 'Not Deployed' },
-  ];
+  datasetId = 0;
+  errorMessage = '';
+  successMessage = '';
 
-  readonly activities = [
-    { text: 'Analysis completed for Sales_Data_Project', time: '10 min ago', tone: 'bg-emerald-50 text-emerald-600', icon: '✓' },
-    { text: 'Database deployed for Inventory_System', time: '1 hour ago', tone: 'bg-violet-50 text-violet-600', icon: 'DB' },
-    { text: 'Schema generated for HR_Analytics', time: '2 hours ago', tone: 'bg-amber-50 text-amber-600', icon: 'S' },
-    { text: 'File uploaded to Customer_Insights', time: '3 hours ago', tone: 'bg-blue-50 text-blue-600', icon: '↑' },
-  ];
+  constructor(
+    private api: ForgeApiService,
+    private route: ActivatedRoute,
+    private router: Router,
+    private workflow: WorkflowStateService,
+  ) {}
+
+  ngOnInit(): void {
+    this.datasetId = Number(this.route.snapshot.paramMap.get('datasetId'));
+    if (!Number.isFinite(this.datasetId) || this.datasetId <= 0) {
+      this.router.navigate(['/projects']);
+      return;
+    }
+
+    this.loadDashboard();
+  }
+
+  loadDashboard(): void {
+    this.errorMessage = '';
+    this.loading.set(true);
+
+    this.api.getDatasetDashboard(this.datasetId)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (dashboard) => {
+          this.dashboard.set(dashboard);
+          this.workflow.setDatasetId(dashboard.datasetId, dashboard.tableName);
+        },
+        error: (error: { error?: ApiErrorBody }) => {
+          this.errorMessage = error.error?.message ?? 'Unable to load dashboard.';
+        },
+      });
+  }
+
+  analyzeAndRefresh(): void {
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.analyzing.set(true);
+
+    this.api.analyzeDataset(this.datasetId, { analysisType: 'profile' })
+      .pipe(finalize(() => this.analyzing.set(false)))
+      .subscribe({
+        next: () => {
+          this.workflow.setDatasetId(this.datasetId, this.dashboard()?.tableName, 'Analyzed');
+          this.successMessage = 'Analysis completed.';
+          this.loadDashboard();
+        },
+        error: (error: { error?: ApiErrorBody }) => {
+          this.errorMessage = error.error?.message ?? 'Unable to run analysis.';
+        },
+      });
+  }
+
+  qualityScore(data: DashboardResponse): number {
+    const totalCells = Math.max(data.rowCount * data.columnCount, 1);
+    const missingPenalty = (data.missingValuesCount / totalCells) * 60;
+    const duplicatePenalty = (data.duplicateRowsCount / Math.max(data.rowCount, 1)) * 40;
+
+    return Math.max(0, Math.round(100 - missingPenalty - duplicatePenalty));
+  }
+
+  qualityStatus(data: DashboardResponse): string {
+    const score = this.qualityScore(data);
+    if (score >= 95) {
+      return 'Excellent';
+    }
+
+    if (score >= 80) {
+      return 'Healthy';
+    }
+
+    if (score >= 60) {
+      return 'Needs Review';
+    }
+
+    return 'High Risk';
+  }
+
+  qualityClass(data: DashboardResponse): string {
+    const score = this.qualityScore(data);
+    if (score >= 80) {
+      return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+    }
+
+    if (score >= 60) {
+      return 'border-amber-200 bg-amber-50 text-amber-800';
+    }
+
+    return 'border-rose-200 bg-rose-50 text-rose-800';
+  }
+
+  typePercent(data: DashboardResponse, count: number): number {
+    return Math.round((count / Math.max(data.columnCount, 1)) * 100);
+  }
+
+  topValuePercent(summary: DashboardTopValues, count: number): number {
+    const max = Math.max(...summary.values.map((value) => value.count), 1);
+    return Math.round((count / max) * 100);
+  }
 }

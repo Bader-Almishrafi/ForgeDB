@@ -50,16 +50,6 @@ internal static class DatasetAnalysisBuilder
 
         var duplicateRowsCount = CountDuplicateRows(rowValues, columnNames);
         var missingValuesCount = columnAnalyses.Sum(column => column.MissingValuesCount);
-        var typeDistribution = columnAnalyses
-            .GroupBy(column => column.DetectedDataType, StringComparer.OrdinalIgnoreCase)
-            .OrderBy(group => group.Key)
-            .Select(group => new ColumnTypeDistributionDto
-            {
-                DataType = group.Key,
-                Count = group.Count()
-            })
-            .ToList();
-
         var analysisResult = new DatasetAnalysisResultDto
         {
             RowCount = rows.Count,
@@ -68,10 +58,77 @@ internal static class DatasetAnalysisBuilder
             DuplicateRowsCount = duplicateRowsCount,
             DuplicateRowRule = DuplicateRowRule,
             Columns = columnAnalyses,
-            ColumnTypeDistribution = typeDistribution
+            ColumnTypeDistribution = BuildColumnTypeDistribution(columnAnalyses)
         };
 
         var chartRecommendations = BuildChartRecommendations(columnAnalyses);
+
+        return BuildComputation(dataset, analysisResult, chartRecommendations, analyzedAt);
+    }
+
+    public static DatasetAnalysisComputation BuildFromPython(
+        Dataset dataset,
+        PythonAnalysisResponseDto pythonAnalysis,
+        DateTime analyzedAt)
+    {
+        ArgumentNullException.ThrowIfNull(dataset);
+        ArgumentNullException.ThrowIfNull(pythonAnalysis);
+
+        var baseline = Build(dataset, analyzedAt);
+        var baselineColumns = baseline.Analysis.AnalysisResult.Columns
+            .GroupBy(column => column.ColumnName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+        var pythonColumns = pythonAnalysis.Columns
+            .Where(column => !string.IsNullOrWhiteSpace(column.Name))
+            .GroupBy(column => column.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+        var columns = dataset.Columns
+            .OrderBy(column => column.Id)
+            .Select(column => pythonColumns.TryGetValue(column.ColumnName, out var pythonColumn)
+                ? MapPythonColumn(pythonColumn, pythonAnalysis.RowCount, baselineColumns.GetValueOrDefault(column.ColumnName))
+                : baselineColumns.GetValueOrDefault(column.ColumnName))
+            .Where(column => column is not null)
+            .Select(column => column!)
+            .ToList();
+
+        if (columns.Count == 0)
+        {
+            columns = baseline.Analysis.AnalysisResult.Columns.ToList();
+        }
+
+        var chartRecommendations = MapPythonChartRecommendations(pythonAnalysis.ChartRecommendations);
+        if (chartRecommendations.Count == 0)
+        {
+            chartRecommendations = baseline.Analysis.ChartRecommendations.ToList();
+        }
+
+        var analysisResult = new DatasetAnalysisResultDto
+        {
+            RowCount = pythonAnalysis.RowCount,
+            ColumnCount = pythonAnalysis.ColumnCount,
+            MissingValuesCount = pythonAnalysis.MissingValuesCount,
+            DuplicateRowsCount = pythonAnalysis.DuplicateRowsCount,
+            DuplicateRowRule = DuplicateRowRule,
+            Columns = columns,
+            ColumnTypeDistribution = BuildColumnTypeDistribution(columns)
+        };
+
+        return BuildComputation(dataset, analysisResult, chartRecommendations, analyzedAt);
+    }
+
+    private static DatasetAnalysisComputation BuildComputation(
+        Dataset dataset,
+        DatasetAnalysisResultDto analysisResult,
+        IReadOnlyList<ChartRecommendationDto> chartRecommendations,
+        DateTime? analyzedAt)
+    {
+        var columnAnalyses = analysisResult.Columns.ToList();
+        var typeDistribution = analysisResult.ColumnTypeDistribution.ToList();
+
+        analysisResult.Columns = columnAnalyses;
+        analysisResult.ColumnTypeDistribution = typeDistribution;
 
         var analysisResponse = new DatasetAnalysisResponseDto
         {
@@ -87,11 +144,15 @@ internal static class DatasetAnalysisBuilder
         {
             DatasetId = dataset.Id,
             TableName = dataset.TableName,
-            RowCount = rows.Count,
-            ColumnCount = columns.Count,
-            MissingValuesCount = missingValuesCount,
-            DuplicateRowsCount = duplicateRowsCount,
-            Metrics = BuildMetrics(rows.Count, columns.Count, missingValuesCount, duplicateRowsCount),
+            RowCount = analysisResult.RowCount,
+            ColumnCount = analysisResult.ColumnCount,
+            MissingValuesCount = analysisResult.MissingValuesCount,
+            DuplicateRowsCount = analysisResult.DuplicateRowsCount,
+            Metrics = BuildMetrics(
+                analysisResult.RowCount,
+                analysisResult.ColumnCount,
+                analysisResult.MissingValuesCount,
+                analysisResult.DuplicateRowsCount),
             ColumnTypeDistribution = typeDistribution,
             NumericSummaries = columnAnalyses
                 .Where(column => column.NumericStats is not null)
@@ -112,6 +173,116 @@ internal static class DatasetAnalysisBuilder
             analysisResponse,
             dashboard,
             JsonSerializer.Serialize(analysisResult, JsonOptions));
+    }
+
+    private static ColumnAnalysisDto MapPythonColumn(
+        PythonAnalysisColumnProfileDto pythonColumn,
+        int rowCount,
+        ColumnAnalysisDto? fallback)
+    {
+        var detectedType = NormalizeDataType(pythonColumn.DetectedType, fallback?.DetectedDataType);
+        var sampleValues = pythonColumn.SampleValues
+            .Select(ConvertValueToString)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .Take(SampleValueLimit)
+            .ToList();
+
+        var topValues = pythonColumn.TopValues
+            .Where(value => value.Count > 0)
+            .Select(value => new ValueFrequencyDto
+            {
+                Value = ConvertValueToString(value.Value),
+                Count = value.Count
+            })
+            .ToList();
+
+        return new ColumnAnalysisDto
+        {
+            ColumnName = pythonColumn.Name,
+            DetectedDataType = detectedType,
+            MissingValuesCount = pythonColumn.MissingCount,
+            UniqueValuesCount = pythonColumn.UniqueCount,
+            IsNullable = pythonColumn.MissingCount > 0,
+            SampleValues = sampleValues.Count > 0 ? sampleValues : fallback?.SampleValues ?? new List<string>(),
+            NumericStats = pythonColumn.NumericStats is null
+                ? fallback?.NumericStats
+                : new NumericColumnStatsDto
+                {
+                    ColumnName = pythonColumn.Name,
+                    Min = pythonColumn.NumericStats.Min,
+                    Max = pythonColumn.NumericStats.Max,
+                    Average = Math.Round(pythonColumn.NumericStats.Average, 4),
+                    Count = Math.Max(0, rowCount - pythonColumn.MissingCount)
+                },
+            MostCommonValues = topValues.Count > 0 ? topValues : fallback?.MostCommonValues ?? new List<ValueFrequencyDto>()
+        };
+    }
+
+    private static IReadOnlyList<ChartRecommendationDto> MapPythonChartRecommendations(
+        IEnumerable<PythonChartRecommendationDto> recommendations)
+    {
+        return recommendations
+            .Where(recommendation => !string.IsNullOrWhiteSpace(recommendation.ChartType)
+                && !string.IsNullOrWhiteSpace(recommendation.XColumn))
+            .Select(recommendation =>
+            {
+                var columns = new List<string> { recommendation.XColumn.Trim() };
+                if (!string.IsNullOrWhiteSpace(recommendation.YColumn)
+                    && !columns.Contains(recommendation.YColumn, StringComparer.OrdinalIgnoreCase))
+                {
+                    columns.Add(recommendation.YColumn.Trim());
+                }
+
+                return new ChartRecommendationDto
+                {
+                    ChartType = recommendation.ChartType.Trim(),
+                    Title = string.IsNullOrWhiteSpace(recommendation.Title)
+                        ? $"{recommendation.ChartType.Trim()} chart"
+                        : recommendation.Title.Trim(),
+                    Columns = columns,
+                    Reason = string.IsNullOrWhiteSpace(recommendation.Reason)
+                        ? null
+                        : recommendation.Reason.Trim()
+                };
+            })
+            .ToList();
+    }
+
+    private static string NormalizeDataType(string? detectedType, string? fallback)
+    {
+        var normalized = string.IsNullOrWhiteSpace(detectedType)
+            ? fallback
+            : detectedType.Trim();
+
+        return string.IsNullOrWhiteSpace(normalized)
+            ? "string"
+            : normalized.Trim().ToLowerInvariant();
+    }
+
+    private static string? ConvertValueToString(object? value)
+    {
+        return value switch
+        {
+            null => null,
+            JsonElement element => ConvertJsonElementToString(element),
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+            _ => value.ToString()
+        };
+    }
+
+    private static IReadOnlyList<ColumnTypeDistributionDto> BuildColumnTypeDistribution(
+        IReadOnlyList<ColumnAnalysisDto> columns)
+    {
+        return columns
+            .GroupBy(column => column.DetectedDataType, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(group => group.Key)
+            .Select(group => new ColumnTypeDistributionDto
+            {
+                DataType = group.Key,
+                Count = group.Count()
+            })
+            .ToList();
     }
 
     private static ColumnAnalysisDto AnalyzeColumn(

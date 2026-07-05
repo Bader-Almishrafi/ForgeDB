@@ -1,39 +1,130 @@
 <section>
   <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div><p class="mb-3 text-sm text-slate-500">Projects <span class="mx-2">›</span> Sales Data Project <span class="mx-2">›</span> Relationships</p><h1 class="page-title">Review Relationships</h1><p class="page-subtitle">Review and manage the relationships between generated tables.</p></div>
-    <div class="flex gap-3"><button class="btn-secondary">↻ Auto-Detect Relationships</button><button class="btn-primary">Save Changes</button></div>
+    <div>
+      <p class="mb-3 text-sm text-slate-500">Schemas / Relationships</p>
+      <h1 class="page-title">Relationships</h1>
+      <p class="page-subtitle">Manually define schema relationships for the MVP deployment SQL workflow.</p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      @if (schema(); as currentSchema) {
+        <a [routerLink]="['/datasets', currentSchema.datasetId, 'schema']" [queryParams]="{ schemaId: currentSchema.schemaId }"
+          class="btn-secondary">Schema Review</a>
+        <a [routerLink]="['/schemas', currentSchema.schemaId, 'deploy']" class="btn-primary">Continue to Deployment</a>
+      }
+    </div>
   </div>
 
-  <div class="mt-5 grid gap-5 xl:grid-cols-[260px_minmax(700px,1fr)_310px]">
-    <aside class="card p-4"><h2 class="font-semibold">Tables (6)</h2><input class="input-field mt-4" placeholder="Search tables..." /><div class="mt-4 space-y-2">@for (table of tables; track table.name) {<div class="rounded-xl px-3 py-3 text-sm" [class]="table.name === 'orders' ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200' : 'hover:bg-slate-50'"><p class="font-semibold">▦ &nbsp; {{ table.name }}</p><p class="mt-1 text-xs text-slate-500">{{ table.relationships }} relationship{{ table.relationships > 1 ? 's' : '' }}</p></div>}</div><button class="btn-secondary mt-4 w-full">+ Add Table</button></aside>
-
-    <article class="card overflow-hidden">
-      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h2 class="font-semibold">Relationships Overview</h2><p class="text-xs text-slate-500">Visual overview of how your tables are connected.</p></div><span class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs">Layout: Smart</span></div>
-      <div class="relative min-h-[650px] overflow-auto bg-[radial-gradient(circle,#dbe2ef_1px,transparent_1px)] [background-size:20px_20px]">
-        <svg class="absolute inset-0 h-full w-full min-w-[900px]" viewBox="0 0 900 650" preserveAspectRatio="none" aria-label="Database relationships">
-          <path d="M220 150 H360" fill="none" stroke="#6366f1" stroke-width="3"></path>
-          <path d="M520 150 H660" fill="none" stroke="#6366f1" stroke-width="3"></path>
-          <path d="M440 245 V420 H670" fill="none" stroke="#6366f1" stroke-width="3"></path>
-          <path d="M260 500 H360" fill="none" stroke="#22c55e" stroke-width="3"></path>
-          <path d="M520 500 H670" fill="none" stroke="#6366f1" stroke-width="3"></path>
-          @for (point of [[220,150],[360,150],[520,150],[660,150],[440,245],[440,420],[670,420],[260,500],[360,500],[520,500],[670,500]]; track point[0] + '-' + point[1]) {<circle [attr.cx]="point[0]" [attr.cy]="point[1]" r="5" fill="#fff" stroke="#6366f1" stroke-width="2"></circle>}
-          <text x="275" y="138" fill="#475569" font-size="13">1</text><text x="335" y="138" fill="#475569" font-size="13">∞</text>
-          <text x="575" y="138" fill="#475569" font-size="13">1</text><text x="635" y="138" fill="#475569" font-size="13">1</text>
-          <text x="450" y="345" fill="#475569" font-size="13">1 → ∞</text>
-        </svg>
-
-        <div class="absolute left-8 top-14 w-48 rounded-xl border border-indigo-200 bg-white p-4 shadow-sm"><h3 class="font-semibold">customers</h3><div class="mt-3 space-y-1.5 text-xs text-slate-600"><p>🔑 id (PK)</p><p>name</p><p>email</p><p>phone</p><p>address</p></div></div>
-        <div class="absolute left-[360px] top-14 w-48 rounded-xl border border-indigo-200 bg-white p-4 shadow-sm"><h3 class="font-semibold">orders</h3><div class="mt-3 space-y-1.5 text-xs text-slate-600"><p>🔑 id (PK)</p><p>customer_id (FK)</p><p>order_date</p><p>status</p><p>total_amount</p></div></div>
-        <div class="absolute left-[660px] top-14 w-48 rounded-xl border border-indigo-200 bg-white p-4 shadow-sm"><h3 class="font-semibold">payments</h3><div class="mt-3 space-y-1.5 text-xs text-slate-600"><p>🔑 id (PK)</p><p>order_id (FK)</p><p>payment_date</p><p>amount</p><p>method</p></div></div>
-        <div class="absolute left-[80px] top-[430px] w-48 rounded-xl border border-emerald-200 bg-white p-4 shadow-sm"><h3 class="font-semibold">categories</h3><div class="mt-3 space-y-1.5 text-xs text-slate-600"><p>🔑 id (PK)</p><p>name</p><p>description</p></div></div>
-        <div class="absolute left-[360px] top-[430px] w-48 rounded-xl border border-indigo-200 bg-white p-4 shadow-sm"><h3 class="font-semibold">products</h3><div class="mt-3 space-y-1.5 text-xs text-slate-600"><p>🔑 id (PK)</p><p>category_id (FK)</p><p>name</p><p>price</p><p>stock</p></div></div>
-        <div class="absolute left-[670px] top-[390px] w-48 rounded-xl border border-indigo-200 bg-white p-4 shadow-sm"><h3 class="font-semibold">order_items</h3><div class="mt-3 space-y-1.5 text-xs text-slate-600"><p>🔑 id (PK)</p><p>order_id (FK)</p><p>product_id (FK)</p><p>quantity</p><p>unit_price</p></div></div>
+  <article class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="font-semibold text-slate-900">AI relationship suggestions</h2>
+        <p class="mt-1 text-sm text-slate-500">Future AI-assisted relationship detection is reserved here and disabled for MVP.</p>
       </div>
-      <div class="flex flex-wrap gap-5 border-t border-slate-100 px-5 py-3 text-xs text-slate-500"><span>1 One (PK)</span><span>∞ Many (FK)</span><span>— Identifying Relationship</span><span>-- Non-identifying Relationship</span></div>
-    </article>
+      <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500">Coming soon</span>
+    </div>
+  </article>
 
-    <aside class="card p-5"><div class="flex items-center justify-between"><h2 class="font-semibold">Relationship Details</h2><span class="badge-success">Active</span></div><div class="mt-5 rounded-xl bg-indigo-50 p-3"><p class="font-semibold text-indigo-800">orders → customers</p><p class="mt-1 text-xs text-indigo-600">Many-to-One</p></div><div class="mt-5 space-y-4 text-sm"><label><span class="mb-1 block text-slate-500">From Table</span><input class="input-field" value="orders" readonly /></label><label><span class="mb-1 block text-slate-500">From Column</span><input class="input-field" value="customer_id (FK)" readonly /></label><label><span class="mb-1 block text-slate-500">To Table</span><input class="input-field" value="customers" readonly /></label><label><span class="mb-1 block text-slate-500">To Column</span><input class="input-field" value="id (PK)" readonly /></label><label><span class="mb-1 block text-slate-500">On Delete</span><select class="input-field"><option>CASCADE</option><option>RESTRICT</option><option>SET NULL</option></select></label><label><span class="mb-1 block text-slate-500">On Update</span><select class="input-field"><option>CASCADE</option><option>RESTRICT</option></select></label></div><button class="btn-secondary mt-5 w-full">Edit Relationship</button><button class="mt-2 w-full rounded-xl border border-rose-200 px-4 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50">Delete Relationship</button></aside>
-  </div>
+  @if (errorMessage) {
+    <p class="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
+  }
+  @if (successMessage) {
+    <p class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
+  }
 
-  <div class="mt-5 flex justify-between"><button class="btn-secondary">Back</button><a routerLink="/deployment" class="btn-primary">Next: Deploy Database →</a></div>
+  @if (loading()) {
+    <article class="card mt-5 p-6 text-sm text-slate-500">Loading relationships...</article>
+  } @else if (schema(); as currentSchema) {
+    <div class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <article class="card p-5">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold">Existing Relationships</h2>
+            <p class="text-sm text-slate-500">Saved with PUT /api/schemas/{{ currentSchema.schemaId }}/relationships.</p>
+          </div>
+          <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{{ currentSchema.relationships.length }}</span>
+        </div>
+
+        @if (currentSchema.relationships.length === 0) {
+          <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+            <h3 class="font-semibold text-slate-900">No relationships yet</h3>
+            <p class="mt-2 text-sm text-slate-500">Add a manual relationship with the form on the right.</p>
+          </div>
+        } @else {
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Name</th><th>From</th><th>To</th><th>Type</th><th>Actions</th></tr></thead>
+              <tbody>
+                @for (item of currentSchema.relationships; track $index) {
+                  <tr>
+                    <td class="font-medium">{{ item.name || 'relationship_' + ($index + 1) }}</td>
+                    <td>{{ item.fromTable }}.{{ item.fromColumn }}</td>
+                    <td>{{ item.toTable }}.{{ item.toColumn }}</td>
+                    <td>{{ item.relationshipType || 'manual' }}</td>
+                    <td>
+                      <button type="button" class="rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+                        (click)="removeRelationship($index)" [disabled]="saving()">Remove</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </article>
+
+      <aside class="card p-5">
+        <h2 class="font-semibold">Add Relationship</h2>
+        <div class="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Relationship Preview</p>
+          <p class="mt-2 break-words font-semibold text-slate-900">{{ relationshipPreview() }}</p>
+        </div>
+        <form #relationshipForm="ngForm" (ngSubmit)="relationshipForm.form.valid && saveRelationship()" class="mt-4 space-y-4">
+          <datalist id="relationship-columns">
+            @for (column of currentSchema.generatedColumns; track column.name) {
+              <option [value]="column.name"></option>
+            }
+          </datalist>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium">Name</span>
+            <input name="name" [(ngModel)]="relationship.name" class="input-field" placeholder="fk_sales_customer">
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium">From Table</span>
+            <input name="fromTable" [(ngModel)]="relationship.fromTable" class="input-field" required>
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium">From Column</span>
+            <select name="fromColumn" [(ngModel)]="relationship.fromColumn" class="input-field" required>
+              <option value="">Select column</option>
+              @for (column of currentSchema.generatedColumns; track column.name) {
+                <option [value]="column.name">{{ column.name }}</option>
+              }
+            </select>
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium">To Table</span>
+            <input name="toTable" [(ngModel)]="relationship.toTable" class="input-field" [placeholder]="currentSchema.generatedTableName" required>
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium">To Column</span>
+            <input name="toColumn" [(ngModel)]="relationship.toColumn" class="input-field" list="relationship-columns" placeholder="id" required>
+            <span class="mt-1.5 block text-xs text-slate-500">Generated columns are available as suggestions; custom target columns are allowed.</span>
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium">Relationship Type</span>
+            <select name="relationshipType" [(ngModel)]="relationship.relationshipType" class="input-field">
+              <option value="many-to-one">many-to-one</option>
+              <option value="one-to-one">one-to-one</option>
+              <option value="one-to-many">one-to-many</option>
+            </select>
+          </label>
+          <button type="submit" class="btn-primary w-full" [disabled]="!relationshipForm.form.valid || saving()">
+            {{ saving() ? 'Saving...' : 'Save Relationships' }}
+          </button>
+        </form>
+      </aside>
+    </div>
+  } @else {
+    <article class="card mt-5 p-6 text-sm text-slate-500">No schema loaded.</article>
+  }
 </section>

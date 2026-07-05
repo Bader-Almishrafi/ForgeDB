@@ -1,54 +1,196 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { NgClass } from '@angular/common';
-import { RouterLink, RouterLinkActive, RouterOutlet, Router } from '@angular/router';
+import { Params, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+import { WorkflowStateService } from '../services/workflow-state.service';
 
 interface NavItem {
-	label: string;
-	route: string;
-	icon: string;
+  label: string;
+  route: string;
+  icon: string;
 }
 
+interface WorkflowStep {
+  label: string;
+  helper: string;
+  route: () => string | null;
+  queryParams?: () => Params | null;
+  enabled: () => boolean;
+  completed: () => boolean;
+  match: (url: string) => boolean;
+}
+
+type StepState = 'locked' | 'available' | 'current' | 'completed';
+
 @Component({
-	selector: 'app-shell',
-	standalone: true,
-	imports: [RouterOutlet, RouterLink, RouterLinkActive, NgClass],
-	templateUrl: './app-shell.component.html',
-	changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-shell',
+  standalone: true,
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgClass],
+  templateUrl: './app-shell.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppShellComponent {
-	readonly sidebarOpen = signal(false);
-	readonly isLoggedIn = signal(true);
-	readonly dropdownOpen = signal(false);
+  readonly sidebarOpen = signal(false);
+  readonly dropdownOpen = signal(false);
+  readonly user = this.authService.user;
+  readonly isLoggedIn = this.authService.isLoggedIn;
+  readonly projectId = this.workflow.projectId;
+  readonly projectName = this.workflow.projectName;
+  readonly datasetId = this.workflow.datasetId;
+  readonly datasetName = this.workflow.datasetName;
+  readonly datasetStatus = this.workflow.datasetStatus;
+  readonly schemaId = this.workflow.schemaId;
+  readonly schemaName = this.workflow.schemaName;
 
-	constructor(private router: Router) { }
+  readonly navItems: NavItem[] = [
+    { label: 'Projects', route: '/projects', icon: 'M3.75 6.75h5.19l1.06 1.5h10.25v9.75a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V6.75Z' },
+  ];
 
-	toggleDropdown(): void {
-		this.dropdownOpen.update(value => !value);
-	}
+  readonly workflowSteps: WorkflowStep[] = [
+    {
+      label: 'Project',
+      helper: 'Project hub',
+      route: () => this.projectId() ? `/projects/${this.projectId()}/workspace` : '/projects',
+      enabled: () => true,
+      completed: () => this.projectId() !== null,
+      match: (url) => url === '/projects' || url.includes('/workspace'),
+    },
+    {
+      label: 'Upload',
+      helper: 'CSV import',
+      route: () => this.projectId() ? `/projects/${this.projectId()}/upload` : null,
+      enabled: () => this.projectId() !== null,
+      completed: () => this.datasetId() !== null,
+      match: (url) => url.includes('/upload'),
+    },
+    {
+      label: 'Preview',
+      helper: 'Validate rows',
+      route: () => this.datasetId() ? `/datasets/${this.datasetId()}/preview` : null,
+      enabled: () => this.datasetId() !== null,
+      completed: () => this.datasetId() !== null,
+      match: (url) => url.includes('/preview'),
+    },
+    {
+      label: 'Analyze',
+      helper: 'Profile data',
+      route: () => this.datasetId() ? `/datasets/${this.datasetId()}/analyze` : null,
+      enabled: () => this.datasetId() !== null,
+      completed: () => this.datasetStatus() === 'Analyzed',
+      match: (url) => url.includes('/analyze'),
+    },
+    {
+      label: 'Dashboard',
+      helper: 'Metrics',
+      route: () => this.datasetId() ? `/datasets/${this.datasetId()}/dashboard` : null,
+      enabled: () => this.datasetId() !== null,
+      completed: () => this.datasetStatus() === 'Analyzed',
+      match: (url) => url.includes('/dashboard'),
+    },
+    {
+      label: 'Schema',
+      helper: 'SQL review',
+      route: () => this.datasetId() ? `/datasets/${this.datasetId()}/schema` : null,
+      enabled: () => this.datasetId() !== null,
+      completed: () => this.schemaId() !== null,
+      match: (url) => url.includes('/schema') && !url.includes('tab=er'),
+    },
+    {
+      label: 'ER Diagram',
+      helper: 'Visual model',
+      route: () => this.datasetId() ? `/datasets/${this.datasetId()}/schema` : null,
+      queryParams: () => ({ tab: 'er', schemaId: this.schemaId() }),
+      enabled: () => this.schemaId() !== null,
+      completed: () => this.schemaId() !== null,
+      match: (url) => url.includes('/schema') && url.includes('tab=er'),
+    },
+    {
+      label: 'Relationships',
+      helper: 'Manual links',
+      route: () => this.schemaId() ? `/schemas/${this.schemaId()}/relationships` : null,
+      enabled: () => this.schemaId() !== null,
+      completed: () => this.schemaId() !== null,
+      match: (url) => url.includes('/relationships'),
+    },
+    {
+      label: 'Deployment',
+      helper: 'Final SQL',
+      route: () => this.schemaId() ? `/schemas/${this.schemaId()}/deploy` : null,
+      enabled: () => this.schemaId() !== null,
+      completed: () => false,
+      match: (url) => url.includes('/deploy'),
+    },
+  ];
 
-	logout(): void {
-		this.dropdownOpen.set(false);
-		this.isLoggedIn.set(false);
-		this.router.navigate(['/']);
-	}
+  constructor(
+    private router: Router,
+    private authService: AuthService,
+    private workflow: WorkflowStateService,
+  ) {}
 
-	readonly navItems: NavItem[] = [
-		{ label: 'Dashboard', route: '/app/dashboard', icon: 'M3 10.75 12 3l9 7.75V21a.75.75 0 0 1-.75.75h-5.5v-6.5h-5.5v6.5h-5.5A.75.75 0 0 1 3 21V10.75Z' },
-		{ label: 'Projects', route: '/app/projects', icon: 'M3.75 6.75h5.19l1.06 1.5h10.25v9.75a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V6.75Z' },
-		{ label: 'Data Sources', route: '/app/data-sources', icon: 'M12 3c4.56 0 8.25 1.34 8.25 3S16.56 9 12 9 3.75 7.66 3.75 6 7.44 3 12 3Zm-8.25 8.25C3.75 12.91 7.44 14.25 12 14.25s8.25-1.34 8.25-3M3.75 16.5c0 1.66 3.69 3 8.25 3s8.25-1.34 8.25-3' },
-		{ label: 'Analyses', route: '/app/analysis', icon: 'M4.5 19.5V12m5 7.5V8m5 11.5V4m5 15.5V10' },
-		{ label: 'Schemas', route: '/app/schema-review', icon: 'M4.5 5.25h15v13.5h-15V5.25Zm0 4.5h15M9 5.25v13.5' },
-		{ label: 'Relationships', route: '/app/relationships', icon: 'M6.75 6.75a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm15 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-7.5 10.5a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0ZM6.3 8.2l4.25 6.1m7.15-6.1-4.25 6.1' },
-		{ label: 'Deployments', route: '/app/deployment', icon: 'M12 2.75 20.25 7.5v9L12 21.25 3.75 16.5v-9L12 2.75Zm0 0v9m8.25-4.75L12 11.75 3.75 7' },
-		{ label: 'SQL Scripts', route: '/app/sql-scripts', icon: 'M8.25 8.25 4.5 12l3.75 3.75M15.75 8.25 19.5 12l-3.75 3.75M13.5 5.25 10.5 18.75' },
-		{ label: 'Settings', route: '/app/settings', icon: 'M12 8.25A3.75 3.75 0 1 0 12 15.75 3.75 3.75 0 0 0 12 8.25Zm0-5.5.83 2.2a7.6 7.6 0 0 1 1.7.7l2.14-.97 2.65 2.65-.97 2.14c.3.55.54 1.12.7 1.7l2.2.83v3.75l-2.2.83a7.6 7.6 0 0 1-.7 1.7l.97 2.14-2.65 2.65-2.14-.97a7.6 7.6 0 0 1-1.7.7l-.83 2.2H8.25l-.83-2.2a7.6 7.6 0 0 1-1.7-.7l-2.14.97L.93 19.42l.97-2.14a7.6 7.6 0 0 1-.7-1.7L-1 14.75V11l2.2-.83c.16-.58.4-1.15.7-1.7L.93 6.33l2.65-2.65 2.14.97a7.6 7.6 0 0 1 1.7-.7l.83-2.2H12Z' },
-	];
+  toggleDropdown(): void {
+    this.dropdownOpen.update((value) => !value);
+  }
 
-	toggleSidebar(): void {
-		this.sidebarOpen.update((value) => !value);
-	}
+  logout(): void {
+    this.dropdownOpen.set(false);
+    this.authService.logout();
+    this.workflow.clearAll();
+    this.router.navigate(['/']);
+  }
 
-	closeSidebar(): void {
-		this.sidebarOpen.set(false);
-	}
+  initials(): string {
+    const currentUser = this.user();
+    if (!currentUser) {
+      return 'FD';
+    }
+
+    return `${currentUser.firstName[0] ?? ''}${currentUser.lastName[0] ?? ''}`.toUpperCase();
+  }
+
+  toggleSidebar(): void {
+    this.sidebarOpen.update((value) => !value);
+  }
+
+  closeSidebar(): void {
+    this.sidebarOpen.set(false);
+  }
+
+  stepState(step: WorkflowStep): StepState {
+    if (!step.enabled()) {
+      return 'locked';
+    }
+
+    if (step.match(this.router.url)) {
+      return 'current';
+    }
+
+    return step.completed() ? 'completed' : 'available';
+  }
+
+  stepClasses(step: WorkflowStep): string {
+    const state = this.stepState(step);
+
+    if (state === 'current') {
+      return 'border-indigo-300 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100';
+    }
+
+    if (state === 'completed') {
+      return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+    }
+
+    if (state === 'locked') {
+      return 'border-slate-200 bg-slate-50 text-slate-400';
+    }
+
+    return 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/60';
+  }
+
+  nextActionLabel(): string {
+    const activeStep = this.workflowSteps.find((step) => this.stepState(step) === 'available')
+      ?? this.workflowSteps.find((step) => this.stepState(step) === 'current')
+      ?? this.workflowSteps.find((step) => this.stepState(step) === 'locked');
+
+    return activeStep ? activeStep.label : 'Database package';
+  }
 }
