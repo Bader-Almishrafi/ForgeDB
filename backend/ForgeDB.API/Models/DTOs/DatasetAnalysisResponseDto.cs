@@ -7,6 +7,9 @@ public class DatasetAnalysisResponseDto
     public string Status { get; set; } = string.Empty;
     public DatasetAnalysisResultDto AnalysisResult { get; set; } = new();
     public IEnumerable<ChartRecommendationDto> ChartRecommendations { get; set; } = new List<ChartRecommendationDto>();
+    public IEnumerable<KeyCandidateDto> KeyCandidates { get; set; } = new List<KeyCandidateDto>();
+    public IEnumerable<DateRangeDto> DateRanges { get; set; } = new List<DateRangeDto>();
+    public IEnumerable<RelationshipCandidateHintDto> RelationshipCandidateHints { get; set; } = new List<RelationshipCandidateHintDto>();
     public DateTime? AnalyzedAt { get; set; }
 }
 

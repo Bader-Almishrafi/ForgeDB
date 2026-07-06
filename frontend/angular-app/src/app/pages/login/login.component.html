@@ -1,88 +1,76 @@
-<div style="display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 1rem;">
-	<div class="card" style="width: 100%; max-width: 440px; padding: 2.5rem;">
+<div class="flex min-h-screen items-center justify-center p-4">
+  <div class="card w-full max-w-[440px] p-8 sm:p-10">
+    @if (!showForgotPasswordState) {
+      <div class="mb-8 text-center">
+        <h1 class="page-title">Welcome back</h1>
+        <p class="page-subtitle">Sign in to continue the ForgeDB MVP flow.</p>
+      </div>
 
-		@if (!showForgotPasswordState) {
-		<div style="text-align: center; margin-bottom: 2rem;">
-			<h1 class="page-title">Welcome back!</h1>
-			<p class="page-subtitle">Please enter your details to sign in</p>
-		</div>
+      <form #loginForm="ngForm" (ngSubmit)="loginForm.form.valid && onLogin()" class="flex flex-col gap-5">
+        <label>
+          <span class="mb-2 block text-sm font-semibold text-slate-800">Email Address</span>
+          <input type="email" name="email" [(ngModel)]="email" #loginEmail="ngModel" class="input-field"
+            placeholder="name@example.com" required email>
+          @if (loginEmail.invalid && (loginEmail.dirty || loginEmail.touched)) {
+            <p class="mt-1 text-xs font-semibold text-rose-600">Please enter a valid email address.</p>
+          }
+        </label>
 
-		<form #loginForm="ngForm" (ngSubmit)="loginForm.form.valid && onLogin()"
-			style="display: flex; flex-direction: column; gap: 1.25rem;">
-			<div>
-				<label
-					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Email
-					Address</label>
-				<input type="email" name="email" [(ngModel)]="email" #loginEmail="ngModel" class="input-field"
-					placeholder="name@example.com" required email>
-				@if (loginEmail.invalid && (loginEmail.dirty || loginEmail.touched)) {
-				<p style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; font-weight: 500;">
-					Please enter a valid email address.
-				</p>
-				}
-			</div>
+        <label>
+          <span class="mb-2 flex items-center justify-between text-sm font-semibold text-slate-800">
+            Password
+            <button type="button" (click)="showForgotPasswordState = true"
+              class="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Forgot password?</button>
+          </span>
+          <input type="password" name="password" [(ngModel)]="password" #loginPass="ngModel" class="input-field"
+            placeholder="Password" required minlength="8">
+          @if (loginPass.invalid && (loginPass.dirty || loginPass.touched)) {
+            <p class="mt-1 text-xs font-semibold text-rose-600">Please enter your password.</p>
+          }
+        </label>
 
-			<div>
-				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-					<label
-						style="display: block; font-size: 0.875rem; font-weight: 600; color: #13213c;">Password</label>
-					<button type="button" (click)="showForgotPasswordState = true"
-						style="background: none; border: none; font-size: 0.875rem; color: #4f46e5; font-weight: 500; padding: 0; cursor: pointer;">Forgot
-						password?</button>
-				</div>
-				<input type="password" name="password" [(ngModel)]="password" #loginPass="ngModel" class="input-field"
-					placeholder="••••••••" required minlength="6">
-				@if (loginPass.invalid && (loginPass.dirty || loginPass.touched)) {
-				<p style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; font-weight: 500;">
-					pleasee enter a valid password.
-				</p>
-				}
-			</div>
+        @if (errorMessage) {
+          <p class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+            {{ errorMessage }}
+          </p>
+        }
 
-			<button type="submit" [disabled]="!loginForm.form.valid" class="btn-primary" style="margin-top: 0.5rem;">
-				Sign in
-			</button>
+        <button type="submit" [disabled]="!loginForm.form.valid || isLoading" class="btn-primary">
+          {{ isLoading ? 'Signing in...' : 'Sign in' }}
+        </button>
 
-			<p style="text-align: center; font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">
-				Don't have an account?
-				<a routerLink="/signup" style="color: #4f46e5; font-weight: 600; text-decoration: none;">Sign up for
-					free</a>
-			</p>
-		</form>
+        <p class="text-center text-sm text-slate-500">
+          Do not have an account?
+          <a routerLink="/register" class="font-semibold text-indigo-600 hover:text-indigo-700">Register</a>
+        </p>
+      </form>
+    } @else {
+      <div class="mb-8 text-center">
+        <h1 class="page-title">Reset Password</h1>
+        <p class="page-subtitle">Password reset is not wired in this local MVP.</p>
+      </div>
 
-		} @else {
-		<div style="text-align: center; margin-bottom: 2rem;">
-			<h1 class="page-title">Reset Password</h1>
-			<p class="page-subtitle">Enter your email to receive a reset link</p>
-		</div>
+      <form #forgotForm="ngForm" (ngSubmit)="forgotForm.form.valid && onResetPassword()" class="flex flex-col gap-5">
+        <label>
+          <span class="mb-2 block text-sm font-semibold text-slate-800">Email Address</span>
+          <input type="email" name="forgotEmail" [(ngModel)]="forgotEmail" #forgotEmailInput="ngModel"
+            class="input-field" placeholder="name@example.com" required email>
+          @if (forgotEmailInput.invalid && (forgotEmailInput.dirty || forgotEmailInput.touched)) {
+            <p class="mt-1 text-xs font-semibold text-rose-600">Please enter a valid email address.</p>
+          }
+        </label>
 
-		<form #forgotForm="ngForm" (ngSubmit)="forgotForm.form.valid && onResetPassword()"
-			style="display: flex; flex-direction: column; gap: 1.25rem;">
-			<div>
-				<label
-					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Email
-					Address</label>
-				<input type="email" name="forgotEmail" [(ngModel)]="forgotEmail" #forgotEmailInput="ngModel"
-					class="input-field" placeholder="name@example.com" required email>
-				@if (forgotEmailInput.invalid && (forgotEmailInput.dirty || forgotEmailInput.touched)) {
-				<p style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; font-weight: 500;">
-					Please enter a valid email address.
-				</p>
-				}
-			</div>
+        @if (errorMessage) {
+          <p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700">
+            {{ errorMessage }}
+          </p>
+        }
 
-			<button type="submit" [disabled]="!forgotForm.form.valid" class="btn-primary" style="margin-top: 0.5rem;">
-				Send Reset Link
-			</button>
+        <button type="submit" [disabled]="!forgotForm.form.valid" class="btn-primary">Send Reset Link</button>
 
-			<p style="text-align: center; font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">
-				Remember your password?
-				<button type="button" (click)="showForgotPasswordState = false"
-					style="background: none; border: none; color: #4f46e5; font-weight: 600; padding: 0; cursor: pointer;">Back
-					to Sign In</button>
-			</p>
-		</form>
-		}
-
-	</div>
+        <button type="button" (click)="showForgotPasswordState = false; errorMessage = ''"
+          class="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Back to sign in</button>
+      </form>
+    }
+  </div>
 </div>

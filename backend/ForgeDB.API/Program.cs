@@ -17,13 +17,41 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<ForgeDbContext>(options =>
 	options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+var allowedOrigins = builder.Configuration
+	.GetSection("Cors:AllowedOrigins")
+	.Get<string[]>()
+	?? new[] { "http://localhost:4200", "http://127.0.0.1:4200" };
+
+builder.Services.AddCors(options =>
+{
+	options.AddPolicy("Frontend", policy =>
+	{
+		policy
+			.WithOrigins(allowedOrigins)
+			.AllowAnyHeader()
+			.AllowAnyMethod();
+	});
+});
+
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IDatasetImportService, DatasetImportService>();
 builder.Services.AddScoped<ISchemaService, SchemaService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IDeploymentService, DeploymentService>();
-builder.Services.AddHttpClient<IPythonAnalysisClient, PythonAnalysisClient>();
+builder.Services.AddHttpClient<IPythonAnalysisClient, PythonAnalysisClient>(client =>
+{
+	var baseUrl = builder.Configuration["PythonAnalysis:BaseUrl"];
+	if (string.IsNullOrWhiteSpace(baseUrl))
+	{
+		baseUrl = "http://localhost:8001";
+	}
+
+	var timeoutSeconds = builder.Configuration.GetValue<int?>("PythonAnalysis:TimeoutSeconds") ?? 10;
+
+	client.BaseAddress = new Uri(baseUrl, UriKind.Absolute);
+	client.Timeout = TimeSpan.FromSeconds(Math.Max(1, timeoutSeconds));
+});
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
@@ -75,6 +103,8 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 app.UseHttpsRedirection();
+
+app.UseCors("Frontend");
 
 app.UseAuthentication();
 app.UseAuthorization();

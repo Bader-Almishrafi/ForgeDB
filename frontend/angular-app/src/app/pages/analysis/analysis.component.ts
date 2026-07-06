@@ -1,5 +1,9 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
+import { ApiErrorBody, DatasetPreview } from '../../services/api.models';
+import { ForgeApiService } from '../../services/forge-api.service';
+import { WorkflowStateService } from '../../services/workflow-state.service';
 
 @Component({
   selector: 'app-analysis',
@@ -8,12 +12,73 @@ import { RouterLink } from '@angular/router';
   templateUrl: './analysis.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AnalysisComponent {
-  readonly rows = [
-    { id: 1, name: 'John Smith', email: 'john.smith@example.com', phone: '+1 (555) 123-4567', date: 'May 16, 2026 10:15 AM', amount: '1,250.00' },
-    { id: 2, name: 'Sarah Johnson', email: 'sarah.johnson@example.com', phone: '+1 (555) 234-5678', date: 'May 16, 2026 10:20 AM', amount: '2,530.50' },
-    { id: 3, name: 'Michael Brown', email: 'michael.brown@example.com', phone: '+1 (555) 345-6789', date: 'May 16, 2026 10:25 AM', amount: '980.75' },
-    { id: 4, name: 'Emily Davis', email: 'emily.davis@example.com', phone: '+1 (555) 456-7890', date: 'May 16, 2026 10:30 AM', amount: '1,875.25' },
-    { id: 5, name: 'David Wilson', email: 'david.wilson@example.com', phone: '+1 (555) 567-8901', date: 'May 16, 2026 10:35 AM', amount: '3,210.00' },
-  ];
+export class AnalysisComponent implements OnInit {
+  readonly preview = signal<DatasetPreview | null>(null);
+  readonly loading = signal(false);
+  readonly analyzing = signal(false);
+
+  datasetId = 0;
+  errorMessage = '';
+  successMessage = '';
+
+  constructor(
+    private api: ForgeApiService,
+    private route: ActivatedRoute,
+    private router: Router,
+    private workflow: WorkflowStateService,
+  ) {}
+
+  ngOnInit(): void {
+    this.datasetId = Number(this.route.snapshot.paramMap.get('datasetId'));
+    if (!Number.isFinite(this.datasetId) || this.datasetId <= 0) {
+      this.router.navigate(['/projects']);
+      return;
+    }
+
+    this.loadPreview();
+  }
+
+  loadPreview(): void {
+    this.errorMessage = '';
+    this.loading.set(true);
+
+    this.api.getDatasetPreview(this.datasetId)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (preview) => {
+          this.preview.set(preview);
+          this.workflow.setDatasetId(preview.datasetId, preview.tableName);
+        },
+        error: (error: { error?: ApiErrorBody }) => {
+          this.errorMessage = error.error?.message ?? 'Unable to load dataset preview.';
+        },
+      });
+  }
+
+  analyze(): void {
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.analyzing.set(true);
+
+    this.api.analyzeDataset(this.datasetId, { analysisType: 'profile' })
+      .pipe(finalize(() => this.analyzing.set(false)))
+      .subscribe({
+        next: () => {
+          this.workflow.setDatasetId(this.datasetId, this.preview()?.tableName, 'Analyzed');
+          this.successMessage = 'Analysis completed. Dashboard data is ready.';
+        },
+        error: (error: { error?: ApiErrorBody }) => {
+          this.errorMessage = error.error?.message ?? 'Unable to analyze dataset.';
+        },
+      });
+  }
+
+  cellValue(row: Record<string, unknown>, column: string): string {
+    const value = row[column];
+    if (value === null || value === undefined || value === '') {
+      return '-';
+    }
+
+    return String(value);
+  }
 }

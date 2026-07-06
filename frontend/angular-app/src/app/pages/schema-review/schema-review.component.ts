@@ -1,20 +1,23 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
+import { ApiErrorBody, DatasetPreview, SchemaColumn, SchemaRelationship, SchemaResponse } from '../../services/api.models';
+import { ForgeApiService } from '../../services/forge-api.service';
+import { SchemaExportService } from '../../services/schema-export.service';
+import { WorkflowStateService } from '../../services/workflow-state.service';
 
-interface SchemaColumn {
+type SchemaReviewTab = 'tables' | 'sql' | 'er' | 'constraints' | 'export';
+
+interface DiagramTable {
   name: string;
-  type: string;
-  constraints: string[];
-  nullable: boolean;
+  columns: DiagramColumn[];
 }
 
-interface DbConstraint {
+interface DiagramColumn {
   name: string;
-  type: string;
-  table: string;
-  columns: string;
-  definition: string;
+  sqlType: string | null;
+  isNullable: boolean | null;
 }
 
 @Component({
@@ -24,79 +27,261 @@ interface DbConstraint {
   templateUrl: './schema-review.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SchemaReviewComponent {
-  readonly activeTab = signal<'tables' | 'sql' | 'constraints'>('tables');
-  selectedTable = 'customers';
+export class SchemaReviewComponent implements OnInit {
+  readonly activeTab = signal<SchemaReviewTab>('tables');
+  readonly schema = signal<SchemaResponse | null>(null);
+  readonly preview = signal<DatasetPreview | null>(null);
+  readonly loading = signal(false);
+  readonly generating = signal(false);
+  readonly copiedTarget = signal<'sql' | 'dbml' | null>(null);
 
-  readonly tables = [
-    { name: 'customers', rows: '12,540' },
-    { name: 'orders', rows: '45,231' },
-    { name: 'order_items', rows: '120,987' },
-    { name: 'products', rows: '8,765' },
-    { name: 'categories', rows: '256' },
-    { name: 'payments', rows: '33,112' },
-  ];
+  datasetId = 0;
+  schemaName = '';
+  errorMessage = '';
+  successMessage = '';
 
-  readonly columns: SchemaColumn[] = [
-    { name: 'id', type: 'BIGINT', constraints: ['PK', 'NOT NULL'], nullable: false },
-    { name: 'name', type: 'VARCHAR(255)', constraints: ['NOT NULL'], nullable: false },
-    { name: 'email', type: 'VARCHAR(255)', constraints: ['UNIQUE', 'NOT NULL'], nullable: false },
-    { name: 'phone', type: 'VARCHAR(20)', constraints: ['NULL'], nullable: true },
-    { name: 'address', type: 'TEXT', constraints: ['NULL'], nullable: true },
-    { name: 'created_at', type: 'TIMESTAMP', constraints: ['NOT NULL', 'DEFAULT: now()'], nullable: false },
-    { name: 'updated_at', type: 'TIMESTAMP', constraints: ['DEFAULT: now()'], nullable: true },
-  ];
+  constructor(
+    private api: ForgeApiService,
+    private route: ActivatedRoute,
+    private router: Router,
+    private schemaExport: SchemaExportService,
+    private workflow: WorkflowStateService,
+  ) {}
 
-  readonly constraints: DbConstraint[] = [
-    { name: 'customers_pkey', type: 'Primary Key', table: 'customers', columns: 'id', definition: 'PRIMARY KEY (id)' },
-    { name: 'customers_email_key', type: 'Unique', table: 'customers', columns: 'email', definition: 'UNIQUE (email)' },
-    { name: 'orders_pkey', type: 'Primary Key', table: 'orders', columns: 'id', definition: 'PRIMARY KEY (id)' },
-    { name: 'orders_customer_id_fkey', type: 'Foreign Key', table: 'orders', columns: 'customer_id', definition: 'REFERENCES customers(id) ON DELETE CASCADE' },
-    { name: 'orders_status_check', type: 'Check', table: 'orders', columns: 'status', definition: "CHECK (status IN ('PENDING', 'PROCESSING', 'SHIPPED', 'CANCELLED'))" },
-    { name: 'order_items_pkey', type: 'Primary Key', table: 'order_items', columns: 'id', definition: 'PRIMARY KEY (id)' },
-    { name: 'order_items_order_id_fkey', type: 'Foreign Key', table: 'order_items', columns: 'order_id', definition: 'REFERENCES orders(id) ON DELETE CASCADE' },
-    { name: 'order_items_product_id_fkey', type: 'Foreign Key', table: 'order_items', columns: 'product_id', definition: 'REFERENCES products(id) ON DELETE RESTRICT' },
-  ];
+  ngOnInit(): void {
+    this.datasetId = Number(this.route.snapshot.paramMap.get('datasetId'));
+    if (!Number.isFinite(this.datasetId) || this.datasetId <= 0) {
+      this.router.navigate(['/projects']);
+      return;
+    }
 
-  readonly sql = `-- Table: customers
-CREATE TABLE customers (
-  id BIGSERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  phone VARCHAR(20),
-  address TEXT,
-  created_at TIMESTAMP NOT NULL DEFAULT now(),
-  updated_at TIMESTAMP DEFAULT now()
-);
+    this.workflow.setDatasetId(this.datasetId);
+    this.loadPreview(this.datasetId);
+    this.route.queryParamMap.subscribe((params) => {
+      const tab = params.get('tab');
+      if (this.isTab(tab)) {
+        this.activeTab.set(tab);
+      }
+    });
 
--- Table: orders
-CREATE TABLE orders (
-  id BIGSERIAL PRIMARY KEY,
-  customer_id BIGINT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-  order_date TIMESTAMP NOT NULL DEFAULT now(),
-  status VARCHAR(50) NOT NULL,
-  total_amount NUMERIC(12,2) NOT NULL
-);
+    const rememberedSchemaId = this.workflow.datasetId() === this.datasetId ? this.workflow.schemaId() : null;
+    const schemaId = Number(this.route.snapshot.queryParamMap.get('schemaId') ?? rememberedSchemaId);
+    if (Number.isFinite(schemaId) && schemaId > 0) {
+      this.loadSchema(schemaId);
+    } else {
+      this.loadLatestDatasetSchema();
+    }
+  }
 
--- Table: order_items
-CREATE TABLE order_items (
-  id BIGSERIAL PRIMARY KEY,
-  order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
-  quantity INTEGER NOT NULL CHECK (quantity > 0),
-  unit_price NUMERIC(12,2) NOT NULL
-);
-
--- Table: products
-CREATE TABLE products (
-  id BIGSERIAL PRIMARY KEY,
-  category_id BIGINT REFERENCES categories(id),
-  name VARCHAR(150) NOT NULL,
-  price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
-  stock INTEGER NOT NULL DEFAULT 0
-);`;
-
-  setTab(tab: 'tables' | 'sql' | 'constraints'): void {
+  setTab(tab: SchemaReviewTab): void {
     this.activeTab.set(tab);
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  generateSchema(): void {
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.generating.set(true);
+
+    this.api.generateSchema(this.datasetId, {
+      schemaName: this.schemaName || `dataset_${this.datasetId}_schema`,
+    }).pipe(finalize(() => this.generating.set(false)))
+      .subscribe({
+        next: (schema) => {
+          this.schema.set(schema);
+          this.schemaName = schema.schemaName;
+          this.workflow.setSchema(schema);
+          this.loadPreview(schema.datasetId);
+          this.successMessage = 'Schema generated.';
+          this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { schemaId: schema.schemaId, tab: this.activeTab() },
+            replaceUrl: true,
+          });
+        },
+        error: (error: { error?: ApiErrorBody }) => {
+          this.errorMessage = error.error?.message ?? 'Unable to generate schema.';
+        },
+      });
+  }
+
+  loadSchema(schemaId: number): void {
+    this.errorMessage = '';
+    this.loading.set(true);
+
+    this.api.getSchema(schemaId)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (schema) => {
+          this.schema.set(schema);
+          this.schemaName = schema.schemaName;
+          this.workflow.setSchema(schema);
+          this.loadPreview(schema.datasetId);
+        },
+        error: (error: { error?: ApiErrorBody }) => {
+          this.errorMessage = error.error?.message ?? 'Unable to load schema.';
+        },
+      });
+  }
+
+  loadLatestDatasetSchema(): void {
+    this.api.getDatasetSchema(this.datasetId).subscribe({
+      next: (schema) => {
+        this.schema.set(schema);
+        this.schemaName = schema.schemaName;
+        this.workflow.setSchema(schema);
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { schemaId: schema.schemaId, tab: this.activeTab() },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      },
+      error: () => {
+        this.schema.set(null);
+      },
+    });
+  }
+
+  sqlText(schema: SchemaResponse): string {
+    return this.schemaExport.sqlText(schema);
+  }
+
+  dbmlText(schema: SchemaResponse): string {
+    return this.schemaExport.dbmlText(schema);
+  }
+
+  relationships(schema: SchemaResponse): SchemaRelationship[] {
+    return this.schemaExport.relationships(schema);
+  }
+
+  relationshipLabel(relationship: SchemaRelationship): string {
+    return this.schemaExport.relationshipLabel(relationship);
+  }
+
+  relationshipTypeLabel(relationship: SchemaRelationship): string {
+    return this.schemaExport.relationshipTypeLabel(relationship);
+  }
+
+  sampleValues(column: SchemaColumn): string[] {
+    const preview = this.preview();
+    if (!preview) {
+      return [];
+    }
+
+    const keys = [column.sourceColumnName, column.name].filter(Boolean);
+    const values = preview.rows
+      .map((row) => {
+        const key = keys.find((candidate) => Object.prototype.hasOwnProperty.call(row, candidate));
+        const value = key ? row[key] : null;
+        return value === null || value === undefined ? '' : String(value).trim();
+      })
+      .filter((value) => value.length > 0);
+
+    return Array.from(new Set(values)).slice(0, 3);
+  }
+
+  diagramTables(schema: SchemaResponse): DiagramTable[] {
+    const tables = new Map<string, Map<string, DiagramColumn>>();
+    const generatedColumns = new Map(schema.generatedColumns.map((column): [string, SchemaColumn] => [column.name, column]));
+
+    tables.set(
+      schema.generatedTableName,
+      new Map(schema.generatedColumns.map((column): [string, DiagramColumn] => [
+        column.name,
+        {
+          name: column.name,
+          sqlType: column.sqlType || null,
+          isNullable: column.isNullable,
+        },
+      ])),
+    );
+
+    this.relationships(schema).forEach((relationship) => {
+      this.addDiagramColumn(tables, generatedColumns, schema.generatedTableName, relationship.fromTable, relationship.fromColumn);
+      this.addDiagramColumn(tables, generatedColumns, schema.generatedTableName, relationship.toTable, relationship.toColumn);
+    });
+
+    return Array.from(tables.entries()).map(([name, columns]) => ({
+      name,
+      columns: Array.from(columns.values()),
+    }));
+  }
+
+  copySql(schema: SchemaResponse): void {
+    this.copyText(this.sqlText(schema), 'sql');
+  }
+
+  copyDbml(schema: SchemaResponse): void {
+    this.copyText(this.dbmlText(schema), 'dbml');
+  }
+
+  downloadSql(schema: SchemaResponse): void {
+    this.schemaExport.downloadText('forgedb-schema.sql', this.sqlText(schema), 'text/sql;charset=utf-8');
+  }
+
+  downloadDbml(schema: SchemaResponse): void {
+    this.schemaExport.downloadText('forgedb-schema.dbml', this.dbmlText(schema), 'text/plain;charset=utf-8');
+  }
+
+  downloadJson(schema: SchemaResponse): void {
+    this.schemaExport.downloadText(
+      'forgedb-schema.json',
+      this.schemaExport.schemaJsonText(schema, null, this.preview()),
+      'application/json;charset=utf-8',
+    );
+  }
+
+  private copyText(text: string, target: 'sql' | 'dbml'): void {
+    if (!text) {
+      return;
+    }
+
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        this.copiedTarget.set(target);
+        window.setTimeout(() => this.copiedTarget.set(null), 2000);
+      })
+      .catch(() => {
+        this.errorMessage = 'Unable to copy in this browser.';
+      });
+  }
+
+  private loadPreview(datasetId: number): void {
+    this.api.getDatasetPreview(datasetId).subscribe({
+      next: (preview) => this.preview.set(preview),
+      error: () => this.preview.set(null),
+    });
+  }
+
+  private addDiagramColumn(
+    tables: Map<string, Map<string, DiagramColumn>>,
+    generatedColumns: Map<string, SchemaColumn>,
+    generatedTableName: string,
+    table: string,
+    column: string,
+  ): void {
+    const tableName = table || 'unknown_table';
+    const columnName = column || 'unknown_column';
+
+    if (!tables.has(tableName)) {
+      tables.set(tableName, new Map<string, DiagramColumn>());
+    }
+
+    const generatedColumn = tableName === generatedTableName ? generatedColumns.get(columnName) : null;
+    tables.get(tableName)?.set(columnName, {
+      name: columnName,
+      sqlType: generatedColumn?.sqlType || null,
+      isNullable: generatedColumn ? generatedColumn.isNullable : null,
+    });
+  }
+
+  private isTab(tab: string | null): tab is SchemaReviewTab {
+    return tab === 'tables' || tab === 'sql' || tab === 'er' || tab === 'constraints' || tab === 'export';
   }
 }

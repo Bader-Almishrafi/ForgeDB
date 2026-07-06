@@ -1,75 +1,65 @@
-<div style="display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 1rem;">
+<div class="flex min-h-screen items-center justify-center p-4">
+  <div class="card w-full max-w-[480px] p-8 sm:p-10">
+    <div class="mb-8 text-center">
+      <h1 class="page-title">Create an account</h1>
+      <p class="page-subtitle">Register, then create your first ForgeDB project.</p>
+    </div>
 
-	<div class="card" style="width: 100%; max-width: 480px; padding: 2.5rem;">
+    <form #signupForm="ngForm" (ngSubmit)="signupForm.form.valid && onRegister()" class="flex flex-col gap-5">
+      <label>
+        <span class="mb-2 block text-sm font-semibold text-slate-800">Full Name</span>
+        <input type="text" name="fullName" [(ngModel)]="fullName" #nameInput="ngModel" class="input-field"
+          placeholder="John Doe" required>
+        @if (nameInput.invalid && (nameInput.dirty || nameInput.touched)) {
+          <p class="mt-1 text-xs font-semibold text-rose-600">Full name is required.</p>
+        }
+      </label>
 
-		<div style="text-align: center; margin-bottom: 2rem;">
-			<h1 class="page-title">Create an account</h1>
-			<p class="page-subtitle">Get started with ForgeDB today</p>
-		</div>
+      <label>
+        <span class="mb-2 block text-sm font-semibold text-slate-800">Email Address</span>
+        <input type="email" name="email" [(ngModel)]="email" #emailInput="ngModel" class="input-field"
+          placeholder="name@example.com" required email>
+        @if (emailInput.invalid && (emailInput.dirty || emailInput.touched)) {
+          <p class="mt-1 text-xs font-semibold text-rose-600">Please enter a valid email.</p>
+        }
+      </label>
 
-		<form #signupForm="ngForm" (ngSubmit)="signupForm.form.valid && onRegister()"
-			style="display: flex; flex-direction: column; gap: 1.25rem;">
+      <label>
+        <span class="mb-2 block text-sm font-semibold text-slate-800">Password</span>
+        <input type="password" name="password" [(ngModel)]="password" #passInput="ngModel" class="input-field"
+          placeholder="Password" required minlength="8">
+        @if (passInput.invalid && (passInput.dirty || passInput.touched)) {
+          <p class="mt-1 text-xs font-semibold text-rose-600">Password must be at least 8 characters.</p>
+        }
+      </label>
 
-			<div>
-				<label
-					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Full
-					Name</label>
-				<input type="text" name="fullName" [(ngModel)]="fullName" #nameInput="ngModel" class="input-field"
-					placeholder="John Doe" required>
-				@if (nameInput.invalid && (nameInput.dirty || nameInput.touched)) {
-				<p style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; font-weight: 500;">Full name is
-					required.</p>
-				}
-			</div>
+      <label>
+        <span class="mb-2 block text-sm font-semibold text-slate-800">Confirm Password</span>
+        <input type="password" name="confirmPassword" [(ngModel)]="confirmPassword" #confirmInput="ngModel"
+          class="input-field" placeholder="Confirm password" required>
+        @if (confirmInput.touched && (confirmInput.invalid || password !== confirmPassword)) {
+          <p class="mt-1 text-xs font-semibold text-rose-600">
+            @if (confirmInput.errors?.['required']) { Confirm password is required. }
+            @else if (password !== confirmPassword) { Passwords do not match. }
+          </p>
+        }
+      </label>
 
-			<div>
-				<label
-					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Email
-					Address</label>
-				<input type="email" name="email" [(ngModel)]="email" #emailInput="ngModel" class="input-field"
-					placeholder="name@example.com" required email>
-				@if (emailInput.invalid && (emailInput.dirty || emailInput.touched)) {
-				<p style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; font-weight: 500;">Please enter a
-					valid email.</p>
-				}
-			</div>
+      @if (errorMessage) {
+        <p class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+          {{ errorMessage }}
+        </p>
+      }
 
-			<div>
-				<label
-					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Password</label>
-				<input type="password" name="password" [(ngModel)]="password" #passInput="ngModel" class="input-field"
-					placeholder="••••••••" required minlength="6">
-				@if (passInput.invalid && (passInput.dirty || passInput.touched)) {
-				<p style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; font-weight: 500;">Password must be
-					at least 6 characters.</p>
-				}
-			</div>
+      <button type="submit" [disabled]="!signupForm.form.valid || password !== confirmPassword || isLoading"
+        class="btn-primary">
+        {{ isLoading ? 'Creating account...' : 'Register' }}
+      </button>
 
-			<div>
-				<label
-					style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #13213c;">Confirm
-					Password</label>
-				<input type="password" name="confirmPassword" [(ngModel)]="confirmPassword" #confirmInput="ngModel"
-					class="input-field" placeholder="••••••••" required>
-
-				@if (confirmInput.touched && (confirmInput.invalid || password !== confirmPassword)) {
-				<p style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; font-weight: 500;">
-					@if (confirmInput.errors?.['required']) { Confirm password is required. }
-					@else if (password !== confirmPassword) { Passwords do not match! }
-				</p>
-				}
-			</div>
-
-			<button type="submit" [disabled]="!signupForm.form.valid || password !== confirmPassword"
-				class="btn-primary" style="margin-top: 0.5rem;">
-				Register
-			</button>
-
-			<p style="text-align: center; font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">
-				Already have an account?
-				<a routerLink="/login" style="color: #4f46e5; font-weight: 600; text-decoration: none;">Sign in</a>
-			</p>
-		</form>
-
-	</div>
+      <p class="text-center text-sm text-slate-500">
+        Already have an account?
+        <a routerLink="/login" class="font-semibold text-indigo-600 hover:text-indigo-700">Sign in</a>
+      </p>
+    </form>
+  </div>
 </div>

@@ -1,30 +1,39 @@
 from models.analysis_request import AnalysisRequest
 from models.analysis_response import ColumnProfile, DatasetProfile, ProfileAnalysisResponse
+from services.analysis_service import AnalysisService
 
 
 class DataProfilerService:
     def profile_datasets(self, request: AnalysisRequest) -> ProfileAnalysisResponse:
-        return ProfileAnalysisResponse(
-            projectId=request.projectId,
-            datasets=[
+        analysis_service = AnalysisService()
+        profiles: list[DatasetProfile] = []
+
+        for dataset in request.datasets:
+            analysis = analysis_service.analyze(dataset.to_analyze_request())
+            profiles.append(
                 DatasetProfile(
-                    datasetId=1,
-                    tableName="customers",
-                    rowCount=1,
-                    columnCount=3,
-                    missingValuesCount=0,
-                    duplicateRowsCount=0,
+                    datasetId=analysis.datasetId,
+                    tableName=analysis.tableName,
+                    rowCount=analysis.rowCount,
+                    columnCount=analysis.columnCount,
+                    missingValuesCount=analysis.missingValuesCount,
+                    duplicateRowsCount=analysis.duplicateRowsCount,
                     columns=[
                         ColumnProfile(
-                            columnName="id",
-                            detectedDataType="integer",
-                            missingValuesCount=0,
-                            uniqueValuesCount=1,
-                            isNullable=False,
-                            sampleValues=[1],
+                            columnName=column.name,
+                            detectedDataType=column.detectedType,
+                            missingValuesCount=column.missingCount,
+                            uniqueValuesCount=column.uniqueCount,
+                            isNullable=column.missingCount > 0,
+                            sampleValues=column.sampleValues,
                         )
+                        for column in analysis.columns
                     ],
                 )
-            ],
+            )
+
+        return ProfileAnalysisResponse(
+            projectId=request.projectId,
+            datasets=profiles,
         )
 

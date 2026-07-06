@@ -1,0 +1,56 @@
+<section>
+  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <p class="mb-3 text-sm text-slate-500">Projects / Exports</p>
+      <h1 class="page-title">Database Package Exports</h1>
+      <p class="page-subtitle">Whole-project SQL, DBML, JSON schema, relationship report, and data-quality report.</p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <button type="button" class="btn-secondary" (click)="loadPackage()" [disabled]="loading()">Refresh</button>
+      <a [routerLink]="['/projects', projectId, 'schema-designer']" class="btn-primary">Schema Designer</a>
+    </div>
+  </div>
+
+  @if (errorMessage) {
+    <p class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
+  }
+
+  @if (loading()) {
+    <article class="card p-6 text-sm text-slate-500">Loading export package...</article>
+  } @else if (exportPackage(); as data) {
+    <article class="card mb-5 p-5">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-900">{{ data.status }}</h2>
+          <p class="mt-1 text-sm text-slate-500">{{ data.projectName }} / Generated {{ data.generatedAt | date:'medium' }}</p>
+        </div>
+        <span class="badge-success">Database Package Ready</span>
+      </div>
+    </article>
+
+    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <article class="card p-5">
+        <h2 class="font-semibold">Download Package</h2>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <button type="button" class="btn-secondary justify-start" (click)="download('schema.sql', data.sql, 'text/sql;charset=utf-8')">Download SQL</button>
+          <button type="button" class="btn-secondary justify-start" (click)="download('schema.dbml', data.dbml, 'text/plain;charset=utf-8')">Download DBML</button>
+          <button type="button" class="btn-secondary justify-start" (click)="download('schema.json', data.jsonSchema, 'application/json;charset=utf-8')">Download JSON</button>
+          <button type="button" class="btn-secondary justify-start" (click)="download('relationship-report.json', data.relationshipReportJson, 'application/json;charset=utf-8')">Relationship Report</button>
+          <button type="button" class="btn-secondary justify-start" (click)="download('data-quality-report.json', data.dataQualityReportJson, 'application/json;charset=utf-8')">Data Quality Report</button>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <button type="button" class="btn-primary" (click)="copy(data.sql, 'sql')">{{ copiedTarget() === 'sql' ? 'SQL Copied' : 'Copy SQL' }}</button>
+          <button type="button" class="btn-secondary" (click)="copy(data.dbml, 'dbml')">{{ copiedTarget() === 'dbml' ? 'DBML Copied' : 'Copy DBML' }}</button>
+        </div>
+      </article>
+
+      <aside class="card overflow-hidden">
+        <div class="border-b border-slate-100 px-5 py-4">
+          <h2 class="font-semibold">SQL Preview</h2>
+          <p class="text-xs text-slate-500">Represents all project datasets and accepted relationships.</p>
+        </div>
+        <pre class="max-h-[620px] overflow-auto bg-[#fbfcff] p-5 text-[12px] leading-5 text-slate-700"><code>{{ data.sql }}</code></pre>
+      </aside>
+    </div>
+  }
+</section>

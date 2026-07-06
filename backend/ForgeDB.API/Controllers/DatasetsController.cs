@@ -86,6 +86,29 @@ public class DatasetsController : ControllerBase
         }
     }
 
+    [HttpGet("datasets/{datasetId:int}/analysis")]
+    public async Task<ActionResult<DatasetAnalysisResponseDto>> GetAnalysis(int datasetId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _datasetImportService.GetDatasetAnalysisAsync(datasetId, cancellationToken));
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
+    }
+
+    [HttpGet("datasets/{datasetId:int}/profile")]
+    public Task<ActionResult<DatasetAnalysisResponseDto>> GetProfile(int datasetId, CancellationToken cancellationToken)
+    {
+        return GetAnalysis(datasetId, cancellationToken);
+    }
+
     [HttpGet("datasets/{datasetId:int}/dashboard")]
     public async Task<ActionResult<DashboardResponseDto>> GetDashboard(int datasetId, CancellationToken cancellationToken)
     {

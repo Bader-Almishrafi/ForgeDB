@@ -1,0 +1,90 @@
+<section>
+  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div>
+      <p class="mb-3 text-sm text-slate-500">Projects / Schema Designer</p>
+      <h1 class="page-title">Project Schema Designer</h1>
+      <p class="page-subtitle">A project-level schema composed from all uploaded datasets and accepted relationships.</p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <button type="button" class="btn-secondary" (click)="loadSchema()" [disabled]="loading()">Refresh</button>
+      <button type="button" class="btn-primary" (click)="generateSchema()" [disabled]="generating()">
+        {{ generating() ? 'Generating...' : 'Generate Project Schema' }}
+      </button>
+    </div>
+  </div>
+
+  @if (errorMessage) {
+    <p class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
+  }
+  @if (successMessage) {
+    <p class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
+  }
+
+  @if (loading()) {
+    <article class="card p-6 text-sm text-slate-500">Loading schema...</article>
+  } @else if (schema(); as data) {
+    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div class="space-y-5">
+        @for (table of data.tables; track table.datasetId) {
+          <article class="card overflow-hidden">
+            <div class="border-b border-slate-100 bg-slate-900 px-5 py-4 text-white">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 class="font-semibold">{{ table.tableName }}</h2>
+                  <p class="text-xs text-slate-300">Dataset #{{ table.datasetId }} / {{ table.status }}</p>
+                </div>
+                <span class="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold">{{ table.columns.length }} columns</span>
+              </div>
+            </div>
+            <div class="table-wrap rounded-none border-0">
+              <table class="data-table">
+                <thead><tr><th>Column</th><th>SQL Type</th><th>Required</th><th>Key Candidate</th></tr></thead>
+                <tbody>
+                  @for (column of table.columns; track column.name) {
+                    <tr>
+                      <td class="font-medium">{{ column.name }}</td>
+                      <td>{{ column.sqlType }}</td>
+                      <td>{{ column.isNullable ? 'No' : 'Yes' }}</td>
+                      <td>{{ column.isPrimaryKeyCandidate ? 'Yes' : '-' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </article>
+        } @empty {
+          <article class="card p-6 text-sm text-slate-500">No datasets available for schema generation.</article>
+        }
+      </div>
+
+      <aside class="space-y-5">
+        <article class="card p-5">
+          <h2 class="font-semibold">Accepted Relationships</h2>
+          <div class="mt-4 space-y-2">
+            @for (relationship of data.relationships; track relationship.suggestionId) {
+              <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                <p class="break-words font-semibold text-emerald-950">{{ relationshipLabel(relationship) }}</p>
+                <p class="mt-1 text-xs text-emerald-700">Type: {{ relationship.relationshipType }}</p>
+              </div>
+            } @empty {
+              <p class="text-sm text-slate-500">No accepted relationships yet.</p>
+            }
+          </div>
+        </article>
+
+        <article class="card overflow-hidden">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <h2 class="font-semibold">Preview</h2>
+            <button type="button" class="btn-secondary py-2" (click)="copyPreview(data)">{{ copied() ? 'Copied' : 'Copy' }}</button>
+          </div>
+          <div class="flex border-b border-slate-100 text-sm font-semibold">
+            <button type="button" class="flex-1 px-3 py-2" [class.text-indigo-600]="activePreview() === 'sql'" (click)="activePreview.set('sql')">SQL</button>
+            <button type="button" class="flex-1 px-3 py-2" [class.text-indigo-600]="activePreview() === 'dbml'" (click)="activePreview.set('dbml')">DBML</button>
+            <button type="button" class="flex-1 px-3 py-2" [class.text-indigo-600]="activePreview() === 'json'" (click)="activePreview.set('json')">JSON</button>
+          </div>
+          <pre class="max-h-[520px] overflow-auto bg-[#fbfcff] p-5 text-[12px] leading-5 text-slate-700"><code>{{ previewText(data) }}</code></pre>
+        </article>
+      </aside>
+    </div>
+  }
+</section>
