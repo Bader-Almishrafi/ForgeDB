@@ -1,12 +1,18 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { catchError, finalize, of } from 'rxjs';
 import { ApiErrorBody, DatasetResponse, ProjectResponse, SchemaResponse } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
 
 type WorkspaceStep = 'project' | 'upload' | 'preview' | 'analyze' | 'dashboard' | 'schema' | 'er' | 'relationships' | 'deploy';
+
+interface RelationshipReadinessItem {
+  columnName: string;
+  reason: string;
+  datasets: Array<{ id: number; tableName: string }>;
+}
 
 @Component({
   selector: 'app-workspace',
@@ -20,6 +26,8 @@ export class WorkspaceComponent implements OnInit {
   readonly datasets = signal<DatasetResponse[]>([]);
   readonly currentDataset = signal<DatasetResponse | null>(null);
   readonly schema = signal<SchemaResponse | null>(null);
+  readonly schemaByDataset = signal<Record<number, SchemaResponse | null>>({});
+  readonly columnsByDataset = signal<Record<number, string[]>>({});
   readonly loading = signal(false);
 
   projectId = 0;
@@ -76,12 +84,14 @@ export class WorkspaceComponent implements OnInit {
           const rememberedDataset = datasets.find((dataset) => dataset.id === this.workflow.datasetId());
           const selectedDataset = rememberedDataset ?? datasets[0] ?? null;
           this.currentDataset.set(selectedDataset);
+          this.loadDatasetMetadata(datasets);
 
           if (selectedDataset) {
             this.workflow.setDataset(selectedDataset);
+            this.loadDatasetSchema(selectedDataset.id, true);
+          } else {
+            this.schema.set(null);
           }
-
-          this.loadSchemaIfKnown();
         },
         error: (error: { error?: ApiErrorBody }) => {
           this.errorMessage = error.error?.message ?? 'Unable to load datasets.';
@@ -92,6 +102,7 @@ export class WorkspaceComponent implements OnInit {
   selectDataset(dataset: DatasetResponse): void {
     this.currentDataset.set(dataset);
     this.workflow.setDataset(dataset);
+    this.loadDatasetSchema(dataset.id, true);
   }
 
   workspaceStepState(step: WorkspaceStep): 'done' | 'active' | 'locked' {
@@ -143,22 +154,120 @@ export class WorkspaceComponent implements OnInit {
     return 'Generate the final database package';
   }
 
-  private loadSchemaIfKnown(): void {
-    const schemaId = this.workflow.schemaId();
-    if (!schemaId) {
-      this.schema.set(null);
+  schemaForDataset(dataset: DatasetResponse): SchemaResponse | null {
+    return this.schemaByDataset()[dataset.id] ?? null;
+  }
+
+  schemaActionLabel(dataset: DatasetResponse): string {
+    return this.schemaForDataset(dataset) ? 'View Schema' : 'Generate Schema';
+  }
+
+  schemaQueryParams(dataset: DatasetResponse): Record<string, number> | null {
+    const schema = this.schemaForDataset(dataset);
+    return schema ? { schemaId: schema.schemaId } : null;
+  }
+
+  isSelectedDataset(dataset: DatasetResponse): boolean {
+    return this.currentDataset()?.id === dataset.id;
+  }
+
+  datasetStatusClass(dataset: DatasetResponse): string {
+    return dataset.status === 'Analyzed' ? 'badge-success' : 'badge-warning';
+  }
+
+  relationshipReadiness(): RelationshipReadinessItem[] {
+    const datasets = this.datasets();
+    const columnsByDataset = this.columnsByDataset();
+    const datasetById = new Map(datasets.map((dataset) => [dataset.id, dataset]));
+    const columnMap = new Map<string, { displayName: string; datasetIds: Set<number>; keyLike: boolean }>();
+
+    Object.entries(columnsByDataset).forEach(([datasetIdText, columns]) => {
+      const datasetId = Number(datasetIdText);
+      columns.forEach((columnName) => {
+        const normalized = columnName.toLowerCase();
+        const entry = columnMap.get(normalized) ?? {
+          displayName: columnName,
+          datasetIds: new Set<number>(),
+          keyLike: this.isKeyLikeColumn(columnName),
+        };
+        entry.datasetIds.add(datasetId);
+        entry.keyLike = entry.keyLike || this.isKeyLikeColumn(columnName);
+        columnMap.set(normalized, entry);
+      });
+    });
+
+    return Array.from(columnMap.values())
+      .filter((entry) => entry.keyLike || entry.datasetIds.size > 1)
+      .map((entry) => {
+        const matchedDatasets = Array.from(entry.datasetIds)
+          .map((datasetId) => datasetById.get(datasetId))
+          .filter((dataset): dataset is DatasetResponse => Boolean(dataset))
+          .map((dataset) => ({ id: dataset.id, tableName: dataset.tableName }));
+
+        return {
+          columnName: entry.displayName,
+          reason: entry.datasetIds.size > 1
+            ? 'Matching column name appears in multiple datasets.'
+            : 'Key-like column name is ready for relationship review.',
+          datasets: matchedDatasets,
+        };
+      })
+      .sort((left, right) => right.datasets.length - left.datasets.length || left.columnName.localeCompare(right.columnName))
+      .slice(0, 8);
+  }
+
+  private loadDatasetMetadata(datasets: DatasetResponse[]): void {
+    datasets.forEach((dataset) => {
+      this.loadDatasetSchema(dataset.id, false);
+      this.loadDatasetColumns(dataset);
+    });
+  }
+
+  private loadDatasetSchema(datasetId: number, updateCurrent: boolean): void {
+    const knownSchemas = this.schemaByDataset();
+    if (Object.prototype.hasOwnProperty.call(knownSchemas, datasetId)) {
+      if (updateCurrent) {
+        this.setCurrentSchema(knownSchemas[datasetId]);
+      }
       return;
     }
 
-    this.api.getSchema(schemaId).subscribe({
-      next: (schema) => {
-        this.schema.set(schema);
-        this.workflow.setSchema(schema);
-      },
-      error: () => {
-        this.schema.set(null);
-        this.workflow.clearSchema();
-      },
-    });
+    this.api.getDatasetSchema(datasetId)
+      .pipe(catchError(() => of(null)))
+      .subscribe((schema) => {
+        this.schemaByDataset.update((schemas) => ({ ...schemas, [datasetId]: schema }));
+        if (updateCurrent) {
+          this.setCurrentSchema(schema);
+        }
+      });
+  }
+
+  private loadDatasetColumns(dataset: DatasetResponse): void {
+    if (this.columnsByDataset()[dataset.id]) {
+      return;
+    }
+
+    this.api.getDatasetPreview(dataset.id)
+      .pipe(catchError(() => of(null)))
+      .subscribe((preview) => {
+        this.columnsByDataset.update((columns) => ({
+          ...columns,
+          [dataset.id]: preview?.columns ?? [],
+        }));
+      });
+  }
+
+  private setCurrentSchema(schema: SchemaResponse | null): void {
+    this.schema.set(schema);
+    if (schema) {
+      this.workflow.setSchema(schema);
+    } else {
+      this.workflow.clearSchema();
+    }
+  }
+
+  private isKeyLikeColumn(columnName: string): boolean {
+    const normalized = columnName.toLowerCase();
+    return normalized === 'id' || normalized.endsWith('_id') || normalized.endsWith('id');
   }
 }

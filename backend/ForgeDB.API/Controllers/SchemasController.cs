@@ -57,6 +57,24 @@ public class SchemasController : ControllerBase
         }
     }
 
+    [HttpGet("datasets/{datasetId:int}/schema")]
+    public async Task<ActionResult<SchemaResponseDto>> GetLatestByDatasetId(int datasetId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var schema = await _schemaService.GetLatestSchemaByDatasetIdAsync(datasetId, cancellationToken);
+            return schema is null ? NotFound(new { message = "Schema not found for dataset." }) : Ok(schema);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
     [HttpPut("schemas/{schemaId:int}/relationships")]
     public async Task<ActionResult<SchemaResponseDto>> UpdateRelationships(int schemaId, SchemaRelationshipsUpdateDto request, CancellationToken cancellationToken)
     {

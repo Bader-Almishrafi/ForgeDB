@@ -118,7 +118,10 @@ export interface ChartRecommendation {
   chartType: string;
   title: string;
   columns: string[];
+  xColumn?: string | null;
+  yColumn?: string | null;
   reason?: string | null;
+  usefulness?: string | null;
 }
 
 export interface DashboardResponse {

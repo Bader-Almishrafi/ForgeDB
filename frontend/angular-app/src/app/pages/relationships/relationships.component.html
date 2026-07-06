@@ -52,14 +52,13 @@
         } @else {
           <div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th>Name</th><th>From</th><th>To</th><th>Type</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Name</th><th>Relationship</th><th>Type</th><th>Actions</th></tr></thead>
               <tbody>
                 @for (item of currentSchema.relationships; track $index) {
                   <tr>
                     <td class="font-medium">{{ item.name || 'relationship_' + ($index + 1) }}</td>
-                    <td>{{ item.fromTable }}.{{ item.fromColumn }}</td>
-                    <td>{{ item.toTable }}.{{ item.toColumn }}</td>
-                    <td>{{ item.relationshipType || 'manual' }}</td>
+                    <td>{{ item.fromTable }}.{{ item.fromColumn }} &#8594; {{ item.toTable }}.{{ item.toColumn }}</td>
+                    <td>Type: {{ item.relationshipType || 'manual' }}</td>
                     <td>
                       <button type="button" class="rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50"
                         (click)="removeRelationship($index)" [disabled]="saving()">Remove</button>

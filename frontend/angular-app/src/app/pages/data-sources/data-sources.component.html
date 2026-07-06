@@ -91,20 +91,22 @@
         } @else {
           <div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th>Table</th><th>Rows</th><th>Columns</th><th>Missing</th><th>Duplicates</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead><tr><th>ID</th><th>Source</th><th>Table</th><th>Rows</th><th>Columns</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
                 @for (dataset of datasets(); track dataset.id) {
                   <tr>
+                    <td class="font-medium">#{{ dataset.id }}</td>
+                    <td>{{ dataset.sourceName || dataset.sourceType }}</td>
                     <td class="font-medium">{{ dataset.tableName }}</td>
                     <td>{{ dataset.rowCount }}</td>
                     <td>{{ dataset.columnCount }}</td>
-                    <td>{{ dataset.missingValuesCount }}</td>
-                    <td>{{ dataset.duplicateRowsCount }}</td>
                     <td><span [class]="dataset.status === 'Analyzed' ? 'badge-success' : 'badge-warning'">{{ dataset.status }}</span></td>
                     <td>
                       <div class="flex flex-wrap gap-2">
                         <a [routerLink]="['/datasets', dataset.id, 'preview']" class="btn-secondary py-2">Preview</a>
                         <a [routerLink]="['/datasets', dataset.id, 'analyze']" class="btn-secondary py-2">Analyze</a>
+                        <a [routerLink]="['/datasets', dataset.id, 'dashboard']" class="btn-secondary py-2">Dashboard</a>
+                        <a [routerLink]="['/datasets', dataset.id, 'schema']" class="btn-secondary py-2">Generate/View Schema</a>
                       </div>
                     </td>
                   </tr>

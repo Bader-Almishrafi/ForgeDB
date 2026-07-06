@@ -21,6 +21,16 @@ public class SchemaRepository : ISchemaRepository
             .FirstOrDefaultAsync(schema => schema.Id == schemaId, cancellationToken);
     }
 
+    public Task<DatabaseSchema?> GetLatestByDatasetIdAsync(int datasetId, CancellationToken cancellationToken = default)
+    {
+        return _context.DatabaseSchemas
+            .AsNoTracking()
+            .Where(schema => schema.DatasetId == datasetId)
+            .OrderByDescending(schema => schema.CreatedAt)
+            .ThenByDescending(schema => schema.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task AddAsync(DatabaseSchema schema, CancellationToken cancellationToken = default)
     {
         await _context.DatabaseSchemas.AddAsync(schema, cancellationToken);

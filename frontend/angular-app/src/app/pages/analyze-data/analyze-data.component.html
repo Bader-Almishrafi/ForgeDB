@@ -7,6 +7,7 @@
     </div>
     <div class="flex flex-wrap gap-3">
       <a [routerLink]="['/datasets', datasetId, 'preview']" class="btn-secondary">Back to Preview</a>
+      <button type="button" class="btn-secondary" (click)="loadAnalysis()" [disabled]="loading()">Refresh</button>
       <button type="button" class="btn-primary" (click)="runAnalysis()" [disabled]="analyzing()">
         {{ analyzing() ? 'Analyzing...' : 'Run Analysis' }}
       </button>
@@ -30,7 +31,24 @@
     <p class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
   }
 
-  @if (analysis(); as data) {
+  @if (loading()) {
+    <article class="card p-6 text-sm text-slate-500">Loading saved analysis...</article>
+  } @else if (analysis(); as data) {
+    <article class="card mb-5 p-5">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Selected Dataset</p>
+          <h2 class="mt-1 text-xl font-bold text-slate-900">{{ data.tableName }}</h2>
+          <p class="mt-1 text-sm text-slate-500">Dataset #{{ data.datasetId }} / Status: {{ data.status }}</p>
+        </div>
+        @if (data.analyzedAt) {
+          <span class="badge-success">Analyzed</span>
+        } @else {
+          <span class="badge-warning">Profile available before saved analysis</span>
+        }
+      </div>
+    </article>
+
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <article class="card p-5"><p class="text-sm text-slate-500">Rows</p><p class="mt-2 text-3xl font-bold">{{ data.analysisResult.rowCount }}</p></article>
       <article class="card p-5"><p class="text-sm text-slate-500">Columns</p><p class="mt-2 text-3xl font-bold">{{ data.analysisResult.columnCount }}</p></article>

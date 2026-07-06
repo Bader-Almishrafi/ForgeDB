@@ -14,6 +14,7 @@ import { WorkflowStateService } from '../../services/workflow-state.service';
 })
 export class AnalyzeDataComponent implements OnInit {
   readonly analysis = signal<DatasetAnalysisResponse | null>(null);
+  readonly loading = signal(false);
   readonly analyzing = signal(false);
 
   datasetId = 0;
@@ -35,6 +36,24 @@ export class AnalyzeDataComponent implements OnInit {
     }
 
     this.workflow.setDatasetId(this.datasetId);
+    this.loadAnalysis();
+  }
+
+  loadAnalysis(): void {
+    this.errorMessage = '';
+    this.loading.set(true);
+
+    this.api.getDatasetAnalysis(this.datasetId)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (analysis) => {
+          this.analysis.set(analysis);
+          this.workflow.setDatasetId(analysis.datasetId, analysis.tableName, analysis.status);
+        },
+        error: (error: { error?: ApiErrorBody }) => {
+          this.errorMessage = error.error?.message ?? 'Unable to load saved analysis.';
+        },
+      });
   }
 
   runAnalysis(): void {

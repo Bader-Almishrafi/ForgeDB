@@ -78,6 +78,17 @@ public class SchemaService : ISchemaService
         return schema is null ? null : MapToResponse(schema);
     }
 
+    public async Task<SchemaResponseDto?> GetLatestSchemaByDatasetIdAsync(int datasetId, CancellationToken cancellationToken = default)
+    {
+        if (datasetId <= 0)
+        {
+            throw new ArgumentException("DatasetId must be greater than zero.", nameof(datasetId));
+        }
+
+        var schema = await _schemaRepository.GetLatestByDatasetIdAsync(datasetId, cancellationToken);
+        return schema is null ? null : MapToResponse(schema);
+    }
+
     public async Task<SchemaResponseDto> UpdateRelationshipsAsync(int schemaId, SchemaRelationshipsUpdateDto request, CancellationToken cancellationToken = default)
     {
         if (schemaId <= 0)

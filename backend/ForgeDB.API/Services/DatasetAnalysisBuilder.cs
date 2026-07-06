@@ -241,9 +241,14 @@ internal static class DatasetAnalysisBuilder
                         ? $"{recommendation.ChartType.Trim()} chart"
                         : recommendation.Title.Trim(),
                     Columns = columns,
+                    XColumn = recommendation.XColumn.Trim(),
+                    YColumn = string.IsNullOrWhiteSpace(recommendation.YColumn)
+                        ? null
+                        : recommendation.YColumn.Trim(),
                     Reason = string.IsNullOrWhiteSpace(recommendation.Reason)
                         ? null
-                        : recommendation.Reason.Trim()
+                        : recommendation.Reason.Trim(),
+                    Usefulness = "Suggested"
                 };
             })
             .ToList();
@@ -357,44 +362,93 @@ internal static class DatasetAnalysisBuilder
         var recommendations = new List<ChartRecommendationDto>();
         var numericColumns = columns
             .Where(column => column.NumericStats is not null)
+            .OrderBy(column => IsKeyLikeColumn(column.ColumnName))
+            .ThenBy(column => column.ColumnName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var dateColumns = columns
+            .Where(column => IsDateDataType(column.DetectedDataType))
+            .OrderBy(column => column.ColumnName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var categoricalColumns = columns
+            .Where(column => column.NumericStats is null
+                && !IsDateDataType(column.DetectedDataType)
+                && !IsKeyLikeColumn(column.ColumnName)
+                && column.MostCommonValues.Any())
+            .OrderByDescending(column => column.MostCommonValues.Any(value => value.Count > 1))
+            .ThenBy(column => column.ColumnName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        foreach (var column in numericColumns.Take(3))
+        var primaryDate = dateColumns.FirstOrDefault();
+        var primaryMeasure = numericColumns.FirstOrDefault(column => !IsKeyLikeColumn(column.ColumnName))
+            ?? numericColumns.FirstOrDefault();
+
+        if (primaryDate is not null && primaryMeasure is not null)
         {
             recommendations.Add(new ChartRecommendationDto
             {
-                ChartType = "histogram",
-                Title = $"{column.ColumnName} distribution",
-                Columns = new[] { column.ColumnName },
-                Reason = "Numeric column with min, max, and average available."
+                ChartType = "line",
+                Title = $"{ToTitle(primaryMeasure.ColumnName)} over {primaryDate.ColumnName}",
+                Columns = new[] { primaryDate.ColumnName, primaryMeasure.ColumnName },
+                XColumn = primaryDate.ColumnName,
+                YColumn = primaryMeasure.ColumnName,
+                Reason = $"{primaryDate.ColumnName} is a date column and {primaryMeasure.ColumnName} is numeric.",
+                Usefulness = "High"
             });
         }
 
-        foreach (var column in columns
-            .Where(column => column.NumericStats is null && column.MostCommonValues.Any())
+        foreach (var column in categoricalColumns.Take(3))
+        {
+            var hasRepeatedValues = column.MostCommonValues.Any(value => value.Count > 1);
+            recommendations.Add(new ChartRecommendationDto
+            {
+                ChartType = "bar",
+                Title = hasRepeatedValues
+                    ? $"Top {ToTitle(column.ColumnName)} values"
+                    : $"Records by {column.ColumnName}",
+                Columns = new[] { column.ColumnName },
+                XColumn = column.ColumnName,
+                YColumn = "count",
+                Reason = hasRepeatedValues
+                    ? $"{column.ColumnName} is a categorical column with repeated values."
+                    : $"{column.ColumnName} is a categorical column that can be summarized as record counts.",
+                Usefulness = hasRepeatedValues ? "High" : "Medium"
+            });
+        }
+
+        foreach (var column in numericColumns
+            .Where(column => !IsKeyLikeColumn(column.ColumnName))
             .Take(3))
         {
             recommendations.Add(new ChartRecommendationDto
             {
-                ChartType = "bar",
-                Title = $"Top {column.ColumnName} values",
+                ChartType = "histogram",
+                Title = $"Distribution of {column.ColumnName}",
                 Columns = new[] { column.ColumnName },
-                Reason = "Text column with repeated values that can be summarized as counts."
+                XColumn = column.ColumnName,
+                Reason = $"{column.ColumnName} is numeric and useful for distribution analysis.",
+                Usefulness = "High"
             });
         }
 
-        if (numericColumns.Count >= 2)
+        if (recommendations.Count == 0 && numericColumns.Count >= 2)
         {
             recommendations.Add(new ChartRecommendationDto
             {
                 ChartType = "scatter",
                 Title = $"{numericColumns[0].ColumnName} vs {numericColumns[1].ColumnName}",
                 Columns = new[] { numericColumns[0].ColumnName, numericColumns[1].ColumnName },
-                Reason = "Two numeric columns are available for comparison."
+                XColumn = numericColumns[0].ColumnName,
+                YColumn = numericColumns[1].ColumnName,
+                Reason = "Two numeric columns are available for comparison.",
+                Usefulness = "Medium"
             });
         }
 
-        return recommendations;
+        return recommendations
+            .GroupBy(recommendation => $"{recommendation.ChartType}:{recommendation.Title}", StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .Take(6)
+            .ToList();
     }
 
     private static int CountDuplicateRows(
@@ -470,6 +524,28 @@ internal static class DatasetAnalysisBuilder
     {
         return string.Equals(dataType, "integer", StringComparison.OrdinalIgnoreCase)
             || string.Equals(dataType, "decimal", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsDateDataType(string dataType)
+    {
+        return string.Equals(dataType, "datetime", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(dataType, "date", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(dataType, "timestamp", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsKeyLikeColumn(string columnName)
+    {
+        return columnName.Equals("id", StringComparison.OrdinalIgnoreCase)
+            || columnName.EndsWith("_id", StringComparison.OrdinalIgnoreCase)
+            || columnName.EndsWith("Id", StringComparison.Ordinal);
+    }
+
+    private static string ToTitle(string value)
+    {
+        var normalized = value.Replace("_", " ").Trim();
+        return string.IsNullOrWhiteSpace(normalized)
+            ? "Values"
+            : CultureInfo.InvariantCulture.TextInfo.ToTitleCase(normalized.ToLowerInvariant());
     }
 
     internal sealed record DatasetAnalysisComputation(

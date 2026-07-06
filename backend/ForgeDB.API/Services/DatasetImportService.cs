@@ -152,6 +152,23 @@ public class DatasetImportService : IDatasetImportService
         return analysis.Analysis;
     }
 
+    public async Task<DatasetAnalysisResponseDto> GetDatasetAnalysisAsync(int datasetId, CancellationToken cancellationToken = default)
+    {
+        if (datasetId <= 0)
+        {
+            throw new ArgumentException("DatasetId must be greater than zero.", nameof(datasetId));
+        }
+
+        var dataset = await _datasetRepository.GetByIdWithRowsAndColumnsAsync(datasetId, cancellationToken);
+
+        if (dataset is null)
+        {
+            throw new KeyNotFoundException("Dataset not found.");
+        }
+
+        return DatasetAnalysisBuilder.Build(dataset, dataset.AnalyzedAt).Analysis;
+    }
+
     private async Task<DatasetAnalysisBuilder.DatasetAnalysisComputation?> TryAnalyzeWithPythonAsync(
         Dataset dataset,
         DateTime analyzedAt,

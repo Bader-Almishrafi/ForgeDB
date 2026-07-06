@@ -147,12 +147,19 @@
                   <p class="text-xs text-slate-300">Table</p>
                 </div>
                 <div class="divide-y divide-slate-100">
-                  @for (column of table.columns; track column) {
-                    <div class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                      <span class="font-medium text-slate-800">{{ column }}</span>
-                      @if (table.name === currentSchema.generatedTableName) {
-                        <span class="text-xs text-slate-400">
-                          {{ currentSchema.generatedColumns[$index]?.sqlType || 'column' }}
+                  @for (column of table.columns; track column.name) {
+                    <div class="grid gap-1 px-4 py-2.5 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                      <span class="font-medium text-slate-800">{{ column.name }}</span>
+                      <span class="text-xs text-slate-500">
+                        @if (column.sqlType) {
+                          {{ column.sqlType }}
+                        } @else {
+                          referenced column
+                        }
+                      </span>
+                      @if (column.isNullable !== null) {
+                        <span class="text-xs font-medium text-slate-400 sm:col-span-2">
+                          {{ column.isNullable ? 'Nullable' : 'Required' }}
                         </span>
                       }
                     </div>
@@ -173,7 +180,7 @@
                 @for (relationship of relationships(currentSchema); track $index) {
                   <div class="rounded-xl border border-indigo-100 bg-white p-4">
                     <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">
-                      {{ relationship.relationshipType || 'manual' }}
+                      Type: {{ relationshipTypeLabel(relationship) }}
                     </p>
                     <p class="mt-2 break-words font-semibold text-slate-900">{{ relationshipLabel(relationship) }}</p>
                     <p class="mt-1 text-xs text-slate-500">{{ relationship.name || 'Unnamed relationship' }}</p>
@@ -204,14 +211,13 @@
         } @else {
           <div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th>Name</th><th>From</th><th>To</th><th>Type</th></tr></thead>
+              <thead><tr><th>Name</th><th>Relationship</th><th>Type</th></tr></thead>
               <tbody>
                 @for (relationship of relationships(currentSchema); track $index) {
                   <tr>
                     <td class="font-medium">{{ relationship.name || 'relationship_' + ($index + 1) }}</td>
-                    <td>{{ relationship.fromTable }}.{{ relationship.fromColumn }}</td>
-                    <td>{{ relationship.toTable }}.{{ relationship.toColumn }}</td>
-                    <td>{{ relationship.relationshipType || 'manual' }}</td>
+                    <td>{{ relationshipLabel(relationship) }}</td>
+                    <td>Type: {{ relationshipTypeLabel(relationship) }}</td>
                   </tr>
                 }
               </tbody>
@@ -235,17 +241,17 @@
           <div class="grid gap-3 md:grid-cols-3">
             <button type="button" class="rounded-2xl border border-slate-200 bg-white p-4 text-left hover:border-indigo-200 hover:bg-indigo-50/30"
               (click)="downloadSql(currentSchema)">
-              <span class="block font-semibold text-slate-900">SQL</span>
+              <span class="block font-semibold text-slate-900">Download SQL</span>
               <span class="mt-1 block text-sm text-slate-500">forgedb-schema.sql</span>
             </button>
             <button type="button" class="rounded-2xl border border-slate-200 bg-white p-4 text-left hover:border-indigo-200 hover:bg-indigo-50/30"
               (click)="downloadDbml(currentSchema)">
-              <span class="block font-semibold text-slate-900">DBML</span>
+              <span class="block font-semibold text-slate-900">Download DBML</span>
               <span class="mt-1 block text-sm text-slate-500">forgedb-schema.dbml</span>
             </button>
             <button type="button" class="rounded-2xl border border-slate-200 bg-white p-4 text-left hover:border-indigo-200 hover:bg-indigo-50/30"
               (click)="downloadJson(currentSchema)">
-              <span class="block font-semibold text-slate-900">JSON Schema</span>
+              <span class="block font-semibold text-slate-900">Download JSON schema</span>
               <span class="mt-1 block text-sm text-slate-500">forgedb-schema.json</span>
             </button>
           </div>

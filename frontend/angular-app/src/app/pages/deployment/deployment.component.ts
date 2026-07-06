@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { ApiErrorBody, DatasetPreview, DeploymentResponse, ProjectResponse, SchemaResponse } from '../../services/api.models';
+import { ApiErrorBody, DatasetPreview, DeploymentResponse, ProjectResponse, SchemaRelationship, SchemaResponse } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { SchemaExportService } from '../../services/schema-export.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
@@ -98,6 +98,18 @@ export class DeploymentComponent implements OnInit {
     return schema
       ? this.schemaExport.schemaJsonText(schema, this.project(), this.dataset(), this.deployment())
       : '';
+  }
+
+  relationships(schema: SchemaResponse): SchemaRelationship[] {
+    return this.schemaExport.relationships(schema);
+  }
+
+  relationshipLabel(relationship: SchemaRelationship): string {
+    return this.schemaExport.relationshipLabel(relationship);
+  }
+
+  relationshipTypeLabel(relationship: SchemaRelationship): string {
+    return this.schemaExport.relationshipTypeLabel(relationship);
   }
 
   copySql(): void {

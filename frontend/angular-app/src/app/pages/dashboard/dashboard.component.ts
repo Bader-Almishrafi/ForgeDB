@@ -2,7 +2,7 @@ import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { ApiErrorBody, DashboardResponse, DashboardTopValues } from '../../services/api.models';
+import { ApiErrorBody, ChartRecommendation, DashboardResponse, DashboardTopValues, NumericColumnStats, ValueFrequency } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
 
@@ -120,5 +120,79 @@ export class DashboardComponent implements OnInit {
   topValuePercent(summary: DashboardTopValues, count: number): number {
     const max = Math.max(...summary.values.map((value) => value.count), 1);
     return Math.round((count / max) * 100);
+  }
+
+  chartXColumn(chart: ChartRecommendation): string {
+    return chart.xColumn || chart.columns[0] || 'column';
+  }
+
+  chartYColumn(chart: ChartRecommendation): string | null {
+    return chart.yColumn || chart.columns[1] || (this.isCountChart(chart) ? 'count' : null);
+  }
+
+  chartUsefulness(chart: ChartRecommendation): string {
+    return chart.usefulness || 'Suggested';
+  }
+
+  chartTypeLabel(chart: ChartRecommendation): string {
+    return chart.chartType ? chart.chartType.replace(/_/g, ' ') : 'chart';
+  }
+
+  chartTypeClass(chart: ChartRecommendation): string {
+    const chartType = chart.chartType.toLowerCase();
+    if (chartType.includes('line')) {
+      return 'bg-sky-50 text-sky-700';
+    }
+
+    if (chartType.includes('histogram')) {
+      return 'bg-amber-50 text-amber-700';
+    }
+
+    if (chartType.includes('scatter')) {
+      return 'bg-violet-50 text-violet-700';
+    }
+
+    return 'bg-indigo-50 text-indigo-700';
+  }
+
+  topValuesForChart(data: DashboardResponse, chart: ChartRecommendation): ValueFrequency[] {
+    const xColumn = this.chartXColumn(chart);
+    return data.topValueSummaries
+      .find((summary) => summary.columnName.toLowerCase() === xColumn.toLowerCase())
+      ?.values
+      .slice(0, 4) ?? [];
+  }
+
+  numericSummaryForChart(data: DashboardResponse, chart: ChartRecommendation): NumericColumnStats | null {
+    const targetColumn = this.chartYColumn(chart) && this.chartYColumn(chart) !== 'count'
+      ? this.chartYColumn(chart)
+      : this.chartXColumn(chart);
+
+    return data.numericSummaries
+      .find((summary) => summary.columnName.toLowerCase() === targetColumn?.toLowerCase())
+      ?? null;
+  }
+
+  numericPercent(summary: NumericColumnStats, value: number): number {
+    const max = Math.max(Math.abs(summary.min), Math.abs(summary.max), Math.abs(summary.average), 1);
+    return Math.max(8, Math.round((Math.abs(value) / max) * 100));
+  }
+
+  keyLikeColumns(data: DashboardResponse): string[] {
+    const names = [
+      ...data.numericSummaries.map((summary) => summary.columnName),
+      ...data.topValueSummaries.map((summary) => summary.columnName),
+    ];
+
+    return Array.from(new Set(names.filter((name) => this.isKeyLikeColumn(name))));
+  }
+
+  private isCountChart(chart: ChartRecommendation): boolean {
+    return chart.chartType.toLowerCase().includes('bar');
+  }
+
+  private isKeyLikeColumn(columnName: string): boolean {
+    const normalized = columnName.toLowerCase();
+    return normalized === 'id' || normalized.endsWith('_id') || normalized.endsWith('id');
   }
 }

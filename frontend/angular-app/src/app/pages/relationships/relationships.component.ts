@@ -94,7 +94,7 @@ export class RelationshipsComponent implements OnInit {
     const from = `${relationship.fromTable || 'from_table'}.${relationship.fromColumn || 'from_column'}`;
     const to = `${relationship.toTable || 'to_table'}.${relationship.toColumn || 'to_column'}`;
 
-    return `${from} -> ${to}`;
+    return `${from} \u2192 ${to}`;
   }
 
   private updateRelationships(relationships: SchemaRelationship[], message: string): void {

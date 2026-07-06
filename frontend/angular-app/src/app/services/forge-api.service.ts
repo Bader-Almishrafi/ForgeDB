@@ -57,6 +57,10 @@ export class ForgeApiService {
     return this.http.get<DatasetPreview>(`${this.baseUrl}/api/datasets/${datasetId}/preview`);
   }
 
+  getDatasetAnalysis(datasetId: number): Observable<DatasetAnalysisResponse> {
+    return this.http.get<DatasetAnalysisResponse>(`${this.baseUrl}/api/datasets/${datasetId}/analysis`);
+  }
+
   analyzeDataset(datasetId: number, request: DatasetAnalysisRequest): Observable<DatasetAnalysisResponse> {
     return this.http.post<DatasetAnalysisResponse>(`${this.baseUrl}/api/datasets/${datasetId}/analyze`, request);
   }
@@ -71,6 +75,10 @@ export class ForgeApiService {
 
   getSchema(schemaId: number): Observable<SchemaResponse> {
     return this.http.get<SchemaResponse>(`${this.baseUrl}/api/schemas/${schemaId}`);
+  }
+
+  getDatasetSchema(datasetId: number): Observable<SchemaResponse> {
+    return this.http.get<SchemaResponse>(`${this.baseUrl}/api/datasets/${datasetId}/schema`);
   }
 
   updateRelationships(schemaId: number, request: SchemaRelationshipsUpdateRequest): Observable<SchemaResponse> {

@@ -11,7 +11,13 @@ type SchemaReviewTab = 'tables' | 'sql' | 'er' | 'constraints' | 'export';
 
 interface DiagramTable {
   name: string;
-  columns: string[];
+  columns: DiagramColumn[];
+}
+
+interface DiagramColumn {
+  name: string;
+  sqlType: string | null;
+  isNullable: boolean | null;
 }
 
 @Component({
@@ -58,9 +64,12 @@ export class SchemaReviewComponent implements OnInit {
       }
     });
 
-    const schemaId = Number(this.route.snapshot.queryParamMap.get('schemaId') ?? this.workflow.schemaId());
+    const rememberedSchemaId = this.workflow.datasetId() === this.datasetId ? this.workflow.schemaId() : null;
+    const schemaId = Number(this.route.snapshot.queryParamMap.get('schemaId') ?? rememberedSchemaId);
     if (Number.isFinite(schemaId) && schemaId > 0) {
       this.loadSchema(schemaId);
+    } else {
+      this.loadLatestDatasetSchema();
     }
   }
 
@@ -120,6 +129,25 @@ export class SchemaReviewComponent implements OnInit {
       });
   }
 
+  loadLatestDatasetSchema(): void {
+    this.api.getDatasetSchema(this.datasetId).subscribe({
+      next: (schema) => {
+        this.schema.set(schema);
+        this.schemaName = schema.schemaName;
+        this.workflow.setSchema(schema);
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { schemaId: schema.schemaId, tab: this.activeTab() },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      },
+      error: () => {
+        this.schema.set(null);
+      },
+    });
+  }
+
   sqlText(schema: SchemaResponse): string {
     return this.schemaExport.sqlText(schema);
   }
@@ -134,6 +162,10 @@ export class SchemaReviewComponent implements OnInit {
 
   relationshipLabel(relationship: SchemaRelationship): string {
     return this.schemaExport.relationshipLabel(relationship);
+  }
+
+  relationshipTypeLabel(relationship: SchemaRelationship): string {
+    return this.schemaExport.relationshipTypeLabel(relationship);
   }
 
   sampleValues(column: SchemaColumn): string[] {
@@ -155,17 +187,29 @@ export class SchemaReviewComponent implements OnInit {
   }
 
   diagramTables(schema: SchemaResponse): DiagramTable[] {
-    const tables = new Map<string, Set<string>>();
-    tables.set(schema.generatedTableName, new Set(schema.generatedColumns.map((column) => column.name)));
+    const tables = new Map<string, Map<string, DiagramColumn>>();
+    const generatedColumns = new Map(schema.generatedColumns.map((column): [string, SchemaColumn] => [column.name, column]));
+
+    tables.set(
+      schema.generatedTableName,
+      new Map(schema.generatedColumns.map((column): [string, DiagramColumn] => [
+        column.name,
+        {
+          name: column.name,
+          sqlType: column.sqlType || null,
+          isNullable: column.isNullable,
+        },
+      ])),
+    );
 
     this.relationships(schema).forEach((relationship) => {
-      this.addDiagramColumn(tables, relationship.fromTable, relationship.fromColumn);
-      this.addDiagramColumn(tables, relationship.toTable, relationship.toColumn);
+      this.addDiagramColumn(tables, generatedColumns, schema.generatedTableName, relationship.fromTable, relationship.fromColumn);
+      this.addDiagramColumn(tables, generatedColumns, schema.generatedTableName, relationship.toTable, relationship.toColumn);
     });
 
     return Array.from(tables.entries()).map(([name, columns]) => ({
       name,
-      columns: Array.from(columns),
+      columns: Array.from(columns.values()),
     }));
   }
 
@@ -215,15 +259,26 @@ export class SchemaReviewComponent implements OnInit {
     });
   }
 
-  private addDiagramColumn(tables: Map<string, Set<string>>, table: string, column: string): void {
+  private addDiagramColumn(
+    tables: Map<string, Map<string, DiagramColumn>>,
+    generatedColumns: Map<string, SchemaColumn>,
+    generatedTableName: string,
+    table: string,
+    column: string,
+  ): void {
     const tableName = table || 'unknown_table';
     const columnName = column || 'unknown_column';
 
     if (!tables.has(tableName)) {
-      tables.set(tableName, new Set<string>());
+      tables.set(tableName, new Map<string, DiagramColumn>());
     }
 
-    tables.get(tableName)?.add(columnName);
+    const generatedColumn = tableName === generatedTableName ? generatedColumns.get(columnName) : null;
+    tables.get(tableName)?.set(columnName, {
+      name: columnName,
+      sqlType: generatedColumn?.sqlType || null,
+      isNullable: generatedColumn ? generatedColumn.isNullable : null,
+    });
   }
 
   private isTab(tab: string | null): tab is SchemaReviewTab {

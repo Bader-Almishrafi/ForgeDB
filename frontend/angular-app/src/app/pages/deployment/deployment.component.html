@@ -32,9 +32,19 @@
             <div class="flex justify-between gap-4"><span class="text-slate-500">Project</span><strong class="text-right">{{ project()?.name || currentSchema.projectId }}</strong></div>
             <div class="flex justify-between gap-4"><span class="text-slate-500">Dataset</span><strong class="text-right">{{ dataset()?.tableName || currentSchema.datasetId }}</strong></div>
             <div class="flex justify-between gap-4"><span class="text-slate-500">Schema</span><strong class="text-right">{{ currentSchema.schemaName }}</strong></div>
-            <div class="flex justify-between gap-4"><span class="text-slate-500">Relationships</span><strong>{{ currentSchema.relationships.length }}</strong></div>
+            <div class="flex justify-between gap-4"><span class="text-slate-500">Relationships</span><strong>{{ relationships(currentSchema).length }}</strong></div>
             <div class="flex justify-between gap-4"><span class="text-slate-500">Columns</span><strong>{{ currentSchema.generatedColumns.length }}</strong></div>
           </div>
+          @if (relationships(currentSchema).length > 0) {
+            <div class="mt-4 space-y-2 border-t border-slate-100 pt-4">
+              @for (relationship of relationships(currentSchema); track $index) {
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                  <p class="break-words font-semibold text-slate-900">{{ relationshipLabel(relationship) }}</p>
+                  <p class="mt-1 text-xs text-slate-500">Type: {{ relationshipTypeLabel(relationship) }}</p>
+                </div>
+              }
+            </div>
+          }
         }
       </article>
 
@@ -73,12 +83,12 @@
 
       @if (deployment(); as generated) {
         <article class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-          <h2 class="font-semibold text-emerald-900">Ready / {{ generated.status }}</h2>
+          <h2 class="font-semibold text-emerald-900">Database Package Ready / {{ generated.status }}</h2>
           <p class="mt-1 text-sm text-emerald-700">{{ generated.databaseName }} / Deployment #{{ generated.deploymentId }}</p>
         </article>
       } @else {
         <article class="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <h2 class="font-semibold text-slate-900">Ready for generation</h2>
+          <h2 class="font-semibold text-slate-900">Database Package Ready</h2>
           <p class="mt-1 text-sm text-slate-500">Generate deployment SQL to mark the package as generated. External deployment remains off.</p>
         </article>
       }

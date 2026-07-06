@@ -8,13 +8,9 @@ export class SchemaExportService {
   }
 
   dbmlText(schema: SchemaResponse): string {
-    if (schema.dbmlContent?.trim()) {
-      return schema.dbmlContent;
-    }
-
     const tableName = this.dbmlIdentifier(schema.generatedTableName);
     const columnLines = schema.generatedColumns.map((column) => this.dbmlColumn(column));
-    const relationshipLines = this.relationships(schema).map((relationship, index) => this.dbmlRelationship(relationship, index));
+    const relationshipLines = this.relationships(schema).map((relationship) => this.dbmlRelationship(relationship));
 
     return [
       `Project ${this.dbmlIdentifier(schema.schemaName || 'ForgeDB')} {`,
@@ -35,13 +31,16 @@ export class SchemaExportService {
     dataset?: DatasetPreview | null,
     deployment?: DeploymentResponse | null,
   ): string {
-    if (schema.schemaJson?.trim() && !project && !dataset && !deployment) {
-      return schema.schemaJson;
-    }
-
     return JSON.stringify({
       exportedAt: new Date().toISOString(),
       product: 'ForgeDB',
+      schemaId: schema.schemaId,
+      datasetId: schema.datasetId,
+      generatedTableName: schema.generatedTableName,
+      columns: schema.generatedColumns,
+      relationships: this.relationships(schema),
+      sqlPreview: this.sqlText(schema, deployment),
+      dbml: this.dbmlText(schema),
       project: project ? {
         id: project.id,
         name: project.name,
@@ -83,16 +82,35 @@ export class SchemaExportService {
 
     anchor.href = url;
     anchor.download = fileName;
+    document.body.appendChild(anchor);
     anchor.click();
-    window.URL.revokeObjectURL(url);
+    anchor.remove();
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
   }
 
   relationships(schema: SchemaResponse): SchemaRelationship[] {
-    return Array.isArray(schema.relationships) ? schema.relationships : [];
+    if (Array.isArray(schema.relationships)) {
+      return schema.relationships;
+    }
+
+    if (!schema.relationshipsJson?.trim()) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(schema.relationshipsJson);
+      return Array.isArray(parsed) ? parsed as SchemaRelationship[] : [];
+    } catch {
+      return [];
+    }
   }
 
   relationshipLabel(relationship: SchemaRelationship): string {
-    return `${relationship.fromTable}.${relationship.fromColumn} -> ${relationship.toTable}.${relationship.toColumn}`;
+    return `${relationship.fromTable}.${relationship.fromColumn} \u2192 ${relationship.toTable}.${relationship.toColumn}`;
+  }
+
+  relationshipTypeLabel(relationship: SchemaRelationship): string {
+    return relationship.relationshipType || 'manual';
   }
 
   private dbmlColumn(column: SchemaColumn): string {
@@ -100,10 +118,9 @@ export class SchemaExportService {
     return `  ${this.dbmlIdentifier(column.name)} ${this.dbmlType(column.sqlType)}${settings}`;
   }
 
-  private dbmlRelationship(relationship: SchemaRelationship, index: number): string {
-    const name = relationship.name || `relationship_${index + 1}`;
+  private dbmlRelationship(relationship: SchemaRelationship): string {
     return [
-      `Ref ${this.dbmlIdentifier(name)}:`,
+      'Ref:',
       `${this.dbmlIdentifier(relationship.fromTable)}.${this.dbmlIdentifier(relationship.fromColumn)}`,
       '>',
       `${this.dbmlIdentifier(relationship.toTable)}.${this.dbmlIdentifier(relationship.toColumn)}`,
