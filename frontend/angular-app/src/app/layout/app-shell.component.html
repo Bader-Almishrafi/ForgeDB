@@ -21,17 +21,27 @@
     </a>
 
     <nav class="space-y-1 border-t border-white/10 pt-4">
-      @for (item of navItems; track item.route) {
-        <a [routerLink]="item.route"
-          routerLinkActive="bg-white/12 text-white"
-          class="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/8 hover:text-white"
-          (click)="closeSidebar()">
-          <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-linecap="round"
-            stroke-linejoin="round" stroke-width="1.7">
-            <path [attr.d]="item.icon"></path>
-          </svg>
-          <span>{{ item.label }}</span>
-        </a>
+      @for (item of navItems; track item.label) {
+        @if (item.enabled() && item.route(); as route) {
+          <a [routerLink]="route" [queryParams]="item.queryParams ? item.queryParams() : null"
+            routerLinkActive="bg-white/12 text-white"
+            class="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/8 hover:text-white"
+            (click)="closeSidebar()">
+            <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-linecap="round"
+              stroke-linejoin="round" stroke-width="1.7">
+              <path [attr.d]="item.icon"></path>
+            </svg>
+            <span>{{ item.label }}</span>
+          </a>
+        } @else {
+          <div class="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-500">
+            <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-linecap="round"
+              stroke-linejoin="round" stroke-width="1.7">
+              <path [attr.d]="item.icon"></path>
+            </svg>
+            <span>{{ item.label }}</span>
+          </div>
+        }
       }
     </nav>
 
@@ -45,15 +55,15 @@
         <p class="truncate"><span class="text-slate-400">Next:</span> {{ nextActionLabel() }}</p>
       </div>
       @if (projectId()) {
-        <a [routerLink]="['/projects', projectId(), 'workspace']" (click)="closeSidebar()"
+        <a [routerLink]="['/projects', projectId(), 'overview']" (click)="closeSidebar()"
           class="mt-4 inline-flex w-full justify-center rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-900">
-          Open Workspace
+          Open Overview
         </a>
       }
     </div>
 
     <div class="mt-auto border-t border-white/10 pt-4 text-xs text-slate-400">
-      Future AI assistants are prepared in the UI and disabled for this MVP.
+      Backend profiling, relationship discovery, schema design, and exports run from real project data.
     </div>
   </aside>
 
@@ -115,27 +125,22 @@
 
       <div class="hidden overflow-x-auto pb-4 xl:block">
         <div class="flex min-w-max gap-2">
-          @for (step of workflowSteps; track step.label) {
-            @if (step.enabled()) {
-              @if (step.route(); as route) {
-                <a [routerLink]="route" [queryParams]="step.queryParams ? step.queryParams() : null"
+          @for (item of navItems; track item.label) {
+            @if (item.enabled() && item.route(); as route) {
+                <a [routerLink]="route" [queryParams]="item.queryParams ? item.queryParams() : null"
                   routerLinkActive="border-indigo-300 bg-indigo-50 text-indigo-700"
                   class="min-w-[132px] rounded-xl border px-3 py-2 text-sm transition"
-                  [ngClass]="stepClasses(step)">
+                  [ngClass]="router.url === route ? 'border-indigo-300 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/60'">
                   <span class="flex items-center justify-between gap-2">
-                    <span class="font-semibold">{{ step.label }}</span>
-                    <span class="text-[10px] font-bold uppercase tracking-wide">{{ stepState(step) }}</span>
+                    <span class="font-semibold">{{ item.label }}</span>
                   </span>
-                  <span class="text-xs opacity-75">{{ step.helper }}</span>
                 </a>
-              }
             } @else {
               <div class="min-w-[132px] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-400">
                 <span class="flex items-center justify-between gap-2">
-                  <span class="font-semibold">{{ step.label }}</span>
+                  <span class="font-semibold">{{ item.label }}</span>
                   <span class="text-[10px] font-bold uppercase tracking-wide">locked</span>
                 </span>
-                <span class="text-xs">{{ step.helper }}</span>
               </div>
             }
           }

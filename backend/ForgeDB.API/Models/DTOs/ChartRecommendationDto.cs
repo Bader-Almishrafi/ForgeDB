@@ -9,4 +9,5 @@ public class ChartRecommendationDto
     public string? YColumn { get; set; }
     public string? Reason { get; set; }
     public string? Usefulness { get; set; }
+    public IEnumerable<ChartPreviewPointDto> PreviewData { get; set; } = new List<ChartPreviewPointDto>();
 }

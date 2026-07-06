@@ -2,7 +2,7 @@ import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { ApiErrorBody, ChartRecommendation, DashboardResponse, DashboardTopValues, NumericColumnStats, ValueFrequency } from '../../services/api.models';
+import { ApiErrorBody, ChartRecommendation, DashboardResponse, DashboardTopValues, DatasetAnalysisResponse, NumericColumnStats, ValueFrequency } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
 
@@ -15,6 +15,7 @@ import { WorkflowStateService } from '../../services/workflow-state.service';
 })
 export class DashboardComponent implements OnInit {
   readonly dashboard = signal<DashboardResponse | null>(null);
+  readonly profile = signal<DatasetAnalysisResponse | null>(null);
   readonly loading = signal(false);
   readonly analyzing = signal(false);
 
@@ -49,6 +50,7 @@ export class DashboardComponent implements OnInit {
         next: (dashboard) => {
           this.dashboard.set(dashboard);
           this.workflow.setDatasetId(dashboard.datasetId, dashboard.tableName);
+          this.loadProfile();
         },
         error: (error: { error?: ApiErrorBody }) => {
           this.errorMessage = error.error?.message ?? 'Unable to load dashboard.';
@@ -73,6 +75,13 @@ export class DashboardComponent implements OnInit {
           this.errorMessage = error.error?.message ?? 'Unable to run analysis.';
         },
       });
+  }
+
+  loadProfile(): void {
+    this.api.getDatasetProfile(this.datasetId).subscribe({
+      next: (profile) => this.profile.set(profile),
+      error: () => this.profile.set(null),
+    });
   }
 
   qualityScore(data: DashboardResponse): number {
@@ -178,8 +187,15 @@ export class DashboardComponent implements OnInit {
     return Math.max(8, Math.round((Math.abs(value) / max) * 100));
   }
 
+  chartPreviewPercent(chart: ChartRecommendation, value: number): number {
+    const max = Math.max(...(chart.previewData ?? []).map((point) => Math.abs(point.value)), 1);
+    return Math.max(8, Math.round((Math.abs(value) / max) * 100));
+  }
+
   keyLikeColumns(data: DashboardResponse): string[] {
+    const profileKeys = this.profile()?.keyCandidates?.map((candidate) => candidate.columnName) ?? [];
     const names = [
+      ...profileKeys,
       ...data.numericSummaries.map((summary) => summary.columnName),
       ...data.topValueSummaries.map((summary) => summary.columnName),
     ];
@@ -192,7 +208,19 @@ export class DashboardComponent implements OnInit {
   }
 
   private isKeyLikeColumn(columnName: string): boolean {
-    const normalized = columnName.toLowerCase();
-    return normalized === 'id' || normalized.endsWith('_id') || normalized.endsWith('id');
+    const tokens = columnName
+      .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean);
+    const keyTokens = new Set(['id', 'key', 'code', 'ref', 'no', 'num', 'number', 'uuid', 'guid']);
+    if (tokens.some((token) => keyTokens.has(token))) {
+      return true;
+    }
+
+    const normalized = columnName.toLowerCase().replace(/[^a-z0-9]+/g, '');
+    return normalized.length > 2
+      && !normalized.endsWith('paid')
+      && ['id', 'key', 'code', 'ref', 'no', 'num', 'number'].some((suffix) => normalized.endsWith(suffix));
   }
 }

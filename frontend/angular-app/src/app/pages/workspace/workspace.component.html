@@ -96,8 +96,9 @@
                     {{ isSelectedDataset(dataset) ? 'Selected' : 'Select' }}
                   </button>
                   <a [routerLink]="['/datasets', dataset.id, 'preview']" class="btn-secondary py-2" (click)="selectDataset(dataset)">Preview</a>
+                  <a [routerLink]="['/datasets', dataset.id, 'explorer']" class="btn-secondary py-2" (click)="selectDataset(dataset)">Explore</a>
                   <a [routerLink]="['/datasets', dataset.id, 'analyze']" class="btn-secondary py-2" (click)="selectDataset(dataset)">Analyze</a>
-                  <a [routerLink]="['/datasets', dataset.id, 'dashboard']" class="btn-secondary py-2" (click)="selectDataset(dataset)">Dashboard</a>
+                  <a [routerLink]="['/datasets', dataset.id, 'profile']" class="btn-secondary py-2" (click)="selectDataset(dataset)">Profile</a>
                   <a [routerLink]="['/datasets', dataset.id, 'schema']" [queryParams]="schemaQueryParams(dataset)" class="btn-secondary py-2"
                     (click)="selectDataset(dataset)">{{ schemaActionLabel(dataset) }}</a>
                 </div>

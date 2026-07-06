@@ -21,6 +21,19 @@ public class ProjectRepository : IProjectRepository
             .FirstOrDefaultAsync(project => project.Id == projectId, cancellationToken);
     }
 
+    public Task<Project?> GetByIdWithWorkspaceAsync(int projectId, CancellationToken cancellationToken = default)
+    {
+        return _context.Projects
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(project => project.Datasets.OrderByDescending(dataset => dataset.CreatedAt))
+                .ThenInclude(dataset => dataset.Columns.OrderBy(column => column.Id))
+            .Include(project => project.Datasets.OrderByDescending(dataset => dataset.CreatedAt))
+                .ThenInclude(dataset => dataset.Rows.OrderBy(row => row.RowNumber).ThenBy(row => row.Id))
+            .Include(project => project.DatabaseSchemas.OrderByDescending(schema => schema.CreatedAt))
+            .FirstOrDefaultAsync(project => project.Id == projectId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Project>> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default)
     {
         return await _context.Projects
@@ -41,6 +54,22 @@ public class ProjectRepository : IProjectRepository
     public async Task AddAsync(Project project, CancellationToken cancellationToken = default)
     {
         await _context.Projects.AddAsync(project, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateDashboardConfigAsync(int projectId, string dashboardConfig, DateTime updatedAt, CancellationToken cancellationToken = default)
+    {
+        var project = await _context.Projects
+            .FirstOrDefaultAsync(project => project.Id == projectId, cancellationToken);
+
+        if (project is null)
+        {
+            throw new KeyNotFoundException("Project not found.");
+        }
+
+        project.DashboardConfig = dashboardConfig;
+        project.UpdatedAt = updatedAt;
+
         await _context.SaveChangesAsync(cancellationToken);
     }
 }

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Models.Entities;
 
@@ -126,6 +127,10 @@ internal static class DatasetAnalysisBuilder
     {
         var columnAnalyses = analysisResult.Columns.ToList();
         var typeDistribution = analysisResult.ColumnTypeDistribution.ToList();
+        var enrichedChartRecommendations = AddPreviewData(chartRecommendations, columnAnalyses, dataset);
+        var keyCandidates = BuildKeyCandidates(columnAnalyses, analysisResult.RowCount);
+        var dateRanges = BuildDateRanges(columnAnalyses, dataset);
+        var relationshipHints = BuildRelationshipCandidateHints(columnAnalyses, analysisResult.RowCount);
 
         analysisResult.Columns = columnAnalyses;
         analysisResult.ColumnTypeDistribution = typeDistribution;
@@ -136,7 +141,10 @@ internal static class DatasetAnalysisBuilder
             TableName = dataset.TableName,
             Status = analyzedAt.HasValue ? "Analyzed" : dataset.Status,
             AnalysisResult = analysisResult,
-            ChartRecommendations = chartRecommendations,
+            ChartRecommendations = enrichedChartRecommendations,
+            KeyCandidates = keyCandidates,
+            DateRanges = dateRanges,
+            RelationshipCandidateHints = relationshipHints,
             AnalyzedAt = analyzedAt ?? dataset.AnalyzedAt
         };
 
@@ -166,7 +174,7 @@ internal static class DatasetAnalysisBuilder
                     Values = column.MostCommonValues
                 })
                 .ToList(),
-            ChartRecommendations = chartRecommendations
+            ChartRecommendations = enrichedChartRecommendations
         };
 
         return new DatasetAnalysisComputation(
@@ -451,6 +459,319 @@ internal static class DatasetAnalysisBuilder
             .ToList();
     }
 
+    private static IReadOnlyList<ChartRecommendationDto> AddPreviewData(
+        IReadOnlyList<ChartRecommendationDto> recommendations,
+        IReadOnlyList<ColumnAnalysisDto> columns,
+        Dataset dataset)
+    {
+        var columnMap = columns.ToDictionary(column => column.ColumnName, StringComparer.OrdinalIgnoreCase);
+        var rows = dataset.Rows
+            .OrderBy(row => row.RowNumber)
+            .ThenBy(row => row.Id)
+            .Select(row => DeserializeRowData(row.RowData))
+            .ToList();
+
+        return recommendations.Select(recommendation =>
+        {
+            var xColumn = recommendation.XColumn ?? recommendation.Columns.FirstOrDefault();
+            var yColumn = recommendation.YColumn;
+            var previewData = new List<ChartPreviewPointDto>();
+
+            if (!string.IsNullOrWhiteSpace(xColumn))
+            {
+                if (recommendation.ChartType.Contains("line", StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrWhiteSpace(yColumn))
+                {
+                    previewData = BuildTrendPreview(rows, xColumn, yColumn);
+                }
+                else if (recommendation.ChartType.Contains("histogram", StringComparison.OrdinalIgnoreCase))
+                {
+                    previewData = BuildHistogramPreview(rows, xColumn);
+                }
+                else if (recommendation.ChartType.Contains("bar", StringComparison.OrdinalIgnoreCase))
+                {
+                    previewData = BuildCategoricalPreview(rows, xColumn);
+                }
+            }
+
+            if (previewData.Count == 0
+                && !string.IsNullOrWhiteSpace(xColumn)
+                && columnMap.TryGetValue(xColumn, out var xColumnProfile)
+                && xColumnProfile.MostCommonValues.Any())
+            {
+                previewData = xColumnProfile.MostCommonValues
+                    .Take(5)
+                    .Select(value => new ChartPreviewPointDto
+                    {
+                        Label = string.IsNullOrWhiteSpace(value.Value) ? "(blank)" : value.Value,
+                        Value = value.Count
+                    })
+                    .ToList();
+            }
+            else
+            {
+                var numericColumn = !string.IsNullOrWhiteSpace(yColumn) && columnMap.TryGetValue(yColumn, out var yColumnProfile)
+                    ? yColumnProfile
+                    : !string.IsNullOrWhiteSpace(xColumn) && columnMap.TryGetValue(xColumn, out var fallbackProfile)
+                        ? fallbackProfile
+                        : null;
+
+                if (numericColumn?.NumericStats is not null)
+                {
+                    previewData = new List<ChartPreviewPointDto>
+                    {
+                        new() { Label = "Min", Value = numericColumn.NumericStats.Min },
+                        new() { Label = "Avg", Value = numericColumn.NumericStats.Average },
+                        new() { Label = "Max", Value = numericColumn.NumericStats.Max }
+                    };
+                }
+            }
+
+            recommendation.PreviewData = previewData;
+            return recommendation;
+        }).ToList();
+    }
+
+    private static List<ChartPreviewPointDto> BuildTrendPreview(
+        IReadOnlyList<IDictionary<string, string?>> rows,
+        string xColumn,
+        string yColumn)
+    {
+        return rows
+            .Select(row =>
+            {
+                var xValue = TryGetValue(row, xColumn);
+                var yValue = TryGetValue(row, yColumn);
+                if (string.IsNullOrWhiteSpace(xValue) || !TryParseDecimal(yValue, out var numericValue))
+                {
+                    return null;
+                }
+
+                var parsedDate = DateTimeOffset.TryParse(xValue, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var date)
+                    ? date
+                    : (DateTimeOffset?)null;
+
+                return new
+                {
+                    Label = parsedDate.HasValue
+                        ? parsedDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                        : xValue.Trim(),
+                    SortDate = parsedDate,
+                    Value = numericValue
+                };
+            })
+            .Where(point => point is not null)
+            .Select(point => point!)
+            .GroupBy(point => point.Label, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new
+            {
+                Label = group.Key,
+                SortDate = group.Select(point => point.SortDate).Where(date => date.HasValue).Min(),
+                Value = group.Sum(point => point.Value)
+            })
+            .OrderBy(point => point.SortDate ?? DateTimeOffset.MaxValue)
+            .ThenBy(point => point.Label, StringComparer.OrdinalIgnoreCase)
+            .Take(8)
+            .Select(point => new ChartPreviewPointDto
+            {
+                Label = point.Label,
+                Value = Math.Round(point.Value, 4)
+            })
+            .ToList();
+    }
+
+    private static List<ChartPreviewPointDto> BuildCategoricalPreview(
+        IReadOnlyList<IDictionary<string, string?>> rows,
+        string columnName)
+    {
+        return rows
+            .Select(row => TryGetValue(row, columnName))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!.Trim())
+            .GroupBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(group => group.Count())
+            .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+            .Take(5)
+            .Select(group => new ChartPreviewPointDto
+            {
+                Label = group.Key,
+                Value = group.Count()
+            })
+            .ToList();
+    }
+
+    private static List<ChartPreviewPointDto> BuildHistogramPreview(
+        IReadOnlyList<IDictionary<string, string?>> rows,
+        string columnName)
+    {
+        var values = rows
+            .Select(row => TryGetValue(row, columnName))
+            .Where(value => TryParseDecimal(value, out _))
+            .Select(value =>
+            {
+                TryParseDecimal(value, out var parsed);
+                return parsed;
+            })
+            .OrderBy(value => value)
+            .ToList();
+
+        if (values.Count == 0)
+        {
+            return new List<ChartPreviewPointDto>();
+        }
+
+        var distinctValues = values.Distinct().ToList();
+        if (distinctValues.Count <= 5)
+        {
+            return values
+                .GroupBy(value => value)
+                .OrderBy(group => group.Key)
+                .Select(group => new ChartPreviewPointDto
+                {
+                    Label = group.Key.ToString("0.####", CultureInfo.InvariantCulture),
+                    Value = group.Count()
+                })
+                .ToList();
+        }
+
+        var min = values.First();
+        var max = values.Last();
+        var bucketCount = 5;
+        var width = (max - min) / bucketCount;
+        if (width <= 0)
+        {
+            return new List<ChartPreviewPointDto>
+            {
+                new() { Label = min.ToString("0.####", CultureInfo.InvariantCulture), Value = values.Count }
+            };
+        }
+
+        var preview = new List<ChartPreviewPointDto>();
+        for (var index = 0; index < bucketCount; index++)
+        {
+            var lower = min + width * index;
+            var upper = index == bucketCount - 1 ? max : lower + width;
+            var count = values.Count(value => value >= lower && (index == bucketCount - 1 ? value <= upper : value < upper));
+            preview.Add(new ChartPreviewPointDto
+            {
+                Label = $"{lower.ToString("0.##", CultureInfo.InvariantCulture)}-{upper.ToString("0.##", CultureInfo.InvariantCulture)}",
+                Value = count
+            });
+        }
+
+        return preview;
+    }
+
+    private static IReadOnlyList<KeyCandidateDto> BuildKeyCandidates(
+        IReadOnlyList<ColumnAnalysisDto> columns,
+        int rowCount)
+    {
+        return columns
+            .Select(column =>
+            {
+                var reasons = new List<string>();
+                var confidence = 0.3m;
+
+                var isKeyLike = IsKeyLikeColumn(column.ColumnName);
+                var isUnique = rowCount > 0 && column.UniqueValuesCount == rowCount;
+                var isComplete = column.MissingValuesCount == 0;
+
+                if (!isUnique || !isComplete || (!isKeyLike && rowCount < 20))
+                {
+                    return null;
+                }
+
+                if (isKeyLike)
+                {
+                    confidence += 0.35m;
+                    reasons.Add("Column name looks like an identifier, code, key, or reference.");
+                }
+
+                if (isUnique)
+                {
+                    confidence += 0.35m;
+                    reasons.Add("Values are unique across rows.");
+                }
+
+                if (isComplete)
+                {
+                    confidence += 0.15m;
+                    reasons.Add("No missing values.");
+                }
+
+                return new KeyCandidateDto
+                {
+                    ColumnName = column.ColumnName,
+                    Confidence = Math.Min(0.99m, confidence),
+                    Reasons = reasons
+                };
+            })
+            .Where(candidate => candidate is not null && candidate.Confidence >= 0.6m)
+            .Select(candidate => candidate!)
+            .OrderByDescending(candidate => candidate.Confidence)
+            .ThenBy(candidate => candidate.ColumnName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static IReadOnlyList<DateRangeDto> BuildDateRanges(IReadOnlyList<ColumnAnalysisDto> columns, Dataset dataset)
+    {
+        var rows = dataset.Rows
+            .OrderBy(row => row.RowNumber)
+            .ThenBy(row => row.Id)
+            .Select(row => DeserializeRowData(row.RowData))
+            .ToList();
+
+        return columns
+            .Where(column => IsDateDataType(column.DetectedDataType))
+            .Select(column =>
+            {
+                var rowDates = rows
+                    .Select(row => TryGetValue(row, column.ColumnName))
+                    .Select(value => DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
+                        ? parsed
+                        : (DateTimeOffset?)null)
+                    .Where(value => value.HasValue)
+                    .Select(value => value!.Value)
+                    .OrderBy(value => value)
+                    .ToList();
+                var dates = rowDates.Count > 0
+                    ? rowDates
+                    : column.SampleValues
+                        .Select(value => DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
+                            ? parsed
+                            : (DateTimeOffset?)null)
+                        .Where(value => value.HasValue)
+                        .Select(value => value!.Value)
+                        .OrderBy(value => value)
+                        .ToList();
+
+                return new DateRangeDto
+                {
+                    ColumnName = column.ColumnName,
+                    Min = dates.Count > 0 ? dates.First().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : null,
+                    Max = dates.Count > 0 ? dates.Last().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : null
+                };
+            })
+            .ToList();
+    }
+
+    private static IReadOnlyList<RelationshipCandidateHintDto> BuildRelationshipCandidateHints(
+        IReadOnlyList<ColumnAnalysisDto> columns,
+        int rowCount)
+    {
+        return columns
+            .Where(column => IsKeyLikeColumn(column.ColumnName)
+                || (rowCount > 0 && column.UniqueValuesCount == rowCount && column.MissingValuesCount == 0))
+            .Select(column => new RelationshipCandidateHintDto
+            {
+                ColumnName = column.ColumnName,
+                Hint = rowCount > 0 && column.UniqueValuesCount == rowCount && column.MissingValuesCount == 0
+                    ? "Potential lookup/master key for project relationship discovery."
+                    : "Potential source reference for project relationship discovery."
+            })
+            .ToList();
+    }
+
     private static int CountDuplicateRows(
         IReadOnlyList<IDictionary<string, string?>> rows,
         IReadOnlyList<string> columnNames)
@@ -535,9 +856,22 @@ internal static class DatasetAnalysisBuilder
 
     private static bool IsKeyLikeColumn(string columnName)
     {
-        return columnName.Equals("id", StringComparison.OrdinalIgnoreCase)
-            || columnName.EndsWith("_id", StringComparison.OrdinalIgnoreCase)
-            || columnName.EndsWith("Id", StringComparison.Ordinal);
+        var tokens = SplitIdentifierTokens(columnName);
+        if (tokens.Any(IsKeyToken))
+        {
+            return true;
+        }
+
+        var normalized = Regex.Replace(columnName.Trim().ToLowerInvariant(), "[^a-z0-9]+", string.Empty);
+        return normalized.Length > 2
+            && !normalized.EndsWith("paid", StringComparison.Ordinal)
+            && (normalized.EndsWith("id", StringComparison.Ordinal)
+                || normalized.EndsWith("key", StringComparison.Ordinal)
+                || normalized.EndsWith("code", StringComparison.Ordinal)
+                || normalized.EndsWith("ref", StringComparison.Ordinal)
+                || normalized.EndsWith("no", StringComparison.Ordinal)
+                || normalized.EndsWith("num", StringComparison.Ordinal)
+                || normalized.EndsWith("number", StringComparison.Ordinal));
     }
 
     private static string ToTitle(string value)
@@ -546,6 +880,29 @@ internal static class DatasetAnalysisBuilder
         return string.IsNullOrWhiteSpace(normalized)
             ? "Values"
             : CultureInfo.InvariantCulture.TextInfo.ToTitleCase(normalized.ToLowerInvariant());
+    }
+
+    private static string? TryGetValue(IDictionary<string, string?> row, string columnName)
+    {
+        return row.TryGetValue(columnName, out var value) ? NormalizeMissingValue(value) : null;
+    }
+
+    private static bool TryParseDecimal(string? value, out decimal result)
+    {
+        return decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out result);
+    }
+
+    private static IReadOnlyList<string> SplitIdentifierTokens(string value)
+    {
+        var camelSeparated = Regex.Replace(value.Trim(), "([a-z0-9])([A-Z])", "$1_$2");
+        return Regex.Split(camelSeparated.ToLowerInvariant(), "[^a-z0-9]+")
+            .Where(token => !string.IsNullOrWhiteSpace(token))
+            .ToList();
+    }
+
+    private static bool IsKeyToken(string token)
+    {
+        return token is "id" or "key" or "code" or "ref" or "no" or "num" or "number" or "uuid" or "guid";
     }
 
     internal sealed record DatasetAnalysisComputation(

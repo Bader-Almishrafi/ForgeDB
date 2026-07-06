@@ -103,6 +103,12 @@ public class DatasetsController : ControllerBase
         }
     }
 
+    [HttpGet("datasets/{datasetId:int}/profile")]
+    public Task<ActionResult<DatasetAnalysisResponseDto>> GetProfile(int datasetId, CancellationToken cancellationToken)
+    {
+        return GetAnalysis(datasetId, cancellationToken);
+    }
+
     [HttpGet("datasets/{datasetId:int}/dashboard")]
     public async Task<ActionResult<DashboardResponseDto>> GetDashboard(int datasetId, CancellationToken cancellationToken)
     {

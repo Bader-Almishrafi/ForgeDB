@@ -72,6 +72,9 @@ export interface DatasetAnalysisResponse {
   status: string;
   analysisResult: DatasetAnalysisResult;
   chartRecommendations: ChartRecommendation[];
+  keyCandidates?: KeyCandidate[];
+  dateRanges?: DateRange[];
+  relationshipCandidateHints?: RelationshipCandidateHint[];
   analyzedAt?: string | null;
 }
 
@@ -122,6 +125,29 @@ export interface ChartRecommendation {
   yColumn?: string | null;
   reason?: string | null;
   usefulness?: string | null;
+  previewData?: ChartPreviewPoint[];
+}
+
+export interface ChartPreviewPoint {
+  label: string;
+  value: number;
+}
+
+export interface KeyCandidate {
+  columnName: string;
+  confidence: number;
+  reasons: string[];
+}
+
+export interface DateRange {
+  columnName: string;
+  min?: string | null;
+  max?: string | null;
+}
+
+export interface RelationshipCandidateHint {
+  columnName: string;
+  hint: string;
 }
 
 export interface DashboardResponse {
@@ -214,4 +240,73 @@ export interface DeploymentResponse {
 
 export interface ApiErrorBody {
   message?: string;
+}
+
+export interface ProjectOverview {
+  projectId: number;
+  projectName: string;
+  datasetsCount: number;
+  totalRows: number;
+  totalColumns: number;
+  analyzedDatasetsCount: number;
+  generatedSchemasCount: number;
+  relationshipSuggestionsCount: number;
+  acceptedRelationshipsCount: number;
+  exportReadinessStatus: string;
+  recentDatasets: DatasetResponse[];
+  nextRecommendedActions: string[];
+}
+
+export interface ProjectRelationshipSuggestion {
+  suggestionId: string;
+  fromDatasetId: number;
+  fromTable: string;
+  fromColumn: string;
+  toDatasetId: number;
+  toTable: string;
+  toColumn: string;
+  relationshipType: string;
+  confidence: number;
+  reasons: string[];
+  status: 'suggested' | 'accepted' | 'rejected' | string;
+}
+
+export interface ProjectSchema {
+  projectId: number;
+  projectName: string;
+  status: string;
+  tables: ProjectSchemaTable[];
+  relationships: ProjectRelationshipSuggestion[];
+  sqlPreview: string;
+  dbmlPreview: string;
+  jsonPreview: string;
+}
+
+export interface ProjectSchemaTable {
+  datasetId: number;
+  tableName: string;
+  status: string;
+  columns: ProjectSchemaColumn[];
+  primaryKeyCandidates: string[];
+}
+
+export interface ProjectSchemaColumn {
+  name: string;
+  sourceColumnName: string;
+  detectedDataType: string;
+  sqlType: string;
+  isNullable: boolean;
+  isPrimaryKeyCandidate: boolean;
+}
+
+export interface ProjectExportPackage {
+  projectId: number;
+  projectName: string;
+  status: string;
+  generatedAt: string;
+  sql: string;
+  dbml: string;
+  jsonSchema: string;
+  relationshipReportJson: string;
+  dataQualityReportJson: string;
 }

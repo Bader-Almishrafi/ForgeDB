@@ -77,7 +77,7 @@ export class ProjectsComponent implements OnInit {
           this.successMessage = 'Project created.';
           this.workflow.setProject(project);
           this.projects.update((projects) => [project, ...projects]);
-          this.router.navigate(['/projects', project.id, 'workspace']);
+          this.router.navigate(['/projects', project.id, 'overview']);
         },
         error: (error: { error?: ApiErrorBody }) => {
           this.errorMessage = error.error?.message ?? 'Unable to create project.';
@@ -87,7 +87,7 @@ export class ProjectsComponent implements OnInit {
 
   openWorkspace(project: ProjectResponse): void {
     this.workflow.setProject(project);
-    this.router.navigate(['/projects', project.id, 'workspace']);
+    this.router.navigate(['/projects', project.id, 'overview']);
   }
 
   private requireUserId(): number | null {

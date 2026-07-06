@@ -6,8 +6,10 @@ import { WorkflowStateService } from '../services/workflow-state.service';
 
 interface NavItem {
   label: string;
-  route: string;
+  route: () => string | null;
   icon: string;
+  enabled: () => boolean;
+  queryParams?: () => Params | null;
 }
 
 interface WorkflowStep {
@@ -43,7 +45,15 @@ export class AppShellComponent {
   readonly schemaName = this.workflow.schemaName;
 
   readonly navItems: NavItem[] = [
-    { label: 'Projects', route: '/projects', icon: 'M3.75 6.75h5.19l1.06 1.5h10.25v9.75a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V6.75Z' },
+    { label: 'Projects', route: () => '/projects', enabled: () => true, icon: 'M3.75 6.75h5.19l1.06 1.5h10.25v9.75a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V6.75Z' },
+    { label: 'Overview', route: () => this.projectId() ? `/projects/${this.projectId()}/overview` : null, enabled: () => this.projectId() !== null, icon: 'M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-5H4v5Z' },
+    { label: 'Datasets', route: () => this.projectId() ? `/projects/${this.projectId()}/datasets` : null, enabled: () => this.projectId() !== null, icon: 'M4 6h16M4 12h16M4 18h16' },
+    { label: 'Data Explorer', route: () => this.datasetId() ? `/datasets/${this.datasetId()}/explorer` : null, enabled: () => this.datasetId() !== null, icon: 'M4 5h16v14H4zM4 10h16M10 5v14' },
+    { label: 'Profile Dashboard', route: () => this.datasetId() ? `/datasets/${this.datasetId()}/profile` : null, enabled: () => this.datasetId() !== null, icon: 'M4 19V5m0 14h16M8 16v-5m4 5V8m4 8v-7' },
+    { label: 'Relationships', route: () => this.projectId() ? `/projects/${this.projectId()}/relationships` : null, enabled: () => this.projectId() !== null, icon: 'M7 7h4v4H7zM13 13h4v4h-4zM11 9h3a3 3 0 0 1 3 3v1' },
+    { label: 'Schema Designer', route: () => this.projectId() ? `/projects/${this.projectId()}/schema-designer` : null, enabled: () => this.projectId() !== null, icon: 'M5 5h6v6H5zM13 5h6v6h-6zM5 13h6v6H5zM13 13h6v6h-6z' },
+    { label: 'ER Diagram', route: () => this.projectId() ? `/projects/${this.projectId()}/er-diagram` : null, enabled: () => this.projectId() !== null, icon: 'M6 7h5v4H6zM13 13h5v4h-5zM11 9h2a3 3 0 0 1 3 3v1' },
+    { label: 'Exports', route: () => this.projectId() ? `/projects/${this.projectId()}/exports` : null, enabled: () => this.projectId() !== null, icon: 'M12 3v10m0 0 4-4m-4 4-4-4M5 17h14v4H5z' },
   ];
 
   readonly workflowSteps: WorkflowStep[] = [
@@ -123,7 +133,7 @@ export class AppShellComponent {
   ];
 
   constructor(
-    private router: Router,
+    public router: Router,
     private authService: AuthService,
     private workflow: WorkflowStateService,
   ) {}

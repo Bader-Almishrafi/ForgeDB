@@ -52,7 +52,7 @@
         <h2 class="font-semibold">Deployment Configuration</h2>
         <label class="mt-4 block">
           <span class="mb-1.5 block text-sm font-medium">Database Name</span>
-          <input class="input-field" [(ngModel)]="databaseName" placeholder="sales_database">
+          <input class="input-field" [(ngModel)]="databaseName" placeholder="database_blueprint">
         </label>
         <button type="button" class="btn-primary mt-5 w-full" (click)="generateDeploymentSql()"
           [disabled]="generating() || !databaseName">

@@ -12,7 +12,11 @@ import {
   DeploymentRequest,
   DeploymentResponse,
   LoginRequest,
+  ProjectExportPackage,
+  ProjectOverview,
   ProjectCreateRequest,
+  ProjectRelationshipSuggestion,
+  ProjectSchema,
   ProjectResponse,
   RegisterRequest,
   SchemaGenerateRequest,
@@ -41,6 +45,10 @@ export class ForgeApiService {
     return this.http.get<ProjectResponse>(`${this.baseUrl}/api/projects/${projectId}`);
   }
 
+  getProjectOverview(projectId: number): Observable<ProjectOverview> {
+    return this.http.get<ProjectOverview>(`${this.baseUrl}/api/projects/${projectId}/overview`);
+  }
+
   getUserProjects(userId: number): Observable<ProjectResponse[]> {
     return this.http.get<ProjectResponse[]>(`${this.baseUrl}/api/projects/user/${userId}`);
   }
@@ -59,6 +67,10 @@ export class ForgeApiService {
 
   getDatasetAnalysis(datasetId: number): Observable<DatasetAnalysisResponse> {
     return this.http.get<DatasetAnalysisResponse>(`${this.baseUrl}/api/datasets/${datasetId}/analysis`);
+  }
+
+  getDatasetProfile(datasetId: number): Observable<DatasetAnalysisResponse> {
+    return this.http.get<DatasetAnalysisResponse>(`${this.baseUrl}/api/datasets/${datasetId}/profile`);
   }
 
   analyzeDataset(datasetId: number, request: DatasetAnalysisRequest): Observable<DatasetAnalysisResponse> {
@@ -83,6 +95,30 @@ export class ForgeApiService {
 
   updateRelationships(schemaId: number, request: SchemaRelationshipsUpdateRequest): Observable<SchemaResponse> {
     return this.http.put<SchemaResponse>(`${this.baseUrl}/api/schemas/${schemaId}/relationships`, request);
+  }
+
+  getProjectRelationshipSuggestions(projectId: number): Observable<ProjectRelationshipSuggestion[]> {
+    return this.http.get<ProjectRelationshipSuggestion[]>(`${this.baseUrl}/api/projects/${projectId}/relationships/suggestions`);
+  }
+
+  acceptProjectRelationship(projectId: number, suggestion: ProjectRelationshipSuggestion): Observable<ProjectRelationshipSuggestion[]> {
+    return this.http.post<ProjectRelationshipSuggestion[]>(`${this.baseUrl}/api/projects/${projectId}/relationships/accept`, suggestion);
+  }
+
+  rejectProjectRelationship(projectId: number, suggestion: ProjectRelationshipSuggestion): Observable<ProjectRelationshipSuggestion[]> {
+    return this.http.post<ProjectRelationshipSuggestion[]>(`${this.baseUrl}/api/projects/${projectId}/relationships/reject`, suggestion);
+  }
+
+  getProjectSchema(projectId: number): Observable<ProjectSchema> {
+    return this.http.get<ProjectSchema>(`${this.baseUrl}/api/projects/${projectId}/schema`);
+  }
+
+  generateProjectSchema(projectId: number): Observable<ProjectSchema> {
+    return this.http.post<ProjectSchema>(`${this.baseUrl}/api/projects/${projectId}/schema/generate`, {});
+  }
+
+  getProjectExportPackage(projectId: number): Observable<ProjectExportPackage> {
+    return this.http.get<ProjectExportPackage>(`${this.baseUrl}/api/projects/${projectId}/exports/package`);
   }
 
   deploySchema(schemaId: number, request: DeploymentRequest): Observable<DeploymentResponse> {

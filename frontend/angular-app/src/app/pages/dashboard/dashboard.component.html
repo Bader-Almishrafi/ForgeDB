@@ -190,7 +190,21 @@
                 }
               </div>
               <p class="mt-2 text-sm text-slate-500">{{ chart.reason || 'No reason provided.' }}</p>
-              @if (topValuesForChart(data, chart).length > 0) {
+              @if (chart.previewData && chart.previewData.length > 0) {
+                <div class="mt-4 space-y-2">
+                  @for (point of chart.previewData; track point.label) {
+                    <div>
+                      <div class="flex justify-between gap-3 text-xs">
+                        <span class="truncate text-slate-600">{{ point.label }}</span>
+                        <strong>{{ point.value }}</strong>
+                      </div>
+                      <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                        <div class="h-full rounded-full bg-indigo-500" [style.width.%]="chartPreviewPercent(chart, point.value)"></div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else if (topValuesForChart(data, chart).length > 0) {
                 <div class="mt-4 space-y-2">
                   @for (value of topValuesForChart(data, chart); track value.value) {
                     <div>
@@ -239,6 +253,45 @@
     </div>
 
     <div class="mt-5 grid gap-5 xl:grid-cols-2">
+      @if (profile(); as profileData) {
+        <article class="card p-5">
+          <h2 class="font-semibold">Key Candidates</h2>
+          <div class="mt-4 space-y-3">
+            @for (candidate of profileData.keyCandidates || []; track candidate.columnName) {
+              <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                <div class="flex justify-between gap-3">
+                  <p class="font-semibold text-slate-900">{{ candidate.columnName }}</p>
+                  <span class="rounded-full bg-white px-2 py-1 text-xs font-semibold text-indigo-700">{{ candidate.confidence }}</span>
+                </div>
+                <div class="mt-2 space-y-1 text-xs text-slate-500">
+                  @for (reason of candidate.reasons; track reason) {
+                    <p>{{ reason }}</p>
+                  }
+                </div>
+              </div>
+            } @empty {
+              <p class="text-sm text-slate-500">No key candidates returned.</p>
+            }
+          </div>
+        </article>
+
+        <article class="card p-5">
+          <h2 class="font-semibold">Date Ranges</h2>
+          <div class="mt-4 space-y-3">
+            @for (range of profileData.dateRanges || []; track range.columnName) {
+              <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                <p class="font-semibold text-slate-900">{{ range.columnName }}</p>
+                <p class="mt-1 text-sm text-slate-600">{{ range.min || 'Unknown' }} to {{ range.max || 'Unknown' }}</p>
+              </div>
+            } @empty {
+              <p class="text-sm text-slate-500">No date ranges returned.</p>
+            }
+          </div>
+        </article>
+      }
+    </div>
+
+    <div class="mt-5 grid gap-5 xl:grid-cols-2">
       <article class="card p-5">
         <h2 class="font-semibold">Missing Values By Column</h2>
         <div class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6">
@@ -264,22 +317,12 @@
           <div class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6">
             <p class="font-semibold text-slate-900">No relationship suggestions in this response</p>
             <p class="mt-2 text-sm text-slate-500">
-              Manual relationship design is available after schema generation. Future AI relationship suggestions remain disabled for this MVP.
+              Project-level relationship discovery runs after multiple datasets are uploaded and analyzed.
             </p>
           </div>
         }
       </article>
     </div>
-
-    <article class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 class="font-semibold text-slate-900">AI analysis assistant</h2>
-          <p class="mt-1 text-sm text-slate-500">A guided assistant can be added here later. It is intentionally disabled for this MVP.</p>
-        </div>
-        <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500">Coming soon</span>
-      </div>
-    </article>
 
     <div class="mt-5 flex justify-end">
       <a [routerLink]="['/datasets', datasetId, 'schema']" class="btn-primary">Generate Schema</a>

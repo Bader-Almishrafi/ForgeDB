@@ -38,7 +38,7 @@
           <div class="space-y-4">
             <label class="block">
               <span class="mb-1.5 block text-sm font-medium text-slate-700">Table Name</span>
-              <input name="tableName" [(ngModel)]="tableName" class="input-field" placeholder="sales_data">
+              <input name="tableName" [(ngModel)]="tableName" class="input-field" placeholder="raw_dataset">
             </label>
             <div class="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
               <p class="font-semibold text-slate-800">Upload contract</p>
@@ -104,8 +104,9 @@
                     <td>
                       <div class="flex flex-wrap gap-2">
                         <a [routerLink]="['/datasets', dataset.id, 'preview']" class="btn-secondary py-2">Preview</a>
+                        <a [routerLink]="['/datasets', dataset.id, 'explorer']" class="btn-secondary py-2">Explore</a>
                         <a [routerLink]="['/datasets', dataset.id, 'analyze']" class="btn-secondary py-2">Analyze</a>
-                        <a [routerLink]="['/datasets', dataset.id, 'dashboard']" class="btn-secondary py-2">Dashboard</a>
+                        <a [routerLink]="['/datasets', dataset.id, 'profile']" class="btn-secondary py-2">Profile</a>
                         <a [routerLink]="['/datasets', dataset.id, 'schema']" class="btn-secondary py-2">Generate/View Schema</a>
                       </div>
                     </td>
