@@ -1,3 +1,4 @@
+import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -9,7 +10,7 @@ import { WorkflowStateService } from '../../services/workflow-state.service';
 @Component({
   selector: 'app-data-sources',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, NgClass, RouterLink],
   templateUrl: './data-sources.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -131,5 +132,29 @@ export class DataSourcesComponent implements OnInit {
           this.errorMessage = error.error?.message ?? 'Unable to analyze dataset.';
         },
       });
+  }
+
+  analyzedCount(): number {
+    return this.datasets().filter((dataset) => dataset.status === 'Analyzed').length;
+  }
+
+  totalRows(): number {
+    return this.datasets().reduce((total, dataset) => total + dataset.rowCount, 0);
+  }
+
+  totalMissingValues(): number {
+    return this.datasets().reduce((total, dataset) => total + dataset.missingValuesCount, 0);
+  }
+
+  totalDuplicateRows(): number {
+    return this.datasets().reduce((total, dataset) => total + dataset.duplicateRowsCount, 0);
+  }
+
+  qualitySignalClass(dataset: DatasetResponse): string {
+    if (dataset.missingValuesCount > 0 || dataset.duplicateRowsCount > 0) {
+      return 'text-amber-700';
+    }
+
+    return 'text-emerald-700';
   }
 }

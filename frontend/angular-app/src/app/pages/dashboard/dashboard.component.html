@@ -1,269 +1,288 @@
-<section>
-  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div>
-      <p class="mb-3 text-sm text-slate-500">Datasets / Dashboard</p>
-      <h1 class="page-title">Dataset Dashboard</h1>
-      <p class="page-subtitle">A decision dashboard for data quality, profiling, and chart recommendations.</p>
+<section class="space-y-5">
+  <header class="workspace-panel overflow-hidden">
+    <div class="border-b border-slate-200 px-5 py-4">
+      <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div>
+          <p class="text-sm text-slate-500">Datasets / Profile</p>
+          <div class="mt-2 flex flex-wrap items-center gap-3">
+            <h1 class="page-title">{{ dashboard()?.tableName || 'Profile Dashboard' }}</h1>
+            @if (dashboard(); as data) {
+              <span class="badge-neutral">Dataset #{{ data.datasetId }}</span>
+              <span class="badge-success">{{ qualityStatus(data) }}</span>
+            }
+          </div>
+          <p class="page-subtitle">Automated profile, quality scoring, chart recommendations, numeric summaries, and column-level details.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a [routerLink]="['/datasets', datasetId, 'explorer']" class="btn-secondary">Explorer</a>
+          <button type="button" class="btn-secondary" (click)="loadDashboard()" [disabled]="loading()">Refresh</button>
+          <button type="button" class="btn-primary" (click)="analyzeAndRefresh()" [disabled]="analyzing()">
+            {{ analyzing() ? 'Analyzing...' : 'Run Analysis' }}
+          </button>
+        </div>
+      </div>
     </div>
-    <div class="flex flex-wrap gap-3">
-      <a [routerLink]="['/datasets', datasetId, 'preview']" class="btn-secondary">Preview</a>
-      <button type="button" class="btn-secondary" (click)="loadDashboard()" [disabled]="loading()">Refresh</button>
-      <button type="button" class="btn-primary" (click)="analyzeAndRefresh()" [disabled]="analyzing()">
-        {{ analyzing() ? 'Analyzing...' : 'Run Analysis' }}
-      </button>
-    </div>
-  </div>
+  </header>
 
   @if (errorMessage) {
-    <p class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+    <p class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
       {{ errorMessage }}
     </p>
   }
   @if (successMessage) {
-    <p class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+    <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
       {{ successMessage }}
     </p>
   }
 
   @if (loading()) {
-    <article class="card p-6 text-sm text-slate-500">Loading dashboard...</article>
+    <article class="card p-6 text-sm text-slate-500">Loading profile...</article>
   } @else if (dashboard(); as data) {
-    <article class="card mb-5 p-5">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <article class="metric-card">
+        <p class="section-title">Rows</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.rowCount }}</p>
+        <p class="mt-1 text-sm text-slate-500">{{ data.columnCount }} columns</p>
+      </article>
+      <article class="metric-card">
+        <p class="section-title">Missing Values</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.missingValuesCount }}</p>
+        <p class="mt-1 text-sm text-slate-500">Across all cells</p>
+      </article>
+      <article class="metric-card">
+        <p class="section-title">Duplicate Rows</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.duplicateRowsCount }}</p>
+        <p class="mt-1 text-sm text-slate-500">Detected by backend analysis</p>
+      </article>
+      <article class="metric-card">
+        <p class="section-title">Charts</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.chartRecommendations.length }}</p>
+        <p class="mt-1 text-sm text-slate-500">Recommended insights</p>
+      </article>
+    </div>
+
+    <div class="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+      <article class="rounded-lg border p-5 shadow-sm" [ngClass]="qualityClass(data)">
+        <p class="text-sm font-semibold uppercase tracking-wide">Data Quality</p>
+        <div class="mt-4 flex items-end justify-between gap-4">
+          <div>
+            <p class="text-6xl font-semibold">{{ qualityScore(data) }}</p>
+            <p class="mt-1 text-sm font-semibold">{{ qualityStatus(data) }}</p>
+          </div>
+          <div class="grid h-28 w-28 place-items-center rounded-full border-[10px] border-current bg-white/70 text-lg font-semibold">
+            {{ qualityScore(data) }}%
+          </div>
+        </div>
+        <div class="mt-5 grid grid-cols-2 gap-3 text-sm">
+          <div class="rounded-lg bg-white/70 p-3">
+            <p class="opacity-70">Missing</p>
+            <p class="font-semibold">{{ data.missingValuesCount }}</p>
+          </div>
+          <div class="rounded-lg bg-white/70 p-3">
+            <p class="opacity-70">Duplicates</p>
+            <p class="font-semibold">{{ data.duplicateRowsCount }}</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="workspace-panel p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-950">Column Type Distribution</h2>
+            <p class="mt-1 text-sm text-slate-500">Detected backend profile types across this dataset.</p>
+          </div>
+          <span class="badge-neutral">{{ data.columnCount }} columns</span>
+        </div>
+        <div class="mt-5 grid gap-3 md:grid-cols-2">
+          @for (type of data.columnTypeDistribution; track type.dataType) {
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div class="flex items-center justify-between gap-3">
+                <span class="font-semibold text-slate-800">{{ type.dataType }}</span>
+                <span class="badge-neutral">{{ type.count }}</span>
+              </div>
+              <div class="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                <div class="h-full rounded-full bg-blue-600" [style.width.%]="typePercent(data, type.count)"></div>
+              </div>
+            </div>
+          } @empty {
+            <p class="text-sm text-slate-500">No type distribution returned.</p>
+          }
+        </div>
+      </article>
+    </div>
+
+    <article class="workspace-panel p-5">
+      <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Selected Dataset</p>
-          <h2 class="mt-1 text-2xl font-bold text-slate-900">{{ data.tableName }}</h2>
-          <p class="mt-1 text-sm text-slate-500">Dataset #{{ data.datasetId }} / dashboard loaded from backend data</p>
+          <h2 class="text-lg font-semibold text-slate-950">Insight Cards</h2>
+          <p class="mt-1 text-sm text-slate-500">Chart recommendations generated from the analyzed dataset.</p>
         </div>
-        <div class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-          <div class="rounded-xl bg-slate-50 px-4 py-3"><span class="block text-xs text-slate-500">Rows</span><strong>{{ data.rowCount }}</strong></div>
-          <div class="rounded-xl bg-slate-50 px-4 py-3"><span class="block text-xs text-slate-500">Columns</span><strong>{{ data.columnCount }}</strong></div>
-          <div class="rounded-xl bg-slate-50 px-4 py-3"><span class="block text-xs text-slate-500">Missing</span><strong>{{ data.missingValuesCount }}</strong></div>
-          <div class="rounded-xl bg-slate-50 px-4 py-3"><span class="block text-xs text-slate-500">Duplicates</span><strong>{{ data.duplicateRowsCount }}</strong></div>
-        </div>
+        <span class="badge-neutral">{{ data.chartRecommendations.length }}</span>
+      </div>
+
+      <div class="grid gap-4 xl:grid-cols-3">
+        @for (chart of data.chartRecommendations; track chart.title) {
+          <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="min-w-0">
+                <h3 class="truncate font-semibold text-slate-950">{{ chart.title }}</h3>
+                <p class="mt-1 text-xs text-slate-500">
+                  <span>{{ chartXColumn(chart) }}</span>
+                  @if (chartYColumn(chart); as yColumn) {
+                    <span> / {{ yColumn }}</span>
+                  }
+                </p>
+              </div>
+              <span class="rounded-full px-2.5 py-1 text-xs font-semibold" [ngClass]="chartTypeClass(chart)">{{ chartTypeLabel(chart) }}</span>
+            </div>
+            <p class="mt-3 min-h-10 text-sm text-slate-600">{{ chart.reason || chartUsefulness(chart) }}</p>
+
+            @if (chart.previewData && chart.previewData.length > 0) {
+              <div class="mt-4 space-y-2">
+                @for (point of chart.previewData; track point.label) {
+                  <div>
+                    <div class="flex justify-between gap-3 text-xs">
+                      <span class="truncate text-slate-600">{{ point.label }}</span>
+                      <strong>{{ point.value }}</strong>
+                    </div>
+                    <div class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div class="h-full rounded-full bg-blue-500" [style.width.%]="chartPreviewPercent(chart, point.value)"></div>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else if (topValuesForChart(data, chart).length > 0) {
+              <div class="mt-4 space-y-2">
+                @for (value of topValuesForChart(data, chart); track value.value) {
+                  <div>
+                    <div class="flex justify-between gap-3 text-xs">
+                      <span class="truncate text-slate-600">{{ value.value || 'NULL' }}</span>
+                      <strong>{{ value.count }}</strong>
+                    </div>
+                    <div class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div class="h-full rounded-full bg-blue-500" [style.width.%]="topValuePercent({ columnName: chartXColumn(chart), values: topValuesForChart(data, chart) }, value.count)"></div>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else if (numericSummaryForChart(data, chart); as summary) {
+              <div class="mt-4 grid gap-2 text-xs">
+                <div class="flex justify-between"><span class="text-slate-500">Min</span><strong>{{ summary.min }}</strong></div>
+                <div class="flex justify-between"><span class="text-slate-500">Average</span><strong>{{ summary.average }}</strong></div>
+                <div class="flex justify-between"><span class="text-slate-500">Max</span><strong>{{ summary.max }}</strong></div>
+              </div>
+            } @else {
+              <div class="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">No preview points returned.</div>
+            }
+          </section>
+        } @empty {
+          <p class="text-sm text-slate-500">No chart recommendations returned.</p>
+        }
       </div>
     </article>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      @for (metric of data.metrics; track metric.key) {
-        <article class="card p-5">
-          <p class="text-sm font-medium text-slate-500">{{ metric.label }}</p>
-          <p class="mt-2 text-3xl font-bold text-slate-900">{{ metric.value }}{{ metric.unit || '' }}</p>
-        </article>
-      }
-    </div>
-
-    <div class="mt-5 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <article class="rounded-2xl border p-5" [ngClass]="qualityClass(data)">
-        <p class="text-sm font-semibold uppercase tracking-wide">Data Quality</p>
-        <div class="mt-3 flex items-end justify-between gap-4">
-          <div>
-            <p class="text-5xl font-bold">{{ qualityScore(data) }}</p>
-            <p class="mt-1 text-sm font-semibold">{{ qualityStatus(data) }}</p>
-          </div>
-          <div class="h-24 w-24 rounded-full border-8 border-current bg-white/60"
-            [style.opacity]="0.9"
-            [attr.aria-label]="'Quality score ' + qualityScore(data)"></div>
+    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <article class="workspace-panel overflow-hidden">
+        <div class="border-b border-slate-200 px-5 py-4">
+          <h2 class="text-lg font-semibold text-slate-950">Column Profiler</h2>
+          <p class="mt-1 text-sm text-slate-500">Column-level profile response from backend analysis.</p>
         </div>
-        <p class="mt-4 text-sm opacity-80">
-          Score is based on missing cells and duplicate rows in the analyzed dataset.
-        </p>
-      </article>
-
-      <article class="card p-5">
-        <h2 class="font-semibold">Analysis Status</h2>
-        <div class="mt-4 grid gap-3 md:grid-cols-3">
-          <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
-            <p class="mt-1 font-semibold text-slate-900">Dashboard loaded</p>
-          </div>
-          <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Source</p>
-            <p class="mt-1 font-semibold text-slate-900">Backend analysis API</p>
-          </div>
-          <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Next Action</p>
-            <p class="mt-1 font-semibold text-slate-900">Generate schema</p>
-          </div>
-        </div>
-      </article>
-    </div>
-
-    <div class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <article class="card p-5">
-        <div class="mb-4 flex items-center justify-between">
-          <div>
-            <h2 class="font-semibold">Numeric Summaries</h2>
-            <p class="text-xs text-slate-500">Min, max, average, and value count by numeric column.</p>
-          </div>
-          <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
-            {{ data.numericSummaries.length }}
-          </span>
-        </div>
-
-        @if (data.numericSummaries.length === 0) {
-          <p class="text-sm text-slate-500">No numeric summaries returned.</p>
-        } @else {
-          <div class="table-wrap">
+        @if (profile(); as profileData) {
+          <div class="table-wrap rounded-none border-0">
             <table class="data-table">
-              <thead><tr><th>Column</th><th>Min</th><th>Max</th><th>Average</th><th>Count</th></tr></thead>
+              <thead>
+                <tr><th>Column</th><th>Type</th><th>Missing</th><th>Unique</th><th>Numeric Summary</th><th>Top Values</th></tr>
+              </thead>
               <tbody>
-                @for (summary of data.numericSummaries; track summary.columnName) {
+                @for (column of profileData.analysisResult.columns; track column.columnName) {
                   <tr>
-                    <td class="font-medium">{{ summary.columnName }}</td>
-                    <td>{{ summary.min }}</td>
-                    <td>{{ summary.max }}</td>
-                    <td>{{ summary.average }}</td>
-                    <td>{{ summary.count }}</td>
+                    <td class="font-semibold text-slate-950">{{ column.columnName }}</td>
+                    <td><span class="badge-neutral">{{ column.detectedDataType }}</span></td>
+                    <td [class.text-amber-700]="column.missingValuesCount > 0">{{ column.missingValuesCount }}</td>
+                    <td>{{ column.uniqueValuesCount }}</td>
+                    <td>
+                      @if (column.numericStats; as stats) {
+                        <span class="text-xs text-slate-600">min {{ stats.min }} / avg {{ stats.average }} / max {{ stats.max }}</span>
+                      } @else {
+                        <span class="text-xs text-slate-400">Not numeric</span>
+                      }
+                    </td>
+                    <td>
+                      <div class="flex max-w-[340px] flex-wrap gap-1.5">
+                        @for (value of column.mostCommonValues.slice(0, 3); track value.value) {
+                          <span class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">{{ value.value || 'NULL' }}: {{ value.count }}</span>
+                        }
+                      </div>
+                    </td>
                   </tr>
                 }
               </tbody>
             </table>
           </div>
+        } @else {
+          <p class="p-5 text-sm text-slate-500">Column profile details are loading.</p>
         }
       </article>
 
-      <article class="card p-5">
-        <h2 class="font-semibold">Column Types</h2>
-        <p class="text-xs text-slate-500">Detected type distribution.</p>
-        <div class="mt-4 space-y-3">
-          @for (type of data.columnTypeDistribution; track type.dataType) {
-            <div class="rounded-xl bg-slate-50 px-3 py-2 text-sm">
-              <div class="flex items-center justify-between">
-                <span class="font-semibold text-slate-700">{{ type.dataType }}</span>
-                <span class="rounded-full bg-white px-2 py-1 text-xs font-semibold text-indigo-700">{{ type.count }}</span>
-              </div>
-              <div class="mt-2 h-2 overflow-hidden rounded-full bg-white">
-                <div class="h-full rounded-full bg-indigo-500" [style.width.%]="typePercent(data, type.count)"></div>
-              </div>
-            </div>
-          } @empty {
-            <p class="text-sm text-slate-500">No column type distribution returned.</p>
-          }
-        </div>
-      </article>
-    </div>
-
-    <div class="mt-5 grid gap-5 xl:grid-cols-2">
-      <article class="card p-5">
-        <h2 class="font-semibold">Top Value Summaries</h2>
-        <div class="mt-4 grid gap-4 md:grid-cols-2">
-          @for (summary of data.topValueSummaries; track summary.columnName) {
-            <div class="rounded-xl border border-slate-100 p-4">
-              <h3 class="font-semibold text-slate-800">{{ summary.columnName }}</h3>
-              <div class="mt-3 space-y-2 text-sm">
-                @for (value of summary.values; track value.value) {
-                  <div>
-                    <div class="flex justify-between gap-4">
-                      <span class="truncate text-slate-600">{{ value.value || '-' }}</span>
-                      <strong>{{ value.count }}</strong>
-                    </div>
-                    <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                      <div class="h-full rounded-full bg-slate-500" [style.width.%]="topValuePercent(summary, value.count)"></div>
-                    </div>
-                  </div>
-                }
-              </div>
-            </div>
-          } @empty {
-            <p class="text-sm text-slate-500">No top value summaries returned.</p>
-          }
-        </div>
-      </article>
-
-      <article class="card p-5">
-        <h2 class="font-semibold">Chart Recommendations</h2>
-        <div class="mt-4 grid gap-4">
-          @for (chart of data.chartRecommendations; track chart.title) {
-            <div class="rounded-xl border border-slate-100 p-4">
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <h3 class="font-semibold text-slate-800">{{ chart.title }}</h3>
-                <div class="flex flex-wrap gap-2">
-                  <span class="rounded-full px-2.5 py-1 text-xs font-semibold" [ngClass]="chartTypeClass(chart)">{{ chartTypeLabel(chart) }}</span>
-                  <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{{ chartUsefulness(chart) }}</span>
+      <aside class="space-y-5">
+        <article class="workspace-panel p-5">
+          <h2 class="text-lg font-semibold text-slate-950">Numeric Summaries</h2>
+          <div class="mt-4 space-y-3">
+            @for (summary of data.numericSummaries; track summary.columnName) {
+              <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p class="font-semibold text-slate-950">{{ summary.columnName }}</p>
+                <div class="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <div><p class="text-slate-500">Min</p><strong>{{ summary.min }}</strong></div>
+                  <div><p class="text-slate-500">Avg</p><strong>{{ summary.average }}</strong></div>
+                  <div><p class="text-slate-500">Max</p><strong>{{ summary.max }}</strong></div>
                 </div>
               </div>
-              <div class="mt-3 grid gap-2 text-xs font-semibold text-slate-500 sm:grid-cols-2">
-                <p>X: <span class="text-slate-800">{{ chartXColumn(chart) }}</span></p>
-                @if (chartYColumn(chart); as yColumn) {
-                  <p>Y: <span class="text-slate-800">{{ yColumn }}</span></p>
-                }
-              </div>
-              <p class="mt-2 text-sm text-slate-500">{{ chart.reason || 'No reason provided.' }}</p>
-              @if (chart.previewData && chart.previewData.length > 0) {
-                <div class="mt-4 space-y-2">
-                  @for (point of chart.previewData; track point.label) {
+            } @empty {
+              <p class="text-sm text-slate-500">No numeric summaries returned.</p>
+            }
+          </div>
+        </article>
+
+        <article class="workspace-panel p-5">
+          <h2 class="text-lg font-semibold text-slate-950">Top Values</h2>
+          <div class="mt-4 space-y-3">
+            @for (summary of data.topValueSummaries.slice(0, 6); track summary.columnName) {
+              <div class="rounded-lg border border-slate-200 bg-white p-3">
+                <p class="font-semibold text-slate-950">{{ summary.columnName }}</p>
+                <div class="mt-3 space-y-2">
+                  @for (value of summary.values.slice(0, 4); track value.value) {
                     <div>
                       <div class="flex justify-between gap-3 text-xs">
-                        <span class="truncate text-slate-600">{{ point.label }}</span>
-                        <strong>{{ point.value }}</strong>
-                      </div>
-                      <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                        <div class="h-full rounded-full bg-indigo-500" [style.width.%]="chartPreviewPercent(chart, point.value)"></div>
-                      </div>
-                    </div>
-                  }
-                </div>
-              } @else if (topValuesForChart(data, chart).length > 0) {
-                <div class="mt-4 space-y-2">
-                  @for (value of topValuesForChart(data, chart); track value.value) {
-                    <div>
-                      <div class="flex justify-between gap-3 text-xs">
-                        <span class="truncate text-slate-600">{{ value.value || '-' }}</span>
+                        <span class="truncate text-slate-600">{{ value.value || 'NULL' }}</span>
                         <strong>{{ value.count }}</strong>
                       </div>
                       <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                        <div class="h-full rounded-full bg-indigo-500" [style.width.%]="topValuePercent({ columnName: chartXColumn(chart), values: topValuesForChart(data, chart) }, value.count)"></div>
+                        <div class="h-full rounded-full bg-slate-500" [style.width.%]="topValuePercent(summary, value.count)"></div>
                       </div>
                     </div>
                   }
                 </div>
-              } @else if (numericSummaryForChart(data, chart); as summary) {
-                <div class="mt-4 grid gap-2 text-xs">
-                  <div>
-                    <div class="flex justify-between"><span class="text-slate-500">Min</span><strong>{{ summary.min }}</strong></div>
-                    <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                      <div class="h-full rounded-full bg-amber-500" [style.width.%]="numericPercent(summary, summary.min)"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="flex justify-between"><span class="text-slate-500">Avg</span><strong>{{ summary.average }}</strong></div>
-                    <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                      <div class="h-full rounded-full bg-amber-500" [style.width.%]="numericPercent(summary, summary.average)"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="flex justify-between"><span class="text-slate-500">Max</span><strong>{{ summary.max }}</strong></div>
-                    <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                      <div class="h-full rounded-full bg-amber-500" [style.width.%]="numericPercent(summary, summary.max)"></div>
-                    </div>
-                  </div>
-                </div>
-              } @else {
-                <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-                  Preview uses the selected x/y columns when detailed chart rows are available.
-                </div>
-              }
-            </div>
-          } @empty {
-            <p class="text-sm text-slate-500">No chart recommendations returned.</p>
-          }
-        </div>
-      </article>
+              </div>
+            } @empty {
+              <p class="text-sm text-slate-500">No top values returned.</p>
+            }
+          </div>
+        </article>
+      </aside>
     </div>
 
-    <div class="mt-5 grid gap-5 xl:grid-cols-2">
-      @if (profile(); as profileData) {
-        <article class="card p-5">
-          <h2 class="font-semibold">Key Candidates</h2>
+    @if (profile(); as profileData) {
+      <div class="grid gap-5 xl:grid-cols-2">
+        <article class="workspace-panel p-5">
+          <h2 class="text-lg font-semibold text-slate-950">Key Candidates</h2>
           <div class="mt-4 space-y-3">
             @for (candidate of profileData.keyCandidates || []; track candidate.columnName) {
-              <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
                 <div class="flex justify-between gap-3">
-                  <p class="font-semibold text-slate-900">{{ candidate.columnName }}</p>
-                  <span class="rounded-full bg-white px-2 py-1 text-xs font-semibold text-indigo-700">{{ candidate.confidence }}</span>
+                  <p class="font-semibold text-blue-950">{{ candidate.columnName }}</p>
+                  <span class="rounded-full bg-white px-2 py-1 text-xs font-semibold text-blue-700">{{ candidate.confidence }}</span>
                 </div>
-                <div class="mt-2 space-y-1 text-xs text-slate-500">
+                <div class="mt-2 space-y-1 text-xs text-blue-700">
                   @for (reason of candidate.reasons; track reason) {
                     <p>{{ reason }}</p>
                   }
@@ -275,12 +294,12 @@
           </div>
         </article>
 
-        <article class="card p-5">
-          <h2 class="font-semibold">Date Ranges</h2>
+        <article class="workspace-panel p-5">
+          <h2 class="text-lg font-semibold text-slate-950">Date Ranges</h2>
           <div class="mt-4 space-y-3">
             @for (range of profileData.dateRanges || []; track range.columnName) {
-              <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <p class="font-semibold text-slate-900">{{ range.columnName }}</p>
+              <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p class="font-semibold text-slate-950">{{ range.columnName }}</p>
                 <p class="mt-1 text-sm text-slate-600">{{ range.min || 'Unknown' }} to {{ range.max || 'Unknown' }}</p>
               </div>
             } @empty {
@@ -288,46 +307,13 @@
             }
           </div>
         </article>
-      }
-    </div>
+      </div>
+    }
 
-    <div class="mt-5 grid gap-5 xl:grid-cols-2">
-      <article class="card p-5">
-        <h2 class="font-semibold">Missing Values By Column</h2>
-        <div class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6">
-          <p class="font-semibold text-slate-900">Column-level missing counts are not exposed yet</p>
-          <p class="mt-2 text-sm text-slate-500">
-            The dashboard API returns total missing values, which is displayed above. This section will populate when the backend adds per-column missing counts.
-          </p>
-        </div>
-      </article>
-
-      <article class="card p-5">
-        <h2 class="font-semibold">Relationship Suggestions</h2>
-        @if (keyLikeColumns(data).length > 0) {
-          <div class="mt-4 space-y-2">
-            @for (columnName of keyLikeColumns(data); track columnName) {
-              <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <p class="font-semibold text-slate-900">{{ columnName }}</p>
-                <p class="mt-1 text-xs text-slate-500">Key-like column available for future relationship mapping.</p>
-              </div>
-            }
-          </div>
-        } @else {
-          <div class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6">
-            <p class="font-semibold text-slate-900">No relationship suggestions in this response</p>
-            <p class="mt-2 text-sm text-slate-500">
-              Project-level relationship discovery runs after multiple datasets are uploaded and analyzed.
-            </p>
-          </div>
-        }
-      </article>
-    </div>
-
-    <div class="mt-5 flex justify-end">
+    <div class="flex justify-end">
       <a [routerLink]="['/datasets', datasetId, 'schema']" class="btn-primary">Generate Schema</a>
     </div>
   } @else {
-    <article class="card p-6 text-sm text-slate-500">No dashboard loaded.</article>
+    <article class="card p-6 text-sm text-slate-500">No profile loaded.</article>
   }
 </section>

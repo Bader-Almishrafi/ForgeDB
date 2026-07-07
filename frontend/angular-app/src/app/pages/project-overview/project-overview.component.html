@@ -1,96 +1,153 @@
-<section>
-  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div>
-      <p class="mb-3 text-sm text-slate-500">Projects / Overview</p>
-      <h1 class="page-title">{{ overview()?.projectName || 'Project Overview' }}</h1>
-      <p class="page-subtitle">Project-level data understanding, relationship readiness, schema status, and next actions.</p>
-    </div>
-    <div class="flex flex-wrap gap-3">
-      <button type="button" class="btn-secondary" (click)="loadOverview()" [disabled]="loading()">Refresh</button>
-      <a [routerLink]="['/projects', projectId, 'datasets']" class="btn-primary">Datasets</a>
-    </div>
-  </div>
-
+<section class="space-y-5">
   @if (errorMessage) {
-    <p class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
+    <p class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
   }
 
   @if (loading()) {
     <article class="card p-6 text-sm text-slate-500">Loading overview...</article>
   } @else if (overview(); as data) {
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <article class="card p-5"><p class="text-sm text-slate-500">Datasets</p><p class="mt-2 text-3xl font-bold">{{ data.datasetsCount }}</p></article>
-      <article class="card p-5"><p class="text-sm text-slate-500">Total Rows</p><p class="mt-2 text-3xl font-bold">{{ data.totalRows }}</p></article>
-      <article class="card p-5"><p class="text-sm text-slate-500">Total Columns</p><p class="mt-2 text-3xl font-bold">{{ data.totalColumns }}</p></article>
-      <article class="card p-5"><p class="text-sm text-slate-500">Export Readiness</p><p class="mt-2 text-xl font-bold">{{ data.exportReadinessStatus }}</p></article>
-    </div>
+    <header class="workspace-panel overflow-hidden">
+      <div class="border-b border-slate-200 bg-white px-5 py-4">
+        <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div class="min-w-0">
+            <p class="text-sm text-slate-500">Projects / Overview</p>
+            <div class="mt-2 flex flex-wrap items-center gap-3">
+              <h1 class="page-title">{{ data.projectName }}</h1>
+              <span class="badge-neutral">Project #{{ data.projectId }}</span>
+              <span [class]="data.exportReadinessStatus === 'Ready' ? 'badge-success' : 'badge-warning'">{{ data.exportReadinessStatus }}</span>
+            </div>
+            <p class="page-subtitle">Project-level inventory, profiling readiness, relationship review, and database package status.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn-secondary" (click)="loadOverview()" [disabled]="loading()">Refresh</button>
+            <a [routerLink]="['/projects', projectId, 'datasets']" class="btn-primary">Open Datasets</a>
+          </div>
+        </div>
+      </div>
 
-    <div class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <article class="card p-5">
-        <h2 class="font-semibold">Data Understanding</h2>
-        <div class="mt-4 grid gap-3 sm:grid-cols-3">
-          <div class="rounded-xl bg-slate-50 p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Analyzed</p>
-            <p class="mt-1 text-2xl font-bold">{{ data.analyzedDatasetsCount }} / {{ data.datasetsCount }}</p>
-          </div>
-          <div class="rounded-xl bg-slate-50 p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Schemas</p>
-            <p class="mt-1 text-2xl font-bold">{{ data.generatedSchemasCount }}</p>
-          </div>
-          <div class="rounded-xl bg-slate-50 p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Accepted Relations</p>
-            <p class="mt-1 text-2xl font-bold">{{ data.acceptedRelationshipsCount }}</p>
-          </div>
+      <div class="grid border-b border-slate-200 bg-slate-50/70 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="border-b border-slate-200 p-5 sm:border-r xl:border-b-0">
+          <p class="section-title">Datasets</p>
+          <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.datasetsCount }}</p>
+          <p class="mt-1 text-sm text-slate-500">{{ data.analyzedDatasetsCount }} analyzed</p>
         </div>
-        <div class="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-          <div class="h-full rounded-full bg-indigo-600" [style.width.%]="analyzedPercent(data)"></div>
+        <div class="border-b border-slate-200 p-5 xl:border-r xl:border-b-0">
+          <p class="section-title">Rows</p>
+          <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.totalRows }}</p>
+          <p class="mt-1 text-sm text-slate-500">{{ data.totalColumns }} columns</p>
         </div>
-      </article>
+        <div class="border-b border-slate-200 p-5 sm:border-r sm:border-b-0">
+          <p class="section-title">Relationships</p>
+          <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.acceptedRelationshipsCount }}</p>
+          <p class="mt-1 text-sm text-slate-500">{{ data.relationshipSuggestionsCount }} suggested</p>
+        </div>
+        <div class="p-5">
+          <p class="section-title">Schemas</p>
+          <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.generatedSchemasCount }}</p>
+          <p class="mt-1 text-sm text-slate-500">Project package inputs</p>
+        </div>
+      </div>
 
-      <aside class="card p-5">
-        <h2 class="font-semibold">Next Recommended Actions</h2>
-        <div class="mt-4 space-y-2">
-          @for (action of data.nextRecommendedActions; track action) {
-            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm font-medium text-slate-700">{{ action }}</div>
-          }
-        </div>
+      <div class="flex flex-wrap gap-2 px-5 py-3 text-sm">
+        <a [routerLink]="['/projects', projectId, 'overview']" class="rounded-md bg-blue-50 px-3 py-2 font-semibold text-blue-700">Overview</a>
+        <a [routerLink]="['/projects', projectId, 'datasets']" class="rounded-md px-3 py-2 font-semibold text-slate-600 hover:bg-slate-100">Datasets</a>
+        <a [routerLink]="['/projects', projectId, 'relationships']" class="rounded-md px-3 py-2 font-semibold text-slate-600 hover:bg-slate-100">Relationships</a>
+        <a [routerLink]="['/projects', projectId, 'schema-designer']" class="rounded-md px-3 py-2 font-semibold text-slate-600 hover:bg-slate-100">Schema Designer</a>
+        <a [routerLink]="['/projects', projectId, 'exports']" class="rounded-md px-3 py-2 font-semibold text-slate-600 hover:bg-slate-100">Exports</a>
+      </div>
+    </header>
+
+    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div class="space-y-5">
+        <article class="workspace-panel p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-semibold text-slate-950">Data Understanding</h2>
+              <p class="mt-1 text-sm text-slate-500">Coverage across analyzed datasets, generated schemas, and accepted links.</p>
+            </div>
+            <span class="badge-neutral">{{ analyzedPercent(data) }}% analyzed</span>
+          </div>
+          <div class="mt-5 grid gap-4 md:grid-cols-3">
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p class="section-title">Analyzed</p>
+              <p class="mt-2 text-2xl font-semibold text-slate-950">{{ data.analyzedDatasetsCount }} / {{ data.datasetsCount }}</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p class="section-title">Schemas</p>
+              <p class="mt-2 text-2xl font-semibold text-slate-950">{{ data.generatedSchemasCount }}</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p class="section-title">Accepted Relations</p>
+              <p class="mt-2 text-2xl font-semibold text-slate-950">{{ data.acceptedRelationshipsCount }}</p>
+            </div>
+          </div>
+          <div class="mt-5 h-2 overflow-hidden rounded-full bg-slate-200">
+            <div class="h-full rounded-full bg-blue-600" [style.width.%]="analyzedPercent(data)"></div>
+          </div>
+        </article>
+
+        <article class="workspace-panel overflow-hidden">
+          <div class="border-b border-slate-200 px-5 py-4">
+            <h2 class="text-lg font-semibold text-slate-950">Recent Datasets</h2>
+            <p class="mt-1 text-sm text-slate-500">Latest real uploads in this project workspace.</p>
+          </div>
+          <div class="table-wrap rounded-none border-0">
+            <table class="data-table">
+              <thead>
+                <tr><th>Dataset</th><th>Shape</th><th>Quality Signals</th><th>Status</th><th>Opened</th></tr>
+              </thead>
+              <tbody>
+                @for (dataset of data.recentDatasets; track dataset.id) {
+                  <tr>
+                    <td>
+                      <a [routerLink]="['/datasets', dataset.id, 'profile']" class="font-semibold text-slate-950 hover:text-blue-700">{{ dataset.tableName }}</a>
+                      <p class="mt-1 text-xs text-slate-500">#{{ dataset.id }} / {{ dataset.sourceName || dataset.sourceType }}</p>
+                    </td>
+                    <td>{{ dataset.rowCount }} rows / {{ dataset.columnCount }} columns</td>
+                    <td>{{ dataset.missingValuesCount }} missing / {{ dataset.duplicateRowsCount }} duplicates</td>
+                    <td><span [class]="dataset.status === 'Analyzed' ? 'badge-success' : 'badge-warning'">{{ dataset.status }}</span></td>
+                    <td class="text-sm text-slate-500">{{ dataset.createdAt | date:'short' }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="text-center text-slate-500">No datasets uploaded yet.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+
+      <aside class="space-y-5">
+        <article class="workspace-panel p-5">
+          <h2 class="text-lg font-semibold text-slate-950">Next Actions</h2>
+          <div class="mt-4 space-y-3">
+            @for (action of data.nextRecommendedActions; track action) {
+              <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-medium text-slate-700">{{ action }}</div>
+            } @empty {
+              <p class="text-sm text-slate-500">No recommended actions returned.</p>
+            }
+          </div>
+        </article>
+
+        <article class="workspace-panel p-5">
+          <h2 class="text-lg font-semibold text-slate-950">Relationship Queue</h2>
+          <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p class="text-slate-500">Suggested</p>
+              <p class="mt-1 text-2xl font-semibold text-slate-950">{{ data.relationshipSuggestionsCount }}</p>
+            </div>
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <p class="text-emerald-700">Accepted</p>
+              <p class="mt-1 text-2xl font-semibold text-emerald-950">{{ data.acceptedRelationshipsCount }}</p>
+            </div>
+          </div>
+          <a [routerLink]="['/projects', projectId, 'relationships']" class="btn-secondary mt-4 w-full">Review Queue</a>
+        </article>
       </aside>
     </div>
-
-    <div class="mt-5 grid gap-5 xl:grid-cols-2">
-      <article class="card p-5">
-        <h2 class="font-semibold">Relationship Discovery</h2>
-        <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <div class="rounded-xl bg-slate-50 p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Suggestions</p>
-            <p class="mt-1 text-2xl font-bold">{{ data.relationshipSuggestionsCount }}</p>
-          </div>
-          <div class="rounded-xl bg-slate-50 p-4">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Accepted</p>
-            <p class="mt-1 text-2xl font-bold">{{ data.acceptedRelationshipsCount }}</p>
-          </div>
-        </div>
-        <a [routerLink]="['/projects', projectId, 'relationships']" class="btn-secondary mt-4">Review Relationships</a>
-      </article>
-
-      <article class="card p-5">
-        <h2 class="font-semibold">Recent Datasets</h2>
-        <div class="mt-4 space-y-3">
-          @for (dataset of data.recentDatasets; track dataset.id) {
-            <a [routerLink]="['/datasets', dataset.id, 'profile']" class="block rounded-xl border border-slate-100 p-3 hover:border-indigo-200 hover:bg-indigo-50/30">
-              <div class="flex justify-between gap-3">
-                <div>
-                  <p class="font-semibold text-slate-900">#{{ dataset.id }} {{ dataset.tableName }}</p>
-                  <p class="mt-1 text-xs text-slate-500">{{ dataset.sourceName || dataset.sourceType }} / {{ dataset.createdAt | date:'short' }}</p>
-                </div>
-                <span [class]="dataset.status === 'Analyzed' ? 'badge-success' : 'badge-warning'">{{ dataset.status }}</span>
-              </div>
-            </a>
-          } @empty {
-            <p class="text-sm text-slate-500">No datasets uploaded yet.</p>
-          }
-        </div>
-      </article>
-    </div>
+  } @else {
+    <article class="card p-6 text-sm text-slate-500">No overview loaded.</article>
   }
 </section>

@@ -45,11 +45,10 @@ export class AppShellComponent {
   readonly schemaName = this.workflow.schemaName;
 
   readonly navItems: NavItem[] = [
-    { label: 'Projects', route: () => '/projects', enabled: () => true, icon: 'M3.75 6.75h5.19l1.06 1.5h10.25v9.75a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V6.75Z' },
     { label: 'Overview', route: () => this.projectId() ? `/projects/${this.projectId()}/overview` : null, enabled: () => this.projectId() !== null, icon: 'M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-5H4v5Z' },
     { label: 'Datasets', route: () => this.projectId() ? `/projects/${this.projectId()}/datasets` : null, enabled: () => this.projectId() !== null, icon: 'M4 6h16M4 12h16M4 18h16' },
-    { label: 'Data Explorer', route: () => this.datasetId() ? `/datasets/${this.datasetId()}/explorer` : null, enabled: () => this.datasetId() !== null, icon: 'M4 5h16v14H4zM4 10h16M10 5v14' },
-    { label: 'Profile Dashboard', route: () => this.datasetId() ? `/datasets/${this.datasetId()}/profile` : null, enabled: () => this.datasetId() !== null, icon: 'M4 19V5m0 14h16M8 16v-5m4 5V8m4 8v-7' },
+    { label: 'Explorer', route: () => this.datasetId() ? `/datasets/${this.datasetId()}/explorer` : null, enabled: () => this.datasetId() !== null, icon: 'M4 5h16v14H4zM4 10h16M10 5v14' },
+    { label: 'Profile', route: () => this.datasetId() ? `/datasets/${this.datasetId()}/profile` : null, enabled: () => this.datasetId() !== null, icon: 'M4 19V5m0 14h16M8 16v-5m4 5V8m4 8v-7' },
     { label: 'Relationships', route: () => this.projectId() ? `/projects/${this.projectId()}/relationships` : null, enabled: () => this.projectId() !== null, icon: 'M7 7h4v4H7zM13 13h4v4h-4zM11 9h3a3 3 0 0 1 3 3v1' },
     { label: 'Schema Designer', route: () => this.projectId() ? `/projects/${this.projectId()}/schema-designer` : null, enabled: () => this.projectId() !== null, icon: 'M5 5h6v6H5zM13 5h6v6h-6zM5 13h6v6H5zM13 13h6v6h-6z' },
     { label: 'ER Diagram', route: () => this.projectId() ? `/projects/${this.projectId()}/er-diagram` : null, enabled: () => this.projectId() !== null, icon: 'M6 7h5v4H6zM13 13h5v4h-5zM11 9h2a3 3 0 0 1 3 3v1' },
@@ -182,7 +181,7 @@ export class AppShellComponent {
     const state = this.stepState(step);
 
     if (state === 'current') {
-      return 'border-indigo-300 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100';
+      return 'border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100';
     }
 
     if (state === 'completed') {
@@ -193,7 +192,7 @@ export class AppShellComponent {
       return 'border-slate-200 bg-slate-50 text-slate-400';
     }
 
-    return 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/60';
+    return 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50/60';
   }
 
   nextActionLabel(): string {

@@ -17,7 +17,8 @@ import { WorkflowStateService } from '../../services/workflow-state.service';
 export class ProjectExportsComponent implements OnInit {
   readonly exportPackage = signal<ProjectExportPackage | null>(null);
   readonly loading = signal(false);
-  readonly copiedTarget = signal<'sql' | 'dbml' | null>(null);
+  readonly copiedTarget = signal<'sql' | 'dbml' | 'json' | 'relationships' | 'quality' | null>(null);
+  readonly activePreview = signal<'sql' | 'dbml' | 'json' | 'relationships' | 'quality'>('sql');
 
   projectId = 0;
   errorMessage = '';
@@ -59,7 +60,57 @@ export class ProjectExportsComponent implements OnInit {
     this.schemaExport.downloadText(fileName, content, mimeType);
   }
 
-  copy(content: string, target: 'sql' | 'dbml'): void {
+  previewText(exportPackage: ProjectExportPackage): string {
+    if (this.activePreview() === 'dbml') {
+      return exportPackage.dbml;
+    }
+
+    if (this.activePreview() === 'json') {
+      return exportPackage.jsonSchema;
+    }
+
+    if (this.activePreview() === 'relationships') {
+      return exportPackage.relationshipReportJson;
+    }
+
+    if (this.activePreview() === 'quality') {
+      return exportPackage.dataQualityReportJson;
+    }
+
+    return exportPackage.sql;
+  }
+
+  previewFileName(): string {
+    if (this.activePreview() === 'dbml') {
+      return 'schema.dbml';
+    }
+
+    if (this.activePreview() === 'json') {
+      return 'schema.json';
+    }
+
+    if (this.activePreview() === 'relationships') {
+      return 'relationship-report.json';
+    }
+
+    if (this.activePreview() === 'quality') {
+      return 'data-quality-report.json';
+    }
+
+    return 'schema.sql';
+  }
+
+  artifactCount(exportPackage: ProjectExportPackage): number {
+    return [
+      exportPackage.sql,
+      exportPackage.dbml,
+      exportPackage.jsonSchema,
+      exportPackage.relationshipReportJson,
+      exportPackage.dataQualityReportJson,
+    ].filter((content) => content.trim().length > 0).length;
+  }
+
+  copy(content: string, target: 'sql' | 'dbml' | 'json' | 'relationships' | 'quality'): void {
     navigator.clipboard.writeText(content)
       .then(() => {
         this.copiedTarget.set(target);

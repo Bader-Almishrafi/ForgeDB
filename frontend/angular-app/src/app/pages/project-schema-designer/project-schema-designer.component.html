@@ -1,70 +1,129 @@
-<section>
-  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div>
-      <p class="mb-3 text-sm text-slate-500">Projects / Schema Designer</p>
-      <h1 class="page-title">Project Schema Designer</h1>
-      <p class="page-subtitle">A project-level schema composed from all uploaded datasets and accepted relationships.</p>
+<section class="space-y-5">
+  <header class="workspace-panel overflow-hidden">
+    <div class="border-b border-slate-200 px-5 py-4">
+      <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div>
+          <p class="text-sm text-slate-500">Projects / Schema Designer</p>
+          <div class="mt-2 flex flex-wrap items-center gap-3">
+            <h1 class="page-title">{{ schema()?.projectName || 'Project Schema Designer' }}</h1>
+            @if (schema(); as data) {
+              <span class="badge-neutral">{{ data.status }}</span>
+              <span class="badge-neutral">{{ data.tables.length }} tables</span>
+              <span class="badge-success">{{ data.relationships.length }} relationships</span>
+            }
+          </div>
+          <p class="page-subtitle">Project-level schema board with detected columns, PK candidates, accepted relationships, and SQL/DBML/JSON previews.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn-secondary" (click)="loadSchema()" [disabled]="loading()">Refresh</button>
+          <a [routerLink]="['/projects', projectId, 'er-diagram']" class="btn-secondary">ER Diagram</a>
+          <button type="button" class="btn-primary" (click)="generateSchema()" [disabled]="generating()">
+            {{ generating() ? 'Generating...' : 'Generate Project Schema' }}
+          </button>
+        </div>
+      </div>
     </div>
-    <div class="flex flex-wrap gap-3">
-      <button type="button" class="btn-secondary" (click)="loadSchema()" [disabled]="loading()">Refresh</button>
-      <button type="button" class="btn-primary" (click)="generateSchema()" [disabled]="generating()">
-        {{ generating() ? 'Generating...' : 'Generate Project Schema' }}
-      </button>
-    </div>
-  </div>
+  </header>
 
   @if (errorMessage) {
-    <p class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
+    <p class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
   }
   @if (successMessage) {
-    <p class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
+    <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
   }
 
   @if (loading()) {
     <article class="card p-6 text-sm text-slate-500">Loading schema...</article>
   } @else if (schema(); as data) {
-    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-      <div class="space-y-5">
-        @for (table of data.tables; track table.datasetId) {
-          <article class="card overflow-hidden">
-            <div class="border-b border-slate-100 bg-slate-900 px-5 py-4 text-white">
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 class="font-semibold">{{ table.tableName }}</h2>
-                  <p class="text-xs text-slate-300">Dataset #{{ table.datasetId }} / {{ table.status }}</p>
-                </div>
-                <span class="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold">{{ table.columns.length }} columns</span>
-              </div>
-            </div>
-            <div class="table-wrap rounded-none border-0">
-              <table class="data-table">
-                <thead><tr><th>Column</th><th>SQL Type</th><th>Required</th><th>Key Candidate</th></tr></thead>
-                <tbody>
-                  @for (column of table.columns; track column.name) {
-                    <tr>
-                      <td class="font-medium">{{ column.name }}</td>
-                      <td>{{ column.sqlType }}</td>
-                      <td>{{ column.isNullable ? 'No' : 'Yes' }}</td>
-                      <td>{{ column.isPrimaryKeyCandidate ? 'Yes' : '-' }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </article>
-        } @empty {
-          <article class="card p-6 text-sm text-slate-500">No datasets available for schema generation.</article>
-        }
-      </div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <article class="metric-card">
+        <p class="section-title">Tables</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.tables.length }}</p>
+      </article>
+      <article class="metric-card">
+        <p class="section-title">Columns</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ totalColumns(data) }}</p>
+      </article>
+      <article class="metric-card">
+        <p class="section-title">PK Candidates</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ primaryKeyCandidateCount(data) }}</p>
+      </article>
+      <article class="metric-card">
+        <p class="section-title">Accepted FK Links</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.relationships.length }}</p>
+      </article>
+    </div>
 
-      <aside class="space-y-5">
-        <article class="card p-5">
-          <h2 class="font-semibold">Accepted Relationships</h2>
+    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_440px]">
+      <article class="workspace-panel overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-950">Schema Board</h2>
+            <p class="mt-1 text-sm text-slate-500">Tables are generated from project datasets and accepted relationships.</p>
+          </div>
+          <a [routerLink]="['/projects', projectId, 'relationships']" class="btn-secondary">Review Relationships</a>
+        </div>
+
+        <div class="grid-surface min-h-[640px] p-5">
+          <div class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+            @for (table of data.tables; track table.datasetId) {
+              <section class="overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm">
+                <div class="border-b border-slate-200 bg-slate-950 px-4 py-3 text-white">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <h3 class="truncate font-semibold">{{ table.tableName }}</h3>
+                      <p class="mt-1 text-xs text-slate-300">Dataset #{{ table.datasetId }} / {{ table.status }}</p>
+                    </div>
+                    <span class="rounded-full bg-white/10 px-2 py-1 text-[11px] font-semibold">{{ table.columns.length }} cols</span>
+                  </div>
+                </div>
+
+                <div class="border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-500">
+                  {{ table.primaryKeyCandidates.length }} PK candidates / {{ requiredColumnCount(table) }} required columns
+                </div>
+
+                <div class="max-h-[420px] overflow-auto scrollbar-thin">
+                  @for (column of table.columns; track column.name) {
+                    <div class="grid gap-2 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0">
+                      <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                          <p class="truncate font-semibold text-slate-950">{{ column.name }}</p>
+                          <p class="mt-0.5 truncate text-xs text-slate-500">{{ column.sourceColumnName }}</p>
+                        </div>
+                        <div class="flex shrink-0 flex-wrap justify-end gap-1">
+                          @if (column.isPrimaryKeyCandidate) {
+                            <span class="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700 ring-1 ring-amber-200">PK</span>
+                          }
+                          @if (!column.isNullable) {
+                            <span class="rounded-full bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 ring-1 ring-rose-200">REQ</span>
+                          }
+                        </div>
+                      </div>
+                      <div class="flex flex-wrap gap-2">
+                        <span class="rounded-full px-2 py-1 text-[11px] font-semibold ring-1" [ngClass]="columnTypeClass(column)">{{ column.detectedDataType }}</span>
+                        <span class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">{{ column.sqlType }}</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </section>
+            } @empty {
+              <div class="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
+                No datasets available for schema generation.
+              </div>
+            }
+          </div>
+        </div>
+      </article>
+
+      <aside class="space-y-5 xl:sticky xl:top-24 xl:self-start">
+        <article class="workspace-panel p-5">
+          <h2 class="text-lg font-semibold text-slate-950">Accepted Relationships</h2>
           <div class="mt-4 space-y-2">
             @for (relationship of data.relationships; track relationship.suggestionId) {
-              <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+              <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
                 <p class="break-words font-semibold text-emerald-950">{{ relationshipLabel(relationship) }}</p>
-                <p class="mt-1 text-xs text-emerald-700">Type: {{ relationship.relationshipType }}</p>
+                <p class="mt-1 text-xs text-emerald-700">{{ relationship.relationshipType }} / {{ relationship.confidence }}</p>
               </div>
             } @empty {
               <p class="text-sm text-slate-500">No accepted relationships yet.</p>
@@ -72,19 +131,21 @@
           </div>
         </article>
 
-        <article class="card overflow-hidden">
-          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-            <h2 class="font-semibold">Preview</h2>
+        <article class="workspace-panel overflow-hidden">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+            <h2 class="text-lg font-semibold text-slate-950">Preview</h2>
             <button type="button" class="btn-secondary py-2" (click)="copyPreview(data)">{{ copied() ? 'Copied' : 'Copy' }}</button>
           </div>
-          <div class="flex border-b border-slate-100 text-sm font-semibold">
-            <button type="button" class="flex-1 px-3 py-2" [class.text-indigo-600]="activePreview() === 'sql'" (click)="activePreview.set('sql')">SQL</button>
-            <button type="button" class="flex-1 px-3 py-2" [class.text-indigo-600]="activePreview() === 'dbml'" (click)="activePreview.set('dbml')">DBML</button>
-            <button type="button" class="flex-1 px-3 py-2" [class.text-indigo-600]="activePreview() === 'json'" (click)="activePreview.set('json')">JSON</button>
+          <div class="grid grid-cols-3 border-b border-slate-200 text-sm font-semibold">
+            <button type="button" class="px-3 py-2" [class.bg-slate-950]="activePreview() === 'sql'" [class.text-white]="activePreview() === 'sql'" (click)="activePreview.set('sql')">SQL</button>
+            <button type="button" class="px-3 py-2" [class.bg-slate-950]="activePreview() === 'dbml'" [class.text-white]="activePreview() === 'dbml'" (click)="activePreview.set('dbml')">DBML</button>
+            <button type="button" class="px-3 py-2" [class.bg-slate-950]="activePreview() === 'json'" [class.text-white]="activePreview() === 'json'" (click)="activePreview.set('json')">JSON</button>
           </div>
-          <pre class="max-h-[520px] overflow-auto bg-[#fbfcff] p-5 text-[12px] leading-5 text-slate-700"><code>{{ previewText(data) }}</code></pre>
+          <pre class="code-preview"><code>{{ previewText(data) }}</code></pre>
         </article>
       </aside>
     </div>
+  } @else {
+    <article class="card p-6 text-sm text-slate-500">No project schema loaded.</article>
   }
 </section>
