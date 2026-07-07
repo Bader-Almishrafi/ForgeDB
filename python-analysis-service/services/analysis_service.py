@@ -1,3 +1,10 @@
+"""Core dataset analysis logic for ForgeDB.
+
+This service is intentionally independent from FastAPI so it can be reused by
+multiple router endpoints and by helper services that need the same profiling
+results.
+"""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -17,7 +24,11 @@ from models.analysis_response import (
 
 
 class AnalysisService:
+    """Analyze rows, infer column metadata, and build lightweight suggestions."""
+
+    # Keep previews small so API responses stay readable for large datasets.
     sample_value_limit = 5
+    # Limit top categorical values to avoid large dashboard payloads.
     top_value_limit = 5
 
     def analyze(self, request: AnalyzeRequest) -> AnalyzeResponse:
