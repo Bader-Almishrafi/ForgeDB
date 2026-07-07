@@ -37,8 +37,6 @@ class AnalyzeColumnProfile(BaseModel):
 
 
 class RelationshipSuggestion(BaseModel):
-    """Potential relationship found from column naming patterns."""
-
     fromTable: str
     fromColumn: str
     toTable: str
@@ -48,8 +46,6 @@ class RelationshipSuggestion(BaseModel):
 
 
 class AnalyzeChartRecommendation(BaseModel):
-    """Chart suggestion derived from detected column types."""
-
     chartType: str
     title: str
     xColumn: str
@@ -58,8 +54,6 @@ class AnalyzeChartRecommendation(BaseModel):
 
 
 class AnalyzeResponse(BaseModel):
-    """Single-dataset analysis response used by the direct `/analyze` endpoint."""
-
     datasetId: int
     tableName: str
     rowCount: int
@@ -72,8 +66,6 @@ class AnalyzeResponse(BaseModel):
 
 
 class ColumnProfile(BaseModel):
-    """Column profile shape returned by project-level profiling endpoints."""
-
     columnName: str
     detectedDataType: str
     missingValuesCount: int
@@ -83,8 +75,6 @@ class ColumnProfile(BaseModel):
 
 
 class DatasetProfile(BaseModel):
-    """Dataset profile shown in dashboard and analysis screens."""
-
     datasetId: int
     tableName: str
     rowCount: int
@@ -95,15 +85,11 @@ class DatasetProfile(BaseModel):
 
 
 class ProfileAnalysisResponse(BaseModel):
-    """Project-level response containing profiles for all submitted datasets."""
-
     projectId: int
     datasets: list[DatasetProfile] = Field(default_factory=list)
 
 
 class RelationshipResponse(BaseModel):
-    """Relationship response format used by backend schema flows."""
-
     fromTable: str
     fromColumn: str
     toTable: str
@@ -112,15 +98,11 @@ class RelationshipResponse(BaseModel):
 
 
 class RelationshipsAnalysisResponse(BaseModel):
-    """Collection of relationship suggestions for a project."""
-
     projectId: int
     relationships: list[RelationshipResponse] = Field(default_factory=list)
 
 
 class FullAnalysisResponse(BaseModel):
-    """Combined response for the full analysis workflow endpoint."""
-
     projectId: int
     profile: dict[str, Any] = Field(default_factory=dict)
     relationships: list[RelationshipResponse] = Field(default_factory=list)
