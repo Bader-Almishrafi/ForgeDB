@@ -129,3 +129,73 @@ rule), revision-conflict test proving delete-column removes its relationships.
    project-level schema/suggestion code.
 7. Frontend: DTOs + service + 4 component `.ts` rewires (no `.html` changes).
 8. Build/migrate/test run; manual API checklist against the running stack; final report.
+
+---
+
+# Phase 2 — Fully Editable Schema Designer — Implementation Plan
+
+## Current Schema Designer component structure (before Phase 2)
+
+`project-schema-designer.component.ts` (see Phase 1 §"Rewire") is currently **read-only plus
+generate**: it loads a `ProjectSchema` view-model (mapped from `DesignModelResponse` via
+`design-view-model.ts`) and a project-level SQL/DBML/JSON preview fetched once on load/generate.
+There is no per-table/column editing, no relationship CRUD, no validation display beyond what
+the mapped view-model happens to carry (nothing — `mapDesignToProjectSchema` doesn't even surface
+`validationIssues`), and no revision/concurrency handling at all in the component. The template
+(`project-schema-designer.component.html`) renders a single scrollable grid of read-only table
+cards plus a preview pane with SQL/DBML/JSON tabs — no left table list, no selection, no forms.
+
+Existing reusable CSS (from `styles.css`, all Tailwind `@apply` component classes, no other
+CSS framework in the repo): `.card`, `.workspace-panel`, `.page-title`, `.page-subtitle`,
+`.section-title`, `.btn-primary` / `.btn-secondary` / `.btn-ghost`, `.badge-success` /
+`.badge-warning` / `.badge-danger` / `.badge-neutral`, `.input-field`, `.table-wrap` /
+`.data-table`, `.metric-card`, `.code-preview`, `.grid-surface`, `.scrollbar-thin`. No dialog/
+modal/confirm component exists anywhere in the app (`window.confirm()` is the only option
+without adding a library, so that's what deletions use).
+
+## Gaps found in the Phase 1 API relevant to Phase 2
+
+- Column reordering: no dedicated endpoint, but `UpdateDesignColumnRequest` already carries
+  `ordinal`, so an up/down swap is just two sequential `PATCH design-columns/{id}` calls (one
+  per swapped column). **No new backend endpoint needed** — the sanctioned
+  `POST .../columns/reorder` carve-out in the prompt is not used.
+- `ValidationIssueDto` doesn't set `TableId` on the two relationship-body-only rules
+  (`fk-type-mismatch`, `relationship-endpoint-missing`) — only `RelationshipId`. Backend changes
+  are out of scope this phase, so `DesignStateService.issuesForTable()` closes this gap
+  client-side by also matching issues whose `relationshipId` belongs to a relationship touching
+  the table (see `relationshipsForTable()`).
+- Nothing else was missing: every mutation the page needs (table/column/relationship CRUD,
+  preview, validation-via-the-design-response) already exists from Phase 1.
+
+## What changes
+
+New files:
+- `services/design-state.service.ts` + `.spec.ts` — done (committed). Single owner of
+  design snapshot + revision; all mutations, optimistic update + rollback, 409/428 → conflict,
+  debounced (500ms) preview refresh strictly after each successful mutation.
+- `services/identifier-sanitizer.ts` + `.spec.ts` — done (committed). Mirrors
+  `SqlIdentifiers.cs` + `DatasetHeuristics.NormalizeIdentifier` for the "Rename to sanitized"
+  validation fix.
+- `pages/project-schema-designer/table-list-panel/` — left panel: table rows with name, column
+  count, validation badge (red/amber via `tableBadgeSeverity()`), add-table.
+- `pages/project-schema-designer/table-editor-panel/` — center: table header (inline name/
+  comment), column grid (inline name, SQL-type control, nullable/PK/unique toggles, up/down
+  reorder, delete), add-column, embeds the relationships panel for the selected table.
+- `pages/project-schema-designer/column-type-select/` — curated Postgres type list + "Advanced…"
+  free-text fallback.
+- `pages/project-schema-designer/relationships-panel/` — relationships touching the selected
+  table: list + create/edit/delete forms.
+- `pages/project-schema-designer/preview-panel/` — SQL|DBML tabs, read-only, revision indicator,
+  reads `DesignStateService.previewSql/previewDbml/revision` directly.
+- `pages/project-schema-designer/issues-drawer/` — all validation issues, click → navigate/
+  highlight in the page.
+
+Changed:
+- `project-schema-designer.component.ts` / `.html` — becomes the master-detail shell: owns
+  page-navigation-only state (`selectedTableId`, `highlightedElementId`, drawer open/closed),
+  the empty-state "Generate design" action, and the 409-conflict / error banners; everything
+  else is read from `DesignStateService` by the child components directly (injected, not
+  prop-drilled) to honor "no component keeps its own revision copy."
+
+No backend changes. No changes to the ER Diagram page, project-relationships page, charts,
+profile pages, or the Python service.

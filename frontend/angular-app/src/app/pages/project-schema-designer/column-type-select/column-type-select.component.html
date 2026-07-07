@@ -1,0 +1,27 @@
+<div class="space-y-1.5">
+  <select
+    class="input-field"
+    [value]="selectValue()"
+    [disabled]="disabled()"
+    (change)="onSelectChange($event)"
+  >
+    @for (option of curatedTypes; track option) {
+      <option [value]="option">{{ option }}</option>
+    }
+    <option [value]="advancedOption">{{ advancedOption }}</option>
+  </select>
+
+  @if (isAdvanced()) {
+    <input
+      type="text"
+      class="input-field"
+      [value]="draftValue()"
+      [disabled]="disabled()"
+      placeholder="Custom SQL type"
+      (input)="onDraftInput($event)"
+      (blur)="commitDraft()"
+      (keydown.enter)="commitDraft()"
+      (keydown.escape)="revertDraft()"
+    >
+  }
+</div>

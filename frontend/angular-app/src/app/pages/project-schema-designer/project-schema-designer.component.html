@@ -5,147 +5,79 @@
         <div>
           <p class="text-sm text-slate-500">Projects / Schema Designer</p>
           <div class="mt-2 flex flex-wrap items-center gap-3">
-            <h1 class="page-title">{{ schema()?.projectName || 'Project Schema Designer' }}</h1>
-            @if (schema(); as data) {
-              <span class="badge-neutral">{{ data.status }}</span>
-              <span class="badge-neutral">{{ data.tables.length }} tables</span>
-              <span class="badge-success">{{ data.relationships.length }} relationships</span>
+            <h1 class="page-title">{{ projectName() || 'Project Schema Designer' }}</h1>
+            @if (hasDesign()) {
+              <span class="badge-neutral">{{ tableCount() }} tables</span>
+              <span class="badge-neutral">{{ columnCount() }} columns</span>
+              <span class="badge-success">{{ relationshipCount() }} relationships</span>
+              @if (issueCount() > 0) {
+                <button type="button" class="badge-warning" (click)="issuesDrawerOpen.set(true)">{{ issueCount() }} issues</button>
+              }
             }
           </div>
-          <p class="page-subtitle">Project-level schema board with detected columns, PK candidates, accepted relationships, and SQL/DBML/JSON previews.</p>
+          <p class="page-subtitle">Edit tables, columns, and relationships directly — every change saves to the server and updates the live SQL/DBML preview.</p>
         </div>
         <div class="flex flex-wrap gap-2">
-          <button type="button" class="btn-secondary" (click)="loadSchema()" [disabled]="loading()">Refresh</button>
+          <a [routerLink]="['/projects', projectId, 'relationships']" class="btn-secondary">Relationships</a>
           <a [routerLink]="['/projects', projectId, 'er-diagram']" class="btn-secondary">ER Diagram</a>
-          <button type="button" class="btn-primary" (click)="generateSchema()" [disabled]="generating()">
-            {{ generating() ? 'Generating...' : 'Generate Project Schema' }}
-          </button>
+          @if (hasDesign()) {
+            <button type="button" class="btn-secondary" (click)="generateDesign()" [disabled]="generating()">
+              {{ generating() ? 'Syncing...' : 'Sync new datasets' }}
+            </button>
+          }
         </div>
       </div>
     </div>
   </header>
 
-  @if (errorMessage) {
-    <p class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
+  @if (conflict()) {
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+      <span>This design changed elsewhere — reload to continue editing.</span>
+      <button type="button" class="btn-primary py-2" (click)="reload()">Reload</button>
+    </div>
   }
-  @if (successMessage) {
-    <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
+  @if (error(); as message) {
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+      <span>{{ message }}</span>
+      <button type="button" class="btn-ghost py-1 text-rose-700 hover:bg-rose-100" (click)="dismissError()">Dismiss</button>
+    </div>
   }
 
   @if (loading()) {
     <article class="card p-6 text-sm text-slate-500">Loading schema...</article>
-  } @else if (schema(); as data) {
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <article class="metric-card">
-        <p class="section-title">Tables</p>
-        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.tables.length }}</p>
-      </article>
-      <article class="metric-card">
-        <p class="section-title">Columns</p>
-        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ totalColumns(data) }}</p>
-      </article>
-      <article class="metric-card">
-        <p class="section-title">PK Candidates</p>
-        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ primaryKeyCandidateCount(data) }}</p>
-      </article>
-      <article class="metric-card">
-        <p class="section-title">Accepted FK Links</p>
-        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ data.relationships.length }}</p>
-      </article>
-    </div>
-
-    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_440px]">
-      <article class="workspace-panel overflow-hidden">
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <div>
-            <h2 class="text-lg font-semibold text-slate-950">Schema Board</h2>
-            <p class="mt-1 text-sm text-slate-500">Tables are generated from project datasets and accepted relationships.</p>
-          </div>
-          <a [routerLink]="['/projects', projectId, 'relationships']" class="btn-secondary">Review Relationships</a>
-        </div>
-
-        <div class="grid-surface min-h-[640px] p-5">
-          <div class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-            @for (table of data.tables; track table.datasetId) {
-              <section class="overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm">
-                <div class="border-b border-slate-200 bg-slate-950 px-4 py-3 text-white">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                      <h3 class="truncate font-semibold">{{ table.tableName }}</h3>
-                      <p class="mt-1 text-xs text-slate-300">Dataset #{{ table.datasetId }} / {{ table.status }}</p>
-                    </div>
-                    <span class="rounded-full bg-white/10 px-2 py-1 text-[11px] font-semibold">{{ table.columns.length }} cols</span>
-                  </div>
-                </div>
-
-                <div class="border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-500">
-                  {{ table.primaryKeyCandidates.length }} PK candidates / {{ requiredColumnCount(table) }} required columns
-                </div>
-
-                <div class="max-h-[420px] overflow-auto scrollbar-thin">
-                  @for (column of table.columns; track column.name) {
-                    <div class="grid gap-2 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0">
-                      <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                          <p class="truncate font-semibold text-slate-950">{{ column.name }}</p>
-                          <p class="mt-0.5 truncate text-xs text-slate-500">{{ column.sourceColumnName }}</p>
-                        </div>
-                        <div class="flex shrink-0 flex-wrap justify-end gap-1">
-                          @if (column.isPrimaryKeyCandidate) {
-                            <span class="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700 ring-1 ring-amber-200">PK</span>
-                          }
-                          @if (!column.isNullable) {
-                            <span class="rounded-full bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 ring-1 ring-rose-200">REQ</span>
-                          }
-                        </div>
-                      </div>
-                      <div class="flex flex-wrap gap-2">
-                        <span class="rounded-full px-2 py-1 text-[11px] font-semibold ring-1" [ngClass]="columnTypeClass(column)">{{ column.detectedDataType }}</span>
-                        <span class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200">{{ column.sqlType }}</span>
-                      </div>
-                    </div>
-                  }
-                </div>
-              </section>
-            } @empty {
-              <div class="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
-                No datasets available for schema generation.
-              </div>
-            }
-          </div>
-        </div>
-      </article>
-
-      <aside class="space-y-5 xl:sticky xl:top-24 xl:self-start">
-        <article class="workspace-panel p-5">
-          <h2 class="text-lg font-semibold text-slate-950">Accepted Relationships</h2>
-          <div class="mt-4 space-y-2">
-            @for (relationship of data.relationships; track relationship.suggestionId) {
-              <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                <p class="break-words font-semibold text-emerald-950">{{ relationshipLabel(relationship) }}</p>
-                <p class="mt-1 text-xs text-emerald-700">{{ relationship.relationshipType }} / {{ relationship.confidence }}</p>
-              </div>
-            } @empty {
-              <p class="text-sm text-slate-500">No accepted relationships yet.</p>
-            }
-          </div>
-        </article>
-
-        <article class="workspace-panel overflow-hidden">
-          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-            <h2 class="text-lg font-semibold text-slate-950">Preview</h2>
-            <button type="button" class="btn-secondary py-2" (click)="copyPreview(data)">{{ copied() ? 'Copied' : 'Copy' }}</button>
-          </div>
-          <div class="grid grid-cols-3 border-b border-slate-200 text-sm font-semibold">
-            <button type="button" class="px-3 py-2" [class.bg-slate-950]="activePreview() === 'sql'" [class.text-white]="activePreview() === 'sql'" (click)="activePreview.set('sql')">SQL</button>
-            <button type="button" class="px-3 py-2" [class.bg-slate-950]="activePreview() === 'dbml'" [class.text-white]="activePreview() === 'dbml'" (click)="activePreview.set('dbml')">DBML</button>
-            <button type="button" class="px-3 py-2" [class.bg-slate-950]="activePreview() === 'json'" [class.text-white]="activePreview() === 'json'" (click)="activePreview.set('json')">JSON</button>
-          </div>
-          <pre class="code-preview"><code>{{ previewText(data) }}</code></pre>
-        </article>
-      </aside>
-    </div>
+  } @else if (!hasDesign()) {
+    <article class="card space-y-4 p-10 text-center">
+      <h2 class="text-lg font-semibold text-slate-950">No design yet</h2>
+      <p class="mx-auto max-w-md text-sm text-slate-500">Generate a design from this project's datasets to start editing tables, columns, and relationships.</p>
+      <button type="button" class="btn-primary mx-auto" (click)="generateDesign()" [disabled]="generating()">
+        {{ generating() ? 'Generating...' : 'Generate design from datasets' }}
+      </button>
+    </article>
   } @else {
-    <article class="card p-6 text-sm text-slate-500">No project schema loaded.</article>
+    <div class="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)_420px]">
+      <app-table-list-panel
+        [selectedTableId]="selectedTableId()"
+        (selectTable)="onSelectTable($event)"
+        (tableAdded)="onTableAdded($event)"
+      />
+
+      @if (selectedTableId(); as tableId) {
+        <app-table-editor-panel
+          [tableId]="tableId"
+          [highlightedColumnId]="highlightedColumnId()"
+          (tableDeleted)="onTableDeleted($event)"
+        />
+      } @else {
+        <article class="card p-6 text-sm text-slate-500">Select a table on the left to edit it, or add a new one.</article>
+      }
+
+      <app-preview-panel (openIssues)="issuesDrawerOpen.set(true)" />
+    </div>
   }
+
+  <app-issues-drawer
+    [open]="issuesDrawerOpen()"
+    (closeDrawer)="issuesDrawerOpen.set(false)"
+    (navigateToIssue)="onNavigateToIssue($event)"
+  />
 </section>
