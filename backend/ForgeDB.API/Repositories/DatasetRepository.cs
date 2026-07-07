@@ -74,6 +74,29 @@ public class DatasetRepository : IDatasetRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Dataset>> GetByProjectIdWithColumnsAsync(int projectId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Datasets
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(dataset => dataset.Columns.OrderBy(column => column.Id))
+            .Where(dataset => dataset.ProjectId == projectId)
+            .OrderBy(dataset => dataset.Id)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Dataset>> GetByProjectIdWithRowsAndColumnsAsync(int projectId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Datasets
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(dataset => dataset.Columns.OrderBy(column => column.Id))
+            .Include(dataset => dataset.Rows.OrderBy(row => row.RowNumber).ThenBy(row => row.Id))
+            .Where(dataset => dataset.ProjectId == projectId)
+            .OrderBy(dataset => dataset.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Dataset dataset, CancellationToken cancellationToken = default)
     {
         await _context.Datasets.AddAsync(dataset, cancellationToken);
