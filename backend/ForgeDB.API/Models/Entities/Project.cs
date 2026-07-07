@@ -13,4 +13,6 @@ public class Project
     public ICollection<Dataset> Datasets { get; set; } = new List<Dataset>();
     public ICollection<DatabaseSchema> DatabaseSchemas { get; set; } = new List<DatabaseSchema>();
     public ICollection<DatabaseDeployment> DatabaseDeployments { get; set; } = new List<DatabaseDeployment>();
+    public DesignModel? Design { get; set; }
+    public ICollection<RelationshipSuggestion> RelationshipSuggestions { get; set; } = new List<RelationshipSuggestion>();
 }
