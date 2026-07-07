@@ -299,6 +299,140 @@ export interface ProjectSchemaColumn {
   isPrimaryKeyCandidate: boolean;
 }
 
+export interface ValidationIssue {
+  code: string;
+  severity: 'error' | 'warning' | string;
+  message: string;
+  tableId?: number | null;
+  columnId?: number | null;
+  relationshipId?: number | null;
+}
+
+export interface DesignColumn {
+  id: number;
+  name: string;
+  sqlType: string;
+  isNullable: boolean;
+  isPrimaryKey: boolean;
+  isUnique: boolean;
+  ordinal: number;
+  sourceColumnName?: string | null;
+  origin: string;
+}
+
+export interface DesignTable {
+  id: number;
+  name: string;
+  comment?: string | null;
+  sourceDatasetId?: number | null;
+  origin: string;
+  columns: DesignColumn[];
+}
+
+export interface DesignRelationship {
+  id: number;
+  fromColumnId: number;
+  fromTableId: number;
+  fromTableName: string;
+  fromColumnName: string;
+  toColumnId: number;
+  toTableId: number;
+  toTableName: string;
+  toColumnName: string;
+  cardinality: 'many-to-one' | 'one-to-one' | string;
+  onDelete: 'no-action' | 'cascade' | 'set-null' | string;
+  origin: string;
+  suggestionId?: number | null;
+}
+
+export interface DesignModelResponse {
+  id: number;
+  projectId: number;
+  revision: number;
+  layout: unknown | null;
+  createdAt: string;
+  updatedAt: string;
+  tables: DesignTable[];
+  relationships: DesignRelationship[];
+  validationIssues: ValidationIssue[];
+}
+
+export interface GenerateDesignRequest {
+  mode: 'merge' | 'replace';
+}
+
+export interface CreateDesignTableRequest {
+  name: string;
+  comment?: string | null;
+}
+
+export interface UpdateDesignTableRequest {
+  name: string;
+  comment?: string | null;
+}
+
+export interface CreateDesignColumnRequest {
+  name: string;
+  sqlType: string;
+  isNullable: boolean;
+  isPrimaryKey: boolean;
+  isUnique: boolean;
+  ordinal: number;
+  sourceColumnName?: string | null;
+}
+
+export interface UpdateDesignColumnRequest {
+  name: string;
+  sqlType: string;
+  isNullable: boolean;
+  isPrimaryKey: boolean;
+  isUnique: boolean;
+  ordinal: number;
+}
+
+export interface CreateDesignRelationshipRequest {
+  fromColumnId: number;
+  toColumnId: number;
+  cardinality: string;
+  onDelete: string;
+}
+
+export interface UpdateDesignRelationshipRequest {
+  cardinality: string;
+  onDelete: string;
+}
+
+export interface UpdateDesignLayoutRequest {
+  layout: unknown | null;
+}
+
+export interface RelationshipSuggestion {
+  id: number;
+  projectId: number;
+  sourceDatasetId: number;
+  sourceTableName: string;
+  sourceColumnName: string;
+  targetDatasetId: number;
+  targetTableName: string;
+  targetColumnName: string;
+  score: number;
+  evidenceJson?: string | null;
+  status: 'suggested' | 'accepted' | 'rejected' | string;
+  decidedAt?: string | null;
+  createdAt: string;
+}
+
+export interface AcceptSuggestionResponse {
+  suggestion: RelationshipSuggestion;
+  relationship: DesignRelationship;
+  designRevision: number;
+}
+
+export interface DesignConflictError {
+  currentRevision: number;
+  message: string;
+}
+
 export interface ProjectExportPackage {
   projectId: number;
   projectName: string;
