@@ -36,8 +36,6 @@ class ColumnInput(BaseModel):
 
 
 class AnalyzeRequest(BaseModel):
-    """Payload for analyzing one dataset table."""
-
     datasetId: int = Field(gt=0)
     tableName: str
     columns: list[ColumnInput] = Field(default_factory=list)
@@ -46,7 +44,6 @@ class AnalyzeRequest(BaseModel):
     @field_validator("tableName")
     @classmethod
     def table_name_is_required(cls, value: str) -> str:
-        """Trim table names and reject blank values."""
         if not value or not value.strip():
             raise ValueError("Table name is required.")
 
@@ -54,7 +51,6 @@ class AnalyzeRequest(BaseModel):
 
     @model_validator(mode="after")
     def columns_are_valid(self) -> "AnalyzeRequest":
-        """Ensure each dataset has at least one uniquely named column."""
         if not self.columns:
             raise ValueError("At least one column is required.")
 
@@ -70,15 +66,12 @@ class AnalyzeRequest(BaseModel):
 
 
 class DatasetInput(BaseModel):
-    """Dataset wrapper used by project-level analysis endpoints."""
-
     datasetId: int
     tableName: str
     columns: list[str | ColumnInput] = Field(default_factory=list)
     rows: list[dict[str, Any]] = Field(default_factory=list)
 
     def to_analyze_request(self) -> AnalyzeRequest:
-        """Convert project-level dataset data into the single-dataset request shape."""
         columns = [
             column if isinstance(column, ColumnInput) else ColumnInput(name=column)
             for column in self.columns
@@ -93,15 +86,11 @@ class DatasetInput(BaseModel):
 
 
 class AnalysisRequest(BaseModel):
-    """Request body for endpoints that process multiple project datasets."""
-
     projectId: int
     datasets: list[DatasetInput] = Field(default_factory=list)
 
 
 class RelationshipInput(BaseModel):
-    """Relationship selected or supplied before schema generation."""
-
     fromTable: str
     fromColumn: str
     toTable: str
@@ -110,13 +99,9 @@ class RelationshipInput(BaseModel):
 
 
 class SchemaGenerationRequest(AnalysisRequest):
-    """Extends project analysis data with schema generation settings."""
-
     schemaName: str
     relationships: list[RelationshipInput] = Field(default_factory=list)
 
 
 class FullAnalysisRequest(AnalysisRequest):
-    """Runs profiling, relationship detection, schema generation, and charts."""
-
     schemaName: str
