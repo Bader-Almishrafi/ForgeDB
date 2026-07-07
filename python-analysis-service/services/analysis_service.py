@@ -32,6 +32,7 @@ class AnalysisService:
     top_value_limit = 5
 
     def analyze(self, request: AnalyzeRequest) -> AnalyzeResponse:
+        """Build the complete analysis response for one dataset."""
         column_profiles = [self._profile_column(column, request.rows) for column in request.columns]
 
         return AnalyzeResponse(
@@ -47,11 +48,14 @@ class AnalysisService:
         )
 
     def _profile_column(self, column: ColumnInput, rows: list[dict[str, Any]]) -> AnalyzeColumnProfile:
+        """Calculate type, completeness, uniqueness, samples, and optional stats."""
         raw_values = [row.get(column.name) for row in rows]
+        # Missing values are excluded from type inference and uniqueness checks.
         present_values = [value for value in raw_values if not self._is_missing(value)]
         detected_type = self._detect_type(present_values, column.dataType)
         normalized_values = [self._normalize_value(value) for value in present_values]
         unique_values = set(normalized_values)
+        # dict.fromkeys preserves order while removing repeated preview values.
         sample_values = list(dict.fromkeys(normalized_values))[: self.sample_value_limit]
 
         numeric_stats = self._numeric_stats(present_values) if detected_type in {"integer", "decimal"} else None
