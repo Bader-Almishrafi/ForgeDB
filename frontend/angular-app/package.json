@@ -26,8 +26,10 @@
     "@tailwindcss/postcss": "^4.1.0",
     "@types/jest": "^30.0.0",
     "@types/mocha": "^10.0.10",
+    "jsdom": "^29.1.1",
     "postcss": "^8.5.0",
     "tailwindcss": "^4.1.0",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.10"
   }
 }
