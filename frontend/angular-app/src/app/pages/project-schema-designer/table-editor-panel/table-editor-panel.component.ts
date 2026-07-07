@@ -36,15 +36,13 @@ export class TableEditorPanelComponent {
   /** Table-level issues only (no columnId) — column-specific issues are rendered per row. */
   readonly tableIssues = computed(() => this.designState.issuesForTable(this.tableId()).filter((issue) => issue.columnId == null));
 
-  /** Mirrors the Issues Drawer's own gate for the "Add id column" one-click fix, duplicated here
-   * so this panel works independently of whether the drawer is open. */
-  readonly canAddIdColumn = computed(() => {
-    const tableId = this.tableId();
-    return (
-      this.designState.tableBadgeSeverity(tableId) === 'error' &&
-      this.designState.issuesForTable(tableId).some((issue) => issue.code === 'table-without-primary-key')
-    );
-  });
+  /** Mirrors the Issues Drawer's own gate for the "Add id column" one-click fix (that fix applies
+   * whenever the issue is present, regardless of the table's overall badge severity — a missing
+   * primary key is warning-severity on its own), duplicated here so this panel works
+   * independently of whether the drawer is open. */
+  readonly canAddIdColumn = computed(() =>
+    this.designState.issuesForTable(this.tableId()).some((issue) => issue.code === 'table-without-primary-key'),
+  );
 
   /** Key of the field currently saving, shown as "Saving…". */
   readonly savingField = signal<string | null>(null);
