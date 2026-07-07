@@ -1,20 +1,32 @@
+"""Response models returned by the Python analysis service.
+
+The fields here mirror what the ASP.NET Core backend expects to store or show
+in the ForgeDB dashboard, schema review, and relationship screens.
+"""
+
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
 class NumericStats(BaseModel):
+    """Basic numeric summary for integer and decimal columns."""
+
     min: int | float
     max: int | float
     average: int | float
 
 
 class TopValueSummary(BaseModel):
+    """Most frequent value summary used for categorical columns."""
+
     value: Any
     count: int
 
 
 class AnalyzeColumnProfile(BaseModel):
+    """Complete profiling result for a single dataset column."""
+
     name: str
     detectedType: str
     missingCount: int
