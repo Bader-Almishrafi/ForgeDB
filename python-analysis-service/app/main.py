@@ -25,5 +25,5 @@ async def health() -> dict[str, str]:
 async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
     return analysis_service.analyze(request)
 
-
+# Register legacy analysis routes used by the backend API.
 app.include_router(legacy_analysis_router)
