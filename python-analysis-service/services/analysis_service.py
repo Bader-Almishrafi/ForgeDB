@@ -72,11 +72,9 @@ class AnalysisService:
         )
 
     def _detect_type(self, values: list[Any], requested_type: str | None = None) -> str:
-        """Infer a simple ForgeDB data type from non-missing values."""
         if not values:
             return self._normalize_declared_type(requested_type) or "string"
 
-        # Integer is checked before decimal so whole numbers keep the narrower type.
         if all(self._can_parse_integer(value) for value in values):
             return "integer"
 
@@ -92,7 +90,6 @@ class AnalysisService:
         return self._normalize_declared_type(requested_type) or "string"
 
     def _numeric_stats(self, values: list[Any]) -> NumericStats | None:
-        """Calculate min, max, and average for numeric-looking values."""
         numbers = [Decimal(str(value).strip()) for value in values if self._can_parse_decimal(value)]
         if not numbers:
             return None
@@ -106,7 +103,6 @@ class AnalysisService:
         )
 
     def _top_values(self, values: list[Any]) -> list[TopValueSummary]:
-        """Return the most common categorical values for chart previews."""
         counts = Counter(values)
 
         return [
