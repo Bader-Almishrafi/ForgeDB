@@ -1,9 +1,3 @@
-"""API router for the analysis workflow endpoints.
-
-These routes expose smaller workflow steps and one combined full-analysis route
-so the backend can call only the stage it needs.
-"""
-
 from fastapi import APIRouter
 
 from models.analysis_request import AnalysisRequest, FullAnalysisRequest, SchemaGenerationRequest
@@ -17,7 +11,6 @@ from services.relationship_detector_service import RelationshipDetectorService
 
 router = APIRouter(prefix="/api/analysis", tags=["analysis"])
 
-# Services are kept at module scope because they are stateless and inexpensive.
 data_profiler_service = DataProfilerService()
 relationship_detector_service = RelationshipDetectorService()
 dbml_generator_service = DbmlGeneratorService()
