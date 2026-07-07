@@ -26,26 +26,31 @@ chart_recommendation_service = ChartRecommendationService()
 
 @router.post("/profile", response_model=ProfileAnalysisResponse)
 async def profile(request: AnalysisRequest) -> ProfileAnalysisResponse:
+    """Profile datasets and return row, column, missing-value, and duplicate counts."""
     return data_profiler_service.profile_datasets(request)
 
 
 @router.post("/relationships", response_model=RelationshipsAnalysisResponse)
 async def relationships(request: AnalysisRequest) -> RelationshipsAnalysisResponse:
+    """Detect relationship candidates from submitted dataset metadata."""
     return relationship_detector_service.detect_relationships(request)
 
 
 @router.post("/generate-schema", response_model=SchemaResponse)
 async def generate_schema(request: SchemaGenerationRequest) -> SchemaResponse:
+    """Generate schema artifacts after relationships are confirmed."""
     return dbml_generator_service.generate_schema(request)
 
 
 @router.post("/recommend-charts", response_model=ChartRecommendationResponse)
 async def recommend_charts(request: AnalysisRequest) -> ChartRecommendationResponse:
+    """Recommend dashboard charts from detected data types and column profiles."""
     return chart_recommendation_service.recommend_charts(request)
 
 
 @router.post("/full-analysis", response_model=FullAnalysisResponse)
 async def full_analysis(request: FullAnalysisRequest) -> FullAnalysisResponse:
+    """Run the complete analysis pipeline in a single request."""
     profile_response = data_profiler_service.profile_datasets(request)
     relationships_response = relationship_detector_service.detect_relationships(request)
     schema_response = dbml_generator_service.generate_schema(
