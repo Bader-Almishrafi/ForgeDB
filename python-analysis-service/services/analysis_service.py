@@ -115,14 +115,12 @@ class AnalysisService:
         ]
 
     def _suggest_relationships(self, table_name: str, columns: list[ColumnInput]) -> list[RelationshipSuggestion]:
-        """Suggest relationships from common identifier naming conventions."""
         suggestions: list[RelationshipSuggestion] = []
 
         for column in columns:
             name = column.name.strip()
             lower_name = name.lower()
 
-            # A plain id column is treated as a possible primary-key style field.
             if lower_name == "id":
                 suggestions.append(
                     RelationshipSuggestion(
@@ -136,7 +134,6 @@ class AnalysisService:
                 )
                 continue
 
-            # Columns like customer_id usually point to the id column of another table.
             if lower_name.endswith("_id") and len(lower_name) > 3:
                 entity_name = lower_name[:-3]
                 suggestions.append(
@@ -166,7 +163,6 @@ class AnalysisService:
         return suggestions
 
     def _recommend_charts(self, columns: list[AnalyzeColumnProfile]) -> list[AnalyzeChartRecommendation]:
-        """Choose basic chart ideas from detected column types."""
         recommendations: list[AnalyzeChartRecommendation] = []
         numeric_columns = [column for column in columns if column.detectedType in {"integer", "decimal"}]
         text_columns = [column for column in columns if column.detectedType == "string"]
