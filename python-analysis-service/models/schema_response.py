@@ -1,13 +1,9 @@
-"""Schema generation response model for DBML, JSON schema, and SQL output."""
-
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
 class SchemaResponse(BaseModel):
-    """Generated schema output returned to the ASP.NET Core backend."""
-
     projectId: int
     schemaName: str
     dbmlContent: str
