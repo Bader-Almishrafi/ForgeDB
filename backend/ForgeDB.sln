@@ -1,8 +1,10 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForgeDB.API", "ForgeDB.API\ForgeDB.API.csproj", "{8F73C7B2-0A1F-4F17-9AC6-1A0F3C6B2A11}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForgeDB.API.Tests", "ForgeDB.API.Tests\ForgeDB.API.Tests.csproj", "{1DAF45F2-D179-4C6D-AF42-D138109D592C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,5 +16,9 @@ Global
 		{8F73C7B2-0A1F-4F17-9AC6-1A0F3C6B2A11}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8F73C7B2-0A1F-4F17-9AC6-1A0F3C6B2A11}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8F73C7B2-0A1F-4F17-9AC6-1A0F3C6B2A11}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1DAF45F2-D179-4C6D-AF42-D138109D592C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1DAF45F2-D179-4C6D-AF42-D138109D592C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1DAF45F2-D179-4C6D-AF42-D138109D592C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1DAF45F2-D179-4C6D-AF42-D138109D592C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
