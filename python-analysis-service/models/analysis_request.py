@@ -1,10 +1,3 @@
-"""Request models accepted by the Python analysis endpoints.
-
-These Pydantic models define the contract between the ASP.NET Core backend
-and the Python service. They validate incoming dataset metadata before any
-profiling, relationship detection, or schema generation starts.
-"""
-
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
