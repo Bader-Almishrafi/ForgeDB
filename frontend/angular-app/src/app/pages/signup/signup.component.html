@@ -9,7 +9,7 @@
       <label>
         <span class="mb-2 block text-sm font-semibold text-slate-800">Full Name</span>
         <input type="text" name="fullName" [(ngModel)]="fullName" #nameInput="ngModel" class="input-field"
-          placeholder="John Doe" required>
+          placeholder="Ahmed" required>
         @if (nameInput.invalid && (nameInput.dirty || nameInput.touched)) {
           <p class="mt-1 text-xs font-semibold text-rose-600">Full name is required.</p>
         }
