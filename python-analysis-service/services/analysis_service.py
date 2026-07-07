@@ -220,6 +220,7 @@ class AnalysisService:
         return recommendations
 
     def _count_duplicate_rows(self, rows: list[dict[str, Any]], columns: list[ColumnInput]) -> int:
+        """Count rows that repeat the same normalized values across all columns."""
         seen_rows: set[tuple[Any, ...]] = set()
         duplicate_count = 0
 
@@ -234,10 +235,12 @@ class AnalysisService:
 
     @staticmethod
     def _is_missing(value: Any) -> bool:
+        """Treat None and blank strings as missing dataset values."""
         return value is None or (isinstance(value, str) and not value.strip())
 
     @staticmethod
     def _normalize_value(value: Any) -> Any:
+        """Normalize string values before comparison and preview output."""
         if isinstance(value, str):
             return value.strip()
 
@@ -245,6 +248,7 @@ class AnalysisService:
 
     @staticmethod
     def _normalize_declared_type(value: str | None) -> str | None:
+        """Map incoming type aliases to ForgeDB canonical type names."""
         if value is None:
             return None
 
@@ -305,6 +309,7 @@ class AnalysisService:
 
     @staticmethod
     def _decimal_to_number(value: Decimal) -> float | int:
+        """Return an int when possible so JSON output stays clean."""
         if value == value.to_integral_value():
             return int(value)
 
@@ -312,6 +317,7 @@ class AnalysisService:
 
     @staticmethod
     def _pluralize(value: str) -> str:
+        """Use a lightweight plural form for relationship table guesses."""
         if value.endswith("y") and len(value) > 1:
             return f"{value[:-1]}ies"
 
