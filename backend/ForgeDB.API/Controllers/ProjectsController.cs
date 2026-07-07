@@ -1,4 +1,5 @@
 using ForgeDB.API.Models.DTOs;
+using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -76,97 +77,6 @@ public class ProjectsController : ControllerBase
         }
     }
 
-    [HttpGet("{projectId:int}/relationships/suggestions")]
-    public async Task<ActionResult<IEnumerable<ProjectRelationshipSuggestionDto>>> GetRelationshipSuggestions(int projectId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return Ok(await _projectService.GetRelationshipSuggestionsAsync(projectId, cancellationToken));
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
-        catch (KeyNotFoundException exception)
-        {
-            return NotFound(new { message = exception.Message });
-        }
-    }
-
-    [HttpPost("{projectId:int}/relationships/accept")]
-    public async Task<ActionResult<IEnumerable<ProjectRelationshipSuggestionDto>>> AcceptRelationship(
-        int projectId,
-        ProjectRelationshipDecisionDto request,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            return Ok(await _projectService.AcceptRelationshipAsync(projectId, request, cancellationToken));
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
-        catch (KeyNotFoundException exception)
-        {
-            return NotFound(new { message = exception.Message });
-        }
-    }
-
-    [HttpPost("{projectId:int}/relationships/reject")]
-    public async Task<ActionResult<IEnumerable<ProjectRelationshipSuggestionDto>>> RejectRelationship(
-        int projectId,
-        ProjectRelationshipDecisionDto request,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            return Ok(await _projectService.RejectRelationshipAsync(projectId, request, cancellationToken));
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
-        catch (KeyNotFoundException exception)
-        {
-            return NotFound(new { message = exception.Message });
-        }
-    }
-
-    [HttpGet("{projectId:int}/schema")]
-    public async Task<ActionResult<ProjectSchemaDto>> GetProjectSchema(int projectId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return Ok(await _projectService.GetProjectSchemaAsync(projectId, cancellationToken));
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
-        catch (KeyNotFoundException exception)
-        {
-            return NotFound(new { message = exception.Message });
-        }
-    }
-
-    [HttpPost("{projectId:int}/schema/generate")]
-    public async Task<ActionResult<ProjectSchemaDto>> GenerateProjectSchema(int projectId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return Ok(await _projectService.GenerateProjectSchemaAsync(projectId, cancellationToken));
-        }
-        catch (ArgumentException exception)
-        {
-            return BadRequest(new { message = exception.Message });
-        }
-        catch (KeyNotFoundException exception)
-        {
-            return NotFound(new { message = exception.Message });
-        }
-    }
-
     [HttpGet("{projectId:int}/exports/package")]
     public async Task<ActionResult<ProjectExportPackageDto>> GetExportPackage(int projectId, CancellationToken cancellationToken)
     {
@@ -181,6 +91,10 @@ public class ProjectsController : ControllerBase
         catch (KeyNotFoundException exception)
         {
             return NotFound(new { message = exception.Message });
+        }
+        catch (DesignValidationFailedException exception)
+        {
+            return UnprocessableEntity(new { message = exception.Message, issues = exception.Issues });
         }
     }
 }

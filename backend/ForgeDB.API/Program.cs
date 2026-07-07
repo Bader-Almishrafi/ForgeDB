@@ -3,7 +3,9 @@ using ForgeDB.API.Data;
 using ForgeDB.API.Repositories;
 using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services;
+using ForgeDB.API.Services.Generators;
 using ForgeDB.API.Services.Interfaces;
+using ForgeDB.API.Services.Validation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -39,6 +41,14 @@ builder.Services.AddScoped<IDatasetImportService, DatasetImportService>();
 builder.Services.AddScoped<ISchemaService, SchemaService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IDeploymentService, DeploymentService>();
+builder.Services.AddScoped<IDesignService, DesignService>();
+builder.Services.AddScoped<IRelationshipDetectionService, RelationshipDetectionService>();
+builder.Services.AddSingleton<IDesignValidationService, DesignValidationService>();
+builder.Services.AddSingleton<IDesignSchemaGenerator, SqlSchemaGenerator>();
+builder.Services.AddSingleton<IDesignSchemaGenerator, DbmlGenerator>();
+builder.Services.AddSingleton<IDesignSchemaGenerator, JsonSchemaGenerator>();
+builder.Services.AddSingleton<IDesignSchemaGeneratorResolver, DesignSchemaGeneratorResolver>();
+builder.Services.AddHostedService<LegacySuggestionBackfillService>();
 builder.Services.AddHttpClient<IPythonAnalysisClient, PythonAnalysisClient>(client =>
 {
 	var baseUrl = builder.Configuration["PythonAnalysis:BaseUrl"];
@@ -58,6 +68,8 @@ builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IDatasetRepository, DatasetRepository>();
 builder.Services.AddScoped<ISchemaRepository, SchemaRepository>();
 builder.Services.AddScoped<IDeploymentRepository, DeploymentRepository>();
+builder.Services.AddScoped<IDesignRepository, DesignRepository>();
+builder.Services.AddScoped<IRelationshipSuggestionRepository, RelationshipSuggestionRepository>();
 builder.Services.AddScoped<IPasswordHasher<ForgeDB.API.Models.Entities.User>, PasswordHasher<ForgeDB.API.Models.Entities.User>>();
 
 var jwtKey = builder.Configuration["Jwt:Key"];
