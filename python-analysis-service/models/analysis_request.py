@@ -11,12 +11,15 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class ColumnInput(BaseModel):
+    """Metadata for one source column sent by the backend."""
+
     name: str
     dataType: str | None = None
 
     @field_validator("name")
     @classmethod
     def name_is_required(cls, value: str) -> str:
+        """Reject empty column names before analysis runs."""
         if not value or not value.strip():
             raise ValueError("Column name is required.")
 
@@ -25,6 +28,7 @@ class ColumnInput(BaseModel):
     @field_validator("dataType")
     @classmethod
     def data_type_is_normalized(cls, value: str | None) -> str | None:
+        """Normalize optional backend-provided data type hints."""
         if value is None or not value.strip():
             return None
 
