@@ -39,7 +39,9 @@ describe('DesignStateService', () => {
     getDesign: ReturnType<typeof vi.fn>;
     getPreview: ReturnType<typeof vi.fn>;
     updateTable: ReturnType<typeof vi.fn>;
+    updateColumn: ReturnType<typeof vi.fn>;
     generateDesign: ReturnType<typeof vi.fn>;
+    reorderColumns: ReturnType<typeof vi.fn>;
     isRevisionConflict: (err: unknown) => boolean;
   };
   let service: DesignStateService;
@@ -50,7 +52,9 @@ describe('DesignStateService', () => {
       getDesign: vi.fn(() => of(makeDesign())),
       getPreview: vi.fn(() => of('')),
       updateTable: vi.fn(),
+      updateColumn: vi.fn(),
       generateDesign: vi.fn(() => of(makeDesign())),
+      reorderColumns: vi.fn(() => of(makeDesign({ revision: 2 }))),
       isRevisionConflict: (err: unknown) => typeof err === 'object' && err !== null && (err as { status?: number }).status === 409,
     };
     service = new DesignStateService(api as unknown as DesignApiService);
@@ -163,6 +167,32 @@ describe('DesignStateService', () => {
 
     expect(service.conflict()).toBe(true);
     expect(service.revision()).toBe(1); // unchanged
+  });
+
+  it('moveColumn() sends the full reordered column-id list via reorderColumns(), not sequential PATCHes', () => {
+    const twoColumnDesign = makeDesign({
+      tables: [
+        {
+          id: 100,
+          name: 'orders',
+          comment: null,
+          sourceDatasetId: 5,
+          origin: 'generated',
+          columns: [
+            { id: 200, name: 'id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: true, isUnique: true, ordinal: 0, sourceColumnName: 'id', origin: 'generated' },
+            { id: 201, name: 'total', sqlType: 'NUMERIC', isNullable: false, isPrimaryKey: false, isUnique: false, ordinal: 1, sourceColumnName: 'total', origin: 'generated' },
+          ],
+        },
+      ],
+    });
+    api.getDesign.mockReturnValue(of(twoColumnDesign));
+    service.loadForProject(10).subscribe();
+
+    service.moveColumn(100, 201, 'up').subscribe();
+
+    expect(api.reorderColumns).toHaveBeenCalledWith(100, 1, [201, 200]);
+    expect(api.updateColumn).not.toHaveBeenCalled();
+    expect(service.revision()).toBe(2);
   });
 
   it('never fetches a preview until after the mutation that motivated it has committed', () => {

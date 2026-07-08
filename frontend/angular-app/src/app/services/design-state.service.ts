@@ -265,8 +265,9 @@ export class DesignStateService {
     );
   }
 
-  /** Up/down column reordering via two sequential ordinal PATCHes on the existing column
-   * endpoint — no new backend endpoint needed for single-step swaps. */
+  /** Up/down column reordering via the atomic reorder endpoint: sends the table's complete
+   * column-id order in one request, applied server-side in a single transaction with a single
+   * revision bump — not two sequential ordinal PATCHes each racing its own revision check. */
   moveColumn(tableId: number, columnId: number, direction: 'up' | 'down'): Observable<DesignModelResponse> {
     const columns = this.columnsForTable(tableId);
     const index = columns.findIndex((column) => column.id === columnId);
@@ -277,12 +278,10 @@ export class DesignStateService {
       return current ? of(current) : throwError(() => new Error('No design loaded.'));
     }
 
-    const a = columns[index];
-    const b = columns[swapIndex];
+    const reorderedIds = columns.map((column) => column.id);
+    [reorderedIds[index], reorderedIds[swapIndex]] = [reorderedIds[swapIndex], reorderedIds[index]];
 
-    return this.updateColumn(a.id, { ordinal: b.ordinal }).pipe(
-      concatMap(() => this.updateColumn(b.id, { ordinal: a.ordinal })),
-    );
+    return this.applyMutation(null, (revision) => this.designApi.reorderColumns(tableId, revision, reorderedIds));
   }
 
   // ---- relationships ----

@@ -256,6 +256,36 @@ public class DesignService : IDesignService
         return await SaveAndBuildResponseAsync(design, cancellationToken);
     }
 
+    public async Task<DesignResponseDto> ReorderColumnsAsync(int tableId, int ifMatchRevision, ReorderDesignColumnsRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var designModelId = await _designRepository.FindDesignModelIdByTableIdAsync(tableId, cancellationToken)
+            ?? throw new KeyNotFoundException("Design table not found.");
+        var design = await LoadTrackedAsync(designModelId, cancellationToken);
+        CheckRevision(design, ifMatchRevision);
+
+        var table = design.Tables.FirstOrDefault(t => t.Id == tableId)
+            ?? throw new KeyNotFoundException("Design table not found.");
+
+        var requestedIds = request.ColumnIds ?? new List<int>();
+        var existingIds = table.Columns.Select(column => column.Id).ToHashSet();
+
+        // "Set equality" means exactly the existing columns, each exactly once: the count check
+        // catches a padded/short list (e.g. a duplicated id) that SetEquals alone would miss
+        // because it only compares distinct elements.
+        if (requestedIds.Count != existingIds.Count || !existingIds.SetEquals(requestedIds))
+        {
+            throw new ArgumentException("columnIds must contain exactly the existing columns of this table, each exactly once.");
+        }
+
+        for (var index = 0; index < requestedIds.Count; index++)
+        {
+            var column = table.Columns.First(c => c.Id == requestedIds[index]);
+            column.Ordinal = index;
+        }
+
+        return await SaveAndBuildResponseAsync(design, cancellationToken);
+    }
+
     public async Task<DesignResponseDto> CreateRelationshipAsync(int designId, int ifMatchRevision, CreateDesignRelationshipRequestDto request, CancellationToken cancellationToken = default)
     {
         ValidateCardinality(request.Cardinality);

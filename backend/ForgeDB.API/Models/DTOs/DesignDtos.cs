@@ -127,3 +127,8 @@ public class UpdateDesignLayoutRequestDto
 {
     public JsonElement? Layout { get; set; }
 }
+
+public class ReorderDesignColumnsRequestDto
+{
+    public List<int> ColumnIds { get; set; } = new();
+}

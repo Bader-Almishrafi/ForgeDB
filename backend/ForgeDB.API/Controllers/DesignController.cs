@@ -131,6 +131,12 @@ public class DesignController : ControllerBase
         return WithIfMatch(revision => _designService.DeleteColumnAsync(columnId, revision, cancellationToken));
     }
 
+    [HttpPost("design-tables/{tableId:int}/columns/reorder")]
+    public Task<ActionResult<DesignResponseDto>> ReorderColumns(int tableId, ReorderDesignColumnsRequestDto request, CancellationToken cancellationToken)
+    {
+        return WithIfMatch(revision => _designService.ReorderColumnsAsync(tableId, revision, request, cancellationToken));
+    }
+
     [HttpPost("designs/{designId:int}/relationships")]
     public Task<ActionResult<DesignResponseDto>> CreateRelationship(int designId, CreateDesignRelationshipRequestDto request, CancellationToken cancellationToken)
     {

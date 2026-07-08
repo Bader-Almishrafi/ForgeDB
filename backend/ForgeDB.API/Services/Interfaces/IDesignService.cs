@@ -28,6 +28,7 @@ public interface IDesignService
     Task<DesignResponseDto> CreateColumnAsync(int tableId, int ifMatchRevision, CreateDesignColumnRequestDto request, CancellationToken cancellationToken = default);
     Task<DesignResponseDto> UpdateColumnAsync(int columnId, int ifMatchRevision, UpdateDesignColumnRequestDto request, CancellationToken cancellationToken = default);
     Task<DesignResponseDto> DeleteColumnAsync(int columnId, int ifMatchRevision, CancellationToken cancellationToken = default);
+    Task<DesignResponseDto> ReorderColumnsAsync(int tableId, int ifMatchRevision, ReorderDesignColumnsRequestDto request, CancellationToken cancellationToken = default);
 
     Task<DesignResponseDto> CreateRelationshipAsync(int designId, int ifMatchRevision, CreateDesignRelationshipRequestDto request, CancellationToken cancellationToken = default);
     Task<DesignResponseDto> UpdateRelationshipAsync(int relationshipId, int ifMatchRevision, UpdateDesignRelationshipRequestDto request, CancellationToken cancellationToken = default);

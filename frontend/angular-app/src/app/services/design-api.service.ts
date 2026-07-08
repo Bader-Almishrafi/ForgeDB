@@ -91,6 +91,17 @@ export class DesignApiService {
     });
   }
 
+  /** `columnIds` must be the complete ordered list of the table's column ids (server validates
+   * set equality with the existing columns). Applies every ordinal in one transaction with a
+   * single revision bump, replacing what used to be two sequential updateColumn PATCHes. */
+  reorderColumns(tableId: number, revision: number, columnIds: number[]): Observable<DesignModelResponse> {
+    return this.http.post<DesignModelResponse>(
+      `${this.baseUrl}/api/design-tables/${tableId}/columns/reorder`,
+      { columnIds },
+      { headers: this.ifMatch(revision) },
+    );
+  }
+
   createRelationship(designId: number, revision: number, request: CreateDesignRelationshipRequest): Observable<DesignModelResponse> {
     return this.http.post<DesignModelResponse>(`${this.baseUrl}/api/designs/${designId}/relationships`, request, {
       headers: this.ifMatch(revision),
