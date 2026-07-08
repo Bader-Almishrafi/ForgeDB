@@ -223,8 +223,11 @@ export class ProjectRelationshipsComponent implements OnInit {
     const status = (error as { status?: number } | null)?.status;
 
     if (status === 409 || status === 428) {
-      this.errorMessage = 'This design changed elsewhere. The queue has been refreshed — review it and try again.';
+      // loadSuggestions() clears errorMessage synchronously as soon as it's called (before its
+      // HTTP response arrives), so it must run first — otherwise it immediately wipes out the
+      // conflict message this method is trying to show.
       this.loadSuggestions();
+      this.errorMessage = 'This design changed elsewhere. The queue has been refreshed — review it and try again.';
 
       if (this.designState.design()?.projectId === this.projectId) {
         this.designState.reload().subscribe();
