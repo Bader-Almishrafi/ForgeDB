@@ -30,7 +30,6 @@ public class ProjectRepository : IProjectRepository
                 .ThenInclude(dataset => dataset.Columns.OrderBy(column => column.Id))
             .Include(project => project.Datasets.OrderByDescending(dataset => dataset.CreatedAt))
                 .ThenInclude(dataset => dataset.Rows.OrderBy(row => row.RowNumber).ThenBy(row => row.Id))
-            .Include(project => project.DatabaseSchemas.OrderByDescending(schema => schema.CreatedAt))
             .FirstOrDefaultAsync(project => project.Id == projectId, cancellationToken);
     }
 

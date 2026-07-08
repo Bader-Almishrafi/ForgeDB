@@ -38,9 +38,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IDatasetImportService, DatasetImportService>();
-builder.Services.AddScoped<ISchemaService, SchemaService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
-builder.Services.AddScoped<IDeploymentService, DeploymentService>();
 builder.Services.AddScoped<IDesignService, DesignService>();
 builder.Services.AddScoped<IRelationshipDetectionService, RelationshipDetectionService>();
 builder.Services.AddSingleton<IDesignValidationService, DesignValidationService>();
@@ -66,8 +64,6 @@ builder.Services.AddHttpClient<IPythonAnalysisClient, PythonAnalysisClient>(clie
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IDatasetRepository, DatasetRepository>();
-builder.Services.AddScoped<ISchemaRepository, SchemaRepository>();
-builder.Services.AddScoped<IDeploymentRepository, DeploymentRepository>();
 builder.Services.AddScoped<IDesignRepository, DesignRepository>();
 builder.Services.AddScoped<IRelationshipSuggestionRepository, RelationshipSuggestionRepository>();
 builder.Services.AddScoped<IPasswordHasher<ForgeDB.API.Models.Entities.User>, PasswordHasher<ForgeDB.API.Models.Entities.User>>();

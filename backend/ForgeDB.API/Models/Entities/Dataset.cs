@@ -19,5 +19,4 @@ public class Dataset
     public Project? Project { get; set; }
     public ICollection<DatasetColumn> Columns { get; set; } = new List<DatasetColumn>();
     public ICollection<DatasetRow> Rows { get; set; } = new List<DatasetRow>();
-    public ICollection<DatabaseSchema> DatabaseSchemas { get; set; } = new List<DatabaseSchema>();
 }

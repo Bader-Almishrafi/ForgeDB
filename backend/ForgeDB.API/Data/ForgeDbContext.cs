@@ -15,8 +15,6 @@ public class ForgeDbContext : DbContext
     public DbSet<Dataset> Datasets => Set<Dataset>();
     public DbSet<DatasetColumn> DatasetColumns => Set<DatasetColumn>();
     public DbSet<DatasetRow> DatasetRows => Set<DatasetRow>();
-    public DbSet<DatabaseSchema> DatabaseSchemas => Set<DatabaseSchema>();
-    public DbSet<DatabaseDeployment> DatabaseDeployments => Set<DatabaseDeployment>();
     public DbSet<DesignModel> DesignModels => Set<DesignModel>();
     public DbSet<DesignTable> DesignTables => Set<DesignTable>();
     public DbSet<DesignColumn> DesignColumns => Set<DesignColumn>();
@@ -49,16 +47,6 @@ public class ForgeDbContext : DbContext
                 .WithOne(dataset => dataset.Project)
                 .HasForeignKey(dataset => dataset.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasMany(project => project.DatabaseSchemas)
-                .WithOne(schema => schema.Project)
-                .HasForeignKey(schema => schema.ProjectId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasMany(project => project.DatabaseDeployments)
-                .WithOne(deployment => deployment.Project)
-                .HasForeignKey(deployment => deployment.ProjectId)
-                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Dataset>(entity =>
@@ -76,11 +64,6 @@ public class ForgeDbContext : DbContext
                 .WithOne(row => row.Dataset)
                 .HasForeignKey(row => row.DatasetId)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasMany(dataset => dataset.DatabaseSchemas)
-                .WithOne(schema => schema.Dataset)
-                .HasForeignKey(schema => schema.DatasetId)
-                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<DatasetColumn>(entity =>
@@ -95,25 +78,6 @@ public class ForgeDbContext : DbContext
             entity.ToTable("dataset_rows");
             entity.HasKey(row => row.Id);
             entity.Property(row => row.RowData).HasColumnType("jsonb");
-        });
-
-        modelBuilder.Entity<DatabaseSchema>(entity =>
-        {
-            entity.ToTable("database_schemas");
-            entity.HasKey(schema => schema.Id);
-            entity.Property(schema => schema.SchemaJson).HasColumnType("jsonb");
-            entity.Property(schema => schema.RelationshipsJson).HasColumnType("jsonb");
-
-            entity.HasMany(schema => schema.Deployments)
-                .WithOne(deployment => deployment.Schema)
-                .HasForeignKey(deployment => deployment.SchemaId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<DatabaseDeployment>(entity =>
-        {
-            entity.ToTable("database_deployments");
-            entity.HasKey(deployment => deployment.Id);
         });
 
         modelBuilder.Entity<DesignModel>(entity =>
