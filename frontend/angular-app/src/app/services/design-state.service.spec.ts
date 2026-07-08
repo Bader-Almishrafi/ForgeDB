@@ -39,6 +39,7 @@ describe('DesignStateService', () => {
     getDesign: ReturnType<typeof vi.fn>;
     getPreview: ReturnType<typeof vi.fn>;
     updateTable: ReturnType<typeof vi.fn>;
+    generateDesign: ReturnType<typeof vi.fn>;
     isRevisionConflict: (err: unknown) => boolean;
   };
   let service: DesignStateService;
@@ -49,6 +50,7 @@ describe('DesignStateService', () => {
       getDesign: vi.fn(() => of(makeDesign())),
       getPreview: vi.fn(() => of('')),
       updateTable: vi.fn(),
+      generateDesign: vi.fn(() => of(makeDesign())),
       isRevisionConflict: (err: unknown) => typeof err === 'object' && err !== null && (err as { status?: number }).status === 409,
     };
     service = new DesignStateService(api as unknown as DesignApiService);
@@ -131,6 +133,36 @@ describe('DesignStateService', () => {
     expect(service.conflict()).toBe(true);
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
+  });
+
+  it('generate() sends If-Match with the held revision once a design is loaded', () => {
+    service.loadForProject(10).subscribe();
+    api.generateDesign.mockReturnValue(of(makeDesign({ revision: 2 })));
+
+    service.generate('merge').subscribe();
+
+    expect(api.generateDesign).toHaveBeenCalledWith(10, 'merge', 1);
+    expect(service.revision()).toBe(2);
+  });
+
+  it('generate() sends no revision for the empty-state call (no design loaded yet)', () => {
+    api.getDesign.mockReturnValue(throwError(() => ({ status: 404 })));
+    service.loadForProject(10).subscribe();
+    expect(service.design()).toBeNull();
+
+    service.generate('merge').subscribe();
+
+    expect(api.generateDesign).toHaveBeenCalledWith(10, 'merge', undefined);
+  });
+
+  it('generate() treats a 409 the same as any other mutation conflict, not a silent retry', () => {
+    service.loadForProject(10).subscribe();
+    api.generateDesign.mockReturnValue(throwError(() => conflictError(5)));
+
+    service.generate('merge').subscribe({ error: () => undefined });
+
+    expect(service.conflict()).toBe(true);
+    expect(service.revision()).toBe(1); // unchanged
   });
 
   it('never fetches a preview until after the mutation that motivated it has committed', () => {

@@ -137,22 +137,36 @@ export class DesignStateService {
     return this.loadForProject(this.projectId);
   }
 
+  /** Sends If-Match with the currently-held revision whenever a design is already loaded; the
+   * only bare (precondition-free) call is the empty-state "Generate design", where no design
+   * exists yet and there is no revision to send (backend decision D2). */
   generate(mode: 'merge' | 'replace' = 'merge'): Observable<DesignModelResponse> {
     if (this.projectId == null) {
       return throwError(() => new Error('No project selected.'));
     }
 
+    if (this.conflictSignal()) {
+      return throwError(() => new Error('Design has a pending conflict; reload before making further changes.'));
+    }
+
+    const current = this.designSignal();
+
     this.loadingSignal.set(true);
     this.errorSignal.set(null);
 
-    return this.designApi.generateDesign(this.projectId, mode).pipe(
+    return this.designApi.generateDesign(this.projectId, mode, current?.revision).pipe(
       tap((response) => {
         this.designSignal.set(response);
         this.conflictSignal.set(false);
         this.previewTrigger$.next();
       }),
       catchError((err: unknown) => {
-        this.errorSignal.set(this.extractMessage(err));
+        if (this.isPreconditionRequired(err) || this.designApi.isRevisionConflict(err)) {
+          this.conflictSignal.set(true);
+        } else {
+          this.errorSignal.set(this.extractMessage(err));
+        }
+
         return throwError(() => err);
       }),
       finalize(() => this.loadingSignal.set(false)),

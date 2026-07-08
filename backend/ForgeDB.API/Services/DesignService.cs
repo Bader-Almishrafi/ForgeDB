@@ -35,7 +35,7 @@ public class DesignService : IDesignService
         return design is null ? null : BuildResponse(design);
     }
 
-    public async Task<DesignResponseDto> GenerateAsync(int projectId, GenerateDesignRequestDto request, CancellationToken cancellationToken = default)
+    public async Task<DesignResponseDto> GenerateAsync(int projectId, GenerateDesignRequestDto request, int? ifMatchRevision, CancellationToken cancellationToken = default)
     {
         var mode = NormalizeMode(request.Mode);
 
@@ -49,6 +49,9 @@ public class DesignService : IDesignService
 
         if (design is null)
         {
+            // Fresh create has nothing to compare a revision against, so it is the one generate
+            // case allowed with no precondition at all (prompt FIX 2 / decision D2). Any If-Match
+            // header the caller sent is ignored.
             var now = DateTime.UtcNow;
             design = new DesignModel
             {
@@ -66,6 +69,15 @@ public class DesignService : IDesignService
             return BuildResponse(reloaded);
         }
 
+        // A DesignModel already exists: regenerating over it is a mutation like any other and
+        // requires If-Match, for both merge and replace modes (prompt FIX 2 / decision D2).
+        if (ifMatchRevision is null)
+        {
+            throw new DesignPreconditionRequiredException();
+        }
+
+        CheckRevision(design, ifMatchRevision.Value);
+
         if (mode == "replace")
         {
             ReplaceGeneratedEntities(design);
@@ -73,13 +85,7 @@ public class DesignService : IDesignService
 
         ApplyGeneration(design, datasets);
 
-        // Generate is not gated by If-Match (see prompt §4: it is listed separately from the
-        // "Mutate (all require If-Match)" group) but still atomically bumps the revision.
-        design.Revision += 1;
-        design.UpdatedAt = DateTime.UtcNow;
-        await _designRepository.SaveChangesAsync(cancellationToken);
-
-        return BuildResponse(design);
+        return await SaveAndBuildResponseAsync(design, cancellationToken);
     }
 
     public async Task<string> PreviewAsync(int designId, string format, CancellationToken cancellationToken = default)

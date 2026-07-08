@@ -30,8 +30,18 @@ export class DesignApiService {
     return this.http.get<DesignModelResponse>(`${this.baseUrl}/api/projects/${projectId}/design`);
   }
 
-  generateDesign(projectId: number, mode: 'merge' | 'replace' = 'merge'): Observable<DesignModelResponse> {
-    return this.http.post<DesignModelResponse>(`${this.baseUrl}/api/projects/${projectId}/design/generate`, { mode });
+  /**
+   * `revision` should be omitted only for the empty-state case (no design exists yet for this
+   * project, so there is nothing to send as If-Match). Whenever a design is already loaded, pass
+   * its revision so the request carries If-Match like every other mutation — the backend requires
+   * it once a DesignModel exists (missing -> 428, stale -> 409 with `currentRevision`).
+   */
+  generateDesign(projectId: number, mode: 'merge' | 'replace' = 'merge', revision?: number): Observable<DesignModelResponse> {
+    return this.http.post<DesignModelResponse>(
+      `${this.baseUrl}/api/projects/${projectId}/design/generate`,
+      { mode },
+      revision != null ? { headers: this.ifMatch(revision) } : {},
+    );
   }
 
   getPreview(designId: number, format: 'sql' | 'dbml' | 'json'): Observable<string> {

@@ -26,9 +26,25 @@ public class DesignController : ControllerBase
     [HttpPost("projects/{projectId:int}/design/generate")]
     public async Task<ActionResult<DesignResponseDto>> Generate(int projectId, GenerateDesignRequestDto? request, CancellationToken cancellationToken)
     {
+        // Unlike every other mutating endpoint, If-Match here is conditional: required only when
+        // a DesignModel already exists (checked inside the service, atomically with the rest of
+        // the operation). A fresh create has no revision to compare against, so a missing/absent
+        // header is not an error in that case.
+        int? ifMatchRevision = null;
+        if (Request.Headers.TryGetValue("If-Match", out var values) && !string.IsNullOrWhiteSpace(values.FirstOrDefault()))
+        {
+            var raw = values.First()!.Trim().Trim('"');
+            if (!int.TryParse(raw, out var parsedRevision))
+            {
+                return BadRequest(new { message = "If-Match header must be an integer revision." });
+            }
+
+            ifMatchRevision = parsedRevision;
+        }
+
         try
         {
-            return Ok(await _designService.GenerateAsync(projectId, request ?? new GenerateDesignRequestDto(), cancellationToken));
+            return Ok(await _designService.GenerateAsync(projectId, request ?? new GenerateDesignRequestDto(), ifMatchRevision, cancellationToken));
         }
         catch (ArgumentException exception)
         {
@@ -37,6 +53,14 @@ public class DesignController : ControllerBase
         catch (KeyNotFoundException exception)
         {
             return NotFound(new { message = exception.Message });
+        }
+        catch (DesignPreconditionRequiredException exception)
+        {
+            return StatusCode(StatusCodes.Status428PreconditionRequired, new { message = exception.Message });
+        }
+        catch (DesignConcurrencyException exception)
+        {
+            return Conflict(new ConflictResponseDto { CurrentRevision = exception.CurrentRevision, Message = exception.Message });
         }
     }
 

@@ -16,7 +16,7 @@ public class DesignExportArtifacts
 public interface IDesignService
 {
     Task<DesignResponseDto?> GetByProjectIdAsync(int projectId, CancellationToken cancellationToken = default);
-    Task<DesignResponseDto> GenerateAsync(int projectId, GenerateDesignRequestDto request, CancellationToken cancellationToken = default);
+    Task<DesignResponseDto> GenerateAsync(int projectId, GenerateDesignRequestDto request, int? ifMatchRevision, CancellationToken cancellationToken = default);
     Task<string> PreviewAsync(int designId, string format, CancellationToken cancellationToken = default);
     Task<List<ValidationIssueDto>> GetValidationAsync(int designId, CancellationToken cancellationToken = default);
     Task<DesignExportArtifacts?> PrepareExportArtifactsAsync(int projectId, CancellationToken cancellationToken = default);
