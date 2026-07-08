@@ -81,7 +81,9 @@ public class RelationshipDetectionService : IRelationshipDetectionService
 
             if (existing is null)
             {
-                await _suggestionRepository.AddAsync(new RelationshipSuggestion
+                // Tracked, not saved — every candidate in this loop commits together in the single
+                // SaveChangesAsync below instead of one round trip/transaction per suggestion.
+                _suggestionRepository.Add(new RelationshipSuggestion
                 {
                     ProjectId = projectId,
                     SourceDatasetId = candidate.SourceDatasetId,
@@ -92,7 +94,7 @@ public class RelationshipDetectionService : IRelationshipDetectionService
                     EvidenceJson = candidate.EvidenceJson,
                     Status = RelationshipSuggestionStatus.Suggested,
                     CreatedAt = DateTime.UtcNow
-                }, cancellationToken);
+                });
             }
             else if (existing.Status == RelationshipSuggestionStatus.Suggested)
             {

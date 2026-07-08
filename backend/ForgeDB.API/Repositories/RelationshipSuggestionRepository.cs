@@ -58,10 +58,9 @@ public class RelationshipSuggestionRepository : IRelationshipSuggestionRepositor
             cancellationToken);
     }
 
-    public async Task AddAsync(RelationshipSuggestion suggestion, CancellationToken cancellationToken = default)
+    public void Add(RelationshipSuggestion suggestion)
     {
-        await _context.RelationshipSuggestions.AddAsync(suggestion, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
+        _context.RelationshipSuggestions.Add(suggestion);
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)

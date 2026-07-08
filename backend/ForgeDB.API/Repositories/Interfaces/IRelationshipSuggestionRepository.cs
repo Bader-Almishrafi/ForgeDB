@@ -13,6 +13,9 @@ public interface IRelationshipSuggestionRepository
         int targetDatasetId,
         string targetColumnName,
         CancellationToken cancellationToken = default);
-    Task AddAsync(RelationshipSuggestion suggestion, CancellationToken cancellationToken = default);
+    /// <summary>Tracks the suggestion as a pending insert without saving — callers that add many
+    /// suggestions in a loop (e.g. detection) should call SaveChangesAsync once afterward so they
+    /// all commit in a single transaction instead of one round trip each.</summary>
+    void Add(RelationshipSuggestion suggestion);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }
