@@ -4,6 +4,7 @@ using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace ForgeDB.API.Services;
 
@@ -106,7 +107,7 @@ public class RelationshipDetectionService : IRelationshipDetectionService
         return await GetSuggestionsAsync(projectId, status: null, cancellationToken);
     }
 
-    public async Task<AcceptSuggestionResponseDto> AcceptAsync(int suggestionId, CancellationToken cancellationToken = default)
+    public async Task<AcceptSuggestionResponseDto> AcceptAsync(int suggestionId, int ifMatchRevision, CancellationToken cancellationToken = default)
     {
         var suggestion = await _suggestionRepository.GetByIdAsync(suggestionId, cancellationToken)
             ?? throw new KeyNotFoundException("Relationship suggestion not found.");
@@ -118,6 +119,11 @@ public class RelationshipDetectionService : IRelationshipDetectionService
 
         var design = await _designRepository.GetFullByProjectIdAsync(suggestion.ProjectId, track: true, cancellationToken)
             ?? throw new RelationshipSuggestionConflictException("Accepting a suggestion requires a generated design. Call design/generate first.");
+
+        if (design.Revision != ifMatchRevision)
+        {
+            throw new DesignConcurrencyException(design.Revision);
+        }
 
         var sourceColumn = FindDesignColumn(design, suggestion.SourceDatasetId, suggestion.SourceColumnName);
         var targetColumn = FindDesignColumn(design, suggestion.TargetDatasetId, suggestion.TargetColumnName);
@@ -148,7 +154,19 @@ public class RelationshipDetectionService : IRelationshipDetectionService
         design.Revision += 1;
         design.UpdatedAt = now;
 
-        await _designRepository.SaveChangesAsync(cancellationToken);
+        try
+        {
+            // Single SaveChanges call: the suggestion's Status/DecidedAt and the new
+            // DesignRelationship + DesignModel.Revision bump are tracked by this same DbContext
+            // (both repositories are resolved from the same request-scoped instance), so they
+            // commit together in one transaction — either both land or neither does.
+            await _designRepository.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            var current = await _designRepository.GetFullByProjectIdAsync(suggestion.ProjectId, track: false, cancellationToken);
+            throw new DesignConcurrencyException(current?.Revision ?? design.Revision);
+        }
 
         return new AcceptSuggestionResponseDto
         {
@@ -158,6 +176,9 @@ public class RelationshipDetectionService : IRelationshipDetectionService
         };
     }
 
+    /// <summary>Deliberately has no If-Match/revision check, unlike Accept: reject only flips this
+    /// suggestion's own Status/DecidedAt and never touches the DesignModel or its Revision, so
+    /// there is no design-revision conflict it could ever cause (prompt FIX 3).</summary>
     public async Task<RelationshipSuggestionResponseDto> RejectAsync(int suggestionId, CancellationToken cancellationToken = default)
     {
         var suggestion = await _suggestionRepository.GetByIdAsync(suggestionId, cancellationToken)

@@ -125,8 +125,14 @@ export class DesignApiService {
     return this.http.post<RelationshipSuggestion[]>(`${this.baseUrl}/api/projects/${projectId}/relationship-suggestions/detect`, {});
   }
 
-  acceptSuggestion(suggestionId: number): Observable<AcceptSuggestionResponse> {
-    return this.http.post<AcceptSuggestionResponse>(`${this.baseUrl}/api/relationship-suggestions/${suggestionId}/accept`, {});
+  /** Accept mutates the project's DesignModel, so — unlike reject — it requires If-Match with
+   * the caller's last-known design revision (missing -> 428, stale -> 409 with currentRevision). */
+  acceptSuggestion(suggestionId: number, revision: number): Observable<AcceptSuggestionResponse> {
+    return this.http.post<AcceptSuggestionResponse>(
+      `${this.baseUrl}/api/relationship-suggestions/${suggestionId}/accept`,
+      {},
+      { headers: this.ifMatch(revision) },
+    );
   }
 
   rejectSuggestion(suggestionId: number): Observable<RelationshipSuggestion> {

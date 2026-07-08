@@ -2,9 +2,10 @@ import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { finalize, map, of, switchMap } from 'rxjs';
+import { Observable, finalize, map, of, switchMap } from 'rxjs';
 import { ApiErrorBody, ProjectRelationshipSuggestion, RelationshipSuggestion } from '../../services/api.models';
 import { DesignApiService } from '../../services/design-api.service';
+import { DesignStateService } from '../../services/design-state.service';
 import { mapSuggestion } from '../../services/design-view-model';
 import { WorkflowStateService } from '../../services/workflow-state.service';
 
@@ -36,6 +37,7 @@ export class ProjectRelationshipsComponent implements OnInit {
 
   constructor(
     private designApi: DesignApiService,
+    private designState: DesignStateService,
     private route: ActivatedRoute,
     private router: Router,
     private workflow: WorkflowStateService,
@@ -71,16 +73,17 @@ export class ProjectRelationshipsComponent implements OnInit {
     this.successMessage = '';
     this.savingId.set(suggestion.suggestionId);
 
-    this.designApi.acceptSuggestion(Number(suggestion.suggestionId))
-      .pipe(finalize(() => this.savingId.set(null)))
+    this.currentDesignRevision()
+      .pipe(
+        switchMap((revision) => this.designApi.acceptSuggestion(Number(suggestion.suggestionId), revision)),
+        finalize(() => this.savingId.set(null)),
+      )
       .subscribe({
         next: (response) => {
           this.applyUpdatedSuggestion(response.suggestion);
           this.successMessage = 'Relationship accepted.';
         },
-        error: (error: { error?: ApiErrorBody }) => {
-          this.errorMessage = error.error?.message ?? 'Unable to save relationship decision.';
-        },
+        error: (error: unknown) => this.handleDecisionError(error),
       });
   }
 
@@ -134,8 +137,9 @@ export class ProjectRelationshipsComponent implements OnInit {
     this.successMessage = '';
     this.savingId.set(suggestion.suggestionId);
 
-    this.designApi.acceptSuggestion(Number(suggestion.suggestionId))
+    this.currentDesignRevision()
       .pipe(
+        switchMap((revision) => this.designApi.acceptSuggestion(Number(suggestion.suggestionId), revision)),
         switchMap((response) => {
           if (draft.relationshipType && draft.relationshipType !== response.relationship.cardinality) {
             return this.designApi
@@ -155,9 +159,7 @@ export class ProjectRelationshipsComponent implements OnInit {
           this.applyUpdatedSuggestion(response.suggestion);
           this.successMessage = 'Relationship accepted.';
         },
-        error: (error: { error?: ApiErrorBody }) => {
-          this.errorMessage = error.error?.message ?? 'Unable to save relationship decision.';
-        },
+        error: (error: unknown) => this.handleDecisionError(error),
       });
 
     this.cancelEdit();
@@ -200,5 +202,37 @@ export class ProjectRelationshipsComponent implements OnInit {
   private applyUpdatedSuggestion(updated: RelationshipSuggestion): void {
     const mapped = mapSuggestion(updated);
     this.suggestions.update((list) => list.map((item) => (item.suggestionId === mapped.suggestionId ? mapped : item)));
+  }
+
+  /** Accept requires If-Match with the current design revision. Reuses DesignStateService's
+   * already-loaded copy when it's fresh for this project (e.g. the user was just on the Schema
+   * Designer page); otherwise fetches the design once to read its revision. */
+  private currentDesignRevision(): Observable<number> {
+    const loaded = this.designState.design();
+    if (loaded && loaded.projectId === this.projectId) {
+      return of(loaded.revision);
+    }
+
+    return this.designApi.getDesign(this.projectId).pipe(map((design) => design.revision));
+  }
+
+  /** A 409/428 here means the design changed elsewhere since the revision above was read. Per
+   * the conflict contract, this refreshes state but never automatically resends the decision —
+   * the user must explicitly retry (e.g. click Accept again) once they've reviewed the queue. */
+  private handleDecisionError(error: unknown): void {
+    const status = (error as { status?: number } | null)?.status;
+
+    if (status === 409 || status === 428) {
+      this.errorMessage = 'This design changed elsewhere. The queue has been refreshed — review it and try again.';
+      this.loadSuggestions();
+
+      if (this.designState.design()?.projectId === this.projectId) {
+        this.designState.reload().subscribe();
+      }
+
+      return;
+    }
+
+    this.errorMessage = (error as { error?: ApiErrorBody } | null)?.error?.message ?? 'Unable to save relationship decision.';
   }
 }
