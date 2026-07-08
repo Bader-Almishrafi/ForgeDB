@@ -12,18 +12,6 @@ interface NavItem {
   queryParams?: () => Params | null;
 }
 
-interface WorkflowStep {
-  label: string;
-  helper: string;
-  route: () => string | null;
-  queryParams?: () => Params | null;
-  enabled: () => boolean;
-  completed: () => boolean;
-  match: (url: string) => boolean;
-}
-
-type StepState = 'locked' | 'available' | 'current' | 'completed';
-
 @Component({
   selector: 'app-shell',
   standalone: true,
@@ -41,8 +29,6 @@ export class AppShellComponent {
   readonly datasetId = this.workflow.datasetId;
   readonly datasetName = this.workflow.datasetName;
   readonly datasetStatus = this.workflow.datasetStatus;
-  readonly schemaId = this.workflow.schemaId;
-  readonly schemaName = this.workflow.schemaName;
 
   readonly navItems: NavItem[] = [
     { label: 'Overview', route: () => this.projectId() ? `/projects/${this.projectId()}/overview` : null, enabled: () => this.projectId() !== null, icon: 'M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-5H4v5Z' },
@@ -53,82 +39,6 @@ export class AppShellComponent {
     { label: 'Schema Designer', route: () => this.projectId() ? `/projects/${this.projectId()}/schema-designer` : null, enabled: () => this.projectId() !== null, icon: 'M5 5h6v6H5zM13 5h6v6h-6zM5 13h6v6H5zM13 13h6v6h-6z' },
     { label: 'ER Diagram', route: () => this.projectId() ? `/projects/${this.projectId()}/er-diagram` : null, enabled: () => this.projectId() !== null, icon: 'M6 7h5v4H6zM13 13h5v4h-5zM11 9h2a3 3 0 0 1 3 3v1' },
     { label: 'Exports', route: () => this.projectId() ? `/projects/${this.projectId()}/exports` : null, enabled: () => this.projectId() !== null, icon: 'M12 3v10m0 0 4-4m-4 4-4-4M5 17h14v4H5z' },
-  ];
-
-  readonly workflowSteps: WorkflowStep[] = [
-    {
-      label: 'Project',
-      helper: 'Project hub',
-      route: () => this.projectId() ? `/projects/${this.projectId()}/workspace` : '/projects',
-      enabled: () => true,
-      completed: () => this.projectId() !== null,
-      match: (url) => url === '/projects' || url.includes('/workspace'),
-    },
-    {
-      label: 'Upload',
-      helper: 'CSV import',
-      route: () => this.projectId() ? `/projects/${this.projectId()}/upload` : null,
-      enabled: () => this.projectId() !== null,
-      completed: () => this.datasetId() !== null,
-      match: (url) => url.includes('/upload'),
-    },
-    {
-      label: 'Preview',
-      helper: 'Validate rows',
-      route: () => this.datasetId() ? `/datasets/${this.datasetId()}/preview` : null,
-      enabled: () => this.datasetId() !== null,
-      completed: () => this.datasetId() !== null,
-      match: (url) => url.includes('/preview'),
-    },
-    {
-      label: 'Analyze',
-      helper: 'Profile data',
-      route: () => this.datasetId() ? `/datasets/${this.datasetId()}/analyze` : null,
-      enabled: () => this.datasetId() !== null,
-      completed: () => this.datasetStatus() === 'Analyzed',
-      match: (url) => url.includes('/analyze'),
-    },
-    {
-      label: 'Dashboard',
-      helper: 'Metrics',
-      route: () => this.datasetId() ? `/datasets/${this.datasetId()}/dashboard` : null,
-      enabled: () => this.datasetId() !== null,
-      completed: () => this.datasetStatus() === 'Analyzed',
-      match: (url) => url.includes('/dashboard'),
-    },
-    {
-      label: 'Schema',
-      helper: 'SQL review',
-      route: () => this.datasetId() ? `/datasets/${this.datasetId()}/schema` : null,
-      enabled: () => this.datasetId() !== null,
-      completed: () => this.schemaId() !== null,
-      match: (url) => url.includes('/schema') && !url.includes('tab=er'),
-    },
-    {
-      label: 'ER Diagram',
-      helper: 'Visual model',
-      route: () => this.datasetId() ? `/datasets/${this.datasetId()}/schema` : null,
-      queryParams: () => ({ tab: 'er', schemaId: this.schemaId() }),
-      enabled: () => this.schemaId() !== null,
-      completed: () => this.schemaId() !== null,
-      match: (url) => url.includes('/schema') && url.includes('tab=er'),
-    },
-    {
-      label: 'Relationships',
-      helper: 'Manual links',
-      route: () => this.schemaId() ? `/schemas/${this.schemaId()}/relationships` : null,
-      enabled: () => this.schemaId() !== null,
-      completed: () => this.schemaId() !== null,
-      match: (url) => url.includes('/relationships'),
-    },
-    {
-      label: 'Deployment',
-      helper: 'Final SQL',
-      route: () => this.schemaId() ? `/schemas/${this.schemaId()}/deploy` : null,
-      enabled: () => this.schemaId() !== null,
-      completed: () => false,
-      match: (url) => url.includes('/deploy'),
-    },
   ];
 
   constructor(
@@ -163,43 +73,5 @@ export class AppShellComponent {
 
   closeSidebar(): void {
     this.sidebarOpen.set(false);
-  }
-
-  stepState(step: WorkflowStep): StepState {
-    if (!step.enabled()) {
-      return 'locked';
-    }
-
-    if (step.match(this.router.url)) {
-      return 'current';
-    }
-
-    return step.completed() ? 'completed' : 'available';
-  }
-
-  stepClasses(step: WorkflowStep): string {
-    const state = this.stepState(step);
-
-    if (state === 'current') {
-      return 'border-blue-300 bg-blue-50 text-blue-700 ring-2 ring-blue-100';
-    }
-
-    if (state === 'completed') {
-      return 'border-emerald-200 bg-emerald-50 text-emerald-800';
-    }
-
-    if (state === 'locked') {
-      return 'border-slate-200 bg-slate-50 text-slate-400';
-    }
-
-    return 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50/60';
-  }
-
-  nextActionLabel(): string {
-    const activeStep = this.workflowSteps.find((step) => this.stepState(step) === 'available')
-      ?? this.workflowSteps.find((step) => this.stepState(step) === 'current')
-      ?? this.workflowSteps.find((step) => this.stepState(step) === 'locked');
-
-    return activeStep ? activeStep.label : 'Database package';
   }
 }

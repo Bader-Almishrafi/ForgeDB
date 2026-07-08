@@ -3,8 +3,8 @@ import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/cor
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiErrorBody, ProjectExportPackage } from '../../services/api.models';
+import { FileDownloadService } from '../../services/file-download.service';
 import { ForgeApiService } from '../../services/forge-api.service';
-import { SchemaExportService } from '../../services/schema-export.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
 
 @Component({
@@ -27,7 +27,7 @@ export class ProjectExportsComponent implements OnInit {
     private api: ForgeApiService,
     private route: ActivatedRoute,
     private router: Router,
-    private schemaExport: SchemaExportService,
+    private fileDownload: FileDownloadService,
     private workflow: WorkflowStateService,
   ) {}
 
@@ -57,7 +57,7 @@ export class ProjectExportsComponent implements OnInit {
   }
 
   download(fileName: string, content: string, mimeType: string): void {
-    this.schemaExport.downloadText(fileName, content, mimeType);
+    this.fileDownload.downloadText(fileName, content, mimeType);
   }
 
   previewText(exportPackage: ProjectExportPackage): string {

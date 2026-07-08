@@ -9,17 +9,12 @@ import {
   DatasetAnalysisResponse,
   DatasetPreview,
   DatasetResponse,
-  DeploymentRequest,
-  DeploymentResponse,
   LoginRequest,
   ProjectExportPackage,
   ProjectOverview,
   ProjectCreateRequest,
   ProjectResponse,
   RegisterRequest,
-  SchemaGenerateRequest,
-  SchemaRelationshipsUpdateRequest,
-  SchemaResponse,
 } from './api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -79,27 +74,7 @@ export class ForgeApiService {
     return this.http.get<DashboardResponse>(`${this.baseUrl}/api/datasets/${datasetId}/dashboard`);
   }
 
-  generateSchema(datasetId: number, request: SchemaGenerateRequest): Observable<SchemaResponse> {
-    return this.http.post<SchemaResponse>(`${this.baseUrl}/api/datasets/${datasetId}/schema/generate`, request);
-  }
-
-  getSchema(schemaId: number): Observable<SchemaResponse> {
-    return this.http.get<SchemaResponse>(`${this.baseUrl}/api/schemas/${schemaId}`);
-  }
-
-  getDatasetSchema(datasetId: number): Observable<SchemaResponse> {
-    return this.http.get<SchemaResponse>(`${this.baseUrl}/api/datasets/${datasetId}/schema`);
-  }
-
-  updateRelationships(schemaId: number, request: SchemaRelationshipsUpdateRequest): Observable<SchemaResponse> {
-    return this.http.put<SchemaResponse>(`${this.baseUrl}/api/schemas/${schemaId}/relationships`, request);
-  }
-
   getProjectExportPackage(projectId: number): Observable<ProjectExportPackage> {
     return this.http.get<ProjectExportPackage>(`${this.baseUrl}/api/projects/${projectId}/exports/package`);
-  }
-
-  deploySchema(schemaId: number, request: DeploymentRequest): Observable<DeploymentResponse> {
-    return this.http.post<DeploymentResponse>(`${this.baseUrl}/api/schemas/${schemaId}/deploy`, request);
   }
 }

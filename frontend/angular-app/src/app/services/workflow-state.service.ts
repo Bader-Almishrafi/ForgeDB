@@ -1,13 +1,11 @@
 import { computed, Injectable, signal } from '@angular/core';
-import { DatasetResponse, ProjectResponse, SchemaResponse } from './api.models';
+import { DatasetResponse, ProjectResponse } from './api.models';
 
 const projectIdKey = 'forgedb.currentProjectId';
 const projectNameKey = 'forgedb.currentProjectName';
 const datasetIdKey = 'forgedb.currentDatasetId';
 const datasetNameKey = 'forgedb.currentDatasetName';
 const datasetStatusKey = 'forgedb.currentDatasetStatus';
-const schemaIdKey = 'forgedb.currentSchemaId';
-const schemaNameKey = 'forgedb.currentSchemaName';
 
 @Injectable({ providedIn: 'root' })
 export class WorkflowStateService {
@@ -16,20 +14,15 @@ export class WorkflowStateService {
   private readonly datasetIdSignal = signal<number | null>(this.readNumber(datasetIdKey));
   private readonly datasetNameSignal = signal<string | null>(this.readString(datasetNameKey));
   private readonly datasetStatusSignal = signal<string | null>(this.readString(datasetStatusKey));
-  private readonly schemaIdSignal = signal<number | null>(this.readNumber(schemaIdKey));
-  private readonly schemaNameSignal = signal<string | null>(this.readString(schemaNameKey));
 
   readonly projectId = this.projectIdSignal.asReadonly();
   readonly projectName = this.projectNameSignal.asReadonly();
   readonly datasetId = this.datasetIdSignal.asReadonly();
   readonly datasetName = this.datasetNameSignal.asReadonly();
   readonly datasetStatus = this.datasetStatusSignal.asReadonly();
-  readonly schemaId = this.schemaIdSignal.asReadonly();
-  readonly schemaName = this.schemaNameSignal.asReadonly();
 
   readonly hasProject = computed(() => this.projectIdSignal() !== null);
   readonly hasDataset = computed(() => this.datasetIdSignal() !== null);
-  readonly hasSchema = computed(() => this.schemaIdSignal() !== null);
 
   setProject(project: ProjectResponse): void {
     this.setNumber(projectIdKey, project.id, this.projectIdSignal);
@@ -61,23 +54,10 @@ export class WorkflowStateService {
     }
   }
 
-  setSchema(schema: SchemaResponse): void {
-    this.setNumber(schemaIdKey, schema.schemaId, this.schemaIdSignal);
-    this.setString(schemaNameKey, schema.schemaName, this.schemaNameSignal);
-    this.setProjectId(schema.projectId);
-    this.setDatasetId(schema.datasetId);
-  }
-
   clearDataset(): void {
     this.clearKey(datasetIdKey, this.datasetIdSignal);
     this.clearKey(datasetNameKey, this.datasetNameSignal);
     this.clearKey(datasetStatusKey, this.datasetStatusSignal);
-    this.clearSchema();
-  }
-
-  clearSchema(): void {
-    this.clearKey(schemaIdKey, this.schemaIdSignal);
-    this.clearKey(schemaNameKey, this.schemaNameSignal);
   }
 
   clearAll(): void {

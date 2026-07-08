@@ -176,68 +176,6 @@ export interface DashboardTopValues {
   values: ValueFrequency[];
 }
 
-export interface SchemaGenerateRequest {
-  schemaName: string;
-  options?: unknown;
-}
-
-export interface SchemaResponse {
-  id: number;
-  schemaId: number;
-  projectId: number;
-  datasetId: number;
-  schemaName: string;
-  generatedTableName: string;
-  generatedColumns: SchemaColumn[];
-  sqlPreview: string;
-  relationships: SchemaRelationship[];
-  dbmlContent?: string | null;
-  schemaJson?: string | null;
-  sqlContent?: string | null;
-  relationshipsJson?: string | null;
-  version: number;
-  status: string;
-  createdAt: string;
-  updatedAt?: string | null;
-}
-
-export interface SchemaColumn {
-  name: string;
-  sourceColumnName: string;
-  detectedDataType: string;
-  sqlType: string;
-  isNullable: boolean;
-}
-
-export interface SchemaRelationship {
-  name?: string | null;
-  fromTable: string;
-  fromColumn: string;
-  toTable: string;
-  toColumn: string;
-  relationshipType?: string | null;
-}
-
-export interface SchemaRelationshipsUpdateRequest {
-  relationships: SchemaRelationship[];
-}
-
-export interface DeploymentRequest {
-  databaseName: string;
-}
-
-export interface DeploymentResponse {
-  id: number;
-  deploymentId: number;
-  projectId: number;
-  schemaId: number;
-  databaseName: string;
-  status: string;
-  sqlScript: string;
-  createdAt: string;
-  deployedAt?: string | null;
-}
-
 export interface ApiErrorBody {
   message?: string;
 }
