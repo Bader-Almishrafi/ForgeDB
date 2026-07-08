@@ -100,7 +100,7 @@ per-row `try/catch (JsonException)` handle blank/malformed content.
 | GET | /api/projects/{projectId}/design | – | ✅ |
 | GET | /api/designs/{designId}/preview?format= | – | ✅ |
 | GET | /api/designs/{designId}/validation | – | ✅ |
-| POST | /api/projects/{projectId}/design/generate | – (see §11) | ✅ |
+| POST | /api/projects/{projectId}/design/generate | conditional (see Fix Round 1, FIX 2) | ✅ |
 | POST | /api/designs/{designId}/tables | ✅ | ✅ |
 | PATCH | /api/design-tables/{tableId} | ✅ | ✅ |
 | DELETE | /api/design-tables/{tableId} | ✅ | ✅ |
@@ -232,9 +232,18 @@ Also verified (beyond the checklist): missing `If-Match` on a mutation → 428 P
    flow (`SchemaService`/`SchemaDocumentFactory`/`DatabaseSchema`/`SchemasController`/old pages) was
    left untouched as a smallest-scope resolution; it's a distinct feature area with its own routes,
    not covered by this prompt's checklist or entity spec.
+   **Superseded in Fix Round 1 (FIX 1, 2026-07-08):** this was the load-bearing blocking finding —
+   the legacy flow bypassed the Design API entirely, so it's now eradicated completely (entities,
+   services, repositories, controller, DTOs, migrations, and every frontend page/route/nav
+   link/CTA that reached it). See `FIX1_REPORT.md` §2 for the full file-by-file account.
 2. **Generate is not gated by If-Match.** The prompt's endpoint table lists "Generate" as its own
    category, separate from "Mutate (all require If-Match)" — I took that grouping literally.
    Generate still atomically bumps the revision.
+   **Superseded in Fix Round 1 (FIX 2, 2026-07-08):** this was flagged as a blocking finding —
+   regenerating over an *existing* design is a mutation like any other and can silently clobber
+   concurrent edits. Generate is now conditional: no precondition for a first-time create (nothing
+   to compare a revision against yet), but If-Match is required once a DesignModel exists for the
+   project (missing → 428, stale → 409). See `FIX1_REPORT.md` §4 for the updated endpoint table.
 3. **Every mutation returns the full `DesignResponseDto`**, not just a bare revision number. The
    prompt only requires the new revision appear in the response body; returning the complete
    design (which includes `revision`) is strictly more useful to a frontend that would otherwise
