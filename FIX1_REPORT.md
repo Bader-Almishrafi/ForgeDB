@@ -284,3 +284,160 @@ covered the reorder rationale with an inline comment. Committed separately
 - No `--force` flags, no `--no-verify`/skipped hooks, no workaround hacks. The one dependency
   installed for manual verification (Playwright) was `--no-save` and fully uninstalled afterward;
   `package.json`/`package-lock.json` are byte-identical to before this round.
+
+## FIX2 — final hygiene items from the delta review
+
+A small, surgical follow-up round addressing exactly the delta review's Required Fixes. Same
+branch, local only, every commit prefixed `fix2:`. Nothing outside these items was touched.
+
+### 1. Removed the three legacy redirect stubs
+
+`app.routes.ts:27-29` (`app/schema-review`, `app/relationships`, `app/deployment` → `redirectTo:
+'projects'`) deleted. These referenced no component even before this round (Fix Round 1 had
+already deleted the pages they used to point to); they served no purpose.
+
+Acceptance grep, entire frontend (`ts`, `html`, spec files included — `*.ts` glob covers
+`*.spec.ts`), re-run after the deletion:
+
+```
+$ grep -rnE "app/schema-review|app/relationships|app/deployment" frontend/angular-app/src --include="*.ts"
+(no matches)
+$ grep -rnE "app/schema-review|app/relationships|app/deployment" frontend/angular-app/src --include="*.html"
+(no matches)
+$ grep -rnE "schema-review|app/relationships|app/deployment" frontend/angular-app/src
+(no matches)
+```
+
+Zero references remain anywhere. `npm run build` and `npm test` were re-run immediately after
+this change and stayed green (see §4 below for final numbers).
+
+### 2. FIX2 corrections — accuracy fixes to prior reports
+
+**`PHASE1_REPORT.md`** (lines 116-120 at the time): the endpoint table still showed `accept` with
+no `If-Match` and the prose beneath it ("Every mutating endpoint: missing `If-Match` → 428...")
+implied a uniform rule with no exemptions — both stale since Fix Round 1's FIX 3 added the
+If-Match/concurrency contract to `accept`. Replaced with the precise current contract: every
+DesignModel-mutating endpoint requires `If-Match`; `generate` is exempt only pre-first-creation;
+`reject` is deliberately exempt because it never touches the design. (Committed separately as
+`d721df7`, before this section was written.)
+
+**`FIX1_REPORT.md`** (this file) — the delta review found two factual errors in the original text
+above, which are left as originally written (not silently edited) per the instruction to correct
+by addition, not by rewriting history:
+
+1. **§3, item 3's grep ("Removed route paths") reported only one remaining redirect-stub hit**
+   (`app/schema-review`) and concluded "everything else is zero hits, as required." That
+   conclusion was wrong. The grep pattern used there —
+   `"workspace'|/workspace|schema-review|datasets/:datasetId/schema|schemas/:schemaId"` — never
+   contained the literal strings `relationships` or `deployment`, so it could not have found the
+   other two stubs even though they were present in the file at the time
+   (`app.routes.ts:28-29`). **Three legacy redirect stubs existed, not one.** All three are
+   removed as of this round's item 1 above.
+2. **The commit list at the top of this report shows 9 `fix1:` commits**, ending at `574f962`. It
+   omits `a4b7db6` ("fix1: add Fix Round 1 implementation report") — the commit that added this
+   very file, which by construction could not list its own not-yet-created hash at the time it was
+   written. **The correct total is 10 `fix1:` commits.** (This report applies the same reasoning to
+   its own commit list in §5 below, so as not to repeat the mistake.)
+
+### 3. Real-browser check: below-the-fold relationship delete/recreate
+
+**Setup.** No seeded/documented login exists anywhere in this repo (checked for a `DbSeeder`,
+`HasData`, startup seeding, and every root `*.md` — confirmed zero hits beyond
+`SETUP_GUIDE.md`'s manual Postman walkthrough, which requires self-registration first). The
+project used throughout Phase 1/2/Fix Round 1's own manual testing ("Phase1 Manual Test", id 18)
+belongs to a test account whose password was never recorded anywhere retrievable. Rather than
+reset another account's credentials in the DB to reuse that exact project — invasive and
+disproportionate for a UI-reachability check — a fresh throwaway account was registered
+(`fix2.tester@example.com`, user id 16) and a new project built (id 22) reproducing the identical
+"sales/people" fixture shape used throughout this codebase's manual testing: a `people` dataset
+(10 columns) and a `sales` dataset (10 columns, `client_no` foreign key), uploaded via
+`POST .../datasets/upload` and turned into a design via `POST .../design/generate`, then one
+`sales.client_no → people.client_no` relationship added via the Design API. This gives the `sales`
+table 10 columns + 1 relationship — enough to push the relationships panel well below the fold.
+
+**Browser.** Playwright (same tool as Fix Round 1: reinstalled with `npm install --no-save
+playwright`, fully uninstalled again afterward — see §4) launched a **real, non-headless**
+Chromium window (`headless: false`) at a 1280×720 viewport. Login was performed by seeding the
+app's own `forgedb.token`/`forgedb.user` `localStorage` keys with a token obtained from the real
+`/api/auth/register` call above (the exact state a normal login produces), then navigating to
+`/projects/22/schema-designer` and selecting the `sales` table.
+
+**Findings:**
+- Before scrolling, the relationship row's Delete button had bounding-box `y=1901` against the
+  720px-tall viewport — genuinely below the fold, confirming this was a real test of the reviewer's
+  concern rather than a no-op.
+- `scrollIntoViewIfNeeded()` (Playwright's standard scroll-to-element call, equivalent to a user
+  scrolling the panel's own `overflow-y-auto` container with a mouse wheel) brought the button
+  fully into view (`y=340`, inside the 720px viewport). **The row is reachable via ordinary
+  scrolling — no scroll-container bug.**
+- Clicking Delete triggered the app's real `window.confirm('Delete this relationship?')` dialog
+  (auto-accepted, matching normal user behavior). `DELETE /api/design-relationships/14 → 200`
+  fired; the header badge went `1 relationships` → `0 relationships`; the panel showed "No
+  relationships involve this table yet."; both `GET .../preview?format=sql` and `format=dbml`
+  were re-fetched immediately after (previews update).
+- Recreating via the same panel's "Create relationship" form fired `POST
+  /api/designs/6/relationships → 200`; the badge returned to `1 relationships` and the row
+  reappeared (new id).
+- Revision confirmed directly afterward via `GET /api/projects/22/design`: **revision 4** (1 =
+  fresh generate, 2 = initial relationship create, 3 = delete, 4 = recreate) — each mutation
+  incremented it by exactly 1, and both in-browser requests succeeded with 200 rather than 409,
+  which is only possible if `DesignStateService` correctly tracked and sent the live revision as
+  `If-Match` through the delete and the immediately-following recreate.
+- **Incidentally noticed, deliberately not touched:** the Delete button's keyboard-focus
+  `box-shadow` computed to `none` (no visible focus ring). This is outside this item's scope — the
+  prompt's own branching is "if the button works normally: record PASS, done," and it does work
+  normally via the mouse+scroll interaction this item asked about. Recorded here only for
+  transparency; keyboard-focus visibility across the app was already exercised separately by Phase
+  2 checklist step 12 and Fix Round 1's F-series matrix.
+
+**Result: PASS.** The row was reachable and clickable at the tested viewport; delete,
+preview-refresh, revision-increment, and recreate all worked correctly. No product code change was
+needed or made for this item.
+
+**Cleanup:** the throwaway Playwright driver script and its screenshots were written outside any
+tracked path awareness (`frontend/angular-app/fix2_relationship_check.tmp.js` + 3 `.png` files) and
+deleted immediately after use; `git status` was empty before every commit in this round. `playwright`
+was uninstalled again (`npm uninstall playwright`); `package.json`/`package-lock.json` are
+byte-identical to before this round (empty `git diff`). The throwaway account/project/datasets
+(user id 16, project id 22) remain in the local dev Postgres volume — consistent with this
+repo's existing practice across Phase 1/2 and Fix Round 1 of never cleaning up local-only test
+fixtures (15 test users and 21 test projects already existed before this round from prior
+sessions; none of those were cleaned up either, and this round follows the same precedent).
+
+### 4. Verification
+
+| Check | Result |
+|---|---|
+| `npm run build` (`ng build`, after item 1's route removal) | Clean, `Application bundle generation complete` |
+| `npm test` (`ng test --watch=false`, after item 1's route removal) | **18/18 passed** (2 test files) |
+| `dotnet test -c Release` (`backend/ForgeDB.sln`, nothing else running) | **32/32 passed** |
+| `npm run build` (final re-check) | Clean |
+| `npm test` (final re-check) | **18/18 passed** |
+
+Backend/frontend dev servers started for the §3 browser check (`dotnet run` on :5000, `ng serve`
+on :4200) were both stopped (`Stop-Process`) before the `dotnet test -c Release` run above, per
+the file-lock lesson from Fix Round 1 §1.
+
+### 5. Commit list
+
+```
+4a6e714 fix2: remove the three legacy redirect stubs from app.routes.ts
+d721df7 fix2: correct stale accept If-Match claim and overstated contract in PHASE1_REPORT.md
+```
+
+Plus the one commit that adds this section itself (necessarily not listed here by its own hash,
+for the same structural reason `a4b7db6` couldn't list itself in its own commit list — see item
+2's second correction above). That commit's message begins `fix2: add Fix Round 2 report section`.
+
+### 6. Confirmation
+
+- All work is on `feature/design-model-foundation`, local only. Nothing was pushed; `git remote
+  -v` was not touched.
+- No other branch was created or switched to; `main` was never touched.
+- Every commit in this round is prefixed `fix2:`.
+- `git status` was empty (beyond the intended edit) before every commit; no `.env`, no real
+  `appsettings.json`, no `bin/`/`obj/`/`node_modules/`/`dist/` paths staged, no uploaded CSVs or
+  DB dumps committed (the two test CSVs used in §3 live only in the session scratchpad and in the
+  local dev Postgres volume, never in the repo).
+- No files outside this round's scope (the redirect stubs, the two report corrections, and the
+  verification runs) were touched. No `--force`, no skipped hooks, no workaround hacks.
