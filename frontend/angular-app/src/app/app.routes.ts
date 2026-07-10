@@ -24,9 +24,6 @@ export const routes: Routes = [
   { path: 'app/projects', redirectTo: 'projects', pathMatch: 'full' },
   { path: 'app/data-sources', redirectTo: 'projects', pathMatch: 'full' },
   { path: 'app/analysis', redirectTo: 'projects', pathMatch: 'full' },
-  { path: 'app/schema-review', redirectTo: 'projects', pathMatch: 'full' },
-  { path: 'app/relationships', redirectTo: 'projects', pathMatch: 'full' },
-  { path: 'app/deployment', redirectTo: 'projects', pathMatch: 'full' },
   {
     path: '',
     component: AppShellComponent,
