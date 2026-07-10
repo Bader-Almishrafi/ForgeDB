@@ -113,13 +113,15 @@ per-row `try/catch (JsonException)` handle blank/malformed content.
 | PUT | /api/designs/{designId}/layout | ✅ | ✅ |
 | GET | /api/projects/{projectId}/relationship-suggestions?status= | – | ✅ |
 | POST | /api/projects/{projectId}/relationship-suggestions/detect | – | ✅ |
-| POST | /api/relationship-suggestions/{id}/accept | – | ✅ |
-| POST | /api/relationship-suggestions/{id}/reject | – | ✅ |
+| POST | /api/relationship-suggestions/{id}/accept | ✅ (see Fix Round 1, FIX 3) | ✅ |
+| POST | /api/relationship-suggestions/{id}/reject | – (deliberate, see Fix Round 1, FIX 3) | ✅ |
 | GET | /api/projects/{projectId}/exports/package (existing route, rewired) | – | ✅ |
 
-Every mutating endpoint: missing `If-Match` → 428; unparsable → 400; stale/racing revision → 409
-`{ currentRevision, message }` (the DB-level concurrency token on `Revision` catches genuine races
-between two concurrent writers, not just the explicit pre-check).
+Every endpoint that mutates the DesignModel requires `If-Match` (428 missing / 409 stale, with
+`{ currentRevision, message }` — the DB-level concurrency token on `Revision` catches genuine races
+between two concurrent writers, not just the explicit pre-check). `generate` is exempt only when no
+design exists yet (first creation). `reject` is deliberately exempt: it mutates only the suggestion
+row, never the design.
 
 ## 6. Deprecated/removed legacy schema-derivation paths (REQUIRED)
 
