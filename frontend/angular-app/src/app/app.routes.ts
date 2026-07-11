@@ -16,6 +16,7 @@ import { ProjectRelationshipsComponent } from './pages/project-relationships/pro
 import { ProjectSchemaDesignerComponent } from './pages/project-schema-designer/project-schema-designer.component';
 import { SignupComponent } from './pages/signup/signup.component';
 import { authGuard } from './services/auth.guard';
+import { unsavedChangesGuard } from './services/unsaved-changes.guard';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', component: LandingComponent },
@@ -34,7 +35,7 @@ export const routes: Routes = [
     children: [
       { path: 'home', component: HomeComponent },
       { path: 'projects', component: ProjectsComponent },
-      { path: 'projects/new', component: ProjectCreateComponent },
+      { path: 'projects/new', component: ProjectCreateComponent, canDeactivate: [unsavedChangesGuard] },
       { path: 'projects/:projectId/overview', component: ProjectOverviewComponent },
       { path: 'projects/:projectId/datasets', component: DataSourcesComponent },
       { path: 'projects/:projectId/upload', component: DataSourcesComponent },

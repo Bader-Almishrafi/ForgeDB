@@ -150,7 +150,11 @@ export class AppShellComponent {
       return [{ label: 'Projects' }];
     }
     if (path === '/projects/new') {
-      return [{ label: 'Projects', route: '/projects' }, { label: 'Create Project' }];
+      return [
+        { label: 'Home', route: '/home' },
+        { label: 'Projects', route: '/projects' },
+        { label: 'Create New Project' },
+      ];
     }
 
     const projectMatch = path.match(/^\/projects\/(\d+)\/(.+)$/);

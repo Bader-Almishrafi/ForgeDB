@@ -1,4 +1,14 @@
 <section class="space-y-5">
+  @if (navigationNotice()) {
+    <div class="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300" role="status">
+      <svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>
+      <span class="min-w-0 flex-1 font-semibold">{{ navigationNotice() }}</span>
+      <button type="button" class="grid h-7 w-7 shrink-0 place-items-center rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/50" aria-label="Dismiss success message" (click)="dismissNavigationNotice()">
+        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+      </button>
+    </div>
+  }
+
   @if (errorMessage) {
     <p class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
   }

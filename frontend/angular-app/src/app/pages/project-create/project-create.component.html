@@ -1,47 +1,384 @@
-<div class="mx-auto max-w-3xl">
-  <a routerLink="/projects" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-700 dark:text-slate-400 dark:hover:text-blue-300">
-    <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m15 19-7-7 7-7"></path></svg>
-    Back to Projects
-  </a>
+<div class="mx-auto max-w-[1480px]">
+  <header class="max-w-3xl">
+    <p class="eyebrow">New workspace</p>
+    <h1 class="mt-1 text-3xl font-semibold tracking-[-0.03em] text-slate-950 sm:text-4xl dark:text-slate-100">Create New Project</h1>
+    <p class="mt-3 text-sm leading-6 text-slate-600 sm:text-base dark:text-slate-400">
+      Define your workspace, choose its first data source, and review everything before creating the project.
+    </p>
+  </header>
 
-  <section class="mt-5 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-    <header class="border-b border-slate-100 px-6 py-7 sm:px-8 dark:border-slate-800">
-      <p class="eyebrow">New workspace</p>
-      <h1 class="mt-1 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Create a project</h1>
-      <p class="mt-2 max-w-xl text-sm leading-6 text-slate-500 dark:text-slate-400">Give your data workflow a clear name and a short description. You can add datasets after the project is created.</p>
-    </header>
+  <nav class="mt-7 rounded-2xl border border-slate-200 bg-white px-4 py-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:px-6" aria-label="Project creation progress">
+    <ol class="grid grid-cols-3" aria-label="Wizard steps">
+      @for (step of steps; track step.number; let last = $last) {
+        <li class="relative flex min-w-0 flex-col items-center text-center" [attr.aria-current]="currentStep() === step.number ? 'step' : null">
+          @if (!last) {
+            <span class="absolute left-1/2 top-4 h-px w-full bg-slate-200 dark:bg-slate-700" aria-hidden="true">
+              <span class="block h-full bg-blue-600 transition-[width]" [class.w-full]="currentStep() > step.number" [class.w-0]="currentStep() <= step.number"></span>
+            </span>
+          }
+          <span class="relative z-10 grid h-8 w-8 place-items-center rounded-full border text-xs font-bold transition"
+            [class.border-blue-600]="currentStep() >= step.number"
+            [class.bg-blue-600]="currentStep() >= step.number"
+            [class.text-white]="currentStep() >= step.number"
+            [class.border-slate-300]="currentStep() < step.number"
+            [class.bg-white]="currentStep() < step.number"
+            [class.text-slate-500]="currentStep() < step.number"
+            [class.dark:border-slate-600]="currentStep() < step.number"
+            [class.dark:bg-slate-900]="currentStep() < step.number">
+            @if (currentStep() > step.number) {
+              <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2.2" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>
+              <span class="sr-only">Completed</span>
+            } @else {
+              {{ step.number }}
+            }
+          </span>
+          <span class="relative z-10 mt-2 bg-white px-1 text-xs font-semibold text-slate-500 sm:text-sm dark:bg-slate-900 dark:text-slate-400"
+            [class.text-blue-700]="currentStep() === step.number" [class.dark:text-blue-300]="currentStep() === step.number">
+            <span class="sm:hidden">{{ step.shortLabel }}</span>
+            <span class="hidden sm:inline">{{ step.label }}</span>
+          </span>
+        </li>
+      }
+    </ol>
+  </nav>
 
-    <form #projectForm="ngForm" (ngSubmit)="projectForm.form.valid && createProject()" class="space-y-6 px-6 py-7 sm:px-8">
-      <label class="block">
-        <span class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Project name</span>
-        <input name="projectName" [(ngModel)]="projectName" class="input-field min-h-11" required maxlength="120"
-          autocomplete="off" placeholder="Customer analytics warehouse">
-        <span class="mt-1.5 block text-xs text-slate-500 dark:text-slate-400">Use a name your team will recognize.</span>
-      </label>
+  @if (feedback(); as message) {
+    <div class="mt-5 flex items-start gap-3 rounded-2xl border px-4 py-4 shadow-sm sm:px-5"
+      [class]="message.kind === 'error'
+        ? 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/35 dark:text-rose-300'
+        : message.kind === 'warning'
+          ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/35 dark:text-amber-300'
+          : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/35 dark:text-emerald-300'"
+      [attr.role]="message.kind === 'error' ? 'alert' : 'status'" aria-live="polite">
+      <svg viewBox="0 0 24 24" class="mt-0.5 h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="1.8" aria-hidden="true">
+        @if (message.kind === 'success') { <path d="m5 12 4 4L19 6M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"></path> }
+        @else if (message.kind === 'warning') { <path d="M12 9v4m0 4h.01M10.3 3.7 2.7 18a2 2 0 0 0 1.76 3h15.08a2 2 0 0 0 1.76-3L13.7 3.7a2 2 0 0 0-3.4 0Z"></path> }
+        @else { <path d="M12 8v5m0 3h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z"></path> }
+      </svg>
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-semibold">{{ message.title }}</p>
+        <p class="mt-1 break-words text-sm leading-6 opacity-90">{{ message.message }}</p>
+      </div>
+      <button type="button" class="grid h-8 w-8 shrink-0 place-items-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10" aria-label="Dismiss message" (click)="dismissFeedback()">
+        <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+      </button>
+    </div>
+  }
 
-      <label class="block">
-        <span class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Description <span class="font-normal text-slate-400">(optional)</span></span>
-        <textarea name="projectDescription" [(ngModel)]="projectDescription" class="input-field min-h-32 resize-y" maxlength="600"
-          placeholder="What data will this project organize?"></textarea>
-      </label>
+  <section class="mt-5 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/20">
+    <div class="px-5 py-6 sm:px-7 sm:py-8 lg:px-9">
+      @if (currentStep() === 1) {
+        <div class="grid gap-7 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-10">
+          <div>
+            <p class="eyebrow">Step 1 of 3</p>
+            <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Project Details</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Start with a clear name and optional context for this data workspace.</p>
 
-      @if (errorMessage()) {
-        <div role="alert" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
-          {{ errorMessage() }}
+            <form [formGroup]="projectForm" class="mt-7 space-y-6" novalidate>
+              <div>
+                <div class="mb-2 flex items-center justify-between gap-4">
+                  <label for="project-name" class="text-sm font-semibold text-slate-700 dark:text-slate-300">Project Name <span class="text-rose-600 dark:text-rose-400">*</span></label>
+                  <span id="name-counter" class="text-xs tabular-nums text-slate-400" [class.text-rose-600]="nameLength() > 100">{{ nameLength() }} / 100</span>
+                </div>
+                <input id="project-name" type="text" formControlName="name" class="input-field min-h-12" maxlength="100"
+                  autocomplete="off" placeholder="Enter project name" aria-describedby="name-guidance name-error name-counter"
+                  [attr.aria-invalid]="showNameError()">
+                <p id="name-guidance" class="mt-2 text-xs text-slate-500 dark:text-slate-400">Choose a descriptive name your team will recognize.</p>
+                <div id="name-error" class="mt-1 min-h-5 text-sm font-medium text-rose-600 dark:text-rose-400" aria-live="polite">
+                  @if (showNameError()) {
+                    @if (projectForm.controls.name.hasError('maxlength')) {
+                      Project name cannot exceed 100 characters.
+                    } @else if (projectForm.controls.name.hasError('whitespace') && projectForm.controls.name.value.length > 0) {
+                      Enter a project name that contains more than spaces.
+                    } @else {
+                      Project name is required.
+                    }
+                  }
+                </div>
+              </div>
+
+              <div>
+                <div class="mb-2 flex items-center justify-between gap-4">
+                  <label for="project-description" class="text-sm font-semibold text-slate-700 dark:text-slate-300">Project Description <span class="font-normal text-slate-400">(optional)</span></label>
+                  <span id="description-counter" class="text-xs tabular-nums text-slate-400">{{ descriptionLength() }} / 500</span>
+                </div>
+                <textarea id="project-description" formControlName="description" class="input-field min-h-36 resize-y" maxlength="500"
+                  placeholder="Describe your project (optional)" aria-describedby="description-guidance description-counter"></textarea>
+                <p id="description-guidance" class="mt-2 text-xs text-slate-500 dark:text-slate-400">Add context about the data, purpose, or intended database outcome.</p>
+              </div>
+            </form>
+
+            <div class="mt-7 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/50">
+              <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Project name guidelines</h3>
+              <ul class="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                <li class="flex gap-2"><span class="text-teal-600 dark:text-teal-400" aria-hidden="true">•</span> Must not be empty.</li>
+                <li class="flex gap-2"><span class="text-teal-600 dark:text-teal-400" aria-hidden="true">•</span> Should be descriptive and meaningful.</li>
+                <li class="flex gap-2"><span class="text-teal-600 dark:text-teal-400" aria-hidden="true">•</span> Maximum 100 characters.</li>
+              </ul>
+            </div>
+          </div>
+
+          <aside class="relative overflow-hidden rounded-2xl border border-blue-100 bg-blue-50/70 p-6 dark:border-blue-900 dark:bg-blue-950/25">
+            <div class="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full border border-blue-200/60 dark:border-blue-800/50" aria-hidden="true"></div>
+            <div class="relative">
+              <div class="grid h-11 w-11 place-items-center rounded-xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100 dark:bg-slate-900 dark:text-blue-300 dark:ring-blue-900">
+                <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 6h5l2 2h9v10H4V6Zm3 15h10M9 12h6m-3-3v6"></path></svg>
+              </div>
+              <h3 class="mt-5 text-lg font-semibold text-slate-900 dark:text-slate-100">What's next?</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">ForgeDB guides your raw data through a dependable database workflow.</p>
+
+              <ol class="mt-6 space-y-4">
+                <li class="flex gap-3">
+                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-600 text-xs font-bold text-white">1</span>
+                  <div><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Bring in data</p><p class="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">Upload CSV files or connect to APIs in the future.</p><span class="mt-1 inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-300">API Coming Soon</span></div>
+                </li>
+                <li class="flex gap-3">
+                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">2</span>
+                  <div><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Analyze and clean</p><p class="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">Inspect data quality and prepare reliable records.</p></div>
+                </li>
+                <li class="flex gap-3">
+                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">3</span>
+                  <div><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Design and connect</p><p class="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">Build the schema and review table relationships.</p></div>
+                </li>
+                <li class="flex gap-3">
+                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-teal-100 text-xs font-bold text-teal-700 dark:bg-teal-950 dark:text-teal-300">4</span>
+                  <div><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Deploy</p><p class="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">Review the result and prepare a deployable database.</p></div>
+                </li>
+              </ol>
+            </div>
+          </aside>
+        </div>
+      } @else if (currentStep() === 2) {
+        <div>
+          <p class="eyebrow">Step 2 of 3</p>
+          <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Choose Data Source</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Select how data should enter this project, then add at least one CSV file.</p>
+
+          <fieldset class="mt-7 grid gap-4 lg:grid-cols-2">
+            <legend class="sr-only">Data source</legend>
+            <label class="relative flex min-h-36 cursor-pointer items-start gap-4 rounded-2xl border-2 border-blue-500 bg-blue-50/70 p-5 shadow-sm transition hover:bg-blue-50 dark:border-blue-500 dark:bg-blue-950/30 dark:hover:bg-blue-950/40">
+              <input type="radio" name="dataSource" value="csv" checked class="sr-only" aria-label="CSV Files">
+              <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100 dark:bg-slate-900 dark:text-blue-300 dark:ring-blue-900">
+                <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.7" aria-hidden="true"><path d="M6 2h9l4 4v16H6V2Zm9 0v5h4M9 12h6m-6 4h6"></path></svg>
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="flex items-center justify-between gap-3"><span class="text-lg font-semibold text-slate-900 dark:text-slate-100">CSV Files</span><span class="grid h-6 w-6 place-items-center rounded-full bg-blue-600 text-white"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5 fill-none stroke-current" stroke-width="2.5" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg></span></span>
+                <span class="mt-2 block text-sm leading-6 text-slate-600 dark:text-slate-400">Upload one or more CSV files from your computer.</span>
+              </span>
+            </label>
+
+            <div class="relative flex min-h-36 cursor-not-allowed items-start gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 opacity-75 dark:border-slate-700 dark:bg-slate-800/50" aria-describedby="api-coming-soon">
+              <input type="radio" name="dataSource" value="api" disabled class="sr-only" aria-label="API Connection, Coming Soon">
+              <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-700">
+                <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.7" aria-hidden="true"><path d="M8 8 4 12l4 4m8-8 4 4-4 4m-5 3 2-14"></path></svg>
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="flex flex-wrap items-center justify-between gap-2"><span class="text-lg font-semibold text-slate-700 dark:text-slate-300">API Connection</span><span class="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-300">Coming Soon</span></span>
+                <span class="mt-2 block text-sm leading-6 text-slate-500 dark:text-slate-400">Connect to an API endpoint and import data.</span>
+                <span id="api-coming-soon" class="mt-1 block text-xs text-slate-500 dark:text-slate-400">Backend API connection support will be added later.</span>
+              </span>
+            </div>
+          </fieldset>
+
+          <div class="mt-7 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/30 sm:p-5">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 class="font-semibold text-slate-900 dark:text-slate-100">CSV files</h3>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Only non-empty files with a .csv extension are accepted.</p>
+              </div>
+              <label for="csv-file-input" class="btn-secondary cursor-pointer">
+                <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+                Add CSV File
+              </label>
+            </div>
+
+            <label for="csv-file-input" class="mt-5 flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white px-5 py-8 text-center transition hover:border-blue-400 hover:bg-blue-50/50 dark:border-slate-600 dark:bg-slate-900 dark:hover:border-blue-600 dark:hover:bg-blue-950/20"
+              [class.border-blue-500]="dragActive()" [class.bg-blue-50]="dragActive()" [class.dark:bg-blue-950]="dragActive()"
+              (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+              <span class="grid h-12 w-12 place-items-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.7" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 14v6h14v-6"></path></svg>
+              </span>
+              <span class="mt-4 text-sm font-semibold text-slate-800 dark:text-slate-200">Drop CSV files here or browse your computer</span>
+              <span class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Select multiple files now, or add more later without replacing your selection.</span>
+            </label>
+            <input id="csv-file-input" type="file" class="sr-only" accept=".csv,text/csv" multiple (change)="onFileInput($event)" [disabled]="processing()">
+          </div>
+
+          @if (csvFiles().length === 0) {
+            <div class="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-9 text-center dark:border-slate-700 dark:bg-slate-900">
+              <p class="font-semibold text-slate-800 dark:text-slate-200">No CSV files selected</p>
+              <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Add at least one CSV file to continue.</p>
+            </div>
+          } @else {
+            <div class="mt-5 grid min-w-0 gap-5 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
+              <section class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700" aria-labelledby="selected-files-heading">
+                <header class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+                  <h3 id="selected-files-heading" class="text-sm font-semibold text-slate-800 dark:text-slate-200">Files ({{ csvFiles().length }})</h3>
+                  <span class="text-xs text-slate-500 dark:text-slate-400">{{ selectedFileIndex() + 1 }} of {{ csvFiles().length }}</span>
+                </header>
+                <div class="max-h-80 overflow-y-auto p-2">
+                  @for (item of csvFiles(); track item.id; let index = $index) {
+                    <div class="mb-1 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3 py-3 transition last:mb-0"
+                      [class.border-blue-300]="selectedFileIndex() === index" [class.bg-blue-50]="selectedFileIndex() === index"
+                      [class.dark:border-blue-700]="selectedFileIndex() === index" [class.dark:bg-blue-950/35]="selectedFileIndex() === index"
+                      [class.border-transparent]="selectedFileIndex() !== index">
+                      <button type="button" class="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-600 hover:bg-blue-100 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-blue-950"
+                        [attr.aria-label]="'Select ' + item.file.name" (click)="selectFile(index)">{{ index + 1 }}</button>
+                      <button type="button" class="min-w-0 text-left" [attr.aria-label]="'View details for ' + item.file.name" (click)="selectFile(index)">
+                        <span class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-200" [title]="item.file.name">{{ item.file.name }}</span>
+                        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ formatSize(item.file.size) }} · {{ item.state }}</span>
+                      </button>
+                      <button type="button" class="icon-button h-8 w-8 text-rose-600 dark:text-rose-400" [disabled]="processing() || createdProject()"
+                        [attr.aria-label]="'Remove ' + item.file.name" (click)="removeFile(index)" title="Remove file">
+                        <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"></path></svg>
+                      </button>
+                    </div>
+                  }
+                </div>
+              </section>
+
+              @if (currentFile(); as item) {
+                <section class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900" aria-labelledby="current-file-heading">
+                  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                      <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Selected file</p>
+                      <h3 id="current-file-heading" class="mt-1 truncate text-lg font-semibold text-slate-900 dark:text-slate-100" [title]="item.file.name">{{ item.file.name }}</h3>
+                      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ formatSize(item.file.size) }} · Browser file metadata</p>
+                    </div>
+                    <span class="inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                      [class]="item.state === 'failed' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300' : item.state === 'uploaded' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' : item.state === 'uploading' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'">
+                      <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>{{ item.state }}
+                    </span>
+                  </div>
+                  @if (item.error) {
+                    <p class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300" role="alert">{{ item.error }}</p>
+                  }
+                  <dl class="mt-6 grid gap-4 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2 dark:bg-slate-800/50">
+                    <div><dt class="text-xs text-slate-500 dark:text-slate-400">Position</dt><dd class="mt-1 font-semibold text-slate-800 dark:text-slate-200">{{ selectedFileIndex() + 1 }} of {{ csvFiles().length }}</dd></div>
+                    <div><dt class="text-xs text-slate-500 dark:text-slate-400">Source type</dt><dd class="mt-1 font-semibold text-slate-800 dark:text-slate-200">CSV file</dd></div>
+                  </dl>
+                  <div class="mt-6 flex items-center justify-between gap-3">
+                    <button type="button" class="btn-secondary" (click)="selectPreviousFile()" [disabled]="selectedFileIndex() <= 0" aria-label="Previous selected CSV file">
+                      <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m15 19-7-7 7-7"></path></svg> Previous
+                    </button>
+                    <button type="button" class="btn-secondary" (click)="selectNextFile()" [disabled]="selectedFileIndex() >= csvFiles().length - 1" aria-label="Next selected CSV file">
+                      Next <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg>
+                    </button>
+                  </div>
+                </section>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <div>
+          <p class="eyebrow">Step 3 of 3</p>
+          <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Review & Create</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Confirm the project details and files. Nothing is sent until you select Create Project.</p>
+
+          @if (processing()) {
+            <div class="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900 dark:bg-blue-950/30" role="status" aria-live="polite" aria-busy="true">
+              <div class="flex items-center gap-3">
+                <svg viewBox="0 0 24 24" class="h-5 w-5 animate-spin fill-none stroke-blue-700 dark:stroke-blue-300" stroke-width="2" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path></svg>
+                <div>
+                  <p class="font-semibold text-blue-900 dark:text-blue-200">{{ submissionState() === 'creating' ? 'Creating project…' : 'Uploading CSV files…' }}</p>
+                  @if (submissionState() === 'uploading') {
+                    <p class="mt-1 text-sm text-blue-700 dark:text-blue-300">Processed {{ uploadCompleted() }} of {{ uploadTotal() }} files. Uploads run one at a time.</p>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
+          <div class="mt-7 grid gap-5 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <section class="rounded-2xl border border-slate-200 p-5 dark:border-slate-700">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="font-semibold text-slate-900 dark:text-slate-100">Project details</h3>
+                <button type="button" class="text-sm font-semibold text-blue-700 hover:text-blue-800 disabled:opacity-50 dark:text-blue-400 dark:hover:text-blue-300" [disabled]="processing() || createdProject()" (click)="currentStep.set(1)">Edit</button>
+              </div>
+              <dl class="mt-5 space-y-5">
+                <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Project name</dt><dd class="mt-1 break-words text-sm font-semibold text-slate-800 dark:text-slate-200">{{ projectForm.controls.name.value.trim() }}</dd></div>
+                <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Description</dt><dd class="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600 dark:text-slate-400">{{ projectForm.controls.description.value.trim() || 'No description provided' }}</dd></div>
+                <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Selected source</dt><dd class="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-200">CSV Files</dd></div>
+              </dl>
+            </section>
+
+            <section class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700" aria-labelledby="review-files-heading">
+              <header class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-800/60">
+                <div><h3 id="review-files-heading" class="font-semibold text-slate-900 dark:text-slate-100">CSV files</h3><p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{{ csvFiles().length }} selected</p></div>
+                <button type="button" class="text-sm font-semibold text-blue-700 hover:text-blue-800 disabled:opacity-50 dark:text-blue-400 dark:hover:text-blue-300" [disabled]="processing() || createdProject()" (click)="currentStep.set(2)">Edit</button>
+              </header>
+              <ul class="max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+                @for (item of csvFiles(); track item.id; let index = $index) {
+                  <li class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-5 py-3.5">
+                    <span class="grid h-8 w-8 place-items-center rounded-lg bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">{{ index + 1 }}</span>
+                    <span class="min-w-0"><span class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-200" [title]="item.file.name">{{ item.file.name }}</span><span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ formatSize(item.file.size) }}</span></span>
+                    <span class="text-xs font-semibold capitalize" [class.text-rose-600]="item.state === 'failed'" [class.text-emerald-600]="item.state === 'uploaded'" [class.text-blue-600]="item.state === 'uploading'" [class.text-slate-500]="item.state === 'selected'">{{ item.state }}</span>
+                  </li>
+                }
+              </ul>
+            </section>
+          </div>
+
+          @if (submissionState() === 'partial') {
+            <div class="mt-5 grid gap-4 sm:grid-cols-2">
+              <div class="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/25">
+                <h3 class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Uploaded successfully ({{ uploadedFiles().length }})</h3>
+                <ul class="mt-2 space-y-1 text-xs text-emerald-700 dark:text-emerald-400">@for (item of uploadedFiles(); track item.id) { <li class="truncate" [title]="item.file.name">{{ item.file.name }}</li> }</ul>
+              </div>
+              <div class="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 dark:border-rose-900 dark:bg-rose-950/25">
+                <h3 class="text-sm font-semibold text-rose-800 dark:text-rose-300">Failed uploads ({{ failedFiles().length }})</h3>
+                <ul class="mt-2 space-y-2 text-xs text-rose-700 dark:text-rose-400">@for (item of failedFiles(); track item.id) { <li><span class="block truncate font-semibold" [title]="item.file.name">{{ item.file.name }}</span><span class="block opacity-90">{{ item.error }}</span></li> }</ul>
+              </div>
+            </div>
+          }
         </div>
       }
+    </div>
 
-      <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:justify-end dark:border-slate-800">
-        <a routerLink="/projects" class="btn-secondary">Cancel</a>
-        <button type="submit" class="btn-primary min-w-36" [disabled]="!projectForm.form.valid || !projectName.trim() || saving()">
-          @if (saving()) {
-            <svg viewBox="0 0 24 24" class="h-4 w-4 animate-spin fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path></svg>
-            Creating...
-          } @else {
-            Create Project
-          }
-        </button>
+    <footer class="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7 lg:px-9 dark:border-slate-700 dark:bg-slate-800/35">
+      <button type="button" class="btn-ghost" (click)="previousStep()" [disabled]="processing()">
+        <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m15 19-7-7 7-7"></path></svg>
+        Back
+      </button>
+      <div class="flex flex-col-reverse gap-3 sm:flex-row">
+        <button type="button" class="btn-secondary" (click)="cancel()" [disabled]="processing()">Cancel</button>
+        @if (currentStep() < 3) {
+          <button type="button" class="btn-primary min-w-28" (click)="nextStep()"
+            [disabled]="currentStep() === 1 ? !projectDetailsValid() : csvFiles().length === 0">
+            Next <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg>
+          </button>
+        } @else if (submissionState() === 'partial') {
+          <button type="button" class="btn-secondary" (click)="retryFailedUploads()" [disabled]="processing() || failedFiles().length === 0">Retry Failed Uploads</button>
+          <button type="button" class="btn-primary" (click)="continueToProject()" [disabled]="processing()">Continue to Project</button>
+        } @else {
+          <button type="button" class="btn-primary min-w-40" (click)="createProject()" [disabled]="processing() || !!createdProject()">
+            @if (processing()) {
+              <svg viewBox="0 0 24 24" class="h-4 w-4 animate-spin fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path></svg>
+              {{ submissionState() === 'creating' ? 'Creating…' : 'Uploading…' }}
+            } @else {
+              Create Project
+            }
+          </button>
+        }
       </div>
-    </form>
+    </footer>
   </section>
 </div>
+
+@if (leaveDialogOpen()) {
+  <div class="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[1px]" role="presentation">
+    <section role="alertdialog" aria-modal="true" aria-labelledby="unsaved-title" aria-describedby="unsaved-description"
+      class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+      <div class="grid h-11 w-11 place-items-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.7 2.7 18a2 2 0 0 0 1.76 3h15.08a2 2 0 0 0 1.76-3L13.7 3.7a2 2 0 0 0-3.4 0Z"></path></svg>
+      </div>
+      <h2 id="unsaved-title" class="mt-4 text-xl font-semibold text-slate-950 dark:text-slate-100">Unsaved Changes</h2>
+      <p id="unsaved-description" class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">You have unsaved changes. Are you sure you want to leave this page?</p>
+      <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button #stayButton type="button" class="btn-secondary" (click)="resolveLeaveDialog(false)">Stay</button>
+        <button #leaveButton type="button" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700" (click)="resolveLeaveDialog(true)">Leave</button>
+      </div>
+    </section>
+  </div>
+}

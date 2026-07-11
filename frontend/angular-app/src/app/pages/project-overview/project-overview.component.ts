@@ -16,6 +16,7 @@ import { WorkflowStateService } from '../../services/workflow-state.service';
 export class ProjectOverviewComponent implements OnInit {
   readonly overview = signal<ProjectOverview | null>(null);
   readonly loading = signal(false);
+  readonly navigationNotice = signal('');
 
   projectId = 0;
   errorMessage = '';
@@ -28,6 +29,11 @@ export class ProjectOverviewComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    const state = history.state as { notice?: unknown };
+    if (typeof state.notice === 'string') {
+      this.navigationNotice.set(state.notice);
+    }
+
     this.projectId = Number(this.route.snapshot.paramMap.get('projectId'));
     if (!Number.isFinite(this.projectId) || this.projectId <= 0) {
       this.router.navigate(['/projects']);
@@ -61,5 +67,9 @@ export class ProjectOverviewComponent implements OnInit {
 
   analyzedPercent(data: ProjectOverview): number {
     return Math.round((data.analyzedDatasetsCount / Math.max(data.datasetsCount, 1)) * 100);
+  }
+
+  dismissNavigationNotice(): void {
+    this.navigationNotice.set('');
   }
 }
