@@ -31,7 +31,7 @@ export class LoginComponent {
       password: this.password,
     }).pipe(finalize(() => this.isLoading = false))
       .subscribe({
-        next: () => this.router.navigate(['/projects']),
+        next: () => this.router.navigate(['/home']),
         error: (error: { error?: ApiErrorBody }) => {
           this.errorMessage = error.error?.message ?? 'Unable to sign in. Check the backend and try again.';
         },

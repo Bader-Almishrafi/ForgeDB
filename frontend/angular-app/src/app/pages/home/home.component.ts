@@ -1,51 +1,53 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiErrorBody, ProjectResponse } from '../../services/api.models';
 import { AuthService } from '../../services/auth.service';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
+import { RecentActivity } from '../../shared/home.models';
 import { ProjectCardComponent } from '../../shared/project-card/project-card.component';
 
 type ProjectSort = 'modified' | 'created' | 'name';
 
 @Component({
-  selector: 'app-projects',
+  selector: 'app-home',
   standalone: true,
   imports: [FormsModule, RouterLink, ProjectCardComponent],
-  templateUrl: './projects.component.html',
+  templateUrl: './home.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ProjectsComponent implements OnInit {
-  private readonly destroyRef = inject(DestroyRef);
+export class HomeComponent implements OnInit {
   readonly projects = signal<ProjectResponse[]>([]);
   readonly loading = signal(false);
   readonly loadError = signal('');
   readonly searchQuery = signal('');
   readonly sortBy = signal<ProjectSort>('modified');
+  readonly user = this.auth.user;
+  readonly recentActivities = signal<RecentActivity[]>([]);
 
+  readonly greetingName = computed(() => this.user()?.firstName.trim() || '');
   readonly filteredProjects = computed(() => {
     const query = this.searchQuery().trim().toLocaleLowerCase();
     const matching = query
       ? this.projects().filter((project) => project.name.toLocaleLowerCase().includes(query))
       : [...this.projects()];
-    return matching.sort((left, right) => this.compareProjects(left, right));
+
+    return matching.sort((left, right) => this.compareProjects(left, right)).slice(0, 4);
   });
+  readonly hasNoSearchResults = computed(() =>
+    !this.loading() && !this.loadError() && this.projects().length > 0 && this.filteredProjects().length === 0,
+  );
 
   constructor(
     private readonly api: ForgeApiService,
     private readonly auth: AuthService,
     private readonly workflow: WorkflowStateService,
     private readonly router: Router,
-    private readonly route: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
-    this.route.queryParamMap
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((params) => this.searchQuery.set(params.get('search') ?? ''));
     this.loadProjects();
   }
 
@@ -90,13 +92,14 @@ export class ProjectsComponent implements OnInit {
     if (this.sortBy() === 'name') {
       return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' });
     }
+
     const leftDate = this.sortBy() === 'created' ? left.createdAt : left.updatedAt || left.createdAt;
     const rightDate = this.sortBy() === 'created' ? right.createdAt : right.updatedAt || right.createdAt;
-    return this.timestamp(rightDate) - this.timestamp(leftDate);
+    return this.toTimestamp(rightDate) - this.toTimestamp(leftDate);
   }
 
-  private timestamp(value: string): number {
-    const parsed = Date.parse(value);
-    return Number.isNaN(parsed) ? 0 : parsed;
+  private toTimestamp(value: string): number {
+    const timestamp = Date.parse(value);
+    return Number.isNaN(timestamp) ? 0 : timestamp;
   }
 }

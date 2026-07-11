@@ -1,0 +1,47 @@
+<div class="mx-auto max-w-3xl">
+  <a routerLink="/projects" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-700 dark:text-slate-400 dark:hover:text-blue-300">
+    <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m15 19-7-7 7-7"></path></svg>
+    Back to Projects
+  </a>
+
+  <section class="mt-5 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+    <header class="border-b border-slate-100 px-6 py-7 sm:px-8 dark:border-slate-800">
+      <p class="eyebrow">New workspace</p>
+      <h1 class="mt-1 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Create a project</h1>
+      <p class="mt-2 max-w-xl text-sm leading-6 text-slate-500 dark:text-slate-400">Give your data workflow a clear name and a short description. You can add datasets after the project is created.</p>
+    </header>
+
+    <form #projectForm="ngForm" (ngSubmit)="projectForm.form.valid && createProject()" class="space-y-6 px-6 py-7 sm:px-8">
+      <label class="block">
+        <span class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Project name</span>
+        <input name="projectName" [(ngModel)]="projectName" class="input-field min-h-11" required maxlength="120"
+          autocomplete="off" placeholder="Customer analytics warehouse">
+        <span class="mt-1.5 block text-xs text-slate-500 dark:text-slate-400">Use a name your team will recognize.</span>
+      </label>
+
+      <label class="block">
+        <span class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">Description <span class="font-normal text-slate-400">(optional)</span></span>
+        <textarea name="projectDescription" [(ngModel)]="projectDescription" class="input-field min-h-32 resize-y" maxlength="600"
+          placeholder="What data will this project organize?"></textarea>
+      </label>
+
+      @if (errorMessage()) {
+        <div role="alert" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+          {{ errorMessage() }}
+        </div>
+      }
+
+      <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:justify-end dark:border-slate-800">
+        <a routerLink="/projects" class="btn-secondary">Cancel</a>
+        <button type="submit" class="btn-primary min-w-36" [disabled]="!projectForm.form.valid || !projectName.trim() || saving()">
+          @if (saving()) {
+            <svg viewBox="0 0 24 24" class="h-4 w-4 animate-spin fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path></svg>
+            Creating...
+          } @else {
+            Create Project
+          }
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

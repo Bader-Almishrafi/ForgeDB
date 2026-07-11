@@ -6,6 +6,14 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1f3a">
+  <script>
+    try {
+      if (localStorage.getItem('forgedb.theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.style.colorScheme = 'dark';
+      }
+    } catch (_) {}
+  </script>
 </head>
 <body>
   <app-root></app-root>
