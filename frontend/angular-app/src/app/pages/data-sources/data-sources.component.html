@@ -1,157 +1,291 @@
-<section class="space-y-5">
-  <header class="workspace-panel overflow-hidden">
-    <div class="border-b border-slate-200 px-5 py-4">
-      <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <p class="text-sm text-slate-500">Projects / {{ project()?.name || 'Project' }} / Datasets</p>
-          <div class="mt-2 flex flex-wrap items-center gap-3">
-            <h1 class="page-title">Dataset Catalog</h1>
-            <span class="badge-neutral">{{ datasets().length }} datasets</span>
-            <span class="badge-success">{{ analyzedCount() }} analyzed</span>
-          </div>
-          <p class="page-subtitle">Project datasets, import status, quality signals, and dataset-level actions.</p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <a [routerLink]="['/projects', projectId, 'overview']" class="btn-secondary">Overview</a>
-          <button type="button" class="btn-secondary" (click)="loadDatasets()" [disabled]="loading()">Refresh</button>
-        </div>
+<div class="mx-auto max-w-[1600px] space-y-6 overflow-x-hidden">
+  @if (projectLoading()) {
+    <section class="animate-pulse space-y-5" aria-label="Loading Data Sources" aria-busy="true">
+      <div class="h-64 rounded-3xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-slate-900">
+        <div class="h-4 w-36 rounded bg-slate-200 dark:bg-slate-800"></div>
+        <div class="mt-8 h-12 w-12 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
+        <div class="mt-4 h-8 w-72 max-w-full rounded bg-slate-200 dark:bg-slate-800"></div>
+        <div class="mt-3 h-4 w-[34rem] max-w-full rounded bg-slate-100 dark:bg-slate-800"></div>
       </div>
-    </div>
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        @for (item of [1, 2, 3, 4]; track item) {
+          <div class="h-28 rounded-2xl bg-slate-200/80 dark:bg-slate-800"></div>
+        }
+      </div>
+    </section>
+  } @else if (projectError()) {
+    <section class="rounded-3xl border border-rose-200 bg-rose-50 px-6 py-14 text-center dark:border-rose-900 dark:bg-rose-950/30" role="alert">
+      <h1 class="text-xl font-semibold text-rose-900 dark:text-rose-200">{{ projectError() }}</h1>
+      <p class="mt-2 text-sm text-rose-700 dark:text-rose-400">The project could not be opened for dataset management.</p>
+      <div class="mt-5 flex flex-wrap justify-center gap-3">
+        <a routerLink="/projects" class="btn-secondary">Back to Projects</a>
+        <button type="button" class="btn-primary" (click)="loadProject()">Try Again</button>
+      </div>
+    </section>
+  } @else if (project(); as projectData) {
+    @if (selectionNotice()) {
+      <div class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300" role="status" aria-live="polite">
+        <svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 4.7 2.8 18a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.7a2 2 0 0 0-3.4 0Z"></path></svg>
+        <p class="min-w-0 flex-1 font-semibold">{{ selectionNotice() }}</p>
+      </div>
+    }
 
-    <div class="grid bg-slate-50/70 sm:grid-cols-2 xl:grid-cols-4">
-      <div class="border-b border-slate-200 p-5 sm:border-r xl:border-b-0">
-        <p class="section-title">Rows</p>
-        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ totalRows() }}</p>
+    @if (uploadSuccess()) {
+      <div class="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300" role="status" aria-live="polite">
+        <svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>
+        <p class="min-w-0 flex-1 font-semibold">{{ uploadSuccess() }}</p>
       </div>
-      <div class="border-b border-slate-200 p-5 xl:border-r xl:border-b-0">
-        <p class="section-title">Datasets</p>
-        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ datasets().length }}</p>
-      </div>
-      <div class="border-b border-slate-200 p-5 sm:border-r sm:border-b-0">
-        <p class="section-title">Missing Values</p>
-        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ totalMissingValues() }}</p>
-      </div>
-      <div class="p-5">
-        <p class="section-title">Duplicate Rows</p>
-        <p class="mt-2 text-3xl font-semibold text-slate-950">{{ totalDuplicateRows() }}</p>
-      </div>
-    </div>
-  </header>
+    }
 
-  @if (errorMessage) {
-    <p class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-      {{ errorMessage }}
-    </p>
-  }
-  @if (successMessage) {
-    <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-      {{ successMessage }}
-    </p>
-  }
-
-  <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-    <article class="workspace-panel overflow-hidden">
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-        <div>
-          <h2 class="text-lg font-semibold text-slate-950">Datasets</h2>
-          <p class="mt-1 text-sm text-slate-500">Catalog records returned by the project dataset API.</p>
-        </div>
-        <a [routerLink]="['/projects', projectId, 'schema-designer']" class="btn-secondary">Schema Designer</a>
-      </div>
-
-      @if (loading()) {
-        <p class="p-5 text-sm text-slate-500">Loading datasets...</p>
-      } @else if (datasets().length === 0) {
-        <div class="p-10 text-center">
-          <div class="mx-auto grid h-14 w-14 place-items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-slate-500">
-            <svg viewBox="0 0 24 24" class="h-7 w-7 fill-none stroke-current" stroke-width="1.7">
-              <path d="M4 6h16M4 12h16M4 18h16"></path>
-            </svg>
-          </div>
-          <h3 class="mt-4 text-lg font-semibold text-slate-950">No datasets</h3>
-          <p class="mt-1 text-sm text-slate-500">Import a CSV file to populate the project catalog.</p>
-        </div>
-      } @else {
-        <div class="table-wrap rounded-none border-0">
-          <table class="data-table">
-            <thead>
-              <tr><th>Table</th><th>Source</th><th>Shape</th><th>Quality</th><th>Status</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              @for (dataset of datasets(); track dataset.id) {
-                <tr>
-                  <td>
-                    <a [routerLink]="['/datasets', dataset.id, 'profile']" class="font-semibold text-slate-950 hover:text-blue-700">{{ dataset.tableName }}</a>
-                    <p class="mt-1 text-xs text-slate-500">Dataset #{{ dataset.id }}</p>
-                  </td>
-                  <td>
-                    <p class="max-w-[220px] truncate text-slate-700">{{ dataset.sourceName || dataset.sourceType }}</p>
-                    <p class="mt-1 text-xs uppercase tracking-wide text-slate-400">{{ dataset.sourceType }}</p>
-                  </td>
-                  <td>{{ dataset.rowCount }} rows / {{ dataset.columnCount }} cols</td>
-                  <td>
-                    <p class="font-semibold" [ngClass]="qualitySignalClass(dataset)">
-                      {{ dataset.missingValuesCount }} missing / {{ dataset.duplicateRowsCount }} dupes
-                    </p>
-                  </td>
-                  <td><span [class]="dataset.status === 'Analyzed' ? 'badge-success' : 'badge-warning'">{{ dataset.status }}</span></td>
-                  <td>
-                    <div class="flex flex-wrap gap-2">
-                      <a [routerLink]="['/datasets', dataset.id, 'explorer']" class="btn-secondary py-2">Explore</a>
-                      <a [routerLink]="['/datasets', dataset.id, 'profile']" class="btn-secondary py-2">Profile</a>
-                      <button type="button" class="btn-ghost py-2" (click)="analyzeDataset(dataset)" [disabled]="analyzingDatasetId() === dataset.id">
-                        {{ analyzingDatasetId() === dataset.id ? 'Analyzing' : 'Analyze' }}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    </article>
-
-    <aside class="space-y-5">
-      <article class="workspace-panel p-5">
-        <h2 class="text-lg font-semibold text-slate-950">Import Dataset</h2>
-        <form #uploadForm="ngForm" (ngSubmit)="uploadCsv()" class="mt-5 space-y-4">
-          <label class="block">
-            <span class="mb-1.5 block text-sm font-semibold text-slate-700">CSV File</span>
-            <span class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-blue-300 bg-blue-50 px-4 py-4 text-sm text-blue-700 hover:bg-blue-100">
-              <span class="truncate font-semibold">{{ selectedFileName || 'Choose file' }}</span>
-              <span class="rounded-md bg-white px-3 py-1.5 text-xs font-semibold shadow-sm">Browse</span>
+    <header class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white px-5 py-6 shadow-sm shadow-slate-200/50 sm:px-7 sm:py-8 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/20">
+      <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-[38%] bg-gradient-to-l from-blue-50/90 via-teal-50/30 to-transparent lg:block dark:from-blue-950/30 dark:via-teal-950/10" aria-hidden="true"></div>
+      <div class="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border border-blue-100 dark:border-blue-900/50" aria-hidden="true"></div>
+      <div class="relative flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+        <div class="min-w-0">
+          <a [routerLink]="['/projects', projectId, 'overview']" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-slate-400 dark:hover:text-blue-300">
+            <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m15 19-7-7 7-7"></path></svg>
+            Back to Overview
+          </a>
+          <div class="mt-6 flex items-start gap-4 sm:gap-5">
+            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100 sm:h-14 sm:w-14 dark:bg-blue-950/60 dark:text-blue-300 dark:ring-blue-900">
+              <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current sm:h-7 sm:w-7" stroke-width="1.8" aria-hidden="true"><ellipse cx="12" cy="6" rx="6.5" ry="2.75"></ellipse><path d="M5.5 6v6c0 1.52 2.91 2.75 6.5 2.75s6.5-1.23 6.5-2.75V6M5.5 12v6c0 1.52 2.91 2.75 6.5 2.75s6.5-1.23 6.5-2.75v-6"></path></svg>
             </span>
-            <input type="file" class="hidden" accept=".csv,text/csv" (change)="onFileSelected($event)" />
-          </label>
-
-          <label class="block">
-            <span class="mb-1.5 block text-sm font-semibold text-slate-700">Table Name</span>
-            <input name="tableName" [(ngModel)]="tableName" class="input-field" placeholder="raw_dataset">
-          </label>
-
-          <button type="submit" class="btn-primary w-full" [disabled]="!selectedFile || uploading()">
-            {{ uploading() ? 'Uploading...' : 'Upload CSV' }}
-          </button>
-        </form>
-      </article>
-
-      @if (uploadedDataset(); as dataset) {
-        <article class="rounded-lg border border-emerald-200 bg-emerald-50 p-5">
-          <h2 class="font-semibold text-emerald-950">{{ dataset.tableName }}</h2>
-          <p class="mt-1 text-sm text-emerald-700">{{ dataset.rowCount }} rows / {{ dataset.columnCount }} columns / {{ dataset.status }}</p>
-          <a [routerLink]="['/datasets', dataset.id, 'explorer']" class="btn-primary mt-4 w-full">Open Explorer</a>
-        </article>
-      }
-
-      <article class="workspace-panel p-5">
-        <h2 class="text-lg font-semibold text-slate-950">Catalog Actions</h2>
-        <div class="mt-4 space-y-2">
-          <a [routerLink]="['/projects', projectId, 'relationships']" class="btn-secondary w-full justify-start">Review relationships</a>
-          <a [routerLink]="['/projects', projectId, 'schema-designer']" class="btn-secondary w-full justify-start">Open schema designer</a>
-          <a [routerLink]="['/projects', projectId, 'exports']" class="btn-secondary w-full justify-start">Open export package</a>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <h1 class="break-words text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl dark:text-slate-100">{{ projectData.name }}</h1>
+                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">{{ datasets().length }} data source{{ datasets().length === 1 ? '' : 's' }}</span>
+              </div>
+              <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base dark:text-slate-400">{{ projectData.description || 'No description provided.' }}</p>
+              <div class="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
+                @if (projectData.createdAt) { <span>Created {{ projectData.createdAt | date:'mediumDate' }}</span> }
+                <span>Project #{{ projectData.id }}</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </article>
-    </aside>
-  </div>
-</section>
+        <div class="relative flex flex-col gap-2 sm:flex-row xl:justify-end">
+          <button type="button" class="btn-primary min-h-11" (click)="openUpload()" [attr.aria-expanded]="uploadOpen()">
+            <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            Add Data Source
+          </button>
+          <button type="button" class="btn-secondary min-h-11" (click)="loadDatasets()" [disabled]="datasetsLoading()" aria-label="Refresh project datasets">
+            <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"></path></svg>
+            {{ datasetsLoading() ? 'Refreshing' : 'Refresh' }}
+          </button>
+        </div>
+      </div>
+    </header>
+
+    @if (datasets().length > 0) {
+      <section aria-labelledby="project-summary-heading">
+        <div class="flex items-end justify-between gap-4">
+          <div><p class="eyebrow">Project summary</p><h2 id="project-summary-heading" class="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Data at a glance</h2></div>
+        </div>
+        <dl class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+            <div class="flex items-center justify-between gap-4"><dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Data Sources</dt><span class="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16v5H4V6Zm0 7h16v5H4v-5Zm3-4h.01M7 16h.01"></path></svg></span></div>
+            <dd class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ datasets().length | number }}</dd>
+          </div>
+          <div class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+            <div class="flex items-center justify-between gap-4"><dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Rows</dt><span class="grid h-10 w-10 place-items-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16v14H4V5Zm0 5h16M9 5v14"></path></svg></span></div>
+            <dd class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ totalRows() | number }}</dd>
+          </div>
+          <div class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+            <div class="flex items-center justify-between gap-4"><dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Columns</dt><span class="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M5 4h14v16H5V4Zm5 0v16m4-16v16"></path></svg></span></div>
+            <dd class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ totalColumns() | number }}</dd>
+          </div>
+          <div class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+            <div class="flex items-center justify-between gap-4"><dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Analyzed Datasets</dt><span class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="m5 12 4 4L19 6M4 20h16"></path></svg></span></div>
+            <dd class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ analyzedCount() | number }}<span class="ml-1 text-base font-medium text-slate-400">/ {{ datasets().length }}</span></dd>
+          </div>
+        </dl>
+      </section>
+    }
+
+    @if (uploadOpen()) {
+      <section class="overflow-hidden rounded-3xl border border-blue-200 bg-white shadow-md shadow-blue-100/40 dark:border-blue-900 dark:bg-slate-900 dark:shadow-black/20" aria-labelledby="upload-heading">
+        <div class="border-b border-slate-200 bg-gradient-to-r from-blue-50 to-teal-50/40 px-5 py-4 dark:border-slate-700 dark:from-blue-950/35 dark:to-teal-950/15 sm:px-6">
+          <p class="eyebrow">CSV import</p>
+          <h2 id="upload-heading" class="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">Add a new data source</h2>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Upload one CSV file to this project.</p>
+        </div>
+        <div class="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div class="min-w-0">
+            <label for="csv-file-input" class="flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-8 text-center transition focus-within:ring-4 focus-within:ring-blue-100 dark:focus-within:ring-blue-950" [ngClass]="dragActive() ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40' : 'border-slate-300 bg-slate-50/70 hover:border-blue-400 hover:bg-blue-50/50 dark:border-slate-600 dark:bg-slate-800/50 dark:hover:border-blue-600'" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+              <span class="grid h-12 w-12 place-items-center rounded-xl bg-white text-blue-700 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-blue-300 dark:ring-slate-700"><svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M12 16V4m0 0 4 4m-4-4-4 4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"></path></svg></span>
+              <span class="mt-4 text-sm font-semibold text-slate-800 dark:text-slate-200">Choose a CSV file or drop it here</span>
+              <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">One non-empty .csv file per upload</span>
+              <input id="csv-file-input" type="file" class="sr-only" accept=".csv,text/csv" (change)="onFileSelected($event)" [disabled]="uploading()" />
+            </label>
+            @if (uploadFile(); as file) {
+              <div class="mt-3 flex min-w-0 items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/25">
+                <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-emerald-700 dark:stroke-emerald-300" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5"></path></svg>
+                <div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-slate-800 dark:text-slate-200" [title]="file.name">{{ file.name }}</p><p class="text-xs text-slate-500 dark:text-slate-400">{{ formatSize(file.size) }}</p></div>
+              </div>
+            }
+            @if (uploadError()) { <p class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300" role="alert" aria-live="assertive">{{ uploadError() }}</p> }
+            <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
+              <button type="button" class="btn-secondary sm:min-w-24" (click)="clearUpload()" [disabled]="uploading()">Cancel</button>
+              <button type="button" class="btn-primary sm:min-w-32" (click)="uploadCsv()" [disabled]="!uploadFile() || uploading()">{{ uploading() ? 'Uploading' : 'Upload CSV' }}</button>
+            </div>
+          </div>
+          <aside class="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/50" aria-labelledby="api-coming-soon-title">
+            <div class="grid h-10 w-10 place-items-center rounded-xl bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-700"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M8 12h8m-4-4v8M5 5a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V5Z"></path></svg></div>
+            <div class="mt-4 flex items-start justify-between gap-3"><h3 id="api-coming-soon-title" class="font-semibold text-slate-900 dark:text-slate-100">API Connection</h3><span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-300">Coming Soon</span></div>
+            <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">API imports require future backend integration. This card is informational only.</p>
+          </aside>
+        </div>
+      </section>
+    }
+
+    @if (datasets().length > 0) {
+      <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby="project-quality-heading">
+        <div class="border-b border-slate-200 px-5 py-5 sm:px-6 dark:border-slate-700">
+          <p class="eyebrow">Project data quality</p>
+          <h2 id="project-quality-heading" class="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Quality coverage across this project</h2>
+        </div>
+        <div class="grid divide-y divide-slate-200 lg:grid-cols-3 lg:divide-x lg:divide-y-0 dark:divide-slate-700">
+          <article class="p-5 sm:p-6">
+            <div class="flex items-start gap-4">
+              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"></path></svg></span>
+              <div><h3 class="font-semibold text-slate-900 dark:text-slate-100">Overall Project Quality</h3><p class="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Project data quality is not available yet.</p><p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">The current API does not provide dataset quality scores to aggregate.</p></div>
+            </div>
+            <dl class="mt-5 grid grid-cols-2 gap-3"><div class="rounded-xl bg-emerald-50 p-3 dark:bg-emerald-950/25"><dt class="text-xs text-emerald-700 dark:text-emerald-300">Analyzed</dt><dd class="mt-1 text-xl font-semibold text-emerald-900 dark:text-emerald-100">{{ analyzedCount() }}</dd></div><div class="rounded-xl bg-slate-100 p-3 dark:bg-slate-800"><dt class="text-xs text-slate-500 dark:text-slate-400">Not analyzed</dt><dd class="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">{{ datasets().length - analyzedCount() }}</dd></div></dl>
+          </article>
+          <article class="p-5 sm:p-6">
+            <h3 class="font-semibold text-slate-900 dark:text-slate-100">Quality Breakdown</h3>
+            <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Good, fair, poor, and critical classifications are not provided by the current API.</p>
+            <div class="mt-5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800" aria-label="Dataset analysis coverage">
+              <div class="h-2.5 rounded-full bg-gradient-to-r from-teal-500 to-blue-600" [style.width.%]="datasets().length ? analyzedCount() / datasets().length * 100 : 0"></div>
+            </div>
+            <div class="mt-3 flex flex-wrap justify-between gap-2 text-xs"><span class="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><span class="h-2 w-2 rounded-full bg-teal-500"></span>{{ analyzedCount() }} analyzed</span><span class="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400"><span class="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-700"></span>{{ datasets().length - analyzedCount() }} not analyzed</span></div>
+            <div class="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-3 text-center text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">Quality classification breakdown unavailable</div>
+          </article>
+          <article class="p-5 sm:p-6">
+            <h3 class="font-semibold text-slate-900 dark:text-slate-100">Project Summary</h3>
+            <dl class="mt-4 divide-y divide-slate-100 text-sm dark:divide-slate-800">
+              <div class="flex items-center justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Data Sources</dt><dd class="font-semibold text-slate-900 dark:text-slate-100">{{ datasets().length | number }}</dd></div>
+              <div class="flex items-center justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Total rows</dt><dd class="font-semibold text-slate-900 dark:text-slate-100">{{ totalRows() | number }}</dd></div>
+              <div class="flex items-center justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Total columns</dt><dd class="font-semibold text-slate-900 dark:text-slate-100">{{ totalColumns() | number }}</dd></div>
+              <div class="flex items-center justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Analyzed datasets</dt><dd class="font-semibold text-slate-900 dark:text-slate-100">{{ analyzedCount() }} of {{ datasets().length }}</dd></div>
+            </dl>
+          </article>
+        </div>
+      </section>
+    }
+
+    @if (datasetsLoading() && datasets().length === 0) {
+      <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-busy="true" aria-label="Loading datasets">
+        <div class="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)_380px]"><div class="h-96 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"></div><div class="h-96 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"></div><div class="h-96 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"></div></div>
+      </section>
+    } @else if (datasetsError() && datasets().length === 0) {
+      <section class="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900 dark:bg-rose-950/30" role="alert"><h2 class="text-lg font-semibold text-rose-900 dark:text-rose-200">Dataset list failure</h2><p class="mt-2 text-sm text-rose-700 dark:text-rose-300">{{ datasetsError() }}</p><button type="button" class="btn-primary mt-5" (click)="loadDatasets()">Try Again</button></section>
+    } @else if (datasets().length === 0) {
+      <section class="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div class="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"><svg viewBox="0 0 24 24" class="h-7 w-7 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16v5H4V6Zm0 7h16v5H4v-5Zm3-4h.01M7 16h.01"></path></svg></div>
+        <h2 class="mt-4 text-xl font-semibold text-slate-950 dark:text-slate-100">No data sources yet</h2><p class="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">Add a CSV file to begin analyzing and building your database.</p><button type="button" class="btn-primary mt-5" (click)="openUpload()">Add CSV File</button>
+        <div class="mx-auto mt-6 max-w-md rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left dark:border-slate-700 dark:bg-slate-800/60"><div class="flex items-center justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-slate-100">API Connection</h3><span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-300">Coming Soon</span></div><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">API imports require future backend integration.</p></div>
+      </section>
+    } @else {
+      <section class="grid min-w-0 gap-5 xl:grid-cols-[280px_minmax(0,1fr)_380px]" aria-labelledby="data-sources-workspace-heading">
+        <aside class="flex min-w-0 flex-col rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:sticky xl:top-5 xl:max-h-[calc(100vh-2.5rem)]">
+          <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800"><div><p class="eyebrow">Project files</p><h2 id="data-sources-workspace-heading" class="mt-1 font-semibold text-slate-950 dark:text-slate-100">All Data Sources <span class="text-slate-400">({{ datasets().length }})</span></h2></div><span class="grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><ellipse cx="12" cy="6" rx="6.5" ry="2.75"></ellipse><path d="M5.5 6v6c0 1.52 2.91 2.75 6.5 2.75s6.5-1.23 6.5-2.75V6"></path></svg></span></div>
+          <label for="dataset-search" class="relative mt-4 block"><span class="sr-only">Search data sources</span><svg viewBox="0 0 24 24" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 fill-none stroke-slate-400" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg><input id="dataset-search" type="search" class="input-field min-h-11 pl-10" placeholder="Search data sources" [ngModel]="search()" (ngModelChange)="updateSearch($event)" /></label>
+          <div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1"><button type="button" class="btn-primary w-full whitespace-nowrap px-3" (click)="openUpload()"><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span>Add CSV File</span></button><button type="button" class="btn-secondary w-full whitespace-nowrap px-3" (click)="showAllFiles()">View All Files</button></div>
+          @if (datasetsError()) { <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300" role="alert"><p>{{ datasetsError() }}</p><button type="button" class="mt-2 font-semibold underline" (click)="loadDatasets()">Try again</button></div> }
+          <div role="listbox" aria-label="Project datasets" class="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 xl:max-h-[32rem]">
+            @for (dataset of filteredDatasets(); track dataset.id) {
+              <button type="button" role="option" [attr.aria-selected]="selectedDatasetId() === dataset.id" (click)="selectDataset(dataset)" class="block w-full rounded-2xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" [ngClass]="selectedDatasetId() === dataset.id ? 'border-blue-300 bg-blue-50 shadow-sm ring-1 ring-blue-100 dark:border-blue-700 dark:bg-blue-950/40 dark:ring-blue-900' : 'border-transparent hover:border-slate-200 hover:bg-slate-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/60'">
+                <span class="flex items-start gap-3"><span class="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-700"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5"></path></svg></span><span class="min-w-0 flex-1"><span class="flex items-start justify-between gap-2"><span class="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-slate-100" [title]="dataset.tableName">{{ dataset.tableName }}</span>@if (hasDatasetIssues(dataset)) { <span class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">Issues</span> }</span><span class="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400" [title]="displayName(dataset)">{{ displayName(dataset) }}</span><span class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400"><span>{{ dataset.rowCount | number }} rows</span><span>{{ dataset.columnCount }} cols</span><span [ngClass]="isAnalyzed(dataset) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'">{{ isAnalyzed(dataset) ? 'Analyzed' : 'Not analyzed' }}</span></span></span></span>
+              </button>
+            } @empty {
+              <div class="rounded-2xl border border-dashed border-slate-300 p-5 text-center dark:border-slate-700"><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">No data sources match the search.</p><button type="button" class="btn-secondary mt-3" (click)="updateSearch('')">Clear Search</button></div>
+            }
+          </div>
+          <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400"><div class="flex items-center justify-between gap-3"><span class="font-semibold text-slate-700 dark:text-slate-300">API Connection</span><span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-300">Coming Soon</span></div><p class="mt-1.5 leading-5">Future API imports require backend support.</p></div>
+        </aside>
+
+        @if (mode() === 'all') {
+          <article class="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:col-span-2">
+            <header class="flex flex-col gap-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50/40 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 dark:border-slate-700 dark:from-slate-800/70 dark:to-blue-950/20"><div><p class="eyebrow">Complete list</p><h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">View All Files</h2><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ datasets().length }} real datasets in this project</p></div>@if (selectedDataset()) { <button type="button" class="btn-secondary" (click)="showSelectedDataset()">Back to Selected Dataset</button> }</header>
+            <div class="max-w-full overflow-x-auto">
+              <table class="min-w-full text-left text-sm">
+                <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"><tr><th scope="col" class="whitespace-nowrap px-5 py-3.5 font-semibold">Name</th><th scope="col" class="whitespace-nowrap px-4 py-3.5 font-semibold">Source type</th><th scope="col" class="whitespace-nowrap px-4 py-3.5 font-semibold">Rows</th><th scope="col" class="whitespace-nowrap px-4 py-3.5 font-semibold">Columns</th><th scope="col" class="whitespace-nowrap px-4 py-3.5 font-semibold">Analysis state</th><th scope="col" class="whitespace-nowrap px-4 py-3.5 font-semibold">Quality / issues</th><th scope="col" class="whitespace-nowrap px-5 py-3.5 text-right font-semibold">Action</th></tr></thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                  @for (dataset of datasets(); track dataset.id) {
+                    <tr class="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40"><td class="max-w-72 px-5 py-4"><div class="flex items-center gap-3"><span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5"></path></svg></span><div class="min-w-0"><p class="truncate font-semibold text-slate-900 dark:text-slate-100" [title]="dataset.tableName">{{ dataset.tableName }}</p><p class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400" [title]="displayName(dataset)">{{ displayName(dataset) }}</p></div></div></td><td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">{{ dataset.sourceType }}</td><td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">{{ dataset.rowCount | number }}</td><td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">{{ dataset.columnCount | number }}</td><td class="whitespace-nowrap px-4 py-4"><span [class]="statusClass(dataset)">{{ dataset.status || 'Not analyzed' }}</span></td><td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">@if (hasDatasetIssues(dataset)) { <span class="font-medium text-amber-700 dark:text-amber-300">{{ dataset.missingValuesCount }} missing / {{ dataset.duplicateRowsCount }} duplicates</span> } @else if (isAnalyzed(dataset)) { <span class="text-emerald-700 dark:text-emerald-300">No issues detected</span> } @else { <span class="text-slate-500 dark:text-slate-400">Not analyzed</span> }</td><td class="whitespace-nowrap px-5 py-4 text-right"><button type="button" class="btn-secondary py-2" (click)="selectDataset(dataset)">Open</button></td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </article>
+        } @else if (selectedDataset(); as dataset) {
+          <article class="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <header class="border-b border-slate-200 bg-gradient-to-br from-white via-white to-blue-50/60 p-5 sm:p-6 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/20">
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div class="min-w-0"><p class="eyebrow">Selected dataset</p><div class="mt-1.5 flex flex-wrap items-center gap-2"><h2 class="max-w-full truncate text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100" [title]="dataset.tableName">{{ dataset.tableName }}</h2><span [class]="statusClass(dataset)">{{ dataset.status || 'Not analyzed' }}</span></div><p class="mt-2 truncate text-sm text-slate-500 dark:text-slate-400" [title]="displayName(dataset)">{{ displayName(dataset) }} <span aria-hidden="true">·</span> Uploaded {{ dataset.createdAt | date:'mediumDate' }}</p></div><div class="flex items-center gap-2"><button type="button" class="icon-button" aria-label="Previous Dataset" (click)="previousDataset()" [disabled]="selectedIndex() <= 0"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m15 19-7-7 7-7"></path></svg></button><span class="min-w-16 text-center text-sm font-semibold tabular-nums text-slate-600 dark:text-slate-300">{{ selectedIndex() + 1 }} of {{ datasets().length }}</span><button type="button" class="icon-button" aria-label="Next Dataset" (click)="nextDataset()" [disabled]="selectedIndex() >= datasets().length - 1"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button></div></div>
+              <dl class="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+                <div class="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Rows</dt><dd class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ dataset.rowCount | number }}</dd></div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Columns</dt><dd class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ dataset.columnCount | number }}</dd></div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Source Type</dt><dd class="mt-1 truncate text-lg font-semibold capitalize text-slate-900 dark:text-slate-100">{{ dataset.sourceType }}</dd></div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><dt class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ isAnalyzed(dataset) ? 'Quality Signals' : 'Analysis State' }}</dt><dd class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ isAnalyzed(dataset) ? (dataset.missingValuesCount + ' missing / ' + dataset.duplicateRowsCount + ' duplicates') : 'Analysis required' }}</dd></div>
+              </dl>
+            </header>
+
+            <div class="border-b border-slate-200 px-5 dark:border-slate-700" role="tablist" aria-label="Dataset detail views"><div class="flex gap-1 overflow-x-auto"><button type="button" id="tab-overview" role="tab" aria-controls="panel-overview" [attr.aria-selected]="activeTab() === 'overview'" (click)="selectTab('overview')" class="whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" [ngClass]="activeTab() === 'overview' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'">Overview</button><button type="button" id="tab-preview" role="tab" aria-controls="panel-preview" [attr.aria-selected]="activeTab() === 'preview'" (click)="selectTab('preview')" class="whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" [ngClass]="activeTab() === 'preview' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'">Preview Data</button><button type="button" id="tab-quality" role="tab" aria-controls="panel-quality" [attr.aria-selected]="activeTab() === 'quality'" (click)="selectTab('quality')" class="whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" [ngClass]="activeTab() === 'quality' ? 'border-blue-600 text-blue-700 dark:text-blue-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'">Data Quality</button></div></div>
+
+            @if (activeTab() === 'overview') {
+              <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="space-y-5 p-5 sm:p-6">
+                <div class="grid gap-4 2xl:grid-cols-2">
+                  <article class="rounded-2xl border border-slate-200 p-4 dark:border-slate-700"><div class="flex items-center gap-3"><span class="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5M9 13h6m-6 4h6"></path></svg></span><h3 class="font-semibold text-slate-950 dark:text-slate-100">Real Metadata</h3></div><dl class="mt-4 divide-y divide-slate-100 text-sm dark:divide-slate-800"><div class="flex justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Source name</dt><dd class="min-w-0 truncate font-semibold text-slate-800 dark:text-slate-200" [title]="displayName(dataset)">{{ displayName(dataset) }}</dd></div><div class="flex justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Dataset ID</dt><dd class="font-semibold text-slate-800 dark:text-slate-200">{{ dataset.id }}</dd></div><div class="flex justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Uploaded</dt><dd class="text-right font-semibold text-slate-800 dark:text-slate-200">{{ dataset.createdAt | date:'medium' }}</dd></div><div class="flex justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Analysis state</dt><dd class="font-semibold text-slate-800 dark:text-slate-200">{{ dataset.status || 'Not analyzed' }}</dd></div><div class="flex justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Source type</dt><dd class="font-semibold capitalize text-slate-800 dark:text-slate-200">{{ dataset.sourceType }}</dd></div></dl></article>
+                  <article class="relative overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/70 p-5 dark:border-blue-900 dark:bg-blue-950/25"><div class="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full border border-blue-200 dark:border-blue-800" aria-hidden="true"></div><div class="relative"><span class="grid h-10 w-10 place-items-center rounded-xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100 dark:bg-slate-900 dark:text-blue-300 dark:ring-blue-900"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7V2Z"></path></svg></span><p class="mt-4 text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">Recommended Next Step</p>@if (!isAnalyzed(dataset)) { <h3 class="mt-2 font-semibold leading-6 text-slate-950 dark:text-slate-100">Analyze this dataset to detect its structure and quality issues.</h3><button type="button" class="btn-primary mt-4" (click)="analyze()">Go to Analysis</button> } @else if (hasDatasetIssues(dataset)) { <h3 class="mt-2 font-semibold leading-6 text-slate-950 dark:text-slate-100">Review the detected data-quality issues before schema work.</h3><button type="button" class="btn-secondary mt-4" (click)="selectTab('quality')">Review Data Quality</button> } @else { <h3 class="mt-2 font-semibold leading-6 text-slate-950 dark:text-slate-100">Review the generated schema.</h3><a [routerLink]="['/projects', projectId, 'schema-designer']" [queryParams]="{ datasetId: dataset.id, returnTo: 'data-sources' }" class="btn-primary mt-4">View Schema</a> }</div></article>
+                </div>
+
+                <article class="rounded-2xl border border-slate-200 p-4 sm:p-5 dark:border-slate-700">
+                  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><p class="eyebrow">Analysis findings</p><h3 class="mt-1 font-semibold text-slate-950 dark:text-slate-100">Dataset Quality Issues</h3></div>@if (isAnalyzed(dataset) && analysis()) { <span class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ qualityIssues().length }} issue type{{ qualityIssues().length === 1 ? '' : 's' }} detected</span> }</div>
+                  @if (!isAnalyzed(dataset)) { <div class="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center dark:border-slate-700 dark:bg-slate-800/40"><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Quality issues are available after analysis.</p><button type="button" class="btn-primary mt-3" (click)="analyze()">Analyze Dataset</button></div> }
+                  @else if (qualityLoading()) { <div class="mt-4 h-28 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" aria-label="Loading quality issues" aria-busy="true"></div> }
+                  @else if (qualityError()) { <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm dark:border-rose-900 dark:bg-rose-950/30" role="alert"><p class="font-semibold text-rose-800 dark:text-rose-300">Quality issues could not be loaded.</p><p class="mt-1 text-rose-700 dark:text-rose-400">{{ qualityError() }}</p><button type="button" class="btn-secondary mt-3" (click)="refreshQuality()">Try Again</button></div> }
+                  @else if (analysis()) { @if (qualityIssues().length > 0) { <div class="mt-4 grid gap-3 lg:grid-cols-2">@for (issue of qualityIssues().slice(0, 3); track issue.type + issue.column) { <article class="flex min-w-0 flex-col rounded-xl border border-amber-200 bg-amber-50/60 p-3.5 dark:border-amber-900 dark:bg-amber-950/20"><div class="flex flex-wrap items-center gap-2"><h4 class="font-semibold text-slate-900 dark:text-slate-100">{{ issue.type }}</h4><span [class]="issueSeverityClass(issue)">{{ issue.severity }}</span></div>@if (issue.column) { <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Column <span class="font-semibold text-slate-700 dark:text-slate-300">{{ issue.column }}</span></p> }<p class="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-400">{{ issue.description }}</p><div class="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-amber-200/70 pt-2.5 text-xs dark:border-amber-900/70"><span class="font-semibold text-slate-800 dark:text-slate-200">{{ issue.count | number }} detected</span>@if (issuePercentage(issue) !== null) { <span class="text-slate-500 dark:text-slate-400">{{ issuePercentage(issue) | number:'1.0-2' }}% of rows</span> }</div></article> }</div>@if (qualityIssues().length > 3) { <div class="mt-4 flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800/50"><p class="text-sm text-slate-600 dark:text-slate-400">{{ qualityIssues().length - 3 }} additional issue type{{ qualityIssues().length - 3 === 1 ? '' : 's' }} available.</p><button type="button" class="btn-secondary shrink-0" (click)="selectTab('quality')">View All Issues</button></div> } } @else { <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center dark:border-emerald-900 dark:bg-emerald-950/25"><p class="font-semibold text-emerald-800 dark:text-emerald-300">No issues detected by the current analysis.</p><p class="mt-1 text-xs text-emerald-700 dark:text-emerald-400">This reflects the real metrics returned by the analysis API.</p></div> } }
+                </article>
+              </section>
+            } @else if (activeTab() === 'preview') {
+              <section id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" class="p-5 sm:p-6"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p class="eyebrow">Dataset sample</p><h3 class="mt-1 font-semibold text-slate-950 dark:text-slate-100">Preview Data</h3><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">First 10 real rows returned by the dataset preview endpoint.</p></div><button type="button" class="btn-secondary" (click)="refreshPreview()" [disabled]="previewLoading()">Refresh Preview</button></div>
+                @if (previewLoading()) { <div class="mt-4 h-64 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" aria-busy="true" aria-label="Loading preview"></div> }
+                @else if (previewError()) { <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700" role="alert"><h4 class="font-semibold text-slate-900 dark:text-slate-100">Data preview is not available for this dataset.</h4><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">{{ previewError() }}</p><button type="button" class="btn-secondary mt-4" (click)="refreshPreview()">Try Again</button></div> }
+                @else if (preview(); as previewData) { @if (previewColumns().length > 0 && previewRows().length > 0) { <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">Showing {{ previewRows().length }} of {{ dataset.rowCount | number }} rows</p><div class="mt-3 max-w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700"><table class="min-w-full text-left text-sm"><thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"><tr>@for (column of previewColumns(); track column) { <th scope="col" class="whitespace-nowrap px-4 py-3 font-semibold">{{ column }}</th> }</tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">@for (row of previewRows(); track $index) { <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">@for (column of previewColumns(); track column) { <td class="max-w-64 truncate whitespace-nowrap px-4 py-3 text-slate-700 dark:text-slate-300" [title]="previewValue(row, column)">{{ previewValue(row, column) }}</td> }</tr> }</tbody></table></div> } @else { <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700"><h4 class="font-semibold text-slate-900 dark:text-slate-100">No preview rows returned.</h4><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">The preview endpoint responded for {{ previewData.tableName }}, but it did not include rows to display.</p></div> } }
+                @else { <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700"><h4 class="font-semibold text-slate-900 dark:text-slate-100">Data preview is ready to load.</h4><button type="button" class="btn-primary mt-4" (click)="refreshPreview()">Load Preview</button></div> }
+              </section>
+            } @else {
+              <section id="panel-quality" role="tabpanel" aria-labelledby="tab-quality" class="p-5 sm:p-6"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p class="eyebrow">Analysis results</p><h3 class="mt-1 font-semibold text-slate-950 dark:text-slate-100">Dataset Data Quality</h3><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Only real analysis metrics are shown.</p></div>@if (isAnalyzed(dataset)) { <button type="button" class="btn-secondary" (click)="refreshQuality()" [disabled]="qualityLoading()">Refresh Quality</button> }</div>
+                @if (!isAnalyzed(dataset)) { <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700"><h4 class="font-semibold text-slate-900 dark:text-slate-100">This dataset has not been analyzed yet.</h4><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Analysis is required before data-quality metrics and detected issues are available.</p><button type="button" class="btn-primary mt-4" (click)="analyze()">Analyze Dataset</button></div> }
+                @else if (qualityLoading()) { <div class="mt-4 h-64 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" aria-busy="true" aria-label="Loading quality metrics"></div> }
+                @else if (qualityError()) { <div class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900 dark:bg-rose-950/30" role="alert"><h4 class="font-semibold text-rose-900 dark:text-rose-200">Quality results could not be loaded.</h4><p class="mt-2 text-sm text-rose-700 dark:text-rose-300">{{ qualityError() }}</p><button type="button" class="btn-secondary mt-4" (click)="refreshQuality()">Try Again</button></div> }
+                @else if (analysis(); as qualityData) {
+                  <div class="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3"><div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Rows</p><p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ qualityData.analysisResult.rowCount | number }}</p></div><div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Columns</p><p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ qualityData.analysisResult.columnCount | number }}</p></div><div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Missing values</p><p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ qualityData.analysisResult.missingValuesCount | number }}</p></div><div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Duplicate rows</p><p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ qualityData.analysisResult.duplicateRowsCount | number }}</p></div><div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Null percentage</p>@if (nullPercentage() !== null) { <p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ nullPercentage() | number:'1.0-2' }}%</p> } @else { <p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Unavailable</p> }</div>@if (qualityData.analyzedAt) { <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Analyzed</p><p class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ qualityData.analyzedAt | date:'medium' }}</p></div> }</div>
+                  <div class="mt-5"><h4 class="font-semibold text-slate-950 dark:text-slate-100">Detected Issues</h4>@if (qualityIssues().length > 0) { <div class="mt-3 space-y-3">@for (issue of qualityIssues(); track issue.type + issue.column) { <article class="rounded-2xl border border-slate-200 p-4 dark:border-slate-700"><div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><h5 class="font-semibold text-slate-900 dark:text-slate-100">{{ issue.type }}</h5><span [class]="issueSeverityClass(issue)">{{ issue.severity }}</span></div>@if (issue.column) { <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Affected column: <span class="font-semibold text-slate-700 dark:text-slate-300">{{ issue.column }}</span></p> }<p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{{ issue.description }}</p></div><div class="shrink-0 rounded-lg bg-slate-50 px-3 py-2 text-right dark:bg-slate-800"><p class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ issue.count | number }} detected</p>@if (issuePercentage(issue) !== null) { <p class="text-xs text-slate-500 dark:text-slate-400">{{ issuePercentage(issue) | number:'1.0-2' }}% of rows</p> }</div></div></article> }</div> } @else { <div class="mt-3 rounded-2xl border border-dashed border-emerald-300 bg-emerald-50 p-6 text-center dark:border-emerald-900 dark:bg-emerald-950/25"><p class="font-semibold text-emerald-800 dark:text-emerald-300">No issues detected by the current analysis.</p><p class="mt-1 text-sm text-emerald-700 dark:text-emerald-400">This reflects only the real metrics returned by the analysis API.</p></div> }</div>
+                } @else { <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700"><h4 class="font-semibold text-slate-900 dark:text-slate-100">Quality results are ready to load.</h4><button type="button" class="btn-primary mt-4" (click)="refreshQuality()">Load Quality Results</button></div> }
+              </section>
+            }
+          </article>
+
+          <aside class="min-w-0 space-y-5">
+            <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby="dataset-actions-heading"><p class="eyebrow">Workflow</p><h2 id="dataset-actions-heading" class="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">Dataset Actions</h2><div class="mt-4 space-y-3">
+              <button type="button" class="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-blue-300 hover:bg-blue-50/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:hover:border-blue-700 dark:hover:bg-blue-950/30" (click)="selectTab('preview')"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700 transition group-hover:bg-blue-600 group-hover:text-white dark:bg-blue-950/60 dark:text-blue-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg></span><span class="min-w-0 flex-1"><span class="block font-semibold text-slate-900 dark:text-slate-100">Preview Data</span><span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Inspect the first 10 rows</span></span><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-slate-400" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button>
+              <button type="button" class="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-teal-300 hover:bg-teal-50/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 dark:border-slate-700 dark:hover:border-teal-700 dark:hover:bg-teal-950/25" (click)="analyze()"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-700 transition group-hover:bg-teal-600 group-hover:text-white dark:bg-teal-950/50 dark:text-teal-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"></path></svg></span><span class="min-w-0 flex-1"><span class="block font-semibold text-slate-900 dark:text-slate-100">Analyze</span><span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Profile structure and quality</span></span><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-slate-400" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button>
+              <a [routerLink]="['/projects', projectId, 'schema-designer']" [queryParams]="{ datasetId: dataset.id, returnTo: 'data-sources' }" class="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-violet-300 hover:bg-violet-50/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-slate-700 dark:hover:border-violet-700 dark:hover:bg-violet-950/25"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-700 transition group-hover:bg-violet-600 group-hover:text-white dark:bg-violet-950/50 dark:text-violet-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 5h6v5H4V5Zm10 9h6v5h-6v-5ZM10 7h4a3 3 0 0 1 3 3v4M7 10v7h7"></path></svg></span><span class="min-w-0 flex-1"><span class="block font-semibold text-slate-900 dark:text-slate-100">View Schema</span><span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Open the schema designer</span></span><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-slate-400" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></a>
+            </div></section>
+
+            <section class="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby="quick-preview-heading"><div class="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-700"><div><p class="eyebrow">Live sample</p><h2 id="quick-preview-heading" class="mt-1 font-semibold text-slate-950 dark:text-slate-100">Quick Preview</h2><p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Up to 10 real rows</p></div><button type="button" class="icon-button" (click)="refreshPreview()" [disabled]="previewLoading()" aria-label="Refresh quick preview" title="Refresh preview"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"></path></svg></button></div>
+              @if (previewLoading()) { <div class="p-5" aria-busy="true" aria-label="Loading quick preview"><div class="h-56 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"></div></div> }
+              @else if (previewError()) { <div class="p-5"><div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-700" role="alert"><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Preview unavailable</p><p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{{ previewError() }}</p><button type="button" class="btn-secondary mt-3" (click)="refreshPreview()">Try Again</button></div></div> }
+              @else if (preview(); as previewData) { @if (previewColumns().length > 0 && previewRows().length > 0) { <div class="max-w-full overflow-x-auto overscroll-x-contain" tabindex="0" aria-label="Quick preview table. Scroll horizontally to view every column and value."><table class="w-max min-w-full text-left text-xs"><thead class="border-b border-slate-200 bg-slate-50 uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"><tr>@for (column of previewColumns(); track column) { <th scope="col" class="whitespace-nowrap px-3 py-2.5 font-semibold">{{ column }}</th> }</tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">@for (row of previewRows(); track $index) { <tr>@for (column of previewColumns(); track column) { <td class="whitespace-nowrap px-3 py-2.5 text-slate-700 dark:text-slate-300" [title]="previewValue(row, column)">{{ previewValue(row, column) }}</td> }</tr> }</tbody></table></div><div class="border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">Showing {{ previewRows().length }} of {{ dataset.rowCount | number }} rows</div> } @else { <div class="p-5"><div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-700"><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">No preview rows returned.</p><p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ previewData.tableName }} did not return displayable rows.</p></div></div> } }
+              @else { <div class="p-5"><div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-700"><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Preview ready to load</p><button type="button" class="btn-primary mt-3" (click)="refreshPreview()">Load Preview</button></div></div> }
+            </section>
+          </aside>
+        } @else {
+          <div class="grid min-h-96 place-items-center rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900 xl:col-span-2"><div><h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Invalid dataset selection</h2><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Choose a dataset from the list to continue.</p><button type="button" class="btn-secondary mt-5" (click)="showAllFiles()">View All Files</button></div></div>
+        }
+      </section>
+    }
+  }
+</div>
