@@ -166,6 +166,7 @@ export class AppShellComponent {
         'schema-designer': 'Schema', 'er-diagram': 'ER Diagram', exports: 'Exports',
       };
       return [
+        { label: 'Home', route: '/home' },
         { label: 'Projects', route: '/projects' },
         { label: this.projectName() || `Project ${projectId}`, route: `/projects/${projectId}/overview` },
         { label: labels[section] ?? 'Workspace' },
@@ -178,6 +179,7 @@ export class AppShellComponent {
         preview: 'Preview', explorer: 'Explorer', analyze: 'Analyze', dashboard: 'Dashboard', profile: 'Analysis',
       };
       return [
+        { label: 'Home', route: '/home' },
         { label: 'Projects', route: '/projects' },
         { label: this.projectName() || 'Current Project', route: this.projectId() ? `/projects/${this.projectId()}/overview` : '/projects' },
         { label: labels[datasetMatch[2]] ?? 'Dataset' },
@@ -199,7 +201,7 @@ export class AppShellComponent {
       return projectMatch[2] === 'overview' ? '/projects' : `/projects/${projectMatch[1]}/overview`;
     }
     if (path.startsWith('/datasets/')) {
-      return this.projectId() ? `/projects/${this.projectId()}/datasets` : '/projects';
+      return this.projectId() ? `/projects/${this.projectId()}/overview` : '/projects';
     }
     return '/home';
   }
