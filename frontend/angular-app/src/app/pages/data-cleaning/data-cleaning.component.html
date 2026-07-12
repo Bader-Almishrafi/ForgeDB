@@ -1,0 +1,164 @@
+<div class="cleaning-page">
+  @if (loading()) {
+    <section class="animate-pulse space-y-4" aria-label="Loading Data Cleaning" aria-busy="true">
+      <div class="h-44 rounded-2xl bg-slate-200 dark:bg-slate-800"></div>
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">@for (item of [1,2,3,4,5,6]; track item) { <div class="h-28 rounded-xl bg-slate-200 dark:bg-slate-800"></div> }</div>
+      <div class="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)_280px]"><div class="h-[34rem] rounded-2xl bg-slate-200 dark:bg-slate-800"></div><div class="h-[34rem] rounded-2xl bg-slate-200 dark:bg-slate-800"></div><div class="h-[34rem] rounded-2xl bg-slate-200 dark:bg-slate-800"></div></div>
+    </section>
+  } @else if (loadError()) {
+    <section class="state-panel" role="alert">
+      <svg lucideCircleAlert class="mx-auto text-rose-600" [size]="42" [strokeWidth]="1.8"></svg>
+      <h1>Data Cleaning unavailable</h1><p>{{ loadError() }}</p>
+      <div class="mt-5 flex flex-wrap justify-center gap-2"><a [routerLink]="['/projects', projectId, 'analysis']" class="btn-primary">Back to Analysis</a><a [routerLink]="['/projects', projectId, 'overview']" class="btn-secondary">Project Overview</a></div>
+    </section>
+  } @else if (summary(); as current) {
+    @if (feedback(); as message) {
+      <div class="feedback" [ngClass]="'feedback--' + message.kind" [attr.role]="message.kind === 'error' ? 'alert' : 'status'" aria-live="polite">
+        <svg lucideCircleAlert class="shrink-0" [size]="18" [strokeWidth]="1.8"></svg><div><strong>{{ message.title }}</strong><p>{{ message.message }}</p></div>
+      </div>
+    }
+
+    <header class="cleaning-header">
+      <div class="min-w-0">
+        <nav class="header-links" aria-label="Data Cleaning navigation">
+          <a [routerLink]="['/projects', projectId, 'analysis']"><svg lucideArrowLeft [size]="15" [strokeWidth]="1.8"></svg>Back to Analysis</a>
+          <a [routerLink]="['/projects', projectId, 'datasets']">Data Sources</a>
+          <a [routerLink]="['/projects', projectId, 'overview']">Project Overview</a>
+        </nav>
+        <div class="mt-4 flex items-start gap-3">
+          <span class="title-icon"><svg lucideWandSparkles [size]="25" [strokeWidth]="1.8"></svg></span>
+          <div class="min-w-0"><p class="project-name">{{ current.projectName }}</p><h1>Data Cleaning</h1><div class="header-meta"><span>{{ scopeLabel() }}</span><span>{{ current.totalDatasets }} datasets</span><span>{{ current.totalRows | number }} rows · {{ current.totalColumns | number }} columns</span>@if (current.lastAnalyzedAt) { <span><svg lucideClock3 [size]="13" [strokeWidth]="1.8"></svg>{{ current.lastAnalyzedAt | date:'medium' }}</span> }</div></div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn-secondary" (click)="rerunAnalysis()" [disabled]="reanalyzing() || current.totalDatasets === 0">
+          <svg lucideRefreshCw [class.animate-spin]="reanalyzing()" [size]="16" [strokeWidth]="1.8"></svg>{{ reanalyzing() ? 'Re-analyzing' : 'Re-run Analysis' }}
+        </button>
+        <button type="button" class="btn-primary" (click)="openFixAllReview()" [disabled]="safeSuggestions().length === 0 || previewLoading() || applyLoading()"><svg lucideSparkles [size]="16" [strokeWidth]="1.8"></svg>Fix All Recommended</button>
+      </div>
+    </header>
+
+    @if (reanalyzing()) {
+      <section class="progress-panel" aria-live="polite" aria-busy="true"><div><strong>Analyzing {{ reanalysisCurrent() }} of {{ reanalysisTotal() }}</strong><span>{{ reanalysisDataset() }}</span></div><div class="progress-track"><span [style.width.%]="reanalysisTotal() ? reanalysisCurrent() / reanalysisTotal() * 100 : 0"></span></div></section>
+    }
+
+    <section class="metric-grid" aria-label="Data Cleaning summary">
+      <article><span class="metric-icon metric-icon--teal"><svg lucideShieldCheck [size]="18" [strokeWidth]="1.8"></svg></span><div><p>Data Quality Score</p><strong>{{ current.dataQualityScore === null || current.dataQualityScore === undefined ? 'Unavailable' : (current.dataQualityScore | number:'1.0-1') + '%' }}</strong><small>API-derived only</small></div></article>
+      <article><span class="metric-icon metric-icon--amber"><svg lucideTriangleAlert [size]="18" [strokeWidth]="1.8"></svg></span><div><p>Total Issues</p><strong>{{ current.totalIssues | number }}</strong><small>Current analyzed versions</small></div></article>
+      <article><span class="metric-icon metric-icon--blue"><svg lucideDatabase [size]="18" [strokeWidth]="1.8"></svg></span><div><p>Rows Affected</p><strong>{{ current.rowsAffected | number }}</strong><small>Issue impact estimate</small></div></article>
+      <article><span class="metric-icon metric-icon--violet"><svg lucideTable2 [size]="18" [strokeWidth]="1.8"></svg></span><div><p>Cells Affected</p><strong>{{ current.cellsAffected | number }}</strong><small>Column-level signals</small></div></article>
+      <article><span class="metric-icon metric-icon--rose"><svg lucideLayers3 [size]="18" [strokeWidth]="1.8"></svg></span><div><p>Duplicates</p><strong>{{ current.duplicateRows | number }}</strong><small>Exact duplicate rows</small></div></article>
+      <article><span class="metric-icon metric-icon--orange"><svg lucideCircleAlert [size]="18" [strokeWidth]="1.8"></svg></span><div><p>Missing Values</p><strong>{{ current.missingValues | number }}</strong><small>Across active versions</small></div></article>
+    </section>
+
+    @if (current.totalDatasets === 0) {
+      <section class="state-panel"><svg lucideDatabase class="mx-auto text-blue-600" [size]="42" [strokeWidth]="1.8"></svg><h2>No datasets to clean</h2><p>Add and analyze a data source before opening Data Cleaning.</p><a [routerLink]="['/projects', projectId, 'datasets']" class="btn-primary mt-5">Add Data Source</a></section>
+    } @else {
+      <section class="cleaning-workspace">
+        <aside class="left-rail">
+          <div class="rail-toggle" role="tablist" aria-label="Issue navigation mode"><button type="button" role="tab" [attr.aria-selected]="railMode() === 'type'" [class.active]="railMode() === 'type'" (click)="setRailMode('type')">By Type</button><button type="button" role="tab" [attr.aria-selected]="railMode() === 'dataset'" [class.active]="railMode() === 'dataset'" (click)="setRailMode('dataset')">By Dataset</button></div>
+          @if (railMode() === 'type') {
+            <button type="button" class="rail-item" [class.active]="issueType() === 'all'" (click)="updateIssueType('all')"><span><svg lucideListChecks [size]="16" [strokeWidth]="1.8"></svg>All Issues</span><strong>{{ suggestions().length }}</strong></button>
+            @for (category of issueCategories; track category) { <button type="button" class="rail-item" [class.active]="issueType() === category" (click)="updateIssueType(category)"><span>{{ category }}</span><strong>{{ issueCount(category) }}</strong></button> }
+          } @else {
+            <button type="button" class="rail-item" [class.active]="scope() === 'project'" (click)="selectProjectScope()"><span><svg lucideLayers3 [size]="16" [strokeWidth]="1.8"></svg>All Project Data</span><strong>{{ suggestions().length }}</strong></button>
+            @for (dataset of current.datasets; track dataset.datasetId) { <button type="button" class="rail-item rail-item--dataset" [class.active]="scope() === dataset.datasetId" (click)="selectDataset(dataset)"><span><b>{{ dataset.datasetName }}</b><small>{{ versionLabel(dataset) }} · {{ dataset.rowCount | number }} rows</small></span><strong>{{ datasetIssueCount(dataset.datasetId) }}</strong></button> }
+          }
+          <div class="rail-status"><p>Analysis coverage</p><strong>{{ current.analyzedDatasets }} of {{ current.totalDatasets }}</strong><span>{{ current.unanalyzedDatasets }} require analysis</span></div>
+        </aside>
+
+        <main class="issue-workspace">
+          <div class="workspace-heading"><div><h2>Cleaning Issues</h2><p>Review each deterministic signal and preview every operation before applying.</p></div><span>{{ filteredSuggestions().length }} shown</span></div>
+          <div class="filter-row">
+            <label class="search-field"><span class="sr-only">Search cleaning issues</span><svg lucideSearch [size]="16" [strokeWidth]="1.8"></svg><input type="search" placeholder="Search issue, dataset, or column" [ngModel]="search()" (ngModelChange)="updateSearch($event)" /></label>
+            <label><span class="sr-only">Dataset scope</span><select class="input-field" [ngModel]="scope()" (ngModelChange)="$event === 'project' ? selectProjectScope() : selectDataset(current.datasets.find(dataset => dataset.datasetId === +$event)!)"><option [ngValue]="'project'">All Project Data</option>@for (dataset of current.datasets; track dataset.datasetId) { <option [ngValue]="dataset.datasetId">{{ dataset.datasetName }}</option> }</select></label>
+            <label><span class="sr-only">Column filter</span><select class="input-field" [ngModel]="columnFilter()" (ngModelChange)="updateColumnFilter($event)"><option value="all">All columns</option>@for (column of columns(); track column) { <option [value]="column">{{ column }}</option> }</select></label>
+          </div>
+
+          @if (filteredSuggestions().length > 0) {
+            <div class="bulk-bar"><label><input type="checkbox" [checked]="filteredSuggestions().every(suggestion => selectedIds().has(suggestion.id))" (change)="toggleAllVisible()" /> Select visible</label><span>{{ selectedSuggestions().length }} selected</span><button type="button" class="btn-secondary" (click)="previewSelected()" [disabled]="selectedSuggestions().length === 0 || previewLoading()"><svg lucidePlay [size]="15" [strokeWidth]="1.8"></svg>Preview Selected</button></div>
+            <div class="issue-list">
+              @for (suggestion of filteredSuggestions(); track suggestion.id) {
+                <article class="issue-card" [class.issue-card--selected]="selectedIds().has(suggestion.id)">
+                  <label class="issue-check"><input type="checkbox" [checked]="selectedIds().has(suggestion.id)" (change)="toggleSuggestion(suggestion)" /><span class="sr-only">Select {{ suggestion.issueType }} in {{ suggestion.datasetName }}</span></label>
+                  <span class="issue-icon" [class.issue-icon--danger]="selectedStrategy(suggestion).isDestructive"><svg lucideCircleAlert [size]="18" [strokeWidth]="1.8"></svg></span>
+                  <div class="issue-body">
+                    <div class="issue-title-row"><div><h3>{{ suggestion.issueType }}</h3><p>{{ suggestion.datasetName }}@if (suggestion.column) { · <strong>{{ suggestion.column }}</strong> }</p></div><span class="risk-label" [class.risk-label--danger]="selectedStrategy(suggestion).isDestructive">{{ suggestion.riskLabel }}</span></div>
+                    <p class="issue-description">{{ suggestion.description }}</p>
+                    <div class="issue-facts"><span><strong>{{ suggestion.count | number }}</strong> affected</span>@if (suggestion.percentage !== null && suggestion.percentage !== undefined) { <span>{{ suggestion.percentage | number:'1.0-2' }}%</span> }<span>{{ selectedStrategy(suggestion).isDestructive ? 'Destructive operation' : 'Non-destructive operation' }}</span></div>
+                    <div class="strategy-row">
+                      <label><span>Cleaning strategy</span><select class="input-field" [ngModel]="selectedStrategy(suggestion).key" (ngModelChange)="updateStrategy(suggestion, $event)">@for (strategy of suggestion.availableStrategies; track strategy.key) { <option [value]="strategy.key">{{ strategy.label }}</option> }</select></label>
+                      @if (selectedStrategyNeedsCustomValue(suggestion)) { <label><span>Replacement value</span><input class="input-field" [ngModel]="customValues()[suggestion.id]" (ngModelChange)="updateCustomValue(suggestion.id, $event)" placeholder="Required value" /></label> }
+                      @if (selectedStrategy(suggestion).operationType === 'remove_duplicates') { <label><span>Identifying columns</span><input class="input-field" [ngModel]="duplicateColumns()[suggestion.id]" (ngModelChange)="updateDuplicateColumns(suggestion.id, $event)" placeholder="All columns, or comma-separated" /></label> }
+                    </div>
+                  </div>
+                  <div class="issue-actions"><button type="button" class="btn-secondary" (click)="previewSuggestion(suggestion)" [disabled]="previewLoading()"><svg lucidePlay [size]="15" [strokeWidth]="1.8"></svg>Preview Changes</button></div>
+                </article>
+              }
+            </div>
+          } @else if (current.analyzedDatasets === 0) {
+            <div class="empty-state"><svg lucideCircleAlert [size]="34" [strokeWidth]="1.8"></svg><h3>No analysis results</h3><p>Run Analysis before generating cleaning suggestions.</p><button type="button" class="btn-primary" (click)="rerunAnalysis()">Run Analysis</button></div>
+          } @else {
+            <div class="empty-state empty-state--success"><svg lucideCheckCircle2 [size]="36" [strokeWidth]="1.8"></svg><h3>No cleaning issues match this view</h3><p>Change the scope or filters, or confirm quality when every active version has been reviewed and analyzed.</p></div>
+          }
+        </main>
+
+        <aside class="right-rail">
+          <section class="right-card">
+            <div class="right-card-title"><svg lucideHistory [size]="18" [strokeWidth]="1.8"></svg><h2>Cleaning History</h2></div>
+            @if (history().length > 0) {
+              <div class="history-list">@for (entry of history().slice(0, 6); track entry.batchId) { <article><button type="button" class="history-summary" (click)="showHistoryDetails(entry)" [attr.aria-expanded]="selectedHistoryId() === entry.batchId"><span><b>{{ entry.name }}</b><small>{{ entry.createdAt | date:'short' }} · {{ entry.user }}</small></span><span><em [ngClass]="statusClass(entry.status)">{{ entry.status }}</em><svg lucideChevronDown [class.rotate-180]="selectedHistoryId() === entry.batchId" [size]="15" [strokeWidth]="1.8"></svg></span></button>@if (selectedHistoryId() === entry.batchId) { <div class="history-details"><p>{{ entry.operationCount }} operations · {{ entry.rowsAffected }} rows · {{ entry.cellsAffected }} cells</p>@for (operation of entry.operations; track operation.id) { <div><span>{{ operation.datasetName }} · {{ operation.operationType }}@if (operation.column) { / {{ operation.column }} }</span><b>{{ operation.status }}</b></div> }@if (entry.failureDetails) { <p class="text-rose-600">{{ entry.failureDetails }}</p> }</div> }</article> }</div>
+              @if (latestUndoable()) { <button type="button" class="btn-secondary mt-3 w-full" (click)="requestUndo()" [disabled]="applyLoading()"><svg lucideRotateCcw [size]="15" [strokeWidth]="1.8"></svg>Undo Latest Batch</button> }
+            } @else { <p class="right-empty">No cleaning changes have been applied.</p> }
+          </section>
+
+          <section class="right-card">
+            <div class="right-card-title"><svg lucideLayers3 [size]="18" [strokeWidth]="1.8"></svg><h2>Active Version</h2></div>
+            @if (selectedDataset(); as dataset) {
+              <div class="version-current"><strong>{{ versionLabel(dataset) }}</strong><span>{{ dataset.rowCount | number }} rows · {{ dataset.columnCount }} columns</span><span>{{ dataset.requiresReanalysis ? 'Analysis required' : 'Analyzed' }}</span></div>
+              @if (datasetVersions(dataset.datasetId).length > 1) { <div class="version-list">@for (version of datasetVersions(dataset.datasetId).slice(0, 5); track version.id) { <div><span><b>v{{ version.versionNumber }}@if (version.isRawOriginal) { · Raw }</b><small>{{ version.operationSummary }}</small></span>@if (!version.isActive) { <button type="button" (click)="requestRestore(dataset.datasetId, version)">Restore</button> } @else { <em>Active</em> }</div> }</div> }
+            } @else { <p class="right-empty">Select a dataset to inspect and restore persisted versions.</p> }
+          </section>
+
+          <section class="workflow-card">
+            <svg lucideShieldCheck [size]="22" [strokeWidth]="1.8"></svg><p>Next steps</p>
+            @if (!current.hasCleaningBatches) { <h2>Review and apply cleaning fixes</h2><span>Every change begins with a real preview.</span> }
+            @else if (current.requiresReanalysis) { <h2>Re-run Analysis</h2><span>Cleaned versions must be analyzed before quality confirmation.</span><button type="button" class="btn-primary" (click)="rerunAnalysis()" [disabled]="reanalyzing()">Re-run Analysis</button> }
+            @else if (!current.qualityConfirmed) { <h2>Confirm Data Quality</h2><span>Approve the currently analyzed version set for Schema.</span><button type="button" class="btn-primary" (click)="confirmQuality()" [disabled]="!current.canConfirmQuality || applyLoading()"><svg lucideCheck [size]="15" [strokeWidth]="1.8"></svg>Confirm Data Quality</button> }
+            @else { <h2>Ready for Schema</h2><span>Quality was confirmed {{ current.qualityConfirmedAt | date:'medium' }}.</span><button type="button" class="btn-primary" (click)="continueToSchema()" [disabled]="!current.schemaReady">Continue to Schema</button> }
+          </section>
+        </aside>
+      </section>
+    }
+
+    <dialog #previewDialog class="cleaning-dialog preview-dialog" (cancel)="closePreview()">
+      @if (preview(); as result) {
+        <div class="dialog-header"><div><p>Preview before apply</p><h2>Review Cleaning Changes</h2></div><button type="button" class="icon-button" aria-label="Close preview" (click)="closePreview()" [disabled]="applyLoading()"><svg lucideX [size]="19" [strokeWidth]="1.8"></svg></button></div>
+        <div class="preview-summary"><article><span>Datasets</span><strong>{{ result.datasets.length }}</strong></article><article><span>Rows affected</span><strong>{{ result.affectedRows | number }}</strong></article><article><span>Cells affected</span><strong>{{ result.affectedCells | number }}</strong></article><article><span>Rows removed</span><strong>{{ result.rowsRemoved | number }}</strong></article><article><span>Columns removed</span><strong>{{ result.columnsRemoved | number }}</strong></article></div>
+        @if (result.warnings.length > 0) { <div class="dialog-warning" role="alert"><svg lucideTriangleAlert [size]="18" [strokeWidth]="1.8"></svg><div>@for (warning of result.warnings; track warning) { <p>{{ warning }}</p> }</div></div> }
+        <div class="preview-datasets">
+          @for (dataset of result.datasets; track dataset.datasetId) {
+            <section><div class="preview-dataset-title"><div><h3>{{ dataset.datasetName }}</h3><p>Source version {{ dataset.sourceVersionId }} · {{ dataset.executionOrder.length }} ordered operations</p></div><span [class.text-rose-600]="dataset.destructive">{{ dataset.destructive ? 'Destructive' : 'Non-destructive' }}</span></div>
+              <div class="operation-order">@for (operation of dataset.operationResults; track operation.operationId; let index = $index) { <span><b>{{ index + 1 }}</b>{{ operation.operationType }}@if (operation.column) { · {{ operation.column }} }</span> }</div>
+              @if (dataset.rows.length > 0) { <div class="before-after-grid"><div><h4>Before</h4><div class="preview-table-wrap"><table><thead><tr><th>Row</th>@for (column of previewColumns(); track column) { <th>{{ column }}</th> }</tr></thead><tbody>@for (row of dataset.rows; track row.rowNumber) { <tr><td>{{ row.rowNumber }}</td>@for (column of previewColumns(); track column) { <td>{{ formatValue(row.before?.[column]) }}</td> }</tr> }</tbody></table></div></div><div><h4>After</h4><div class="preview-table-wrap"><table><thead><tr><th>Row</th>@for (column of previewColumns(); track column) { <th>{{ column }}</th> }</tr></thead><tbody>@for (row of dataset.rows; track row.rowNumber) { <tr [class.removed-row]="!row.after"><td>{{ row.rowNumber }}</td>@for (column of previewColumns(); track column) { <td>{{ row.after ? formatValue(row.after[column]) : 'ROW REMOVED' }}</td> }</tr> }</tbody></table></div></div></div> } @else { <p class="dialog-empty">The selected operation produces no row-level value changes.</p> }
+              @if (dataset.conversionFailures.length > 0) { <div class="conversion-failures"><h4>Values that failed conversion</h4>@for (failure of dataset.conversionFailures.slice(0, 10); track failure.rowNumber + failure.column) { <p>Row {{ failure.rowNumber }} · {{ failure.column }} · {{ formatValue(failure.value) }} — {{ failure.reason }}</p> }</div> }
+            </section>
+          }
+        </div>
+        @if (result.destructive) { <label class="destructive-confirm"><input type="checkbox" [ngModel]="destructiveConfirmed()" (ngModelChange)="destructiveConfirmed.set($event)" /><span><strong>I understand this operation permanently removes rows or columns from the new cleaned version.</strong><small>The original raw version remains preserved and recoverable.</small></span></label> }
+        <div class="dialog-actions"><button type="button" class="btn-secondary" (click)="closePreview()" [disabled]="applyLoading()">Cancel Preview</button><button type="button" class="btn-primary" (click)="applyPreview()" [disabled]="applyLoading() || (result.destructive && !destructiveConfirmed())">{{ applyLoading() ? 'Applying Changes…' : 'Apply Changes' }}</button></div>
+      }
+    </dialog>
+
+    <dialog #fixAllDialog class="cleaning-dialog fix-dialog" (cancel)="closeFixAllDialog()">
+      <div class="dialog-header"><div><p>Safe recommendations only</p><h2>Review Fix All Recommended</h2></div><button type="button" class="icon-button" aria-label="Close Fix All review" (click)="closeFixAllDialog()"><svg lucideX [size]="19" [strokeWidth]="1.8"></svg></button></div>
+      <p class="dialog-intro">Select or edit the deterministic, non-destructive fixes to preview. Destructive suggestions are excluded.</p>
+      <div class="fix-review-list">@for (suggestion of safeSuggestions(); track suggestion.id) { <article><input type="checkbox" [checked]="fixAllIds().has(suggestion.id)" (change)="toggleFixAllSuggestion(suggestion.id)" /><div><h3>{{ suggestion.issueType }} · {{ suggestion.datasetName }}</h3><p>{{ suggestion.column }} · estimated {{ suggestion.count }} affected</p><select class="input-field" [ngModel]="selectedStrategy(suggestion).key" (ngModelChange)="updateStrategy(suggestion, $event)">@for (strategy of suggestion.availableStrategies; track strategy.key) { @if (!strategy.isDestructive) { <option [value]="strategy.key">{{ strategy.label }}</option> } }</select></div></article> }</div>
+      <div class="dialog-actions"><button type="button" class="btn-secondary" (click)="closeFixAllDialog()">Cancel</button><button type="button" class="btn-primary" (click)="previewFixAll()" [disabled]="fixAllIds().size === 0"><svg lucidePlay [size]="15" [strokeWidth]="1.8"></svg>Preview Selected Fixes</button></div>
+    </dialog>
+
+    <dialog #confirmDialog class="cleaning-dialog confirm-dialog" (cancel)="closeConfirmDialog()">
+      @if (confirmAction(); as action) { <div class="dialog-header"><div><p>Persisted version operation</p><h2>{{ action.kind === 'undo' ? 'Undo Latest Cleaning Batch?' : 'Restore Dataset Version?' }}</h2></div><button type="button" class="icon-button" aria-label="Close confirmation" (click)="closeConfirmDialog()"><svg lucideX [size]="19" [strokeWidth]="1.8"></svg></button></div><div class="confirm-copy"><svg lucideRotateCcw [size]="30" [strokeWidth]="1.8"></svg><p>@if (action.kind === 'undo') { ForgeDB will create a new active version from the previous persisted snapshot. It will not calculate an inverse transformation. } @else { ForgeDB will create a new version copied from version {{ action.version.versionNumber }}. Existing versions and history remain preserved. }</p></div><div class="dialog-actions"><button type="button" class="btn-secondary" (click)="closeConfirmDialog()" [disabled]="applyLoading()">Cancel</button><button type="button" class="btn-primary" (click)="confirmUndoOrRestore()" [disabled]="applyLoading()">{{ applyLoading() ? 'Working…' : (action.kind === 'undo' ? 'Undo Batch' : 'Restore Version') }}</button></div> }
+    </dialog>
+  }
+</div>

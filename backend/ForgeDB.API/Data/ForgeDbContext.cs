@@ -15,6 +15,10 @@ public class ForgeDbContext : DbContext
     public DbSet<Dataset> Datasets => Set<Dataset>();
     public DbSet<DatasetColumn> DatasetColumns => Set<DatasetColumn>();
     public DbSet<DatasetRow> DatasetRows => Set<DatasetRow>();
+    public DbSet<DatasetVersion> DatasetVersions => Set<DatasetVersion>();
+    public DbSet<CleaningBatch> CleaningBatches => Set<CleaningBatch>();
+    public DbSet<CleaningOperation> CleaningOperations => Set<CleaningOperation>();
+    public DbSet<ProjectCleaningState> ProjectCleaningStates => Set<ProjectCleaningState>();
     public DbSet<DesignModel> DesignModels => Set<DesignModel>();
     public DbSet<DesignTable> DesignTables => Set<DesignTable>();
     public DbSet<DesignColumn> DesignColumns => Set<DesignColumn>();
@@ -64,6 +68,16 @@ public class ForgeDbContext : DbContext
                 .WithOne(row => row.Dataset)
                 .HasForeignKey(row => row.DatasetId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(dataset => dataset.Versions)
+                .WithOne(version => version.Dataset)
+                .HasForeignKey(version => version.DatasetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(dataset => dataset.ActiveVersion)
+                .WithMany()
+                .HasForeignKey(dataset => dataset.ActiveVersionId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<DatasetColumn>(entity =>
@@ -78,6 +92,102 @@ public class ForgeDbContext : DbContext
             entity.ToTable("dataset_rows");
             entity.HasKey(row => row.Id);
             entity.Property(row => row.RowData).HasColumnType("jsonb");
+        });
+
+        modelBuilder.Entity<DatasetVersion>(entity =>
+        {
+            entity.ToTable("dataset_versions");
+            entity.HasKey(version => version.Id);
+            entity.Property(version => version.RowsJson).HasColumnType("jsonb");
+            entity.Property(version => version.ColumnsJson).HasColumnType("jsonb");
+            entity.Property(version => version.AnalysisResultJson).HasColumnType("jsonb");
+            entity.HasIndex(version => new { version.DatasetId, version.VersionNumber }).IsUnique();
+            entity.HasIndex(version => new { version.DatasetId, version.IsActive });
+
+            entity.HasOne(version => version.ParentVersion)
+                .WithMany(version => version.ChildVersions)
+                .HasForeignKey(version => version.ParentVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(version => version.CleaningBatch)
+                .WithMany(batch => batch.ProducedVersions)
+                .HasForeignKey(version => version.CleaningBatchId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(version => version.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(version => version.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CleaningBatch>(entity =>
+        {
+            entity.ToTable("cleaning_batches");
+            entity.HasKey(batch => batch.Id);
+            entity.Property(batch => batch.FailureDetailsJson).HasColumnType("jsonb");
+            entity.HasIndex(batch => batch.CorrelationId).IsUnique();
+            entity.HasIndex(batch => new { batch.ProjectId, batch.CreatedAt });
+
+            entity.HasOne(batch => batch.Project)
+                .WithMany(project => project.CleaningBatches)
+                .HasForeignKey(batch => batch.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(batch => batch.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(batch => batch.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(batch => batch.Operations)
+                .WithOne(operation => operation.CleaningBatch)
+                .HasForeignKey(operation => operation.CleaningBatchId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CleaningOperation>(entity =>
+        {
+            entity.ToTable("cleaning_operations");
+            entity.HasKey(operation => operation.Id);
+            entity.Property(operation => operation.ParametersJson).HasColumnType("jsonb");
+            entity.HasIndex(operation => operation.CleaningBatchId);
+            entity.HasIndex(operation => operation.DatasetId);
+
+            entity.HasOne(operation => operation.Dataset)
+                .WithMany()
+                .HasForeignKey(operation => operation.DatasetId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(operation => operation.SourceVersion)
+                .WithMany()
+                .HasForeignKey(operation => operation.SourceVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(operation => operation.ResultVersion)
+                .WithMany()
+                .HasForeignKey(operation => operation.ResultVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProjectCleaningState>(entity =>
+        {
+            entity.ToTable("project_cleaning_states");
+            entity.HasKey(state => state.ProjectId);
+            entity.Property(state => state.ConfirmedVersionsJson).HasColumnType("jsonb");
+
+            entity.HasOne(state => state.Project)
+                .WithOne(project => project.CleaningState)
+                .HasForeignKey<ProjectCleaningState>(state => state.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(state => state.LastCleaningBatch)
+                .WithMany()
+                .HasForeignKey(state => state.LastCleaningBatchId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(state => state.QualityConfirmedByUser)
+                .WithMany()
+                .HasForeignKey(state => state.QualityConfirmedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<DesignModel>(entity =>
@@ -194,4 +304,3 @@ public class ForgeDbContext : DbContext
         });
     }
 }
-

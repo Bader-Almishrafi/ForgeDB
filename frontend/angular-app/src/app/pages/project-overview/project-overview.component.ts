@@ -240,12 +240,24 @@ export class ProjectOverviewComponent implements OnInit {
     const hasData = datasets.length > 0;
     const analyzed = datasets.filter((dataset) => dataset.status.toLocaleLowerCase() === 'analyzed').length;
     const analysisStatus: StageStatus = !hasData ? 'Blocked' : analyzed === datasets.length ? 'Completed' : analyzed > 0 ? 'In Progress' : 'Not Started';
-    const schemaStatus: StageStatus = overview?.generatedSchemasCount ? 'Completed' : hasData ? 'Not Started' : 'Blocked';
+    const hasCleaningWork = (overview?.cleaningBatchesCount ?? 0) > 0;
+    const qualityConfirmed = overview?.qualityConfirmed ?? false;
+    const schemaReady = overview?.schemaReady ?? false;
+    const cleaningStatus: StageStatus = !hasData
+      ? 'Blocked'
+      : qualityConfirmed && schemaReady
+        ? 'Completed'
+        : hasCleaningWork
+          ? 'In Progress'
+          : analyzed > 0
+            ? 'Not Started'
+            : 'Blocked';
+    const schemaStatus: StageStatus = overview?.generatedSchemasCount ? 'Completed' : schemaReady ? 'Not Started' : 'Blocked';
     return [
       { name: 'Data Sources', description: 'Upload and manage project datasets.', status: hasData ? 'Completed' : 'Not Started', action: hasData ? 'Manage Sources' : 'Add Data', enabled: true, route: `/projects/${this.projectId}/datasets`, icon: 'M4 6h16v5H4V6Zm0 7h16v5H4v-5Z' },
       { name: 'Analysis', description: 'Profile structure and data quality across project sources.', status: analysisStatus, action: 'Open Project Analysis', enabled: hasData, route: `/projects/${this.projectId}/analysis`, icon: 'M4 19V9m5 10V5m5 14v-7m5 7V3' },
-      { name: 'Data Cleaning', description: 'Resolve detected quality issues.', status: hasData ? 'Status unavailable' : 'Blocked', action: 'Coming Later', enabled: false, unavailableReason: 'Data Cleaning will be implemented in the next frontend and backend phase.', icon: 'm4 20 5-5m0 0 8-8 2 2-8 8m-2-2-4-4' },
-      { name: 'Schema', description: 'Design tables, columns, and constraints.', status: schemaStatus, action: 'Open Schema', enabled: true, route: `/projects/${this.projectId}/schema-designer`, icon: 'M4 5h6v6H4V5Zm10 0h6v6h-6V5ZM4 15h6v4H4v-4Zm10 0h6v4h-6v-4Z' },
+      { name: 'Data Cleaning', description: 'Preview and resolve detected quality issues using versioned changes.', status: cleaningStatus, action: 'Open Data Cleaning', enabled: hasData && (analyzed > 0 || hasCleaningWork), route: `/projects/${this.projectId}/data-cleaning`, unavailableReason: 'Analyze at least one dataset first.', icon: 'm4 20 5-5m0 0 8-8 2 2-8 8m-2-2-4-4' },
+      { name: 'Schema', description: 'Design tables, columns, and constraints.', status: schemaStatus, action: 'Open Schema', enabled: schemaReady, route: `/projects/${this.projectId}/schema-designer`, unavailableReason: 'Clean, re-analyze, and confirm the active dataset versions first.', icon: 'M4 5h6v6H4V5Zm10 0h6v6h-6V5ZM4 15h6v4H4v-4Zm10 0h6v4h-6v-4Z' },
       { name: 'Relationships', description: 'Review connections between tables.', status: overview?.relationshipSuggestionsCount ? 'In Progress' : schemaStatus === 'Completed' ? 'Not Started' : 'Blocked', action: 'Review Relationships', enabled: true, route: `/projects/${this.projectId}/relationships`, icon: 'M5 5h5v5H5V5Zm9 9h5v5h-5v-5Zm-4-6h3a4 4 0 0 1 4 4v2' },
       { name: 'Deployment', description: 'Prepare and deploy the database.', status: 'Status unavailable', action: 'Unavailable', enabled: false, unavailableReason: 'No deployment route or backend integration exists.', icon: 'M12 3v12m0 0 4-4m-4 4-4-4M5 17v4h14v-4' },
     ];
@@ -255,8 +267,9 @@ export class ProjectOverviewComponent implements OnInit {
     const dataset = this.selectedDataset();
     const overview = this.overview();
     if (!dataset) return { title: 'Add a CSV file to start building your database.', description: 'Your first dataset unlocks analysis and schema design.', action: 'Add CSV Files', route: `/projects/${this.projectId}/datasets` };
+    if (overview?.schemaReady && !overview.generatedSchemasCount) return { title: 'Your cleaned data is confirmed and ready for schema design.', description: 'Generate tables and constraints from the active cleaned versions.', action: 'Open Schema', route: `/projects/${this.projectId}/schema-designer` };
     if (dataset.status.toLocaleLowerCase() !== 'analyzed') return { title: 'Analyze your project data to discover its structure and quality.', description: 'Review every project dataset together or inspect one source.', action: 'Open Project Analysis', route: `/projects/${this.projectId}/analysis` };
-    if (!overview?.generatedSchemasCount) return { title: 'Generate and review your database schema.', description: 'Your analyzed data is ready for schema design.', action: 'Open Schema', route: `/projects/${this.projectId}/schema-designer` };
+    if (!overview?.generatedSchemasCount) return { title: 'Review and clean analyzed project data.', description: 'Preview versioned fixes before continuing to schema design.', action: 'Open Data Cleaning', route: `/projects/${this.projectId}/data-cleaning` };
     return { title: 'Review table relationships.', description: 'Confirm how the project tables connect before export.', action: 'Review Relationships', route: `/projects/${this.projectId}/relationships` };
   }
 

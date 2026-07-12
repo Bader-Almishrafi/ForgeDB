@@ -1,4 +1,5 @@
 using ForgeDB.API.Models.DTOs;
+using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -10,10 +11,12 @@ namespace ForgeDB.API.Controllers;
 public class DesignController : ControllerBase
 {
     private readonly IDesignService _designService;
+    private readonly ICleaningRepository _cleaningRepository;
 
-    public DesignController(IDesignService designService)
+    public DesignController(IDesignService designService, ICleaningRepository cleaningRepository)
     {
         _designService = designService;
+        _cleaningRepository = cleaningRepository;
     }
 
     [HttpGet("projects/{projectId:int}/design")]
@@ -44,6 +47,14 @@ public class DesignController : ControllerBase
 
         try
         {
+            if (!await _cleaningRepository.IsSchemaReadyAsync(projectId, cancellationToken))
+            {
+                return Conflict(new
+                {
+                    message = "Confirm the cleaned, re-analyzed dataset versions before generating a schema."
+                });
+            }
+
             return Ok(await _designService.GenerateAsync(projectId, request ?? new GenerateDesignRequestDto(), ifMatchRevision, cancellationToken));
         }
         catch (ArgumentException exception)

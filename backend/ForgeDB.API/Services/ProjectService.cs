@@ -17,15 +17,18 @@ public class ProjectService : IProjectService
     private readonly IProjectRepository _projectRepository;
     private readonly IDesignService _designService;
     private readonly IRelationshipDetectionService _relationshipDetectionService;
+    private readonly ICleaningRepository _cleaningRepository;
 
     public ProjectService(
         IProjectRepository projectRepository,
         IDesignService designService,
-        IRelationshipDetectionService relationshipDetectionService)
+        IRelationshipDetectionService relationshipDetectionService,
+        ICleaningRepository cleaningRepository)
     {
         _projectRepository = projectRepository;
         _designService = designService;
         _relationshipDetectionService = relationshipDetectionService;
+        _cleaningRepository = cleaningRepository;
     }
 
     public async Task<ProjectResponseDto> CreateProjectAsync(ProjectCreateDto request, CancellationToken cancellationToken = default)
@@ -97,6 +100,9 @@ public class ProjectService : IProjectService
         var acceptedRelationshipsCount = suggestions.Count(suggestion => suggestion.Status == "accepted");
         var design = await _designService.GetByProjectIdAsync(projectId, cancellationToken);
         var generatedSchemasCount = design is null ? 0 : 1;
+        var cleaningHistory = await _cleaningRepository.GetHistoryAsync(projectId, cancellationToken);
+        var cleaningState = await _cleaningRepository.GetStateAsync(projectId, cancellationToken);
+        var schemaReady = await _cleaningRepository.IsSchemaReadyAsync(projectId, cancellationToken);
 
         return new ProjectOverviewDto
         {
@@ -106,6 +112,9 @@ public class ProjectService : IProjectService
             TotalRows = project.Datasets.Sum(dataset => dataset.RowCount),
             TotalColumns = project.Datasets.Sum(dataset => dataset.ColumnCount),
             AnalyzedDatasetsCount = project.Datasets.Count(dataset => dataset.Status == "Analyzed"),
+            CleaningBatchesCount = cleaningHistory.Count,
+            QualityConfirmed = cleaningState?.QualityConfirmedAt is not null,
+            SchemaReady = schemaReady,
             GeneratedSchemasCount = generatedSchemasCount,
             RelationshipSuggestionsCount = suggestions.Count,
             AcceptedRelationshipsCount = acceptedRelationshipsCount,

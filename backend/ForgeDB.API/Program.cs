@@ -39,6 +39,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IDatasetImportService, DatasetImportService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ICleaningService, CleaningService>();
 builder.Services.AddScoped<IDesignService, DesignService>();
 builder.Services.AddScoped<IRelationshipDetectionService, RelationshipDetectionService>();
 builder.Services.AddSingleton<IDesignValidationService, DesignValidationService>();
@@ -64,6 +65,7 @@ builder.Services.AddHttpClient<IPythonAnalysisClient, PythonAnalysisClient>(clie
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IDatasetRepository, DatasetRepository>();
+builder.Services.AddScoped<ICleaningRepository, CleaningRepository>();
 builder.Services.AddScoped<IDesignRepository, DesignRepository>();
 builder.Services.AddScoped<IRelationshipSuggestionRepository, RelationshipSuggestionRepository>();
 builder.Services.AddScoped<IPasswordHasher<ForgeDB.API.Models.Entities.User>, PasswordHasher<ForgeDB.API.Models.Entities.User>>();

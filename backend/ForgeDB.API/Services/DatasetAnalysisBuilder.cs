@@ -145,7 +145,10 @@ internal static class DatasetAnalysisBuilder
             KeyCandidates = keyCandidates,
             DateRanges = dateRanges,
             RelationshipCandidateHints = relationshipHints,
-            AnalyzedAt = analyzedAt ?? dataset.AnalyzedAt
+            AnalyzedAt = analyzedAt ?? dataset.AnalyzedAt,
+            DatasetVersionId = dataset.ActiveVersion?.Id,
+            DatasetVersionNumber = dataset.ActiveVersion?.VersionNumber,
+            IsCleanedVersion = dataset.ActiveVersion is { IsRawOriginal: false }
         };
 
         var dashboard = new DashboardResponseDto

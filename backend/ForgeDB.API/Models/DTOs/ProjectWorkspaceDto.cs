@@ -8,6 +8,9 @@ public class ProjectOverviewDto
     public int TotalRows { get; set; }
     public int TotalColumns { get; set; }
     public int AnalyzedDatasetsCount { get; set; }
+    public int CleaningBatchesCount { get; set; }
+    public bool QualityConfirmed { get; set; }
+    public bool SchemaReady { get; set; }
     public int GeneratedSchemasCount { get; set; }
     public int RelationshipSuggestionsCount { get; set; }
     public int AcceptedRelationshipsCount { get; set; }

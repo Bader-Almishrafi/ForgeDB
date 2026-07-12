@@ -13,4 +13,6 @@ public class Project
     public ICollection<Dataset> Datasets { get; set; } = new List<Dataset>();
     public DesignModel? Design { get; set; }
     public ICollection<RelationshipSuggestion> RelationshipSuggestions { get; set; } = new List<RelationshipSuggestion>();
+    public ICollection<CleaningBatch> CleaningBatches { get; set; } = new List<CleaningBatch>();
+    public ProjectCleaningState? CleaningState { get; set; }
 }

@@ -11,6 +11,9 @@ public class DatasetAnalysisResponseDto
     public IEnumerable<DateRangeDto> DateRanges { get; set; } = new List<DateRangeDto>();
     public IEnumerable<RelationshipCandidateHintDto> RelationshipCandidateHints { get; set; } = new List<RelationshipCandidateHintDto>();
     public DateTime? AnalyzedAt { get; set; }
+    public int? DatasetVersionId { get; set; }
+    public int? DatasetVersionNumber { get; set; }
+    public bool IsCleanedVersion { get; set; }
 }
 
 public class DatasetAnalysisResultDto

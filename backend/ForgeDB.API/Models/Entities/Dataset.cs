@@ -16,7 +16,10 @@ public class Dataset
     public string? AnalysisResultJson { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? AnalyzedAt { get; set; }
+    public int? ActiveVersionId { get; set; }
     public Project? Project { get; set; }
+    public DatasetVersion? ActiveVersion { get; set; }
     public ICollection<DatasetColumn> Columns { get; set; } = new List<DatasetColumn>();
     public ICollection<DatasetRow> Rows { get; set; } = new List<DatasetRow>();
+    public ICollection<DatasetVersion> Versions { get; set; } = new List<DatasetVersion>();
 }

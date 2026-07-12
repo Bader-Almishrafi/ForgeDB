@@ -76,6 +76,244 @@ export interface DatasetAnalysisResponse {
   dateRanges?: DateRange[];
   relationshipCandidateHints?: RelationshipCandidateHint[];
   analyzedAt?: string | null;
+  datasetVersionId?: number | null;
+  datasetVersionNumber?: number | null;
+  isCleanedVersion: boolean;
+}
+
+export interface CleaningColumnSnapshot {
+  name: string;
+  dataType: string;
+}
+
+export interface CleaningStrategy {
+  key: string;
+  label: string;
+  operationType: string;
+  parameters: Record<string, unknown>;
+  isSafeRecommended: boolean;
+  isDestructive: boolean;
+}
+
+export interface CleaningSuggestion {
+  id: string;
+  projectId: number;
+  datasetId: number;
+  versionId: number;
+  datasetName: string;
+  issueType: string;
+  column?: string | null;
+  count: number;
+  percentage?: number | null;
+  riskLabel: string;
+  description: string;
+  recommendedStrategy: CleaningStrategy;
+  availableStrategies: CleaningStrategy[];
+}
+
+export interface ProjectCleaningSummary {
+  projectId: number;
+  projectName: string;
+  totalDatasets: number;
+  analyzedDatasets: number;
+  unanalyzedDatasets: number;
+  totalRows: number;
+  totalColumns: number;
+  totalIssues: number;
+  rowsAffected: number;
+  cellsAffected: number;
+  missingValues: number;
+  duplicateRows: number;
+  dataQualityScore?: number | null;
+  lastAnalyzedAt?: string | null;
+  hasCleaningBatches: boolean;
+  requiresReanalysis: boolean;
+  canConfirmQuality: boolean;
+  qualityConfirmed: boolean;
+  schemaReady: boolean;
+  qualityConfirmedAt?: string | null;
+  datasets: DatasetCleaningSummary[];
+  issueCounts: Record<string, number>;
+}
+
+export interface DatasetCleaningSummary {
+  datasetId: number;
+  datasetName: string;
+  activeVersionId: number;
+  versionNumber: number;
+  isRawOriginal: boolean;
+  rowCount: number;
+  columnCount: number;
+  missingValuesCount: number;
+  duplicateRowsCount: number;
+  analyzedAt?: string | null;
+  requiresReanalysis: boolean;
+}
+
+export interface CleaningOperationRequest {
+  operationId?: string | null;
+  suggestionId?: string | null;
+  datasetId: number;
+  operationType: string;
+  column?: string | null;
+  parameters: Record<string, unknown>;
+}
+
+export interface CleaningPreviewRequest {
+  operations: CleaningOperationRequest[];
+}
+
+export interface CleaningApplyRequest extends CleaningPreviewRequest {
+  batchName?: string | null;
+  confirmDestructive: boolean;
+}
+
+export interface CleaningApplyRecommendedRequest {
+  suggestionIds: string[];
+  confirmDestructive: boolean;
+}
+
+export interface CleaningPreviewResponse {
+  datasets: DatasetCleaningPreview[];
+  affectedRows: number;
+  affectedCells: number;
+  rowsRemoved: number;
+  columnsRemoved: number;
+  destructive: boolean;
+  warnings: string[];
+}
+
+export interface DatasetCleaningPreview {
+  datasetId: number;
+  datasetName: string;
+  sourceVersionId: number;
+  executionOrder: string[];
+  rows: CleaningPreviewRow[];
+  operationResults: CleaningOperationResult[];
+  affectedRows: number;
+  affectedCells: number;
+  rowsRemoved: number;
+  columnsRemoved: number;
+  columnsRenamed: number;
+  destructive: boolean;
+  conversionFailures: CleaningConversionFailure[];
+  warnings: string[];
+}
+
+export interface CleaningPreviewRow {
+  rowNumber: number;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
+}
+
+export interface CleaningConversionFailure {
+  rowNumber: number;
+  column: string;
+  value: unknown;
+  reason: string;
+}
+
+export interface CleaningOperationResult {
+  operationId: string;
+  operationType: string;
+  column?: string | null;
+  affectedRows: number;
+  affectedCells: number;
+  rowsRemoved: number;
+  columnsRemoved: number;
+  columnsRenamed: number;
+  destructive: boolean;
+  warnings: string[];
+}
+
+export interface CleaningApplyResponse {
+  batchId: number;
+  correlationId: string;
+  status: string;
+  datasets: DatasetCleaningApplyResult[];
+  rowsAffected: number;
+  cellsAffected: number;
+}
+
+export interface DatasetCleaningApplyResult {
+  datasetId: number;
+  datasetName: string;
+  success: boolean;
+  versionId?: number | null;
+  versionNumber?: number | null;
+  rowsAffected: number;
+  cellsAffected: number;
+  error?: string | null;
+}
+
+export interface CleaningHistory {
+  entries: CleaningHistoryEntry[];
+}
+
+export interface CleaningHistoryEntry {
+  batchId: number;
+  correlationId: string;
+  name: string;
+  user: string;
+  createdAt: string;
+  completedAt?: string | null;
+  status: string;
+  isUndo: boolean;
+  isRestore: boolean;
+  operationCount: number;
+  rowsAffected: number;
+  cellsAffected: number;
+  failureDetails?: string | null;
+  canUndo: boolean;
+  operations: CleaningHistoryOperation[];
+}
+
+export interface CleaningHistoryOperation {
+  id: number;
+  datasetId: number;
+  datasetName: string;
+  operationType: string;
+  column?: string | null;
+  status: string;
+  rowsAffected: number;
+  cellsAffected: number;
+  resultVersionId?: number | null;
+  resultVersionNumber?: number | null;
+  isDestructive: boolean;
+  failureMessage?: string | null;
+}
+
+export interface DatasetVersion {
+  id: number;
+  datasetId: number;
+  parentVersionId?: number | null;
+  versionNumber: number;
+  isRawOriginal: boolean;
+  isActive: boolean;
+  rowCount: number;
+  columnCount: number;
+  operationSummary: string;
+  createdAt: string;
+  analyzedAt?: string | null;
+  createdBy: string;
+}
+
+export interface QualityConfirmation {
+  projectId: number;
+  qualityConfirmed: boolean;
+  schemaReady: boolean;
+  confirmedAt: string;
+  confirmedVersions: Record<number, number>;
+}
+
+export interface CleanedDatasetPreview {
+  datasetId: number;
+  tableName: string;
+  versionId: number;
+  versionNumber: number;
+  isRawOriginal: boolean;
+  columns: string[];
+  rows: Record<string, unknown>[];
 }
 
 export interface DatasetAnalysisResult {
@@ -187,6 +425,9 @@ export interface ProjectOverview {
   totalRows: number;
   totalColumns: number;
   analyzedDatasetsCount: number;
+  cleaningBatchesCount: number;
+  qualityConfirmed: boolean;
+  schemaReady: boolean;
   generatedSchemasCount: number;
   relationshipSuggestionsCount: number;
   acceptedRelationshipsCount: number;
