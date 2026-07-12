@@ -45,6 +45,36 @@
 							<marker id="arrow-cyan" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
 								<path d="M 0 0 L 10 5 L 0 10 M 10 0 L 10 10" fill="none" stroke="#2eaaf9" stroke-width="1.5" />
 							</marker>
+							<!-- Dot markers -->
+							<marker id="dot-blue" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+								<circle cx="3" cy="3" r="2" fill="#118bfb" />
+							</marker>
+							<marker id="dot-purple" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+								<circle cx="3" cy="3" r="2" fill="#842df5" />
+							</marker>
+							<marker id="dot-cyan" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+								<circle cx="3" cy="3" r="2" fill="#2eaaf9" />
+							</marker>
+							<!-- One (Double Bar) markers -->
+							<marker id="one-blue" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+								<path d="M 4 2 L 4 10 M 8 2 L 8 10" fill="none" stroke="#118bfb" stroke-width="1.5" />
+							</marker>
+							<marker id="one-purple" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+								<path d="M 4 2 L 4 10 M 8 2 L 8 10" fill="none" stroke="#842df5" stroke-width="1.5" />
+							</marker>
+							<marker id="one-cyan" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+								<path d="M 4 2 L 4 10 M 8 2 L 8 10" fill="none" stroke="#2eaaf9" stroke-width="1.5" />
+							</marker>
+							<!-- Many (Crow's Foot) markers -->
+							<marker id="many-blue" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+								<path d="M 2 3 L 10 6 L 2 9 M 10 2 L 10 10" fill="none" stroke="#118bfb" stroke-width="1.5" />
+							</marker>
+							<marker id="many-purple" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+								<path d="M 2 3 L 10 6 L 2 9 M 10 2 L 10 10" fill="none" stroke="#842df5" stroke-width="1.5" />
+							</marker>
+							<marker id="many-cyan" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+								<path d="M 2 3 L 10 6 L 2 9 M 10 2 L 10 10" fill="none" stroke="#2eaaf9" stroke-width="1.5" />
+							</marker>
 						</defs>
 						
 						<!-- Grid Background -->
@@ -53,11 +83,10 @@
 						<!-- Connections -->
 						@for (connection of chart.connections; track connection.id) {
 							<path [attr.d]="connection.path" fill="none" [attr.stroke]="connection.strokeColor" stroke-width="2"
-								[attr.marker-end]="connection.strokeColor === '#118bfb' ? 'url(#arrow-blue)' : connection.strokeColor === '#842df5' ? 'url(#arrow-purple)' : 'url(#arrow-cyan)'">
+								[attr.marker-start]="connection.markerStart"
+								[attr.marker-end]="connection.markerEnd">
 								<title>{{ connection.label }}</title>
 							</path>
-							<!-- Little start dot -->
-							<circle [attr.cx]="connection.startX" [attr.cy]="connection.startY" r="3" [attr.fill]="connection.strokeColor" />
 							<!-- Relationship Label -->
 							<text [attr.x]="connection.labelX" [attr.y]="connection.labelY" text-anchor="middle"
 								[attr.fill]="connection.strokeColor" font-size="10" font-weight="bold"
@@ -145,7 +174,7 @@
 								@if (rel.fromTable === node.name || rel.toTable === node.name) {
 									<div class="flex items-center justify-between text-xs py-2 border border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#0d1117] rounded-lg px-3 group transition-colors duration-300">
 										<div class="flex flex-col gap-1">
-											<span class="text-slate-700 dark:text-slate-300 truncate pr-2 font-medium transition-colors duration-300">{{ rel.fromTable }} &rarr; {{ rel.toTable }}</span>
+											<span class="text-slate-700 dark:text-slate-300 truncate pr-2 text-[11px] font-medium transition-colors duration-300" [title]="relationshipLabel(rel)">{{ relationshipLabel(rel) }}</span>
 											<span class="text-[10px] font-bold text-indigo-500 uppercase">{{ rel.relationshipType }}</span>
 										</div>
 										<button class="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-500 transition-opacity" (click)="undoRelationship(rel)" [disabled]="undoingId() === rel.suggestionId" title="Remove Relationship">

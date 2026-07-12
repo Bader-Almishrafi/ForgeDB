@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NgClass } from '@angular/common';
 import { finalize } from 'rxjs';
 import { ApiErrorBody, ProjectRelationshipSuggestion, ProjectSchema } from '../../services/api.models';
@@ -35,6 +35,8 @@ interface DiagramConnection {
 	startY: number;
 	endX: number;
 	endY: number;
+	markerStart: string;
+	markerEnd: string;
 }
 
 interface Diagram {
@@ -47,7 +49,7 @@ interface Diagram {
 @Component({
 	selector: 'app-project-er-diagram',
 	standalone: true,
-	imports: [RouterLink, NgClass],
+	imports: [NgClass],
 	templateUrl: './project-er-diagram.component.html',
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -177,6 +179,23 @@ export class ProjectErDiagramComponent implements OnInit {
 			const startY = source.y + Math.min(source.height - 20, 55 + sourcePort * 20);
 			const endY = target.y + Math.min(target.height - 20, 55 + targetPort * 20);
 			const controlX = (startX + endX) / 2;
+
+			const colorName = source.theme.lineStroke === '#118bfb' ? 'blue' : source.theme.lineStroke === '#842df5' ? 'purple' : 'cyan';
+			const relType = (relationship.relationshipType || '').toUpperCase().trim().replace(/-/g, '_');
+			let markerStart = `url(#dot-${colorName})`;
+			let markerEnd = `url(#arrow-${colorName})`;
+
+			if (relType === '1:N' || relType === 'ONE_TO_MANY') {
+				markerStart = `url(#one-${colorName})`;
+				markerEnd = `url(#many-${colorName})`;
+			} else if (relType === 'N:1' || relType === 'MANY_TO_ONE') {
+				markerStart = `url(#many-${colorName})`;
+				markerEnd = `url(#one-${colorName})`;
+			} else if (relType === '1:1' || relType === 'ONE_TO_ONE') {
+				markerStart = `url(#one-${colorName})`;
+				markerEnd = `url(#one-${colorName})`;
+			}
+
 			return [{
 				id: relationship.suggestionId || `${relationship.fromTable}-${relationship.toTable}-${index}`,
 				path: `M ${startX} ${startY} C ${controlX} ${startY}, ${controlX} ${endY}, ${endX} ${endY}`,
@@ -184,7 +203,8 @@ export class ProjectErDiagramComponent implements OnInit {
 				labelX: controlX,
 				labelY: (startY + endY) / 2 - 8,
 				strokeColor: source.theme.lineStroke,
-				startX, startY, endX, endY
+				startX, startY, endX, endY,
+				markerStart, markerEnd
 			}];
 		});
 
@@ -214,7 +234,7 @@ export class ProjectErDiagramComponent implements OnInit {
 	}
 
 	relationshipLabel(relationship: ProjectRelationshipSuggestion): string {
-		return `${relationship.fromTable} (${relationship.fromColumn}) → ${relationship.toTable} (${relationship.toColumn})`;
+		return `${relationship.fromTable}.${relationship.fromColumn} → ${relationship.toTable}.${relationship.toColumn}`;
 	}
 
 	selectNode(node: DiagramNode | null): void {
