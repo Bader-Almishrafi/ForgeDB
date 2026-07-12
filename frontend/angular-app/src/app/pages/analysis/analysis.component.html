@@ -1,7 +1,7 @@
 <section>
   <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
-      <p class="mb-3 text-sm text-slate-500">Datasets / Preview & Validate</p>
+      <p class="mb-3 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Datasets / Preview & Validate</p>
       <h1 class="page-title">Preview & Validate</h1>
       <p class="page-subtitle">Review imported columns and rows before running analysis.</p>
     </div>
@@ -12,31 +12,31 @@
   </div>
 
   @if (errorMessage) {
-    <p class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+    <p class="mb-5 rounded-xl border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors">
       {{ errorMessage }}
     </p>
   }
   @if (successMessage) {
-    <p class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+    <p class="mb-5 rounded-xl border border-emerald-200 dark:border-emerald-900/30 transition-colors bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
       {{ successMessage }}
     </p>
   }
 
   @if (loading()) {
-    <article class="card p-6 text-sm text-slate-500">Loading preview...</article>
+    <article class="card p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Loading preview...</article>
   } @else if (preview(); as data) {
     <div class="mb-5 grid gap-4 sm:grid-cols-3">
       <article class="card p-5">
-        <p class="text-sm text-slate-500">Table</p>
-        <p class="mt-1 text-xl font-bold text-slate-900">{{ data.tableName }}</p>
+        <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Table</p>
+        <p class="mt-1 text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">{{ data.tableName }}</p>
       </article>
       <article class="card p-5">
-        <p class="text-sm text-slate-500">Columns</p>
-        <p class="mt-1 text-xl font-bold text-slate-900">{{ data.columns.length }}</p>
+        <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Columns</p>
+        <p class="mt-1 text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">{{ data.columns.length }}</p>
       </article>
       <article class="card p-5">
-        <p class="text-sm text-slate-500">Preview Rows</p>
-        <p class="mt-1 text-xl font-bold text-slate-900">{{ data.rows.length }}</p>
+        <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Preview Rows</p>
+        <p class="mt-1 text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">{{ data.rows.length }}</p>
       </article>
     </div>
 
@@ -50,7 +50,7 @@
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 class="font-semibold">Preview Rows</h2>
-          <p class="text-xs text-slate-500">Horizontal scrolling keeps wide CSV files readable.</p>
+          <p class="text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Horizontal scrolling keeps wide CSV files readable.</p>
         </div>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="btn-secondary py-2" (click)="analyze()" [disabled]="analyzing() || data.rows.length === 0">
@@ -60,7 +60,7 @@
       </div>
 
       @if (data.columns.length === 0) {
-        <p class="text-sm text-slate-500">No columns were returned for this dataset.</p>
+        <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">No columns were returned for this dataset.</p>
       } @else {
         <div class="table-wrap">
           <table class="data-table">
@@ -80,7 +80,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td [attr.colspan]="data.columns.length" class="text-center text-slate-500">No data rows found.</td>
+                  <td [attr.colspan]="data.columns.length" class="text-center text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">No data rows found.</td>
                 </tr>
               }
             </tbody>
@@ -93,6 +93,6 @@
       <a [routerLink]="['/datasets', datasetId, 'analyze']" class="btn-primary">Continue to Analysis</a>
     </div>
   } @else {
-    <article class="card p-6 text-sm text-slate-500">No preview loaded.</article>
+    <article class="card p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">No preview loaded.</article>
   }
 </section>

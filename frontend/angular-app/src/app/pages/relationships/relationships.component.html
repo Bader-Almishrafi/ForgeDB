@@ -1,7 +1,7 @@
 <section>
   <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
-      <p class="mb-3 text-sm text-slate-500">Schemas / Relationships</p>
+      <p class="mb-3 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Schemas / Relationships</p>
       <h1 class="page-title">Relationships</h1>
       <p class="page-subtitle">Manually define schema relationships for the MVP deployment SQL workflow.</p>
     </div>
@@ -15,29 +15,29 @@
   </div>
 
   @if (errorMessage) {
-    <p class="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
+    <p class="mt-5 rounded-xl border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors">{{ errorMessage }}</p>
   }
   @if (successMessage) {
-    <p class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
+    <p class="mt-5 rounded-xl border border-emerald-200 dark:border-emerald-900/30 transition-colors bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
   }
 
   @if (loading()) {
-    <article class="card mt-5 p-6 text-sm text-slate-500">Loading relationships...</article>
+    <article class="card mt-5 p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Loading relationships...</article>
   } @else if (schema(); as currentSchema) {
     <div class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
       <article class="card p-5">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="text-lg font-semibold">Existing Relationships</h2>
-            <p class="text-sm text-slate-500">Saved with PUT /api/schemas/{{ currentSchema.schemaId }}/relationships.</p>
+            <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Saved with PUT /api/schemas/{{ currentSchema.schemaId }}/relationships.</p>
           </div>
           <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">{{ currentSchema.relationships.length }}</span>
         </div>
 
         @if (currentSchema.relationships.length === 0) {
-          <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-            <h3 class="font-semibold text-slate-900">No relationships yet</h3>
-            <p class="mt-2 text-sm text-slate-500">Add a manual relationship with the form on the right.</p>
+          <div class="rounded-2xl border border-dashed border-slate-300 dark:border-[#313d4f] transition-colors duration-300 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-8 text-center">
+            <h3 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">No relationships yet</h3>
+            <p class="mt-2 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Add a manual relationship with the form on the right.</p>
           </div>
         } @else {
           <div class="table-wrap">
@@ -50,7 +50,7 @@
                     <td>{{ item.fromTable }}.{{ item.fromColumn }} &#8594; {{ item.toTable }}.{{ item.toColumn }}</td>
                     <td>Type: {{ item.relationshipType || 'manual' }}</td>
                     <td>
-                      <button type="button" class="rounded-xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50"
+                      <button type="button" class="rounded-xl border border-rose-200 dark:border-rose-900/30 transition-colors px-3 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:bg-rose-900/10 transition-colors"
                         (click)="removeRelationship($index)" [disabled]="saving()">Remove</button>
                     </td>
                   </tr>
@@ -63,9 +63,9 @@
 
       <aside class="card p-5">
         <h2 class="font-semibold">Add Relationship</h2>
-        <div class="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+        <div class="mt-4 rounded-2xl border border-indigo-100 dark:border-[#3c50e0]/30 transition-colors duration-300 bg-indigo-50 p-4">
           <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Relationship Preview</p>
-          <p class="mt-2 break-words font-semibold text-slate-900">{{ relationshipPreview() }}</p>
+          <p class="mt-2 break-words font-semibold text-slate-900 dark:text-white transition-colors duration-300">{{ relationshipPreview() }}</p>
         </div>
         <form #relationshipForm="ngForm" (ngSubmit)="relationshipForm.form.valid && saveRelationship()" class="mt-4 space-y-4">
           <datalist id="relationship-columns">
@@ -97,7 +97,7 @@
           <label class="block">
             <span class="mb-1.5 block text-sm font-medium">To Column</span>
             <input name="toColumn" [(ngModel)]="relationship.toColumn" class="input-field" list="relationship-columns" placeholder="id" required>
-            <span class="mt-1.5 block text-xs text-slate-500">Generated columns are available as suggestions; custom target columns are allowed.</span>
+            <span class="mt-1.5 block text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Generated columns are available as suggestions; custom target columns are allowed.</span>
           </label>
           <label class="block">
             <span class="mb-1.5 block text-sm font-medium">Relationship Type</span>
@@ -114,6 +114,6 @@
       </aside>
     </div>
   } @else {
-    <article class="card mt-5 p-6 text-sm text-slate-500">No schema loaded.</article>
+    <article class="card mt-5 p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">No schema loaded.</article>
   }
 </section>

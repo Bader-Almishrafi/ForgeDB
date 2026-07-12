@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-[#f1f5f9] text-[#24303f]">
+<div class="min-h-screen bg-[#f1f5f9] text-[#24303f] dark:bg-[#1a222c] dark:text-[#aeb7c0] transition-colors duration-300">
   @if (sidebarOpen()) {
     <button type="button" aria-label="Close navigation" class="fixed inset-0 z-40 bg-slate-950/45 lg:hidden"
       (click)="closeSidebar()"></button>
@@ -11,7 +11,7 @@
     class="fixed inset-y-0 left-0 z-50 flex flex-col overflow-x-hidden overflow-y-auto bg-[#1c2434] duration-300 ease-linear lg:translate-x-0 transition-all whitespace-nowrap"
     [ngClass]="[
       sidebarOpen() ? 'translate-x-0' : '-translate-x-full',
-      sidebarHovered() || sidebarOpen() ? 'w-[290px]' : 'w-[85px]'
+      sidebarPinned() || sidebarHovered() || sidebarOpen() ? 'w-[290px]' : 'w-[85px]'
     ]">
     
     <!-- SIDEBAR HEADER -->
@@ -23,10 +23,19 @@
             <path d="M5 5.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6M5 11.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6"></path>
           </svg>
         </div>
-        <div class="transition-opacity duration-300" [class.opacity-0]="!sidebarHovered() && !sidebarOpen()">
+        <div class="transition-opacity duration-300" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">
           <span class="block text-xl font-bold tracking-tight text-white">ForgeDB</span>
         </div>
       </a>
+
+      <!-- Pin Button -->
+      <button class="hidden lg:block text-[#aeb7c0] hover:text-white transition-opacity duration-300 ml-auto mr-4"
+              [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()"
+              (click)="togglePin()">
+        <svg class="h-5 w-5 fill-current" viewBox="0 0 24 24" [ngClass]="sidebarPinned() ? 'text-white' : 'text-[#8a99ad]'">
+          <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"></path>
+        </svg>
+      </button>
 
       <button class="block lg:hidden text-white hover:text-gray-300 min-w-6" (click)="closeSidebar()">
         <svg class="h-6 w-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -42,7 +51,7 @@
         <!-- WORKSPACE GROUP -->
         <div>
           <h3 class="mb-4 ml-4 text-xs font-semibold uppercase tracking-wider text-[#8a99ad] transition-opacity duration-300"
-              [class.opacity-0]="!sidebarHovered() && !sidebarOpen()">Workspace</h3>
+              [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">Workspace</h3>
           <ul class="mb-6 flex flex-col gap-1.5">
             @for (item of navItems; track item.label) {
               @if (item.group === 'Workspace') {
@@ -56,14 +65,14 @@
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
                       </svg>
-                      <span class="transition-opacity duration-300" [class.opacity-0]="!sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
+                      <span class="transition-opacity duration-300" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
                     </a>
                   } @else {
                     <div class="flex items-center gap-4 rounded-sm px-4 py-2 font-medium text-[#4f5e74] bg-[#24303f]/50 border border-[#3d4d62]/50">
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current opacity-70" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
                       </svg>
-                      <span class="transition-opacity duration-300 opacity-70" [class.opacity-0]="!sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
+                      <span class="transition-opacity duration-300 opacity-70" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
                     </div>
                   }
                 </li>
@@ -75,7 +84,7 @@
         <!-- ANALYSIS GROUP -->
         <div>
           <h3 class="mb-4 ml-4 text-xs font-semibold uppercase tracking-wider text-[#8a99ad] transition-opacity duration-300"
-              [class.opacity-0]="!sidebarHovered() && !sidebarOpen()">Analysis</h3>
+              [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">Analysis</h3>
           <ul class="mb-6 flex flex-col gap-1.5">
             @for (item of navItems; track item.label) {
               @if (item.group === 'Analysis') {
@@ -89,14 +98,14 @@
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
                       </svg>
-                      <span class="transition-opacity duration-300" [class.opacity-0]="!sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
+                      <span class="transition-opacity duration-300" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
                     </a>
                   } @else {
                     <div class="flex items-center gap-4 rounded-sm px-4 py-2 font-medium text-[#4f5e74] bg-[#24303f]/50 border border-[#3d4d62]/50">
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current opacity-70" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
                       </svg>
-                      <span class="transition-opacity duration-300 opacity-70" [class.opacity-0]="!sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
+                      <span class="transition-opacity duration-300 opacity-70" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
                     </div>
                   }
                 </li>
@@ -108,7 +117,7 @@
         <!-- SCHEMA & DESIGN GROUP -->
         <div>
           <h3 class="mb-4 ml-4 text-xs font-semibold uppercase tracking-wider text-[#8a99ad] transition-opacity duration-300"
-              [class.opacity-0]="!sidebarHovered() && !sidebarOpen()">Schema & Design</h3>
+              [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">Schema & Design</h3>
           <ul class="mb-6 flex flex-col gap-1.5">
             @for (item of navItems; track item.label) {
               @if (item.group === 'Schema & Design') {
@@ -122,14 +131,14 @@
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
                       </svg>
-                      <span class="transition-opacity duration-300" [class.opacity-0]="!sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
+                      <span class="transition-opacity duration-300" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
                     </a>
                   } @else {
                     <div class="flex items-center gap-4 rounded-sm px-4 py-2 font-medium text-[#4f5e74] bg-[#24303f]/50 border border-[#3d4d62]/50">
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current opacity-70" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
                       </svg>
-                      <span class="transition-opacity duration-300 opacity-70" [class.opacity-0]="!sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
+                      <span class="transition-opacity duration-300 opacity-70" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
                     </div>
                   }
                 </li>
@@ -141,7 +150,7 @@
 
       <!-- CURRENT PROJECT CARD -->
       <div class="mx-4 mt-auto mb-6 rounded-sm border border-[#313d4f] bg-[#24303f] p-5 transition-opacity duration-300"
-           [class.opacity-0]="!sidebarHovered() && !sidebarOpen()">
+           [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">
         <p class="text-xs font-semibold uppercase tracking-wider text-[#8a99ad]">Current Project</p>
         <p class="mt-1 truncate text-sm font-semibold text-white">{{ projectName() || 'No project selected' }}</p>
         <div class="mt-4 space-y-2 text-xs text-[#aeb7c0]">
@@ -160,32 +169,46 @@
   </aside>
 
   <!-- MAIN CONTENT WRAPPER -->
-  <div class="relative flex flex-1 flex-col lg:pl-[85px]">
+  <div class="relative flex flex-1 flex-col transition-all duration-300 ease-linear"
+       [ngClass]="sidebarPinned() ? 'lg:pl-[290px]' : 'lg:pl-[85px]'">
     
     <!-- HEADER -->
-    <header class="sticky top-0 z-30 flex w-full border-b border-[#e2e8f0] bg-white shadow-sm">
+    <header class="sticky top-0 z-30 flex w-full border-b border-[#e2e8f0] dark:border-[#2e3a47] bg-white dark:bg-[#1c2434] shadow-sm transition-colors duration-300">
       <div class="flex h-[80px] w-full items-center justify-between px-4 lg:px-6 xl:px-8">
         
         <div class="flex items-center gap-3">
           <button type="button"
-            class="grid h-10 w-10 place-items-center rounded-sm border border-[#e2e8f0] text-[#64748b] hover:bg-[#f8fafc] lg:hidden"
+            class="grid h-10 w-10 place-items-center rounded-sm border border-[#e2e8f0] dark:border-[#2e3a47] text-[#64748b] hover:bg-[#f8fafc] dark:hover:bg-[#24303f] lg:hidden"
             (click)="toggleSidebar()" aria-label="Open navigation">
             <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="2">
               <path d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
           </button>
           <div class="hidden sm:block">
-            <h1 class="text-xl font-bold text-[#24303f]">Dashboard</h1>
+            <h1 class="text-xl font-bold text-[#24303f] dark:text-white">Dashboard</h1>
           </div>
         </div>
 
         <div class="flex items-center gap-4">
+          <!-- Dark Mode Toggle -->
+          <button type="button" (click)="toggleDarkMode()" class="text-[#64748b] hover:text-[#24303f] dark:hover:text-white transition">
+            @if (darkMode()) {
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            } @else {
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            }
+          </button>
+
           @if (isLoggedIn()) {
             <div class="relative">
               <button type="button" (click)="toggleDropdown()"
-                class="flex items-center gap-3 rounded-sm p-1.5 outline-none hover:bg-[#f8fafc]">
+                class="flex items-center gap-3 rounded-sm p-1.5 outline-none hover:bg-[#f8fafc] dark:hover:bg-[#24303f]">
                 <div class="hidden text-right sm:block">
-                  <span class="block text-sm font-medium text-[#24303f]">{{ user()?.firstName || 'User' }}</span>
+                  <span class="block text-sm font-medium text-[#24303f] dark:text-white">{{ user()?.firstName || 'User' }}</span>
                   <span class="block text-xs font-medium text-[#64748b]">{{ user()?.role || 'Admin' }}</span>
                 </div>
                 <div class="grid h-10 w-10 place-items-center rounded-full bg-[#3c50e0] text-sm font-bold text-white shadow-sm">
@@ -197,11 +220,11 @@
               </button>
 
               @if (dropdownOpen()) {
-                <div class="absolute right-0 mt-3 w-52 rounded-sm border border-[#e2e8f0] bg-white p-3 shadow-md z-40">
+                <div class="absolute right-0 mt-3 w-52 rounded-sm border border-[#e2e8f0] dark:border-[#2e3a47] bg-white dark:bg-[#1c2434] p-3 shadow-md z-40">
                   <a routerLink="/projects" (click)="dropdownOpen.set(false)"
-                    class="block rounded-sm px-4 py-2.5 text-sm font-medium text-[#64748b] hover:text-[#3c50e0] hover:bg-[#f1f5f9]">My Projects</a>
+                    class="block rounded-sm px-4 py-2.5 text-sm font-medium text-[#64748b] hover:text-[#3c50e0] hover:bg-[#f1f5f9] dark:hover:bg-[#24303f] dark:text-[#aeb7c0]">My Projects</a>
                   <button type="button" (click)="logout()"
-                    class="mt-2 block w-full rounded-sm border border-rose-100 bg-rose-50 px-4 py-2.5 text-left text-sm font-medium text-rose-600 hover:bg-rose-100">
+                    class="mt-2 block w-full rounded-sm border border-rose-100 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-900/10 px-4 py-2.5 text-left text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/20">
                     Log out
                   </button>
                 </div>

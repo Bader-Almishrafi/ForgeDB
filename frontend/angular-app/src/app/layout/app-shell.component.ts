@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal, effect } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { Params, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../services/auth.service';
@@ -36,6 +36,8 @@ type StepState = 'locked' | 'available' | 'current' | 'completed';
 export class AppShellComponent {
     readonly sidebarOpen = signal(false);
     readonly sidebarHovered = signal(false);
+    readonly sidebarPinned = signal(localStorage.getItem('sidebarPinned') === 'true');
+    readonly darkMode = signal(localStorage.getItem('darkMode') === 'true');
     readonly dropdownOpen = signal(false);
     readonly user = this.authService.user;
     readonly isLoggedIn = this.authService.isLoggedIn;
@@ -139,7 +141,28 @@ export class AppShellComponent {
         public router: Router,
         private authService: AuthService,
         private workflow: WorkflowStateService,
-    ) { }
+    ) {
+        effect(() => {
+            localStorage.setItem('sidebarPinned', String(this.sidebarPinned()));
+        });
+        effect(() => {
+            const isDark = this.darkMode();
+            localStorage.setItem('darkMode', String(isDark));
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+    }
+
+    togglePin(): void {
+        this.sidebarPinned.update((v) => !v);
+    }
+
+    toggleDarkMode(): void {
+        this.darkMode.update((v) => !v);
+    }
 
     toggleDropdown(): void {
         this.dropdownOpen.update((value) => !value);

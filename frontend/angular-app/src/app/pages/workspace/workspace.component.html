@@ -1,7 +1,7 @@
 <section>
   <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
     <div>
-      <p class="mb-3 text-sm text-slate-500">Projects / Workspace</p>
+      <p class="mb-3 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Projects / Workspace</p>
       <h1 class="page-title">{{ project()?.name || 'Project Workspace' }}</h1>
       <p class="page-subtitle">A guided workspace for upload, validation, analysis, schema review, and deployment SQL.</p>
     </div>
@@ -12,7 +12,7 @@
   </div>
 
   @if (errorMessage) {
-    <p class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
+    <p class="mb-5 rounded-xl border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors">{{ errorMessage }}</p>
   }
 
   <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -20,8 +20,8 @@
       <article class="card p-5">
         <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900">Workflow Progress</h2>
-            <p class="text-sm text-slate-500">Project assets unlock each product step from CSV import to database package.</p>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white transition-colors duration-300">Workflow Progress</h2>
+            <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Project assets unlock each product step from CSV import to database package.</p>
           </div>
           <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
             Next: {{ nextRecommendedStep() }}
@@ -31,7 +31,7 @@
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-9">
           @for (step of workflowSteps; track step.key) {
             <div class="rounded-xl border p-4"
-              [class]="workspaceStepState(step.key) === 'locked' ? 'border-slate-200 bg-slate-50 text-slate-400' : workspaceStepState(step.key) === 'done' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-indigo-200 bg-indigo-50 text-indigo-800'">
+              [class]="workspaceStepState(step.key) === 'locked' ? 'border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 text-slate-400 dark:text-slate-500 transition-colors duration-300' : workspaceStepState(step.key) === 'done' ? 'border-emerald-200 dark:border-emerald-900/30 transition-colors bg-emerald-50 text-emerald-800' : 'border-indigo-200 bg-indigo-50 text-indigo-800'">
               <p class="text-xs font-semibold uppercase tracking-wide">{{ workspaceStepState(step.key) }}</p>
               <p class="mt-1 font-semibold">{{ step.label }}</p>
             </div>
@@ -54,8 +54,8 @@
       <article class="card p-5">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900">Project Datasets</h2>
-            <p class="text-sm text-slate-500">All uploaded files remain available. Select any dataset to preview, analyze, dashboard, or generate schema.</p>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white transition-colors duration-300">Project Datasets</h2>
+            <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">All uploaded files remain available. Select any dataset to preview, analyze, dashboard, or generate schema.</p>
           </div>
           @if (currentDataset(); as dataset) {
             <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
@@ -65,31 +65,31 @@
         </div>
 
         @if (loading()) {
-          <p class="text-sm text-slate-500">Loading workspace...</p>
+          <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Loading workspace...</p>
         } @else if (datasets().length === 0) {
-          <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-            <h3 class="font-semibold text-slate-900">No dataset uploaded yet</h3>
-            <p class="mt-2 text-sm text-slate-500">Upload a CSV to unlock preview, analysis, dashboard, and schema steps.</p>
+          <div class="rounded-2xl border border-dashed border-slate-300 dark:border-[#313d4f] transition-colors duration-300 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-8 text-center">
+            <h3 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">No dataset uploaded yet</h3>
+            <p class="mt-2 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Upload a CSV to unlock preview, analysis, dashboard, and schema steps.</p>
             <a [routerLink]="['/projects', projectId, 'upload']" class="btn-primary mt-5">Upload First Dataset</a>
           </div>
         } @else {
           <div class="grid gap-3 lg:grid-cols-2">
             @for (dataset of datasets(); track dataset.id) {
               <section class="rounded-2xl border p-4 transition"
-                [class]="isSelectedDataset(dataset) ? 'border-indigo-300 bg-indigo-50/60 ring-2 ring-indigo-100' : 'border-slate-200 bg-white'">
+                [class]="isSelectedDataset(dataset) ? 'border-indigo-300 bg-indigo-50/60 dark:bg-[#3c50e0]/20 transition-colors duration-300 ring-2 ring-indigo-100' : 'border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 bg-white dark:bg-[#24303f] transition-colors duration-300'">
                 <div class="flex items-start justify-between gap-3">
                   <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Dataset #{{ dataset.id }}</p>
-                    <p class="mt-1 font-semibold text-slate-900">{{ dataset.tableName }}</p>
-                    <p class="mt-1 text-xs text-slate-500">{{ dataset.sourceName || dataset.sourceType }} / {{ dataset.createdAt | date:'short' }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Dataset #{{ dataset.id }}</p>
+                    <p class="mt-1 font-semibold text-slate-900 dark:text-white transition-colors duration-300">{{ dataset.tableName }}</p>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">{{ dataset.sourceName || dataset.sourceType }} / {{ dataset.createdAt | date:'short' }}</p>
                   </div>
                   <span [class]="datasetStatusClass(dataset)">{{ dataset.status }}</span>
                 </div>
                 <div class="mt-4 grid grid-cols-4 gap-2 text-center text-xs">
-                  <div class="rounded-lg bg-slate-50 p-2"><strong class="block text-slate-900">{{ dataset.rowCount }}</strong>Rows</div>
-                  <div class="rounded-lg bg-slate-50 p-2"><strong class="block text-slate-900">{{ dataset.columnCount }}</strong>Cols</div>
-                  <div class="rounded-lg bg-slate-50 p-2"><strong class="block text-slate-900">{{ dataset.missingValuesCount }}</strong>Missing</div>
-                  <div class="rounded-lg bg-slate-50 p-2"><strong class="block text-slate-900">{{ dataset.duplicateRowsCount }}</strong>Dupes</div>
+                  <div class="rounded-lg bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-2"><strong class="block text-slate-900 dark:text-white transition-colors duration-300">{{ dataset.rowCount }}</strong>Rows</div>
+                  <div class="rounded-lg bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-2"><strong class="block text-slate-900 dark:text-white transition-colors duration-300">{{ dataset.columnCount }}</strong>Cols</div>
+                  <div class="rounded-lg bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-2"><strong class="block text-slate-900 dark:text-white transition-colors duration-300">{{ dataset.missingValuesCount }}</strong>Missing</div>
+                  <div class="rounded-lg bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-2"><strong class="block text-slate-900 dark:text-white transition-colors duration-300">{{ dataset.duplicateRowsCount }}</strong>Dupes</div>
                 </div>
                 <div class="mt-4 flex flex-wrap gap-2">
                   <button type="button" class="btn-secondary py-2" (click)="selectDataset(dataset)">
@@ -111,31 +111,31 @@
 
     <aside class="space-y-5">
       <article class="card p-5">
-        <h2 class="font-semibold text-slate-900">Project Summary</h2>
+        <h2 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">Project Summary</h2>
         <div class="mt-4 space-y-3 text-sm">
-          <div><p class="text-slate-500">Description</p><p class="font-medium text-slate-800">{{ project()?.description || 'No description yet.' }}</p></div>
-          <div><p class="text-slate-500">Created</p><p class="font-medium text-slate-800">{{ project()?.createdAt | date:'medium' }}</p></div>
-          <div><p class="text-slate-500">Datasets</p><p class="font-medium text-slate-800">{{ datasets().length }}</p></div>
-          <div><p class="text-slate-500">Schema</p><p class="font-medium text-slate-800">{{ schema()?.schemaName || 'Not generated' }}</p></div>
+          <div><p class="text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Description</p><p class="font-medium text-slate-800">{{ project()?.description || 'No description yet.' }}</p></div>
+          <div><p class="text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Created</p><p class="font-medium text-slate-800">{{ project()?.createdAt | date:'medium' }}</p></div>
+          <div><p class="text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Datasets</p><p class="font-medium text-slate-800">{{ datasets().length }}</p></div>
+          <div><p class="text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Schema</p><p class="font-medium text-slate-800">{{ schema()?.schemaName || 'Not generated' }}</p></div>
         </div>
       </article>
 
       <article class="card p-5">
-        <h2 class="font-semibold text-slate-900">Relationship Readiness</h2>
-        <p class="mt-1 text-sm text-slate-500">Key-like and matching columns across real project datasets.</p>
+        <h2 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">Relationship Readiness</h2>
+        <p class="mt-1 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Key-like and matching columns across real project datasets.</p>
         @if (relationshipReadiness().length === 0) {
-          <div class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+          <div class="mt-4 rounded-2xl border border-dashed border-slate-300 dark:border-[#313d4f] transition-colors duration-300 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-4 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">
             Upload or select datasets to inspect columns for future relationship mapping.
           </div>
         } @else {
           <div class="mt-4 space-y-3">
             @for (item of relationshipReadiness(); track item.columnName) {
-              <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                <p class="font-semibold text-slate-900">{{ item.columnName }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ item.reason }}</p>
+              <div class="rounded-xl border border-slate-100 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-3">
+                <p class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">{{ item.columnName }}</p>
+                <p class="mt-1 text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">{{ item.reason }}</p>
                 <div class="mt-2 flex flex-wrap gap-1.5">
                   @for (dataset of item.datasets; track dataset.id) {
-                    <span class="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">{{ dataset.tableName }}</span>
+                    <span class="rounded-full bg-white dark:bg-[#24303f] transition-colors duration-300 px-2 py-1 text-[11px] font-semibold text-slate-600 dark:text-[#aeb7c0] transition-colors duration-300">{{ dataset.tableName }}</span>
                   }
                 </div>
               </div>
@@ -145,7 +145,7 @@
       </article>
 
       <article class="card p-5">
-        <h2 class="font-semibold text-slate-900">Quick Actions</h2>
+        <h2 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">Quick Actions</h2>
         <div class="mt-4 space-y-2">
           <a [routerLink]="['/projects', projectId, 'upload']" class="btn-secondary w-full justify-start">Upload dataset</a>
           @if (currentDataset(); as dataset) {

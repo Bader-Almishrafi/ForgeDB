@@ -1,7 +1,7 @@
 <section>
   <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
-      <p class="mb-3 text-sm text-slate-500">Projects / Schema Designer</p>
+      <p class="mb-3 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Projects / Schema Designer</p>
       <h1 class="page-title">Project Schema Designer</h1>
       <p class="page-subtitle">A project-level schema composed from all uploaded datasets and accepted relationships.</p>
     </div>
@@ -14,14 +14,14 @@
   </div>
 
   @if (errorMessage) {
-    <p class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
+    <p class="mb-5 rounded-xl border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors">{{ errorMessage }}</p>
   }
   @if (successMessage) {
-    <p class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
+    <p class="mb-5 rounded-xl border border-emerald-200 dark:border-emerald-900/30 transition-colors bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
   }
 
   @if (loading()) {
-    <article class="card p-6 text-sm text-slate-500">Loading schema...</article>
+    <article class="card p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Loading schema...</article>
   } @else if (schema(); as data) {
     <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
       <div class="space-y-5">
@@ -33,7 +33,7 @@
                   <h2 class="font-semibold">{{ table.tableName }}</h2>
                   <p class="text-xs text-slate-300">Dataset #{{ table.datasetId }} / {{ table.status }}</p>
                 </div>
-                <span class="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold">{{ table.columns.length }} columns</span>
+                <span class="rounded-full bg-white dark:bg-[#24303f] transition-colors duration-300/10 px-2.5 py-1 text-xs font-semibold">{{ table.columns.length }} columns</span>
               </div>
             </div>
             <div class="table-wrap rounded-none border-0">
@@ -53,7 +53,7 @@
             </div>
           </article>
         } @empty {
-          <article class="card p-6 text-sm text-slate-500">No datasets available for schema generation.</article>
+          <article class="card p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">No datasets available for schema generation.</article>
         }
       </div>
 
@@ -67,7 +67,7 @@
                 <p class="mt-1 text-xs text-emerald-700">Type: {{ relationship.relationshipType }}</p>
               </div>
             } @empty {
-              <p class="text-sm text-slate-500">No accepted relationships yet.</p>
+              <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">No accepted relationships yet.</p>
             }
           </div>
         </article>

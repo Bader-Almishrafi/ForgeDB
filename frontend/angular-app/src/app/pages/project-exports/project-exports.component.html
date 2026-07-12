@@ -1,7 +1,7 @@
 <section>
   <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
-      <p class="mb-3 text-sm text-slate-500">Projects / Exports</p>
+      <p class="mb-3 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Projects / Exports</p>
       <h1 class="page-title">Database Package Exports</h1>
       <p class="page-subtitle">Whole-project SQL, DBML, JSON schema, relationship report, and data-quality report.</p>
     </div>
@@ -12,17 +12,17 @@
   </div>
 
   @if (errorMessage) {
-    <p class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
+    <p class="mb-5 rounded-xl border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors">{{ errorMessage }}</p>
   }
 
   @if (loading()) {
-    <article class="card p-6 text-sm text-slate-500">Loading export package...</article>
+    <article class="card p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Loading export package...</article>
   } @else if (exportPackage(); as data) {
     <article class="card mb-5 p-5">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 class="text-lg font-semibold text-slate-900">{{ data.status }}</h2>
-          <p class="mt-1 text-sm text-slate-500">{{ data.projectName }} / Generated {{ data.generatedAt | date:'medium' }}</p>
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-white transition-colors duration-300">{{ data.status }}</h2>
+          <p class="mt-1 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">{{ data.projectName }} / Generated {{ data.generatedAt | date:'medium' }}</p>
         </div>
         <span class="badge-success">Database Package Ready</span>
       </div>
@@ -47,7 +47,7 @@
       <aside class="card overflow-hidden">
         <div class="border-b border-slate-100 px-5 py-4">
           <h2 class="font-semibold">SQL Preview</h2>
-          <p class="text-xs text-slate-500">Represents all project datasets and accepted relationships.</p>
+          <p class="text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Represents all project datasets and accepted relationships.</p>
         </div>
         <pre class="max-h-[620px] overflow-auto bg-[#fbfcff] p-5 text-[12px] leading-5 text-slate-700"><code>{{ data.sql }}</code></pre>
       </aside>
