@@ -9,22 +9,26 @@ namespace ForgeDB.API.Services.Generators;
 public static class SqlIdentifiers
 {
     private static readonly Regex SafeLowercasePattern = new("^[a-z_][a-z0-9_]{0,62}$", RegexOptions.Compiled);
+    private static readonly Regex EditableIdentifierPattern = new("^[A-Za-z_][A-Za-z0-9_]{0,62}$", RegexOptions.Compiled);
 
-    // Common PostgreSQL reserved keywords (non-exhaustive; covers the words most likely to
-    // appear as user-chosen table/column names). Sourced from the "reserved" column of
-    // https://www.postgresql.org/docs/current/sql-keywords-appendix.html.
+    // PostgreSQL reserved keywords: the union of the "reserved" and "reserved (can be function
+    // or type name)" columns of https://www.postgresql.org/docs/current/sql-keywords-appendix.html
+    // — every word that must be quoted to be used as a table/column identifier.
     public static readonly IReadOnlySet<string> ReservedWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "all", "analyse", "analyze", "and", "any", "array", "as", "asc", "asymmetric",
-        "both", "case", "cast", "check", "collate", "column", "constraint", "create",
-        "current_date", "current_role", "current_time", "current_timestamp", "current_user",
-        "default", "deferrable", "desc", "distinct", "do", "else", "end", "except", "false",
-        "fetch", "for", "foreign", "from", "grant", "group", "having", "in", "initially",
-        "intersect", "into", "lateral", "leading", "limit", "localtime", "localtimestamp",
-        "not", "null", "offset", "on", "only", "or", "order", "placing", "primary",
-        "references", "returning", "select", "session_user", "some", "symmetric", "table",
-        "then", "to", "trailing", "true", "union", "unique", "user", "using", "variadic",
-        "when", "where", "window", "with"
+        "authorization", "binary", "both", "case", "cast", "check", "collate", "collation",
+        "column", "concurrently", "constraint", "create", "cross", "current_catalog",
+        "current_date", "current_role", "current_schema", "current_time", "current_timestamp",
+        "current_user", "default", "deferrable", "desc", "distinct", "do", "else", "end",
+        "except", "false", "fetch", "for", "foreign", "freeze", "from", "full", "grant",
+        "group", "having", "ilike", "in", "initially", "inner", "intersect", "into", "is",
+        "isnull", "join", "lateral", "leading", "left", "like", "limit", "localtime",
+        "localtimestamp", "natural", "not", "notnull", "null", "offset", "on", "only", "or",
+        "order", "outer", "overlaps", "placing", "primary", "references", "returning",
+        "right", "select", "session_user", "similar", "some", "symmetric", "table",
+        "tablesample", "then", "to", "trailing", "true", "union", "unique", "user", "using",
+        "variadic", "verbose", "when", "where", "window", "with"
     };
 
     public static bool IsSafeLowercaseIdentifier(string identifier)
@@ -35,6 +39,13 @@ public static class SqlIdentifiers
     public static bool IsReservedWord(string identifier)
     {
         return ReservedWords.Contains(identifier);
+    }
+
+    public static bool IsValidEditableIdentifier(string? identifier)
+    {
+        return !string.IsNullOrWhiteSpace(identifier)
+            && EditableIdentifierPattern.IsMatch(identifier)
+            && !IsReservedWord(identifier);
     }
 
     public static bool NeedsQuoting(string identifier)

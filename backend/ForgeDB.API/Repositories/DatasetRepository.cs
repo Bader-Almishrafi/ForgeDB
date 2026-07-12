@@ -160,12 +160,15 @@ public class DatasetRepository : IDatasetRepository
         if (dataset?.ActiveVersion is null) return;
         var version = dataset.ActiveVersion;
         var columns = CleaningSnapshotSerializer.DeserializeColumns(version.ColumnsJson);
+        var analysisColumns = ParseAnalysisColumns(version.AnalysisResultJson);
         dataset.Columns = columns.Select((column, index) => new DatasetColumn
         {
             Id = index + 1,
             DatasetId = dataset.Id,
             ColumnName = column.Name,
-            DetectedDataType = column.DataType
+            DetectedDataType = column.DataType,
+            IsNullable = analysisColumns.GetValueOrDefault(column.Name)?.IsNullable ?? false,
+            UniqueValuesCount = analysisColumns.GetValueOrDefault(column.Name)?.UniqueValuesCount ?? 0
         }).ToList();
         if (includeRows)
         {
@@ -188,4 +191,30 @@ public class DatasetRepository : IDatasetRepository
         dataset.AnalyzedAt = version.AnalyzedAt;
         dataset.Status = version.AnalyzedAt.HasValue ? "Analyzed" : "Cleaned - Analysis Required";
     }
+
+    private static Dictionary<string, ActiveColumnAnalysis> ParseAnalysisColumns(string? analysisJson)
+    {
+        var result = new Dictionary<string, ActiveColumnAnalysis>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(analysisJson)) return result;
+        try
+        {
+            using var document = JsonDocument.Parse(analysisJson);
+            if (!document.RootElement.TryGetProperty("columns", out var columns) || columns.ValueKind != JsonValueKind.Array) return result;
+            foreach (var column in columns.EnumerateArray())
+            {
+                var name = column.TryGetProperty("columnName", out var nameValue) ? nameValue.GetString() : null;
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                var unique = column.TryGetProperty("uniqueValuesCount", out var uniqueValue) ? uniqueValue.GetInt32() : 0;
+                var nullable = column.TryGetProperty("isNullable", out var nullableValue) && nullableValue.GetBoolean();
+                result[name] = new ActiveColumnAnalysis(unique, nullable);
+            }
+        }
+        catch (JsonException)
+        {
+            return result;
+        }
+        return result;
+    }
+
+    private sealed record ActiveColumnAnalysis(int UniqueValuesCount, bool IsNullable);
 }

@@ -16,23 +16,200 @@ public class DesignService : IDesignService
     private readonly IDatasetRepository _datasetRepository;
     private readonly IDesignSchemaGeneratorResolver _generatorResolver;
     private readonly IDesignValidationService _validationService;
+    private readonly ICleaningRepository? _cleaningRepository;
 
     public DesignService(
         IDesignRepository designRepository,
         IDatasetRepository datasetRepository,
         IDesignSchemaGeneratorResolver generatorResolver,
-        IDesignValidationService validationService)
+        IDesignValidationService validationService,
+        ICleaningRepository? cleaningRepository = null)
     {
         _designRepository = designRepository;
         _datasetRepository = datasetRepository;
         _generatorResolver = generatorResolver;
         _validationService = validationService;
+        _cleaningRepository = cleaningRepository;
     }
 
     public async Task<DesignResponseDto?> GetByProjectIdAsync(int projectId, CancellationToken cancellationToken = default)
     {
         var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: false, cancellationToken);
         return design is null ? null : BuildResponse(design);
+    }
+
+    public async Task<DesignResponseDto?> GetSchemaWorkspaceAsync(int projectId, CancellationToken cancellationToken = default)
+    {
+        var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: false, cancellationToken);
+        return design is null ? null : await BuildSchemaResponseAsync(design, cancellationToken);
+    }
+
+    public async Task<DesignResponseDto> GenerateSchemaAsync(
+        int projectId,
+        int userId,
+        int? ifMatchRevision,
+        CancellationToken cancellationToken = default)
+    {
+        var cleaning = RequireCleaningRepository();
+        if (!await cleaning.IsSchemaReadyAsync(projectId, cancellationToken))
+        {
+            throw new InvalidOperationException("Confirm the cleaned, re-analyzed dataset versions before generating a schema.");
+        }
+
+        var activeVersions = await cleaning.GetActiveProjectVersionsAsync(projectId, cancellationToken);
+        var sourceVersions = activeVersions
+            .Where(item => item.Dataset.SourceType.Equals("csv", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(item => item.Dataset.Id, item => item.Version.Id);
+        var datasets = (await _datasetRepository.GetByProjectIdWithColumnsAsync(projectId, cancellationToken))
+            .Where(dataset => dataset.SourceType.Equals("csv", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (datasets.Count == 0)
+        {
+            throw new InvalidOperationException("No confirmed CSV datasets are available for schema generation.");
+        }
+
+        var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: true, cancellationToken);
+        var now = DateTime.UtcNow;
+        if (design is null)
+        {
+            design = new DesignModel
+            {
+                ProjectId = projectId,
+                Revision = 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+        }
+        else
+        {
+            if (ifMatchRevision is null) throw new DesignPreconditionRequiredException();
+            CheckRevision(design, ifMatchRevision.Value);
+            design.Relationships.Clear();
+            design.Tables.Clear();
+            design.Revision += 1;
+            design.UpdatedAt = now;
+        }
+
+        ApplyGeneration(design, datasets, sourceVersions);
+        design.Status = DesignStatus.Draft;
+        design.GeneratedAt = now;
+        design.ValidatedAt = null;
+        design.LastModifiedByUserId = userId;
+        design.SourceVersionsJson = JsonSerializer.Serialize(sourceVersions);
+
+        if (design.Id == 0)
+        {
+            await _designRepository.AddAsync(design, cancellationToken);
+        }
+        else
+        {
+            await _designRepository.SaveChangesAsync(cancellationToken);
+        }
+
+        var reloaded = await _designRepository.GetFullByProjectIdAsync(projectId, track: false, cancellationToken)
+            ?? throw new InvalidOperationException("Generated schema could not be reloaded.");
+        return await BuildSchemaResponseAsync(reloaded, cancellationToken);
+    }
+
+    public async Task<DesignResponseDto> SaveSchemaDraftAsync(
+        int projectId,
+        int userId,
+        int ifMatchRevision,
+        SaveDesignDraftRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateRenameWhitelist(request);
+        var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: true, cancellationToken)
+            ?? throw new KeyNotFoundException("Schema draft not found.");
+        CheckRevision(design, ifMatchRevision);
+
+        foreach (var rename in request.Tables)
+        {
+            var table = design.Tables.FirstOrDefault(item => item.Id == rename.Id)
+                ?? throw new ArgumentException($"Table {rename.Id} does not belong to this schema.");
+            table.Name = ValidateEditableIdentifier(rename.Name, "Table");
+        }
+
+        foreach (var rename in request.Columns)
+        {
+            var column = design.Tables.SelectMany(table => table.Columns).FirstOrDefault(item => item.Id == rename.Id)
+                ?? throw new ArgumentException($"Column {rename.Id} does not belong to this schema.");
+            column.Name = ValidateEditableIdentifier(rename.Name, "Column");
+
+            if (!SchemaColumnRules.TryNormalizeSqlType(rename.DataType, out var normalizedType))
+            {
+                throw new ArgumentException($"Column '{column.Name}' uses unsupported PostgreSQL type '{rename.DataType}'.");
+            }
+            if (rename.IsPrimaryKey && rename.IsNullable)
+            {
+                throw new ArgumentException($"Primary-key column '{column.Name}' cannot be nullable.");
+            }
+            if (rename.IsAutoIncrement && !SchemaColumnRules.IsIdentityCompatible(normalizedType))
+            {
+                throw new ArgumentException($"Auto Increment for column '{column.Name}' requires SMALLINT, INTEGER, or BIGINT.");
+            }
+            if (rename.IsAutoIncrement && rename.IsNullable)
+            {
+                throw new ArgumentException($"Auto Increment column '{column.Name}' must be NOT NULL.");
+            }
+            if (rename.IsAutoIncrement && !string.IsNullOrWhiteSpace(rename.DefaultValue))
+            {
+                throw new ArgumentException($"Auto Increment column '{column.Name}' cannot also define a default value.");
+            }
+            if (!SchemaColumnRules.TryNormalizeDefault(rename.DefaultValue, normalizedType, out var normalizedDefault, out var defaultError))
+            {
+                throw new ArgumentException($"Column '{column.Name}' has an invalid default value. {defaultError}");
+            }
+
+            column.SqlType = normalizedType;
+            column.IsNullable = rename.IsNullable;
+            column.IsPrimaryKey = rename.IsPrimaryKey;
+            column.IsUnique = !rename.IsPrimaryKey && rename.IsUnique;
+            column.DefaultValue = normalizedDefault;
+            column.IsAutoIncrement = rename.IsAutoIncrement;
+        }
+
+        EnsureUniqueNames(design);
+        design.Status = DesignStatus.Draft;
+        design.ValidatedAt = null;
+        design.LastModifiedByUserId = userId;
+        await SaveAndBuildResponseAsync(design, cancellationToken);
+        return await GetSchemaWorkspaceAsync(projectId, cancellationToken)
+            ?? throw new InvalidOperationException("Saved schema draft could not be reloaded.");
+    }
+
+    public async Task<DesignResponseDto> ValidateSchemaAsync(
+        int projectId,
+        int userId,
+        int ifMatchRevision,
+        CancellationToken cancellationToken = default)
+    {
+        var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: true, cancellationToken)
+            ?? throw new KeyNotFoundException("Schema draft not found.");
+        CheckRevision(design, ifMatchRevision);
+        var stale = await IsStaleAsync(design, cancellationToken);
+        var issues = BuildValidationIssues(design, stale);
+        design.Status = issues.Any(issue => issue.Severity == ValidationSeverity.Error)
+            ? DesignStatus.Invalid
+            : DesignStatus.Valid;
+        design.ValidatedAt = DateTime.UtcNow;
+        design.LastModifiedByUserId = userId;
+        await SaveAndBuildResponseAsync(design, cancellationToken, preserveValidationStatus: true);
+        return await GetSchemaWorkspaceAsync(projectId, cancellationToken)
+            ?? throw new InvalidOperationException("Validated schema could not be reloaded.");
+    }
+
+    public async Task<SchemaSqlPreviewDto> GetSchemaSqlAsync(int projectId, CancellationToken cancellationToken = default)
+    {
+        var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: false, cancellationToken)
+            ?? throw new KeyNotFoundException("Schema draft not found.");
+        return new SchemaSqlPreviewDto
+        {
+            DesignId = design.Id,
+            Revision = design.Revision,
+            Sql = _generatorResolver.Generate("sql", BuildSnapshot(design))
+        };
     }
 
     public async Task<DesignResponseDto> GenerateAsync(int projectId, GenerateDesignRequestDto request, int? ifMatchRevision, CancellationToken cancellationToken = default)
@@ -130,10 +307,7 @@ public class DesignService : IDesignService
 
     public async Task<DesignResponseDto> CreateTableAsync(int designId, int ifMatchRevision, CreateDesignTableRequestDto request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            throw new ArgumentException("Table name is required.");
-        }
+        var name = ValidateEditableIdentifier(request.Name, "Table");
 
         var design = await LoadTrackedAsync(designId, cancellationToken);
         CheckRevision(design, ifMatchRevision);
@@ -141,20 +315,18 @@ public class DesignService : IDesignService
         design.Tables.Add(new DesignTable
         {
             DesignModelId = design.Id,
-            Name = request.Name.Trim(),
+            Name = name,
             Comment = NormalizeOptional(request.Comment),
             Origin = DesignOrigin.User
         });
 
+        EnsureUniqueNames(design);
         return await SaveAndBuildResponseAsync(design, cancellationToken);
     }
 
     public async Task<DesignResponseDto> UpdateTableAsync(int tableId, int ifMatchRevision, UpdateDesignTableRequestDto request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            throw new ArgumentException("Table name is required.");
-        }
+        var name = ValidateEditableIdentifier(request.Name, "Table");
 
         var designModelId = await _designRepository.FindDesignModelIdByTableIdAsync(tableId, cancellationToken)
             ?? throw new KeyNotFoundException("Design table not found.");
@@ -164,10 +336,11 @@ public class DesignService : IDesignService
         var table = design.Tables.FirstOrDefault(t => t.Id == tableId)
             ?? throw new KeyNotFoundException("Design table not found.");
 
-        table.Name = request.Name.Trim();
+        table.Name = name;
         table.Comment = NormalizeOptional(request.Comment);
         table.Origin = DesignOrigin.User;
 
+        EnsureUniqueNames(design);
         return await SaveAndBuildResponseAsync(design, cancellationToken);
     }
 
@@ -190,7 +363,15 @@ public class DesignService : IDesignService
 
     public async Task<DesignResponseDto> CreateColumnAsync(int tableId, int ifMatchRevision, CreateDesignColumnRequestDto request, CancellationToken cancellationToken = default)
     {
-        ValidateColumnFields(request.Name, request.SqlType);
+        var name = ValidateEditableIdentifier(request.Name, "Column");
+        if (!SchemaColumnRules.TryNormalizeSqlType(request.SqlType, out var normalizedType))
+        {
+            throw new ArgumentException($"Column '{name}' uses unsupported PostgreSQL type '{request.SqlType}'.");
+        }
+        if (request.IsPrimaryKey && request.IsNullable)
+        {
+            throw new ArgumentException($"Primary-key column '{name}' cannot be nullable.");
+        }
 
         var designModelId = await _designRepository.FindDesignModelIdByTableIdAsync(tableId, cancellationToken)
             ?? throw new KeyNotFoundException("Design table not found.");
@@ -203,22 +384,31 @@ public class DesignService : IDesignService
         table.Columns.Add(new DesignColumn
         {
             DesignTableId = table.Id,
-            Name = request.Name.Trim(),
-            SqlType = request.SqlType.Trim(),
+            Name = name,
+            SqlType = normalizedType,
             IsNullable = request.IsNullable,
             IsPrimaryKey = request.IsPrimaryKey,
-            IsUnique = request.IsUnique,
+            IsUnique = !request.IsPrimaryKey && request.IsUnique,
             Ordinal = request.Ordinal,
             SourceColumnName = NormalizeOptional(request.SourceColumnName),
             Origin = DesignOrigin.User
         });
 
+        EnsureUniqueNames(design);
         return await SaveAndBuildResponseAsync(design, cancellationToken);
     }
 
     public async Task<DesignResponseDto> UpdateColumnAsync(int columnId, int ifMatchRevision, UpdateDesignColumnRequestDto request, CancellationToken cancellationToken = default)
     {
-        ValidateColumnFields(request.Name, request.SqlType);
+        var name = ValidateEditableIdentifier(request.Name, "Column");
+        if (!SchemaColumnRules.TryNormalizeSqlType(request.SqlType, out var normalizedType))
+        {
+            throw new ArgumentException($"Column '{name}' uses unsupported PostgreSQL type '{request.SqlType}'.");
+        }
+        if (request.IsPrimaryKey && request.IsNullable)
+        {
+            throw new ArgumentException($"Primary-key column '{name}' cannot be nullable.");
+        }
 
         var designModelId = await _designRepository.FindDesignModelIdByColumnIdAsync(columnId, cancellationToken)
             ?? throw new KeyNotFoundException("Design column not found.");
@@ -228,14 +418,29 @@ public class DesignService : IDesignService
         var column = design.Tables.SelectMany(t => t.Columns).FirstOrDefault(c => c.Id == columnId)
             ?? throw new KeyNotFoundException("Design column not found.");
 
-        column.Name = request.Name.Trim();
-        column.SqlType = request.SqlType.Trim();
+        column.Name = name;
+        column.SqlType = normalizedType;
         column.IsNullable = request.IsNullable;
         column.IsPrimaryKey = request.IsPrimaryKey;
-        column.IsUnique = request.IsUnique;
+        column.IsUnique = !request.IsPrimaryKey && request.IsUnique;
         column.Ordinal = request.Ordinal;
         column.Origin = DesignOrigin.User;
 
+        // The legacy request DTO has no DefaultValue/IsAutoIncrement fields, so a type change here
+        // can strand a previously-set value that is no longer valid for the new type; re-validate
+        // rather than leave stale, type-incompatible metadata behind.
+        if (column.IsAutoIncrement && !SchemaColumnRules.IsIdentityCompatible(normalizedType))
+        {
+            column.IsAutoIncrement = false;
+        }
+        if (!string.IsNullOrWhiteSpace(column.DefaultValue))
+        {
+            column.DefaultValue = SchemaColumnRules.TryNormalizeDefault(column.DefaultValue, normalizedType, out var normalizedDefault, out _)
+                ? normalizedDefault
+                : null;
+        }
+
+        EnsureUniqueNames(design);
         return await SaveAndBuildResponseAsync(design, cancellationToken);
     }
 
@@ -360,7 +565,10 @@ public class DesignService : IDesignService
 
     // ---- generation ----
 
-    private static void ApplyGeneration(DesignModel design, IReadOnlyList<Dataset> datasets)
+    private static void ApplyGeneration(
+        DesignModel design,
+        IReadOnlyList<Dataset> datasets,
+        IReadOnlyDictionary<int, int>? sourceVersions = null)
     {
         var existingDatasetIds = design.Tables
             .Where(table => table.SourceDatasetId.HasValue)
@@ -381,36 +589,31 @@ public class DesignService : IDesignService
                 DesignModelId = design.Id,
                 Name = DatasetHeuristics.MakeUniqueIdentifier(dataset.TableName, usedTableNames, $"dataset_{dataset.Id}"),
                 SourceDatasetId = dataset.Id,
+                SourceDatasetVersionId = sourceVersions?.GetValueOrDefault(dataset.Id) ?? dataset.ActiveVersionId,
                 Origin = DesignOrigin.Generated
             };
 
             var usedColumnNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var orderedColumns = dataset.Columns.OrderBy(column => column.Id).ToList();
-            var primaryKeyAssigned = false;
 
             for (var index = 0; index < orderedColumns.Count; index++)
             {
                 var column = orderedColumns[index];
                 var detectedType = DatasetHeuristics.ResolveDetectedDataType(dataset, column);
-                var isFullyUnique = dataset.RowCount > 0 && column.UniqueValuesCount == dataset.RowCount;
-                var isPrimaryKeyCandidate = !primaryKeyAssigned && isFullyUnique && DatasetHeuristics.IsKeyLikeColumn(column.ColumnName);
-
                 table.Columns.Add(new DesignColumn
                 {
                     Name = DatasetHeuristics.MakeUniqueIdentifier(column.ColumnName, usedColumnNames, $"column_{index + 1}"),
                     SqlType = DatasetHeuristics.MapToSqlType(detectedType),
                     IsNullable = column.IsNullable,
-                    IsPrimaryKey = isPrimaryKeyCandidate,
-                    IsUnique = isFullyUnique,
+                    IsPrimaryKey = false,
+                    IsUnique = false,
+                    DefaultValue = null,
+                    IsAutoIncrement = false,
                     Ordinal = index,
                     SourceColumnName = column.ColumnName,
                     Origin = DesignOrigin.Generated
                 });
 
-                if (isPrimaryKeyCandidate)
-                {
-                    primaryKeyAssigned = true;
-                }
             }
 
             design.Tables.Add(table);
@@ -471,8 +674,13 @@ public class DesignService : IDesignService
         }
     }
 
-    private async Task<DesignResponseDto> SaveAndBuildResponseAsync(DesignModel design, CancellationToken cancellationToken)
+    private async Task<DesignResponseDto> SaveAndBuildResponseAsync(DesignModel design, CancellationToken cancellationToken, bool preserveValidationStatus = false)
     {
+        if (!preserveValidationStatus)
+        {
+            design.Status = DesignStatus.Draft;
+            design.ValidatedAt = null;
+        }
         design.Revision += 1;
         design.UpdatedAt = DateTime.UtcNow;
 
@@ -512,19 +720,6 @@ public class DesignService : IDesignService
         return normalized;
     }
 
-    private static void ValidateColumnFields(string name, string sqlType)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("Column name is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(sqlType))
-        {
-            throw new ArgumentException("Column sqlType is required.");
-        }
-    }
-
     private static void ValidateCardinality(string cardinality)
     {
         if (cardinality is not (DesignCardinality.ManyToOne or DesignCardinality.OneToOne))
@@ -546,6 +741,108 @@ public class DesignService : IDesignService
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
+    private ICleaningRepository RequireCleaningRepository()
+    {
+        return _cleaningRepository
+            ?? throw new InvalidOperationException("Cleaning version metadata is unavailable.");
+    }
+
+    private static void ValidateRenameWhitelist(SaveDesignDraftRequestDto request)
+    {
+        if (request.UnsupportedFields?.Count > 0
+            || request.Tables.Any(item => item.UnsupportedFields?.Count > 0)
+            || request.Columns.Any(item => item.UnsupportedFields?.Count > 0))
+        {
+            throw new ArgumentException("Only whitelisted table names and column schema properties are supported.");
+        }
+
+        if (request.Tables.GroupBy(item => item.Id).Any(group => group.Count() > 1)
+            || request.Columns.GroupBy(item => item.Id).Any(group => group.Count() > 1))
+        {
+            throw new ArgumentException("Each table or column can appear only once in a save request.");
+        }
+    }
+
+    private static string ValidateEditableIdentifier(string? value, string kind)
+    {
+        var trimmed = value?.Trim() ?? string.Empty;
+        if (!SqlIdentifiers.IsValidEditableIdentifier(trimmed))
+        {
+            throw new ArgumentException($"{kind} name '{trimmed}' must start with a letter or underscore, contain only letters, digits, or underscores, be at most 63 characters, and not be a PostgreSQL reserved keyword.");
+        }
+
+        return trimmed;
+    }
+
+    private static void EnsureUniqueNames(DesignModel design)
+    {
+        var duplicateTable = design.Tables
+            .GroupBy(table => table.Name, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicateTable is not null)
+        {
+            throw new ArgumentException($"Table name '{duplicateTable.Key}' is already used in this schema.");
+        }
+
+        foreach (var table in design.Tables)
+        {
+            var duplicateColumn = table.Columns
+                .GroupBy(column => column.Name, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault(group => group.Count() > 1);
+            if (duplicateColumn is not null)
+            {
+                throw new ArgumentException($"Column name '{duplicateColumn.Key}' is already used in table '{table.Name}'.");
+            }
+        }
+    }
+
+    private async Task<bool> IsStaleAsync(DesignModel design, CancellationToken cancellationToken)
+    {
+        if (_cleaningRepository is null) return false;
+        if (!await _cleaningRepository.IsSchemaReadyAsync(design.ProjectId, cancellationToken)) return true;
+
+        var active = await _cleaningRepository.GetActiveProjectVersionsAsync(design.ProjectId, cancellationToken);
+        var activeCsvVersions = active
+            .Where(item => item.Dataset.SourceType.Equals("csv", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(item => item.Dataset.Id, item => item.Version.Id);
+        var schemaVersions = design.Tables
+            .Where(table => table.SourceDatasetId.HasValue && table.SourceDatasetVersionId.HasValue)
+            .ToDictionary(table => table.SourceDatasetId!.Value, table => table.SourceDatasetVersionId!.Value);
+
+        return activeCsvVersions.Count != schemaVersions.Count
+            || activeCsvVersions.Any(pair => !schemaVersions.TryGetValue(pair.Key, out var versionId) || versionId != pair.Value);
+    }
+
+    private List<Validation.ValidationIssue> BuildValidationIssues(DesignModel design, bool stale)
+    {
+        var issues = _validationService.Validate(BuildSnapshot(design));
+        if (stale)
+        {
+            issues.Add(new Validation.ValidationIssue
+            {
+                Code = "stale-cleaned-versions",
+                Severity = ValidationSeverity.Error,
+                Message = "The confirmed active cleaned dataset versions no longer match this schema. Regenerate the schema from Data Cleaning."
+            });
+        }
+
+        return issues;
+    }
+
+    private async Task<DesignResponseDto> BuildSchemaResponseAsync(DesignModel design, CancellationToken cancellationToken)
+    {
+        var stale = await IsStaleAsync(design, cancellationToken);
+        var issues = BuildValidationIssues(design, stale);
+        var response = BuildResponse(design);
+        response.IsStale = stale;
+        response.ValidationIssues = issues.Select(MapIssue).ToList();
+        response.CanContinue = design.Status == DesignStatus.Valid
+            && !stale
+            && !issues.Any(issue => issue.Severity == ValidationSeverity.Error);
+        response.SqlPreview = _generatorResolver.Generate("sql", BuildSnapshot(design));
+        return response;
+    }
+
     // ---- mapping ----
 
     private DesignModelSnapshot BuildSnapshot(DesignModel design)
@@ -561,6 +858,7 @@ public class DesignService : IDesignService
                 Id = table.Id,
                 Name = table.Name,
                 Comment = table.Comment,
+                SourceName = table.SourceDataset?.TableName,
                 Columns = table.Columns
                     .OrderBy(column => column.Ordinal)
                     .Select(column => new DesignColumnSnapshot
@@ -572,7 +870,10 @@ public class DesignService : IDesignService
                         IsNullable = column.IsNullable,
                         IsPrimaryKey = column.IsPrimaryKey,
                         IsUnique = column.IsUnique,
-                        Ordinal = column.Ordinal
+                        DefaultValue = column.DefaultValue,
+                        IsAutoIncrement = column.IsAutoIncrement,
+                        Ordinal = column.Ordinal,
+                        SourceName = column.SourceColumnName
                     })
                     .ToList()
             }).ToList(),
@@ -603,6 +904,13 @@ public class DesignService : IDesignService
             Id = design.Id,
             ProjectId = design.ProjectId,
             Revision = design.Revision,
+            Status = design.Status,
+            GeneratedAt = design.GeneratedAt,
+            ValidatedAt = design.ValidatedAt,
+            LastModifiedBy = design.LastModifiedByUser is null
+                ? null
+                : $"{design.LastModifiedByUser.FirstName} {design.LastModifiedByUser.LastName}".Trim(),
+            SourceVersions = ParseSourceVersions(design.SourceVersionsJson),
             Layout = ParseLayout(design.LayoutJson),
             CreatedAt = design.CreatedAt,
             UpdatedAt = design.UpdatedAt,
@@ -620,6 +928,9 @@ public class DesignService : IDesignService
             Name = table.Name,
             Comment = table.Comment,
             SourceDatasetId = table.SourceDatasetId,
+            SourceDatasetVersionId = table.SourceDatasetVersionId,
+            SourceName = table.SourceDataset?.SourceName ?? table.SourceDataset?.TableName,
+            RowCount = table.SourceDatasetVersion?.RowCount ?? table.SourceDataset?.RowCount ?? 0,
             Origin = table.Origin,
             Columns = table.Columns.OrderBy(column => column.Ordinal).Select(MapColumn).ToList()
         };
@@ -635,6 +946,8 @@ public class DesignService : IDesignService
             IsNullable = column.IsNullable,
             IsPrimaryKey = column.IsPrimaryKey,
             IsUnique = column.IsUnique,
+            DefaultValue = column.DefaultValue,
+            IsAutoIncrement = column.IsAutoIncrement,
             Ordinal = column.Ordinal,
             SourceColumnName = column.SourceColumnName,
             Origin = column.Origin
@@ -683,5 +996,18 @@ public class DesignService : IDesignService
 
         using var document = JsonDocument.Parse(layoutJson);
         return document.RootElement.Clone();
+    }
+
+    private static Dictionary<int, int> ParseSourceVersions(string? sourceVersionsJson)
+    {
+        if (string.IsNullOrWhiteSpace(sourceVersionsJson)) return new();
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<int, int>>(sourceVersionsJson) ?? new();
+        }
+        catch (JsonException)
+        {
+            return new();
+        }
     }
 }

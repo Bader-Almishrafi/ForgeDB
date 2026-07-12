@@ -195,6 +195,8 @@ public class ForgeDbContext : DbContext
             entity.ToTable("design_models");
             entity.HasKey(design => design.Id);
             entity.Property(design => design.LayoutJson).HasColumnType("jsonb");
+            entity.Property(design => design.SourceVersionsJson).HasColumnType("jsonb");
+            entity.Property(design => design.Status).HasMaxLength(16).IsRequired();
             entity.Property(design => design.Revision).IsConcurrencyToken();
             entity.HasIndex(design => design.ProjectId).IsUnique();
 
@@ -202,6 +204,11 @@ public class ForgeDbContext : DbContext
                 .WithOne(project => project.Design)
                 .HasForeignKey<DesignModel>(design => design.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(design => design.LastModifiedByUser)
+                .WithMany()
+                .HasForeignKey(design => design.LastModifiedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasMany(design => design.Tables)
                 .WithOne(table => table.DesignModel)
@@ -221,10 +228,16 @@ public class ForgeDbContext : DbContext
             entity.Property(table => table.Name).HasMaxLength(128).IsRequired();
             entity.HasIndex(table => table.DesignModelId);
             entity.HasIndex(table => table.SourceDatasetId);
+            entity.HasIndex(table => table.SourceDatasetVersionId);
 
             entity.HasOne(table => table.SourceDataset)
                 .WithMany()
                 .HasForeignKey(table => table.SourceDatasetId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(table => table.SourceDatasetVersion)
+                .WithMany()
+                .HasForeignKey(table => table.SourceDatasetVersionId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasMany(table => table.Columns)
@@ -239,6 +252,7 @@ public class ForgeDbContext : DbContext
             entity.HasKey(column => column.Id);
             entity.Property(column => column.Name).HasMaxLength(128).IsRequired();
             entity.Property(column => column.SqlType).HasMaxLength(64).IsRequired();
+            entity.Property(column => column.DefaultValue).HasMaxLength(512);
             entity.HasIndex(column => column.DesignTableId);
         });
 

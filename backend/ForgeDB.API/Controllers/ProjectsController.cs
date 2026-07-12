@@ -1,19 +1,26 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using ForgeDB.API.Models.DTOs;
+using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ForgeDB.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/projects")]
 public class ProjectsController : ControllerBase
 {
     private readonly IProjectService _projectService;
+    private readonly IProjectRepository _projectRepository;
 
-    public ProjectsController(IProjectService projectService)
+    public ProjectsController(IProjectService projectService, IProjectRepository projectRepository)
     {
         _projectService = projectService;
+        _projectRepository = projectRepository;
     }
 
     [HttpPost]
@@ -21,6 +28,7 @@ public class ProjectsController : ControllerBase
     {
         try
         {
+            request.UserId = GetUserId();
             var project = await _projectService.CreateProjectAsync(request, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { projectId = project.Id }, project);
         }
@@ -36,8 +44,10 @@ public class ProjectsController : ControllerBase
         try
         {
             var project = await _projectService.GetProjectByIdAsync(projectId, cancellationToken);
+            if (project is null) return NotFound(new { message = "Project not found." });
+            if (project.UserId != GetUserId()) return StatusCode(403, new { message = "The project does not belong to the authenticated user." });
 
-            return project is null ? NotFound(new { message = "Project not found." }) : Ok(project);
+            return Ok(project);
         }
         catch (ArgumentException exception)
         {
@@ -48,6 +58,11 @@ public class ProjectsController : ControllerBase
     [HttpGet("user/{userId:int}")]
     public async Task<ActionResult<IEnumerable<ProjectResponseDto>>> GetByUserId(int userId, CancellationToken cancellationToken)
     {
+        if (userId != GetUserId())
+        {
+            return StatusCode(403, new { message = "You may only list your own projects." });
+        }
+
         try
         {
             var projects = await _projectService.GetProjectsByUserIdAsync(userId, cancellationToken);
@@ -65,11 +80,16 @@ public class ProjectsController : ControllerBase
     {
         try
         {
+            await EnsureOwnedProjectAsync(projectId, cancellationToken);
             return Ok(await _projectService.GetProjectOverviewAsync(projectId, cancellationToken));
         }
         catch (ArgumentException exception)
         {
             return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
         }
         catch (KeyNotFoundException exception)
         {
@@ -82,11 +102,16 @@ public class ProjectsController : ControllerBase
     {
         try
         {
+            await EnsureOwnedProjectAsync(projectId, cancellationToken);
             return Ok(await _projectService.GetProjectExportPackageAsync(projectId, cancellationToken));
         }
         catch (ArgumentException exception)
         {
             return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
         }
         catch (KeyNotFoundException exception)
         {
@@ -95,6 +120,25 @@ public class ProjectsController : ControllerBase
         catch (DesignValidationFailedException exception)
         {
             return UnprocessableEntity(new { message = exception.Message, issues = exception.Issues });
+        }
+    }
+
+    private int GetUserId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        return int.TryParse(value, out var userId) && userId > 0
+            ? userId
+            : throw new UnauthorizedAccessException("The authentication token does not contain a valid user identifier.");
+    }
+
+    private async Task EnsureOwnedProjectAsync(int projectId, CancellationToken cancellationToken)
+    {
+        if (projectId <= 0) throw new ArgumentException("ProjectId must be greater than zero.");
+        var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken);
+        if (project is not null && project.UserId != GetUserId())
+        {
+            throw new UnauthorizedAccessException("The project does not belong to the authenticated user.");
         }
     }
 }

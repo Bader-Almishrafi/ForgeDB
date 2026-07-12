@@ -14,8 +14,10 @@ public class DesignTable
     public string Name { get; set; } = string.Empty;
     public string? Comment { get; set; }
     public int? SourceDatasetId { get; set; }
+    public int? SourceDatasetVersionId { get; set; }
     public string Origin { get; set; } = DesignOrigin.Generated;
     public DesignModel? DesignModel { get; set; }
     public Dataset? SourceDataset { get; set; }
+    public DatasetVersion? SourceDatasetVersion { get; set; }
     public ICollection<DesignColumn> Columns { get; set; } = new List<DesignColumn>();
 }

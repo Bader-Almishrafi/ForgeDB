@@ -206,4 +206,31 @@ public class RelationshipDetectionServiceAcceptTests
         var suggestion2 = await verifyContext.RelationshipSuggestions.FindAsync(seed.Suggestion2Id);
         Assert.Equal(RelationshipSuggestionStatus.Suggested, suggestion2!.Status); // B's attempt left no trace
     }
+
+    /// <summary>A relationship changes what SQL/constraints/ER preview render, so a design that was
+    /// already validated must go back to Draft (matching every other mutation path in
+    /// DesignService.SaveAndBuildResponseAsync) instead of keeping a stale "Valid" status.</summary>
+    [Fact]
+    public async Task AcceptAsync_ResetsDesignStatusAndValidatedAtToDraft()
+    {
+        var seed = await SeedAsync();
+        using (var setupContext = NewContext(seed.DbName))
+        {
+            var design = await setupContext.DesignModels.SingleAsync();
+            design.Status = DesignStatus.Valid;
+            design.ValidatedAt = DateTime.UtcNow;
+            await setupContext.SaveChangesAsync();
+        }
+
+        using (var context = NewContext(seed.DbName))
+        {
+            var service = BuildService(context);
+            await service.AcceptAsync(seed.Suggestion1Id, seed.Revision, CancellationToken.None);
+        }
+
+        using var verifyContext = NewContext(seed.DbName);
+        var updated = await verifyContext.DesignModels.SingleAsync();
+        Assert.Equal(DesignStatus.Draft, updated.Status);
+        Assert.Null(updated.ValidatedAt);
+    }
 }

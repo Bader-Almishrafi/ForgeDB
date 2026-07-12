@@ -142,7 +142,7 @@ export interface DatasetCleaningSummary {
   activeVersionId: number;
   versionNumber: number;
   isRawOriginal: boolean;
-  rowCount: number;
+  rowCount?: number;
   columnCount: number;
   missingValuesCount: number;
   duplicateRowsCount: number;
@@ -290,7 +290,7 @@ export interface DatasetVersion {
   versionNumber: number;
   isRawOriginal: boolean;
   isActive: boolean;
-  rowCount: number;
+  rowCount?: number;
   columnCount: number;
   operationSummary: string;
   createdAt: string;
@@ -497,6 +497,8 @@ export interface DesignColumn {
   ordinal: number;
   sourceColumnName?: string | null;
   origin: string;
+  defaultValue?: string | null;
+  isAutoIncrement?: boolean;
 }
 
 export interface DesignTable {
@@ -504,6 +506,9 @@ export interface DesignTable {
   name: string;
   comment?: string | null;
   sourceDatasetId?: number | null;
+  sourceDatasetVersionId?: number | null;
+  sourceName?: string | null;
+  rowCount?: number;
   origin: string;
   columns: DesignColumn[];
 }
@@ -528,12 +533,41 @@ export interface DesignModelResponse {
   id: number;
   projectId: number;
   revision: number;
+  status?: 'Draft' | 'Invalid' | 'Valid' | string;
+  isStale?: boolean;
+  canContinue?: boolean;
+  generatedAt?: string | null;
+  validatedAt?: string | null;
+  lastModifiedBy?: string | null;
+  source?: string;
+  sourceVersions?: Record<number, number>;
+  sqlPreview?: string;
   layout: unknown | null;
   createdAt: string;
   updatedAt: string;
   tables: DesignTable[];
   relationships: DesignRelationship[];
   validationIssues: ValidationIssue[];
+}
+
+export interface SaveDesignDraftRequest {
+  tables: Array<{ id: number; name: string }>;
+  columns: Array<{
+    id: number;
+    name: string;
+    dataType: string;
+    isNullable: boolean;
+    isPrimaryKey: boolean;
+    isUnique: boolean;
+    defaultValue?: string | null;
+    isAutoIncrement: boolean;
+  }>;
+}
+
+export interface SchemaSqlPreview {
+  designId: number;
+  revision: number;
+  sql: string;
 }
 
 export interface GenerateDesignRequest {

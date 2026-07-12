@@ -9,11 +9,11 @@ public class DesignValidationServiceTests
     private readonly DesignValidationService _validationService = new();
 
     [Fact]
-    public void Validate_CleanModel_ProducesNoIssues()
+    public void Validate_CleanModel_ProducesNoBlockingErrors()
     {
         var issues = _validationService.Validate(ValidationFixtures.CleanModel());
 
-        Assert.Empty(issues);
+        Assert.DoesNotContain(issues, issue => issue.Severity == ValidationSeverity.Error);
     }
 
     [Fact]
@@ -98,14 +98,14 @@ public class DesignValidationServiceTests
     }
 
     [Fact]
-    public void Validate_ReservedWordColumnName_ProducesWarning()
+    public void Validate_ReservedWordColumnName_ProducesError()
     {
         var model = ValidationFixtures.CleanModel();
         model.Tables[0].Columns[1].Name = "select";
 
         var issues = _validationService.Validate(model);
 
-        Assert.Contains(issues, issue => issue.Code == "reserved-word-identifier" && issue.Severity == ValidationSeverity.Warning);
+        Assert.Contains(issues, issue => issue.Code == "invalid-identifier" && issue.Severity == ValidationSeverity.Error);
     }
 
     [Fact]
@@ -131,13 +131,46 @@ public class DesignValidationServiceTests
     }
 
     [Fact]
-    public void Validate_ZeroColumnTable_ProducesWarning()
+    public void Validate_ZeroColumnTable_ProducesError()
     {
         var model = ValidationFixtures.CleanModel();
         model.Tables[1].Columns.Clear();
 
         var issues = _validationService.Validate(model);
 
-        Assert.Contains(issues, issue => issue.Code == "zero-column-table" && issue.Severity == ValidationSeverity.Warning && issue.TableId == 2);
+        Assert.Contains(issues, issue => issue.Code == "zero-column-table" && issue.Severity == ValidationSeverity.Error && issue.TableId == 2);
+    }
+
+    [Fact]
+    public void Validate_NullablePrimaryKey_ProducesBlockingError()
+    {
+        var model = ValidationFixtures.CleanModel();
+        model.Tables[0].Columns[0].IsNullable = true;
+
+        var issues = _validationService.Validate(model);
+
+        Assert.Contains(issues, issue => issue.Code == "nullable-primary-key" && issue.Severity == ValidationSeverity.Error);
+    }
+
+    [Fact]
+    public void Validate_IdentityOnText_ProducesBlockingError()
+    {
+        var model = ValidationFixtures.CleanModel();
+        model.Tables[0].Columns[1].IsAutoIncrement = true;
+
+        var issues = _validationService.Validate(model);
+
+        Assert.Contains(issues, issue => issue.Code == "identity-unsupported-type" && issue.Severity == ValidationSeverity.Error);
+    }
+
+    [Fact]
+    public void Validate_UnsafeDefault_ProducesBlockingError()
+    {
+        var model = ValidationFixtures.CleanModel();
+        model.Tables[0].Columns[1].DefaultValue = "'ok'; DROP TABLE customers;";
+
+        var issues = _validationService.Validate(model);
+
+        Assert.Contains(issues, issue => issue.Code == "invalid-column-default" && issue.Severity == ValidationSeverity.Error);
     }
 }

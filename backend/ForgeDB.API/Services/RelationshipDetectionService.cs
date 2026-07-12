@@ -155,6 +155,11 @@ public class RelationshipDetectionService : IRelationshipDetectionService
         design.Relationships.Add(relationship);
         design.Revision += 1;
         design.UpdatedAt = now;
+        // A new relationship changes what SQL/constraints/ER preview would render, so any prior
+        // validation no longer covers the current draft — same invariant SaveAndBuildResponseAsync
+        // enforces for every other mutation path (DesignService.cs).
+        design.Status = DesignStatus.Draft;
+        design.ValidatedAt = null;
 
         try
         {

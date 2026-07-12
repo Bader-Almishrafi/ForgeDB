@@ -66,6 +66,16 @@ public class DbmlGenerator : IDesignSchemaGenerator
             settings.Add("not null");
         }
 
+        if (column.IsAutoIncrement)
+        {
+            settings.Add("increment");
+        }
+
+        if (!string.IsNullOrWhiteSpace(column.DefaultValue))
+        {
+            settings.Add($"default: `{column.DefaultValue}`");
+        }
+
         return settings;
     }
 

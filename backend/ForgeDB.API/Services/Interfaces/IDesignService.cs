@@ -16,6 +16,11 @@ public class DesignExportArtifacts
 public interface IDesignService
 {
     Task<DesignResponseDto?> GetByProjectIdAsync(int projectId, CancellationToken cancellationToken = default);
+    Task<DesignResponseDto?> GetSchemaWorkspaceAsync(int projectId, CancellationToken cancellationToken = default);
+    Task<DesignResponseDto> GenerateSchemaAsync(int projectId, int userId, int? ifMatchRevision, CancellationToken cancellationToken = default);
+    Task<DesignResponseDto> SaveSchemaDraftAsync(int projectId, int userId, int ifMatchRevision, SaveDesignDraftRequestDto request, CancellationToken cancellationToken = default);
+    Task<DesignResponseDto> ValidateSchemaAsync(int projectId, int userId, int ifMatchRevision, CancellationToken cancellationToken = default);
+    Task<SchemaSqlPreviewDto> GetSchemaSqlAsync(int projectId, CancellationToken cancellationToken = default);
     Task<DesignResponseDto> GenerateAsync(int projectId, GenerateDesignRequestDto request, int? ifMatchRevision, CancellationToken cancellationToken = default);
     Task<string> PreviewAsync(int designId, string format, CancellationToken cancellationToken = default);
     Task<List<ValidationIssueDto>> GetValidationAsync(int designId, CancellationToken cancellationToken = default);

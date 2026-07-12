@@ -67,8 +67,13 @@ public class DesignRepository : IDesignRepository
     {
         IQueryable<DesignModel> query = _context.DesignModels
             .Include(design => design.Project)
+            .Include(design => design.LastModifiedByUser)
             .Include(design => design.Tables)
                 .ThenInclude(table => table.Columns)
+            .Include(design => design.Tables)
+                .ThenInclude(table => table.SourceDataset)
+            .Include(design => design.Tables)
+                .ThenInclude(table => table.SourceDatasetVersion)
             .Include(design => design.Relationships)
                 .ThenInclude(relationship => relationship.FromColumn)
                     .ThenInclude(column => column!.DesignTable)

@@ -1,19 +1,31 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using ForgeDB.API.Models.DTOs;
+using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ForgeDB.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api")]
 public class RelationshipSuggestionsController : ControllerBase
 {
     private readonly IRelationshipDetectionService _detectionService;
+    private readonly IProjectRepository _projectRepository;
+    private readonly IRelationshipSuggestionRepository _suggestionRepository;
 
-    public RelationshipSuggestionsController(IRelationshipDetectionService detectionService)
+    public RelationshipSuggestionsController(
+        IRelationshipDetectionService detectionService,
+        IProjectRepository projectRepository,
+        IRelationshipSuggestionRepository suggestionRepository)
     {
         _detectionService = detectionService;
+        _projectRepository = projectRepository;
+        _suggestionRepository = suggestionRepository;
     }
 
     [HttpGet("projects/{projectId:int}/relationship-suggestions")]
@@ -22,7 +34,15 @@ public class RelationshipSuggestionsController : ControllerBase
         [FromQuery] string? status,
         CancellationToken cancellationToken)
     {
-        return Ok(await _detectionService.GetSuggestionsAsync(projectId, status, cancellationToken));
+        try
+        {
+            await EnsureProjectOwnedAsync(projectId, cancellationToken);
+            return Ok(await _detectionService.GetSuggestionsAsync(projectId, status, cancellationToken));
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
+        }
     }
 
     [HttpPost("projects/{projectId:int}/relationship-suggestions/detect")]
@@ -30,7 +50,12 @@ public class RelationshipSuggestionsController : ControllerBase
     {
         try
         {
+            await EnsureProjectOwnedAsync(projectId, cancellationToken);
             return Ok(await _detectionService.DetectAsync(projectId, cancellationToken));
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
         }
         catch (KeyNotFoundException exception)
         {
@@ -58,7 +83,12 @@ public class RelationshipSuggestionsController : ControllerBase
 
         try
         {
+            await EnsureSuggestionOwnedAsync(id, cancellationToken);
             return Ok(await _detectionService.AcceptAsync(id, revision, cancellationToken));
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
         }
         catch (KeyNotFoundException exception)
         {
@@ -79,7 +109,12 @@ public class RelationshipSuggestionsController : ControllerBase
     {
         try
         {
+            await EnsureSuggestionOwnedAsync(id, cancellationToken);
             return Ok(await _detectionService.RejectAsync(id, cancellationToken));
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
         }
         catch (KeyNotFoundException exception)
         {
@@ -89,5 +124,30 @@ public class RelationshipSuggestionsController : ControllerBase
         {
             return Conflict(new { message = exception.Message });
         }
+    }
+
+    private int GetUserId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        return int.TryParse(value, out var userId) && userId > 0
+            ? userId
+            : throw new UnauthorizedAccessException("The authentication token does not contain a valid user identifier.");
+    }
+
+    private async Task EnsureProjectOwnedAsync(int projectId, CancellationToken cancellationToken)
+    {
+        var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken);
+        if (project is not null && project.UserId != GetUserId())
+        {
+            throw new UnauthorizedAccessException("The project does not belong to the authenticated user.");
+        }
+    }
+
+    private async Task EnsureSuggestionOwnedAsync(int suggestionId, CancellationToken cancellationToken)
+    {
+        var suggestion = await _suggestionRepository.GetByIdAsync(suggestionId, cancellationToken);
+        if (suggestion is null) return;
+        await EnsureProjectOwnedAsync(suggestion.ProjectId, cancellationToken);
     }
 }

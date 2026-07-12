@@ -1,20 +1,33 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using ForgeDB.API.Models.DTOs;
+using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ForgeDB.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api")]
 public class DatasetsController : ControllerBase
 {
     private readonly IDatasetImportService _datasetImportService;
     private readonly IDashboardService _dashboardService;
+    private readonly IProjectRepository _projectRepository;
+    private readonly IDatasetRepository _datasetRepository;
 
-    public DatasetsController(IDatasetImportService datasetImportService, IDashboardService dashboardService)
+    public DatasetsController(
+        IDatasetImportService datasetImportService,
+        IDashboardService dashboardService,
+        IProjectRepository projectRepository,
+        IDatasetRepository datasetRepository)
     {
         _datasetImportService = datasetImportService;
         _dashboardService = dashboardService;
+        _projectRepository = projectRepository;
+        _datasetRepository = datasetRepository;
     }
 
     [HttpPost("projects/{projectId:int}/datasets/upload")]
@@ -22,12 +35,17 @@ public class DatasetsController : ControllerBase
     {
         try
         {
+            await EnsureProjectOwnedAsync(projectId, cancellationToken);
             var dataset = await _datasetImportService.UploadDatasetAsync(projectId, request, cancellationToken);
             return CreatedAtAction(nameof(GetPreview), new { datasetId = dataset.Id }, dataset);
         }
         catch (ArgumentException exception)
         {
             return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
         }
         catch (KeyNotFoundException exception)
         {
@@ -40,11 +58,16 @@ public class DatasetsController : ControllerBase
     {
         try
         {
+            await EnsureProjectOwnedAsync(projectId, cancellationToken);
             return Ok(await _datasetImportService.GetProjectDatasetsAsync(projectId, cancellationToken));
         }
         catch (ArgumentException exception)
         {
             return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
         }
         catch (KeyNotFoundException exception)
         {
@@ -57,11 +80,16 @@ public class DatasetsController : ControllerBase
     {
         try
         {
+            await EnsureDatasetOwnedAsync(datasetId, cancellationToken);
             return Ok(await _datasetImportService.GetDatasetPreviewAsync(datasetId, cancellationToken));
         }
         catch (ArgumentException exception)
         {
             return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
         }
         catch (KeyNotFoundException exception)
         {
@@ -74,11 +102,16 @@ public class DatasetsController : ControllerBase
     {
         try
         {
+            await EnsureDatasetOwnedAsync(datasetId, cancellationToken);
             return Ok(await _datasetImportService.AnalyzeDatasetAsync(datasetId, request, cancellationToken));
         }
         catch (ArgumentException exception)
         {
             return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
         }
         catch (KeyNotFoundException exception)
         {
@@ -91,11 +124,16 @@ public class DatasetsController : ControllerBase
     {
         try
         {
+            await EnsureDatasetOwnedAsync(datasetId, cancellationToken);
             return Ok(await _datasetImportService.GetDatasetAnalysisAsync(datasetId, cancellationToken));
         }
         catch (ArgumentException exception)
         {
             return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
         }
         catch (KeyNotFoundException exception)
         {
@@ -114,15 +152,50 @@ public class DatasetsController : ControllerBase
     {
         try
         {
+            await EnsureDatasetOwnedAsync(datasetId, cancellationToken);
             return Ok(await _dashboardService.GetDatasetDashboardAsync(datasetId, cancellationToken));
         }
         catch (ArgumentException exception)
         {
             return BadRequest(new { message = exception.Message });
         }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
+        }
         catch (KeyNotFoundException exception)
         {
             return NotFound(new { message = exception.Message });
+        }
+    }
+
+    private int GetUserId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        return int.TryParse(value, out var userId) && userId > 0
+            ? userId
+            : throw new UnauthorizedAccessException("The authentication token does not contain a valid user identifier.");
+    }
+
+    private async Task EnsureProjectOwnedAsync(int projectId, CancellationToken cancellationToken)
+    {
+        if (projectId <= 0) throw new ArgumentException("ProjectId must be greater than zero.");
+        var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken);
+        if (project is not null && project.UserId != GetUserId())
+        {
+            throw new UnauthorizedAccessException("The project does not belong to the authenticated user.");
+        }
+    }
+
+    private async Task EnsureDatasetOwnedAsync(int datasetId, CancellationToken cancellationToken)
+    {
+        var dataset = await _datasetRepository.GetByIdAsync(datasetId, cancellationToken);
+        if (dataset is null) return;
+        var project = await _projectRepository.GetByIdAsync(dataset.ProjectId, cancellationToken);
+        if (project is not null && project.UserId != GetUserId())
+        {
+            throw new UnauthorizedAccessException("The dataset does not belong to the authenticated user.");
         }
     }
 }

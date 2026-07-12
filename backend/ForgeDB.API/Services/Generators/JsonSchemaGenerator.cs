@@ -34,6 +34,8 @@ public class JsonSchemaGenerator : IDesignSchemaGenerator
                         IsNullable = column.IsNullable,
                         IsPrimaryKey = column.IsPrimaryKey,
                         IsUnique = column.IsUnique,
+                        DefaultValue = column.DefaultValue,
+                        IsAutoIncrement = column.IsAutoIncrement,
                         Ordinal = column.Ordinal
                     })
                     .ToList()
@@ -83,6 +85,8 @@ public class JsonSchemaGenerator : IDesignSchemaGenerator
         public bool IsNullable { get; set; }
         public bool IsPrimaryKey { get; set; }
         public bool IsUnique { get; set; }
+        public string? DefaultValue { get; set; }
+        public bool IsAutoIncrement { get; set; }
         public int Ordinal { get; set; }
     }
 

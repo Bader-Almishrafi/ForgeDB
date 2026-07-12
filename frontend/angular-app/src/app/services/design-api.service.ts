@@ -14,6 +14,8 @@ import {
   UpdateDesignRelationshipRequest,
   UpdateDesignTableRequest,
   ValidationIssue,
+  SaveDesignDraftRequest,
+  SchemaSqlPreview,
 } from './api.models';
 
 /**
@@ -28,6 +30,34 @@ export class DesignApiService {
 
   getDesign(projectId: number): Observable<DesignModelResponse> {
     return this.http.get<DesignModelResponse>(`${this.baseUrl}/api/projects/${projectId}/design`);
+  }
+
+  getSchema(projectId: number): Observable<DesignModelResponse> {
+    return this.http.get<DesignModelResponse>(`${this.baseUrl}/api/projects/${projectId}/schema`);
+  }
+
+  generateSchema(projectId: number, revision?: number): Observable<DesignModelResponse> {
+    return this.http.post<DesignModelResponse>(
+      `${this.baseUrl}/api/projects/${projectId}/schema/generate`,
+      {},
+      revision != null ? { headers: this.ifMatch(revision) } : {},
+    );
+  }
+
+  saveSchemaDraft(projectId: number, revision: number, request: SaveDesignDraftRequest): Observable<DesignModelResponse> {
+    return this.http.patch<DesignModelResponse>(`${this.baseUrl}/api/projects/${projectId}/schema/draft`, request, {
+      headers: this.ifMatch(revision),
+    });
+  }
+
+  validateSchema(projectId: number, revision: number): Observable<DesignModelResponse> {
+    return this.http.post<DesignModelResponse>(`${this.baseUrl}/api/projects/${projectId}/schema/validate`, {}, {
+      headers: this.ifMatch(revision),
+    });
+  }
+
+  getSchemaSql(projectId: number): Observable<SchemaSqlPreview> {
+    return this.http.get<SchemaSqlPreview>(`${this.baseUrl}/api/projects/${projectId}/schema/sql`);
   }
 
   /**

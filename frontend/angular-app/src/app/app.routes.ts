@@ -41,7 +41,7 @@ export const routes: Routes = [
       { path: 'projects/:projectId/analysis', loadComponent: () => import('./pages/analyze-data/analyze-data.component').then((module) => module.AnalyzeDataComponent) },
       { path: 'projects/:projectId/data-cleaning', loadComponent: () => import('./pages/data-cleaning/data-cleaning.component').then((module) => module.DataCleaningComponent) },
       { path: 'projects/:projectId/relationships', component: ProjectRelationshipsComponent },
-      { path: 'projects/:projectId/schema-designer', component: ProjectSchemaDesignerComponent },
+      { path: 'projects/:projectId/schema-designer', component: ProjectSchemaDesignerComponent, canDeactivate: [unsavedChangesGuard] },
       { path: 'projects/:projectId/er-diagram', component: ProjectErDiagramComponent },
       { path: 'projects/:projectId/exports', component: ProjectExportsComponent },
       { path: 'datasets/:datasetId/preview', component: AnalysisComponent },

@@ -50,33 +50,33 @@ public class DesignValidationService : IDesignValidationService
 
         foreach (var table in snapshot.Tables)
         {
-            if (SqlIdentifiers.IsUnusableEvenQuoted(table.Name))
+            if (!string.IsNullOrWhiteSpace(table.SourceName)
+                && !string.Equals(table.Name, table.SourceName, StringComparison.Ordinal))
+            {
+                issues.Add(new ValidationIssue
+                {
+                    Code = "generated-name-differs-from-source",
+                    Severity = ValidationSeverity.Warning,
+                    Message = $"Table name '{table.Name}' differs from source name '{table.SourceName}'.",
+                    TableId = table.Id
+                });
+            }
+            if (!SqlIdentifiers.IsValidEditableIdentifier(table.Name))
             {
                 issues.Add(new ValidationIssue
                 {
                     Code = "invalid-identifier",
                     Severity = ValidationSeverity.Error,
-                    Message = $"Table name '{table.Name}' is empty or too long to be a valid identifier, even when quoted.",
+                    Message = $"Table name '{table.Name}' must start with a letter or underscore, contain only letters, digits, or underscores, be at most 63 characters, and not be a PostgreSQL reserved keyword.",
                     TableId = table.Id
                 });
             }
-            else if (SqlIdentifiers.IsReservedWord(table.Name))
-            {
-                issues.Add(new ValidationIssue
-                {
-                    Code = "reserved-word-identifier",
-                    Severity = ValidationSeverity.Warning,
-                    Message = $"Table name '{table.Name}' is a PostgreSQL reserved word and will be quoted in generated SQL.",
-                    TableId = table.Id
-                });
-            }
-
             if (table.Columns.Count == 0)
             {
                 issues.Add(new ValidationIssue
                 {
                     Code = "zero-column-table",
-                    Severity = ValidationSeverity.Warning,
+                    Severity = ValidationSeverity.Error,
                     Message = $"Table '{table.Name}' has no columns.",
                     TableId = table.Id
                 });
@@ -89,6 +89,17 @@ public class DesignValidationService : IDesignValidationService
                     Code = "table-without-primary-key",
                     Severity = ValidationSeverity.Warning,
                     Message = $"Table '{table.Name}' does not have a primary key.",
+                    TableId = table.Id
+                });
+            }
+
+            if (!table.Columns.Any(column => column.IsUnique || column.IsPrimaryKey))
+            {
+                issues.Add(new ValidationIssue
+                {
+                    Code = "table-without-unique-constraint",
+                    Severity = ValidationSeverity.Warning,
+                    Message = $"Table '{table.Name}' does not have a primary key or unique constraint.",
                     TableId = table.Id
                 });
             }
@@ -122,24 +133,107 @@ public class DesignValidationService : IDesignValidationService
 
             foreach (var column in table.Columns)
             {
-                if (SqlIdentifiers.IsUnusableEvenQuoted(column.Name))
+                if (!string.IsNullOrWhiteSpace(column.SourceName)
+                    && !string.Equals(column.Name, column.SourceName, StringComparison.Ordinal))
+                {
+                    issues.Add(new ValidationIssue
+                    {
+                        Code = "generated-name-differs-from-source",
+                        Severity = ValidationSeverity.Warning,
+                        Message = $"Column name '{table.Name}.{column.Name}' differs from source name '{column.SourceName}'.",
+                        TableId = table.Id,
+                        ColumnId = column.Id
+                    });
+                }
+                if (!SqlIdentifiers.IsValidEditableIdentifier(column.Name))
                 {
                     issues.Add(new ValidationIssue
                     {
                         Code = "invalid-identifier",
                         Severity = ValidationSeverity.Error,
-                        Message = $"Column name '{column.Name}' in table '{table.Name}' is empty or too long to be a valid identifier, even when quoted.",
+                        Message = $"Column name '{column.Name}' in table '{table.Name}' must start with a letter or underscore, contain only letters, digits, or underscores, be at most 63 characters, and not be a PostgreSQL reserved keyword.",
                         TableId = table.Id,
                         ColumnId = column.Id
                     });
                 }
-                else if (SqlIdentifiers.IsReservedWord(column.Name))
+                if (!SchemaColumnRules.TryNormalizeSqlType(column.SqlType, out _))
                 {
                     issues.Add(new ValidationIssue
                     {
-                        Code = "reserved-word-identifier",
+                        Code = "unsupported-sql-type",
+                        Severity = ValidationSeverity.Error,
+                        Message = $"Column '{table.Name}.{column.Name}' uses unsupported PostgreSQL type '{column.SqlType}'.",
+                        TableId = table.Id,
+                        ColumnId = column.Id
+                    });
+                }
+
+                if (column.IsPrimaryKey && column.IsNullable)
+                {
+                    issues.Add(new ValidationIssue
+                    {
+                        Code = "nullable-primary-key",
+                        Severity = ValidationSeverity.Error,
+                        Message = $"Primary-key column '{table.Name}.{column.Name}' is marked nullable.",
+                        TableId = table.Id,
+                        ColumnId = column.Id
+                    });
+                }
+
+                if (column.IsAutoIncrement && !SchemaColumnRules.IsIdentityCompatible(column.SqlType))
+                {
+                    issues.Add(new ValidationIssue
+                    {
+                        Code = "identity-unsupported-type",
+                        Severity = ValidationSeverity.Error,
+                        Message = $"Identity column '{table.Name}.{column.Name}' must use SMALLINT, INTEGER, or BIGINT.",
+                        TableId = table.Id,
+                        ColumnId = column.Id
+                    });
+                }
+
+                if (column.IsAutoIncrement && column.IsNullable)
+                {
+                    issues.Add(new ValidationIssue
+                    {
+                        Code = "nullable-identity-column",
+                        Severity = ValidationSeverity.Error,
+                        Message = $"Identity column '{table.Name}.{column.Name}' must be NOT NULL.",
+                        TableId = table.Id,
+                        ColumnId = column.Id
+                    });
+                }
+
+                if (column.IsAutoIncrement && !string.IsNullOrWhiteSpace(column.DefaultValue))
+                {
+                    issues.Add(new ValidationIssue
+                    {
+                        Code = "identity-default-conflict",
+                        Severity = ValidationSeverity.Error,
+                        Message = $"Identity column '{table.Name}.{column.Name}' cannot also define a default.",
+                        TableId = table.Id,
+                        ColumnId = column.Id
+                    });
+                }
+                else if (!SchemaColumnRules.TryNormalizeDefault(column.DefaultValue, column.SqlType, out _, out var defaultError))
+                {
+                    issues.Add(new ValidationIssue
+                    {
+                        Code = "invalid-column-default",
+                        Severity = ValidationSeverity.Error,
+                        Message = $"Column '{table.Name}.{column.Name}' has an invalid default. {defaultError}",
+                        TableId = table.Id,
+                        ColumnId = column.Id
+                    });
+                }
+
+                if (column.SqlType.Trim().Equals("TEXT", StringComparison.OrdinalIgnoreCase))
+                {
+                    issues.Add(new ValidationIssue
+                    {
+                        Code = "unbounded-text-type",
                         Severity = ValidationSeverity.Warning,
-                        Message = $"Column name '{column.Name}' in table '{table.Name}' is a PostgreSQL reserved word and will be quoted in generated SQL.",
+                        Message = $"Column '{table.Name}.{column.Name}' uses an unbounded TEXT type.",
                         TableId = table.Id,
                         ColumnId = column.Id
                     });
@@ -184,7 +278,9 @@ public class DesignValidationService : IDesignValidationService
                 });
             }
 
-            if (!string.Equals(fromColumn!.SqlType.Trim(), toColumn.SqlType.Trim(), StringComparison.OrdinalIgnoreCase))
+            SchemaColumnRules.TryNormalizeSqlType(fromColumn!.SqlType, out var fromType);
+            SchemaColumnRules.TryNormalizeSqlType(toColumn.SqlType, out var toType);
+            if (!string.Equals(fromType, toType, StringComparison.Ordinal))
             {
                 issues.Add(new ValidationIssue
                 {

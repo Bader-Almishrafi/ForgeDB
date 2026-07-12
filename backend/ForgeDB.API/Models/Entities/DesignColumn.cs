@@ -9,6 +9,8 @@ public class DesignColumn
     public bool IsNullable { get; set; }
     public bool IsPrimaryKey { get; set; }
     public bool IsUnique { get; set; }
+    public string? DefaultValue { get; set; }
+    public bool IsAutoIncrement { get; set; }
     public int Ordinal { get; set; }
     public string? SourceColumnName { get; set; }
     public string Origin { get; set; } = DesignOrigin.Generated;
