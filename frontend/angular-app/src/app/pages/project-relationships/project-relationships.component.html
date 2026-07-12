@@ -1,91 +1,159 @@
-<section>
-  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+<section class="h-full flex flex-col bg-slate-50 dark:bg-[#0d1117] transition-colors duration-300 min-h-[calc(100vh-80px)] -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8">
+  <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
     <div>
-      <p class="mb-3 text-sm font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">Projects / Relationships</p>
-      <h1 class="page-title">Relationship Discovery</h1>
-      <p class="page-subtitle">Backend suggestions from real project datasets. Accepted relationships feed schema, ER diagram, and exports.</p>
+      <p class="mb-2 text-sm font-semibold text-slate-500 dark:text-[#8a99ad] uppercase tracking-wider transition-colors duration-300">Projects / Relationships</p>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight transition-colors duration-300">Relationship Discovery</h1>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-2xl transition-colors duration-300">Review AI-suggested relationships from your project datasets. Accepted relationships directly feed into the ER Diagram, Schema Designer, and SQL Exports.</p>
     </div>
-    <div class="flex flex-wrap gap-3">
-      <button type="button" class="btn-secondary" (click)="loadSuggestions()" [disabled]="loading()">Refresh</button>
-      <a [routerLink]="['/projects', projectId, 'schema-designer']" class="btn-primary">Schema Designer</a>
+    <div class="flex items-center gap-3">
+      <button type="button" class="flex items-center gap-2 rounded-lg bg-white dark:bg-[#21262d] px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm" (click)="loadSuggestions()" [disabled]="loading()">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        Refresh
+      </button>
+      <a [routerLink]="['/projects', projectId, 'schema-designer']" class="flex items-center gap-2 rounded-lg bg-[#118bfb] px-4 py-2 text-sm font-bold text-white hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+        Schema Designer
+      </a>
     </div>
   </div>
 
   @if (errorMessage) {
-    <p class="mb-5 rounded-sm border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-4 py-3 text-sm font-medium text-rose-700 dark:text-rose-400 transition-colors">{{ errorMessage }}</p>
+    <p class="mb-6 rounded-xl border border-rose-200 dark:border-rose-900/30 bg-rose-50 dark:bg-rose-900/10 px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors duration-300 shadow-sm">{{ errorMessage }}</p>
   }
   @if (successMessage) {
-    <p class="mb-5 rounded-sm border border-emerald-200 dark:border-emerald-900/30 transition-colors bg-[#dcfce7] dark:bg-emerald-900/20 transition-colors px-4 py-3 text-sm font-medium text-[#166534] dark:text-emerald-400 transition-colors">{{ successMessage }}</p>
+    <p class="mb-6 rounded-xl border border-emerald-200 dark:border-emerald-900/30 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-colors duration-300 shadow-sm">{{ successMessage }}</p>
   }
 
   @if (loading()) {
-    <article class="card p-6 text-sm text-[#64748b] dark:text-[#aeb7c0] transition-colors">Loading relationship suggestions...</article>
+    <div class="flex-1 flex flex-col items-center justify-center text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">
+		<svg class="w-10 h-10 mb-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+		<p class="text-sm font-medium">Analyzing datasets for relationships...</p>
+	</div>
   } @else {
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <article class="card p-5">
-        <div class="mb-4 flex items-center justify-between border-b border-[#e2e8f0] dark:border-[#2e3a47] transition-colors pb-4">
-          <h2 class="font-bold text-[#1c2434] dark:text-white transition-colors">Suggested Relationships</h2>
-          <span class="rounded bg-[#f1f5f9] dark:bg-[#24303f] transition-colors px-2.5 py-1 text-xs font-semibold text-[#64748b] dark:text-[#aeb7c0] transition-colors">{{ pending().length }}</span>
+    <div class="flex-1 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] items-start">
+      
+      <!-- Pending Suggestions Main Area -->
+      <article class="rounded-2xl border border-slate-200 dark:border-[#21262d] bg-white dark:bg-[#161b22] p-6 shadow-xl transition-colors duration-300">
+        <div class="mb-6 flex items-center justify-between border-b border-slate-100 dark:border-[#30363d] pb-4 transition-colors duration-300">
+          <div class="flex items-center gap-3">
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">Suggested Relationships</h2>
+            <span class="rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 px-3 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-400 transition-colors duration-300">{{ pending().length }}</span>
+          </div>
         </div>
-        <div class="space-y-4">
+        
+        <div class="space-y-5">
           @for (suggestion of pending(); track suggestion.suggestionId) {
-            <div class="rounded-sm border border-[#e2e8f0] dark:border-[#2e3a47] transition-colors p-5 shadow-sm">
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p class="break-words font-bold text-[#1c2434] dark:text-white transition-colors">{{ relationshipLabel(suggestion) }}</p>
-                  <p class="mt-1 text-xs font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">Type: {{ suggestion.relationshipType }} / Confidence: <span class="text-[#3c50e0]">{{ suggestion.confidence | percent:'1.0-0' }}</span></p>
+            <div class="group relative rounded-xl border border-slate-200 dark:border-[#30363d] bg-slate-50 dark:bg-[#0d1117] p-5 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300">
+              
+              <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                
+                <!-- Relationship Details -->
+                <div class="flex-1">
+                  <div class="flex items-center gap-3 mb-2">
+                    <span class="rounded-md bg-white dark:bg-[#21262d] border border-slate-200 dark:border-[#30363d] px-3 py-1.5 font-mono text-sm font-bold text-slate-800 dark:text-white transition-colors duration-300">{{ relationshipLabel(suggestion) }}</span>
+                    <span class="rounded-full bg-slate-200 dark:bg-[#30363d] px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider transition-colors duration-300">{{ suggestion.relationshipType }}</span>
+                  </div>
+                  
+                  <div class="flex items-center gap-2 mb-4">
+                    <span class="text-xs font-medium text-slate-500 dark:text-[#8a99ad] uppercase tracking-wider">AI Confidence</span>
+                    <div class="flex-1 max-w-[150px] h-1.5 rounded-full bg-slate-200 dark:bg-[#30363d] overflow-hidden">
+                      <div class="h-full rounded-full bg-indigo-500" [style.width]="(suggestion.confidence * 100) + '%'"></div>
+                    </div>
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">{{ suggestion.confidence | percent:'1.0-0' }}</span>
+                  </div>
+
+                  <div class="rounded-lg bg-white dark:bg-[#161b22] border border-slate-100 dark:border-[#21262d] p-3 transition-colors duration-300">
+                    <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Reasoning</h4>
+                    <ul class="space-y-1.5 text-xs text-slate-600 dark:text-slate-400 transition-colors duration-300">
+                      @for (reason of suggestion.reasons; track reason) {
+                        <li class="flex items-start gap-2">
+                          <svg class="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                          <span>{{ reason }}</span>
+                        </li>
+                      }
+                    </ul>
+                  </div>
                 </div>
-                <span class="badge-warning bg-[#f1f5f9] dark:bg-[#24303f] transition-colors text-[#64748b] dark:text-[#aeb7c0] transition-colors">{{ suggestion.status }}</span>
-              </div>
-              <div class="mt-4 space-y-1 text-sm text-[#64748b] dark:text-[#aeb7c0] transition-colors">
-                @for (reason of suggestion.reasons; track reason) {
-                  <p>{{ reason }}</p>
-                }
-              </div>
-              <div class="mt-5 flex flex-wrap gap-3">
-                <button type="button" class="btn-primary" (click)="accept(suggestion)" [disabled]="savingId() === suggestion.suggestionId">Accept</button>
-                <button type="button" class="btn-secondary" (click)="reject(suggestion)" [disabled]="savingId() === suggestion.suggestionId">Reject</button>
+
+                <!-- Action Buttons (Glassmorphic & Beautiful) -->
+                <div class="flex lg:flex-col gap-3 shrink-0">
+                  <button type="button" class="flex-1 lg:flex-none flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 px-6 shadow-lg shadow-emerald-500/30 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none" (click)="accept(suggestion)" [disabled]="savingId() === suggestion.suggestionId">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    Accept
+                  </button>
+                  <button type="button" class="flex-1 lg:flex-none flex items-center justify-center gap-2 rounded-xl bg-white dark:bg-[#21262d] border border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold py-2.5 px-6 transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none" (click)="reject(suggestion)" [disabled]="savingId() === suggestion.suggestionId">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    Reject
+                  </button>
+                </div>
+
               </div>
             </div>
           } @empty {
-            <div class="rounded-sm border border-dashed border-[#e2e8f0] dark:border-[#2e3a47] transition-colors bg-[#f8fafc] dark:bg-[#1c2434] transition-colors p-8 text-center text-sm font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">
-              No pending relationship suggestions. Upload/analyze multiple related datasets or review accepted/rejected decisions.
+            <div class="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 dark:border-[#30363d] bg-slate-50 dark:bg-[#0d1117] p-12 text-center transition-colors duration-300">
+              <div class="rounded-full bg-slate-100 dark:bg-[#21262d] p-4 mb-4 transition-colors duration-300">
+                <svg class="w-8 h-8 text-slate-400 dark:text-[#8a99ad] transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+              </div>
+              <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2 transition-colors duration-300">No pending suggestions</h3>
+              <p class="text-sm font-medium text-slate-500 dark:text-[#8a99ad] max-w-sm transition-colors duration-300">
+                Upload or analyze multiple related datasets, or review your accepted/rejected decisions in the sidebar.
+              </p>
             </div>
           }
         </div>
       </article>
 
-      <aside class="space-y-6">
-        <article class="card p-5">
-          <h2 class="mb-4 font-bold text-[#1c2434] dark:text-white transition-colors border-b border-[#e2e8f0] dark:border-[#2e3a47] transition-colors pb-4">Accepted Relationships</h2>
-          <div class="space-y-3">
+      <!-- Sidebar -->
+      <aside class="flex flex-col gap-6">
+        
+        <!-- Accepted -->
+        <article class="rounded-2xl border border-emerald-200 dark:border-[#21262d] bg-white dark:bg-[#161b22] p-5 shadow-lg transition-colors duration-300">
+          <div class="mb-4 flex items-center justify-between border-b border-slate-100 dark:border-[#30363d] pb-3 transition-colors duration-300">
+            <h2 class="font-bold text-slate-900 dark:text-white flex items-center gap-2 transition-colors duration-300">
+              <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Accepted
+            </h2>
+            <span class="rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 transition-colors duration-300">{{ accepted().length }}</span>
+          </div>
+          
+          <div class="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
             @for (suggestion of accepted(); track suggestion.suggestionId) {
-              <div class="group flex flex-col gap-3 rounded-sm border border-[#e2e8f0] dark:border-[#2e3a47] transition-colors bg-[#f8fafc] dark:bg-[#1c2434] transition-colors p-4 transition-colors hover:border-[#3c50e0]">
-                <div>
-                  <p class="break-words font-semibold text-[#24303f] dark:text-white transition-colors">{{ relationshipLabel(suggestion) }}</p>
-                  <p class="mt-1 text-xs text-[#64748b] dark:text-[#aeb7c0] transition-colors">Used in project schema.</p>
-                </div>
-                <button type="button" class="w-full btn-secondary py-1.5 text-xs hover:bg-[#fee2e2] hover:text-[#991b1b] hover:border-[#fca5a5]" (click)="reject(suggestion)" [disabled]="savingId() === suggestion.suggestionId">Undo Acceptance</button>
+              <div class="group flex items-center justify-between rounded-lg border border-slate-100 dark:border-[#30363d] bg-slate-50 dark:bg-[#0d1117] p-3 transition-colors duration-300 hover:border-rose-200 dark:hover:border-rose-900/50">
+                <p class="truncate text-xs font-bold text-slate-700 dark:text-slate-300 font-mono transition-colors duration-300" [title]="relationshipLabel(suggestion)">{{ relationshipLabel(suggestion) }}</p>
+                <button type="button" class="shrink-0 rounded p-1.5 text-slate-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-500/20 dark:hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all duration-300" (click)="reject(suggestion)" [disabled]="savingId() === suggestion.suggestionId" title="Reject Instead">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
               </div>
             } @empty {
-              <p class="text-sm font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">No accepted relationships yet.</p>
+              <p class="text-center text-xs font-medium text-slate-400 dark:text-[#8a99ad] py-4 transition-colors duration-300">No accepted relationships.</p>
             }
           </div>
         </article>
 
-        <article class="card p-5">
-          <h2 class="mb-4 font-bold text-[#1c2434] dark:text-white transition-colors border-b border-[#e2e8f0] dark:border-[#2e3a47] transition-colors pb-4">Rejected Suggestions</h2>
-          <div class="space-y-3">
+        <!-- Rejected -->
+        <article class="rounded-2xl border border-slate-200 dark:border-[#21262d] bg-white dark:bg-[#161b22] p-5 shadow-lg transition-colors duration-300">
+          <div class="mb-4 flex items-center justify-between border-b border-slate-100 dark:border-[#30363d] pb-3 transition-colors duration-300">
+            <h2 class="font-bold text-slate-900 dark:text-white flex items-center gap-2 transition-colors duration-300">
+              <svg class="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              Rejected
+            </h2>
+            <span class="rounded-full bg-slate-100 dark:bg-[#30363d] px-2 py-0.5 text-xs font-bold text-slate-600 dark:text-slate-300 transition-colors duration-300">{{ rejected().length }}</span>
+          </div>
+          
+          <div class="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
             @for (suggestion of rejected(); track suggestion.suggestionId) {
-              <div class="group flex flex-col gap-3 rounded-sm border border-[#e2e8f0] dark:border-[#2e3a47] transition-colors bg-[#f1f5f9] dark:bg-[#24303f] transition-colors p-4 transition-colors hover:border-[#3c50e0]">
-                <p class="break-words font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">{{ relationshipLabel(suggestion) }}</p>
-                <button type="button" class="w-full btn-primary py-1.5 text-xs" (click)="accept(suggestion)" [disabled]="savingId() === suggestion.suggestionId">Restore (Accept)</button>
+              <div class="group flex items-center justify-between rounded-lg border border-slate-100 dark:border-[#30363d] bg-slate-50 dark:bg-[#0d1117] p-3 transition-colors duration-300 hover:border-emerald-200 dark:hover:border-emerald-500/30">
+                <p class="truncate text-xs font-medium text-slate-500 dark:text-[#8a99ad] font-mono line-through transition-colors duration-300" [title]="relationshipLabel(suggestion)">{{ relationshipLabel(suggestion) }}</p>
+                <button type="button" class="shrink-0 rounded p-1.5 text-slate-400 hover:bg-emerald-100 hover:text-emerald-600 dark:hover:bg-emerald-500/20 dark:hover:text-emerald-400 opacity-0 group-hover:opacity-100 transition-all duration-300" (click)="accept(suggestion)" [disabled]="savingId() === suggestion.suggestionId" title="Restore & Accept">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                </button>
               </div>
             } @empty {
-              <p class="text-sm font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">No rejected suggestions.</p>
+              <p class="text-center text-xs font-medium text-slate-400 dark:text-[#8a99ad] py-4 transition-colors duration-300">No rejected suggestions.</p>
             }
           </div>
         </article>
+
       </aside>
     </div>
   }
