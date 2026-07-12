@@ -40,6 +40,7 @@ export class AppShellComponent {
   readonly projectId = this.workflow.projectId;
   readonly projectName = this.workflow.projectName;
   readonly datasetId = this.workflow.datasetId;
+  readonly datasetName = this.workflow.datasetName;
   readonly theme = this.themeService.theme;
   readonly notifications = signal<AppNotification[]>([]);
   headerSearch = '';
@@ -57,7 +58,7 @@ export class AppShellComponent {
     { label: 'Projects', route: () => '/projects', exact: true, icon: 'M3.5 7.5h6l2-2h9v14h-17v-12Z' },
     { label: 'Dashboard', route: () => this.datasetId() ? `/datasets/${this.datasetId()}/dashboard` : null, exact: true, icon: 'M4 19V5m0 14h16M8 16v-5m4 5V8m4 8V6' },
     { label: 'Data Sources', route: () => this.projectId() ? `/projects/${this.projectId()}/datasets` : null, exact: false, icon: 'M4 6h16v5H4V6Zm0 7h16v5H4v-5Zm3-4h.01M7 16h.01' },
-    { label: 'Analysis', route: () => this.datasetId() ? `/datasets/${this.datasetId()}/profile` : null, exact: false, icon: 'M4 19V9m5 10V5m5 14v-7m5 7V3' },
+    { label: 'Analysis', route: () => this.projectId() ? `/projects/${this.projectId()}/analysis` : this.datasetId() ? `/datasets/${this.datasetId()}/analyze` : null, exact: false, icon: 'M4 19V9m5 10V5m5 14v-7m5 7V3' },
     { label: 'Data Cleaning', route: () => null, exact: true, unavailableReason: 'No data cleaning route is available', icon: 'm4 20 5-5m0 0 8-8 2 2-8 8m-2-2-4-4m9-6 2-2' },
     { label: 'Schema', route: () => this.projectId() ? `/projects/${this.projectId()}/schema-designer` : null, exact: false, icon: 'M4 5h6v6H4V5Zm10 0h6v6h-6V5ZM4 15h6v4H4v-4Zm10 0h6v4h-6v-4Z' },
     { label: 'Relationships', route: () => this.projectId() ? `/projects/${this.projectId()}/relationships` : null, exact: false, icon: 'M5 5h5v5H5V5Zm9 9h5v5h-5v-5Zm-4-6h3a4 4 0 0 1 4 4v2' },
@@ -162,7 +163,7 @@ export class AppShellComponent {
       const projectId = projectMatch[1];
       const section = projectMatch[2];
       const labels: Record<string, string> = {
-        overview: 'Overview', datasets: 'Data Sources', upload: 'Upload Data', relationships: 'Relationships',
+        overview: 'Overview', datasets: 'Data Sources', upload: 'Upload Data', analysis: 'Analysis', relationships: 'Relationships',
         'schema-designer': 'Schema', 'er-diagram': 'ER Diagram', exports: 'Exports',
       };
       return [
@@ -182,6 +183,7 @@ export class AppShellComponent {
         { label: 'Home', route: '/home' },
         { label: 'Projects', route: '/projects' },
         { label: this.projectName() || 'Current Project', route: this.projectId() ? `/projects/${this.projectId()}/overview` : '/projects' },
+        ...(this.datasetName() ? [{ label: this.datasetName()! }] : []),
         { label: labels[datasetMatch[2]] ?? 'Dataset' },
       ];
     }

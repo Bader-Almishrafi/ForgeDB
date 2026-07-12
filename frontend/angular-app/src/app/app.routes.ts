@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
 import { AppShellComponent } from './layout/app-shell.component';
-import { AnalyzeDataComponent } from './pages/analyze-data/analyze-data.component';
 import { AnalysisComponent } from './pages/analysis/analysis.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { DataSourcesComponent } from './pages/data-sources/data-sources.component';
@@ -39,13 +38,14 @@ export const routes: Routes = [
       { path: 'projects/:projectId/overview', component: ProjectOverviewComponent },
       { path: 'projects/:projectId/datasets', component: DataSourcesComponent },
       { path: 'projects/:projectId/upload', component: DataSourcesComponent },
+      { path: 'projects/:projectId/analysis', loadComponent: () => import('./pages/analyze-data/analyze-data.component').then((module) => module.AnalyzeDataComponent) },
       { path: 'projects/:projectId/relationships', component: ProjectRelationshipsComponent },
       { path: 'projects/:projectId/schema-designer', component: ProjectSchemaDesignerComponent },
       { path: 'projects/:projectId/er-diagram', component: ProjectErDiagramComponent },
       { path: 'projects/:projectId/exports', component: ProjectExportsComponent },
       { path: 'datasets/:datasetId/preview', component: AnalysisComponent },
       { path: 'datasets/:datasetId/explorer', component: AnalysisComponent },
-      { path: 'datasets/:datasetId/analyze', component: AnalyzeDataComponent },
+      { path: 'datasets/:datasetId/analyze', loadComponent: () => import('./pages/analyze-data/analyze-data.component').then((module) => module.AnalyzeDataComponent) },
       { path: 'datasets/:datasetId/dashboard', component: DashboardComponent },
       { path: 'datasets/:datasetId/profile', component: DashboardComponent },
     ],

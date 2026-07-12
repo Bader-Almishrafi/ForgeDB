@@ -243,7 +243,7 @@ export class ProjectOverviewComponent implements OnInit {
     const schemaStatus: StageStatus = overview?.generatedSchemasCount ? 'Completed' : hasData ? 'Not Started' : 'Blocked';
     return [
       { name: 'Data Sources', description: 'Upload and manage project datasets.', status: hasData ? 'Completed' : 'Not Started', action: hasData ? 'Manage Sources' : 'Add Data', enabled: true, route: `/projects/${this.projectId}/datasets`, icon: 'M4 6h16v5H4V6Zm0 7h16v5H4v-5Z' },
-      { name: 'Analysis', description: 'Profile structure and data quality.', status: analysisStatus, action: 'Analyze Dataset', enabled: hasData, route: this.selectedDataset() ? `/datasets/${this.selectedDataset()!.id}/analyze?returnProject=${this.projectId}` : undefined, unavailableReason: 'Select a dataset first.', icon: 'M4 19V9m5 10V5m5 14v-7m5 7V3' },
+      { name: 'Analysis', description: 'Profile structure and data quality across project sources.', status: analysisStatus, action: 'Open Project Analysis', enabled: hasData, route: `/projects/${this.projectId}/analysis`, icon: 'M4 19V9m5 10V5m5 14v-7m5 7V3' },
       { name: 'Data Cleaning', description: 'Resolve detected quality issues.', status: hasData ? 'Status unavailable' : 'Blocked', action: 'Coming Later', enabled: false, unavailableReason: 'Data Cleaning will be implemented in the next frontend and backend phase.', icon: 'm4 20 5-5m0 0 8-8 2 2-8 8m-2-2-4-4' },
       { name: 'Schema', description: 'Design tables, columns, and constraints.', status: schemaStatus, action: 'Open Schema', enabled: true, route: `/projects/${this.projectId}/schema-designer`, icon: 'M4 5h6v6H4V5Zm10 0h6v6h-6V5ZM4 15h6v4H4v-4Zm10 0h6v4h-6v-4Z' },
       { name: 'Relationships', description: 'Review connections between tables.', status: overview?.relationshipSuggestionsCount ? 'In Progress' : schemaStatus === 'Completed' ? 'Not Started' : 'Blocked', action: 'Review Relationships', enabled: true, route: `/projects/${this.projectId}/relationships`, icon: 'M5 5h5v5H5V5Zm9 9h5v5h-5v-5Zm-4-6h3a4 4 0 0 1 4 4v2' },
@@ -255,7 +255,7 @@ export class ProjectOverviewComponent implements OnInit {
     const dataset = this.selectedDataset();
     const overview = this.overview();
     if (!dataset) return { title: 'Add a CSV file to start building your database.', description: 'Your first dataset unlocks analysis and schema design.', action: 'Add CSV Files', route: `/projects/${this.projectId}/datasets` };
-    if (dataset.status.toLocaleLowerCase() !== 'analyzed') return { title: 'Analyze your data to discover its structure and quality.', description: `Continue with ${dataset.tableName}.`, action: 'Analyze Dataset', route: `/datasets/${dataset.id}/analyze?returnProject=${this.projectId}` };
+    if (dataset.status.toLocaleLowerCase() !== 'analyzed') return { title: 'Analyze your project data to discover its structure and quality.', description: 'Review every project dataset together or inspect one source.', action: 'Open Project Analysis', route: `/projects/${this.projectId}/analysis` };
     if (!overview?.generatedSchemasCount) return { title: 'Generate and review your database schema.', description: 'Your analyzed data is ready for schema design.', action: 'Open Schema', route: `/projects/${this.projectId}/schema-designer` };
     return { title: 'Review table relationships.', description: 'Confirm how the project tables connect before export.', action: 'Review Relationships', route: `/projects/${this.projectId}/relationships` };
   }

@@ -1,0 +1,35 @@
+<article class="chart-card">
+  <header class="chart-card__header">
+    <div class="min-w-0">
+      <h3 class="chart-card__title">{{ title() }}</h3>
+      @if (description()) {
+        <p class="chart-card__description">{{ description() }}</p>
+      }
+    </div>
+    @if (scope()) {
+      <span class="chart-card__scope">{{ scope() }}</span>
+    }
+  </header>
+
+  @if (option(); as chartOption) {
+    <div
+      echarts
+      [options]="chartOption"
+      [autoResize]="true"
+      [loading]="loading()"
+      [class]="chartClass()"
+      data-analysis-chart
+      [attr.data-chart-title]="title()"
+      role="img"
+      [attr.aria-label]="accessibleSummary() || title()"
+    ></div>
+    @if (accessibleSummary()) {
+      <p class="sr-only">{{ accessibleSummary() }}</p>
+    }
+  } @else {
+    <div class="chart-card__empty">
+      <span class="chart-card__empty-mark" aria-hidden="true"></span>
+      <p>{{ emptyMessage() }}</p>
+    </div>
+  }
+</article>

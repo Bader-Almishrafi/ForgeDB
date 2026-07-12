@@ -1,120 +1,442 @@
-<section>
-  <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-    <div>
-      <p class="mb-3 text-sm text-slate-500">Datasets / Analyze Data</p>
-      <h1 class="page-title">Analyze Data</h1>
-      <p class="page-subtitle">Run enhanced profiling through the backend analysis pipeline and review the result.</p>
-    </div>
-    <div class="flex flex-wrap gap-3">
-      <a [routerLink]="['/datasets', datasetId, 'preview']" class="btn-secondary">Back to Preview</a>
-      <button type="button" class="btn-secondary" (click)="loadAnalysis()" [disabled]="loading()">Refresh</button>
-      <button type="button" class="btn-primary" (click)="runAnalysis()" [disabled]="analyzing()">
-        {{ analyzing() ? 'Analyzing...' : 'Run Analysis' }}
-      </button>
-    </div>
-  </div>
-
-  <article class="mb-5 rounded-2xl border border-indigo-200 bg-indigo-50 p-5">
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h2 class="font-semibold text-indigo-950">Backend-powered analysis</h2>
-        <p class="mt-1 text-sm text-indigo-700">The frontend calls the ASP.NET Core backend only. Enhanced profiling is handled behind that API boundary.</p>
-      </div>
-      <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700">No direct Python calls</span>
-    </div>
-  </article>
-
-  @if (errorMessage) {
-    <p class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{{ errorMessage }}</p>
-  }
-  @if (successMessage) {
-    <p class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
-  }
-
+<div class="analysis-page">
   @if (loading()) {
-    <article class="card p-6 text-sm text-slate-500">Loading saved analysis...</article>
-  } @else if (analysis(); as data) {
-    <article class="card mb-5 p-5">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Selected Dataset</p>
-          <h2 class="mt-1 text-xl font-bold text-slate-900">{{ data.tableName }}</h2>
-          <p class="mt-1 text-sm text-slate-500">Dataset #{{ data.datasetId }} / Status: {{ data.status }}</p>
-        </div>
-        @if (data.analyzedAt) {
-          <span class="badge-success">Analyzed</span>
-        } @else {
-          <span class="badge-warning">Profile available before saved analysis</span>
+    <section class="animate-pulse space-y-5" aria-label="Loading project analysis" aria-busy="true">
+      <div class="h-44 rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"></div>
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
+        @for (item of [1, 2, 3, 4, 5, 6]; track item) {
+          <div class="h-28 rounded-2xl bg-slate-200/80 dark:bg-slate-800"></div>
         }
       </div>
-    </article>
-
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <article class="card p-5"><p class="text-sm text-slate-500">Rows</p><p class="mt-2 text-3xl font-bold">{{ data.analysisResult.rowCount }}</p></article>
-      <article class="card p-5"><p class="text-sm text-slate-500">Columns</p><p class="mt-2 text-3xl font-bold">{{ data.analysisResult.columnCount }}</p></article>
-      <article class="card p-5"><p class="text-sm text-slate-500">Missing Values</p><p class="mt-2 text-3xl font-bold">{{ data.analysisResult.missingValuesCount }}</p></article>
-      <article class="card p-5"><p class="text-sm text-slate-500">Duplicate Rows</p><p class="mt-2 text-3xl font-bold">{{ data.analysisResult.duplicateRowsCount }}</p></article>
-    </div>
-
-    <div class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <article class="card p-5">
-        <h2 class="font-semibold">Detected Column Types</h2>
-        <div class="table-wrap mt-4">
-          <table class="data-table">
-            <thead><tr><th>Column</th><th>Detected Type</th><th>Missing</th><th>Unique</th><th>Nullable</th></tr></thead>
-            <tbody>
-              @for (column of data.analysisResult.columns; track column.columnName) {
-                <tr>
-                  <td class="font-medium">{{ column.columnName }}</td>
-                  <td>{{ column.detectedDataType }}</td>
-                  <td>{{ column.missingValuesCount }}</td>
-                  <td>{{ column.uniqueValuesCount }}</td>
-                  <td>{{ column.isNullable ? 'Yes' : 'No' }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
+      <div class="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)_260px]">
+        <div class="h-[34rem] rounded-2xl bg-slate-200/70 dark:bg-slate-800"></div>
+        <div class="h-[34rem] rounded-2xl bg-slate-200/70 dark:bg-slate-800"></div>
+        <div class="h-[34rem] rounded-2xl bg-slate-200/70 dark:bg-slate-800"></div>
+      </div>
+    </section>
+  } @else if (loadError()) {
+    <section class="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-14 text-center dark:border-rose-900 dark:bg-rose-950/30" role="alert">
+      <svg lucideCircleAlert class="mx-auto text-rose-700 dark:text-rose-300" [size]="40" [strokeWidth]="1.8"></svg>
+      <h1 class="mt-4 text-xl font-semibold text-rose-900 dark:text-rose-200">Analysis workspace unavailable</h1>
+      <p class="mx-auto mt-2 max-w-xl text-sm text-rose-700 dark:text-rose-400">{{ loadError() }}</p>
+      <div class="mt-5 flex flex-wrap justify-center gap-3">
+        @if (projectId > 0) {
+          <a [routerLink]="['/projects', projectId, 'datasets']" class="btn-secondary">Back to Data Sources</a>
+          <a [routerLink]="['/projects', projectId, 'overview']" class="btn-primary">Back to Overview</a>
+        } @else {
+          <a routerLink="/projects" class="btn-primary">Back to Projects</a>
+        }
+      </div>
+    </section>
+  } @else {
+    @if (feedback(); as message) {
+      <div
+        class="flex items-start gap-3 rounded-xl border px-4 py-3 shadow-sm"
+        [ngClass]="message.kind === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300' : message.kind === 'warning' ? 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300' : 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300'"
+        [attr.role]="message.kind === 'error' ? 'alert' : 'status'"
+        aria-live="polite"
+      >
+        <svg lucideCircleAlert class="mt-0.5 shrink-0" [size]="18" [strokeWidth]="1.8"></svg>
+        <div>
+          <p class="text-sm font-semibold">{{ message.title }}</p>
+          <p class="mt-0.5 text-sm opacity-90">{{ message.message }}</p>
         </div>
-      </article>
+      </div>
+    }
 
-      <aside class="space-y-5">
-        <article class="card p-5">
-          <h2 class="font-semibold">Chart Recommendations</h2>
-          <div class="mt-4 space-y-3">
-            @for (chart of data.chartRecommendations; track chart.title) {
-              <div class="rounded-xl border border-slate-100 p-3">
-                <div class="flex justify-between gap-3">
-                  <strong class="text-sm">{{ chart.title }}</strong>
-                  <span class="rounded-full bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700">{{ chart.chartType }}</span>
-                </div>
-                <p class="mt-2 text-xs text-slate-500">{{ chart.reason || 'No reason provided.' }}</p>
-              </div>
-            } @empty {
-              <p class="text-sm text-slate-500">No chart recommendations returned.</p>
+    <header class="analysis-header">
+      <div class="min-w-0">
+        <nav class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm" aria-label="Analysis navigation">
+          <a
+            [routerLink]="projectId > 0 ? ['/projects', projectId, 'datasets'] : ['/projects']"
+            [queryParams]="{ datasetId: selectedDataset()?.id }"
+            class="analysis-back-link"
+          >
+            <svg lucideArrowLeft [size]="16" [strokeWidth]="1.8"></svg>
+            Back to Data Sources
+          </a>
+          @if (projectId > 0) {
+            <a [routerLink]="['/projects', projectId, 'overview']" class="analysis-back-link">Back to Project Overview</a>
+          }
+        </nav>
+
+        <div class="mt-4 flex min-w-0 items-start gap-3">
+          <span class="analysis-title-icon">
+            <svg lucideChartNoAxesCombined [size]="25" [strokeWidth]="1.8"></svg>
+          </span>
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-blue-700 dark:text-blue-300">{{ project()?.name || 'Current project' }}</p>
+            <h1 class="mt-0.5 break-words text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl dark:text-slate-100">
+              {{ isProjectScope() ? 'Project Analysis' : scopeLabel() + ' Analysis' }}
+            </h1>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span class="badge-neutral">{{ scopeLabel() }}</span>
+              <span [class]="summary().analyzedDatasets === summary().totalDatasets && summary().totalDatasets > 0 ? 'badge-success' : 'badge-warning'">
+                {{ summary().analyzedDatasets }} analyzed · {{ summary().notAnalyzedDatasets }} not analyzed
+              </span>
+              @if (summary().lastAnalyzedAt) {
+                <span class="badge-neutral">
+                  <svg lucideClock3 class="mr-1" [size]="13" [strokeWidth]="1.8"></svg>
+                  {{ summary().lastAnalyzedAt | date:'medium' }}
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn-primary shrink-0" (click)="runAnalysis()" [disabled]="running() || scopeDatasets().length === 0">
+        @if (running()) {
+          <svg lucideRefreshCw class="animate-spin" [size]="17" [strokeWidth]="1.8"></svg>
+        } @else if (summary().analyzedDatasets > 0) {
+          <svg lucideRefreshCw [size]="17" [strokeWidth]="1.8"></svg>
+        } @else {
+          <svg lucidePlay [size]="17" [strokeWidth]="1.8"></svg>
+        }
+        {{ runButtonLabel() }}
+      </button>
+    </header>
+
+    @if (running()) {
+      <section class="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30" aria-live="polite" aria-busy="true">
+        <div class="flex items-center justify-between gap-4 text-sm">
+          <div class="min-w-0">
+            <p class="font-semibold text-blue-900 dark:text-blue-200">Analyzing {{ progressCurrent() }} of {{ progressTotal() }}</p>
+            <p class="mt-0.5 truncate text-xs text-blue-700 dark:text-blue-300">{{ progressDataset() }}</p>
+          </div>
+          <strong class="tabular-nums text-blue-800 dark:text-blue-200">{{ progressTotal() ? (progressCurrent() / progressTotal() * 100 | number:'1.0-0') : 0 }}%</strong>
+        </div>
+        <div class="mt-3 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950">
+          <div class="h-full rounded-full bg-blue-600 transition-[width]" [style.width.%]="progressTotal() ? progressCurrent() / progressTotal() * 100 : 0"></div>
+        </div>
+      </section>
+    }
+
+    @if (executionFailures().length > 0 || resultLoadFailures().length > 0) {
+      <section class="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900 dark:bg-rose-950/25" role="alert">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 class="font-semibold text-rose-900 dark:text-rose-200">Datasets requiring retry</h2>
+            <div class="mt-2 space-y-1 text-sm text-rose-700 dark:text-rose-300">
+              @for (failure of executionFailures().concat(resultLoadFailures()); track failure.datasetId) {
+                <p><strong>{{ failure.datasetName }}:</strong> {{ failure.message }}</p>
+              }
+            </div>
+          </div>
+          <button type="button" class="btn-secondary shrink-0" (click)="runAnalysis()" [disabled]="running()">
+            <svg lucideRefreshCw [size]="16" [strokeWidth]="1.8"></svg>
+            Retry Failed Datasets
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (datasets().length === 0) {
+      <section class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center dark:border-slate-700 dark:bg-slate-900">
+        <svg lucideDatabase class="mx-auto text-blue-700 dark:text-blue-300" [size]="42" [strokeWidth]="1.7"></svg>
+        <h2 class="mt-4 text-xl font-semibold text-slate-900 dark:text-slate-100">No datasets to analyze</h2>
+        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Add a CSV data source before running project analysis.</p>
+        @if (projectId > 0) {
+          <a [routerLink]="['/projects', projectId, 'datasets']" class="btn-primary mt-5">Add Data Source</a>
+        }
+      </section>
+    } @else {
+      <section class="metric-grid" aria-label="Analysis summary metrics">
+        <article class="metric-tile">
+          <span class="metric-tile__icon bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"><svg lucideDatabase [size]="18" [strokeWidth]="1.8"></svg></span>
+          <div><p class="metric-tile__label">Total Rows</p><p class="metric-tile__value">{{ summary().totalRows | number }}</p><p class="metric-tile__meta">{{ summary().totalDatasets }} sources</p></div>
+        </article>
+        <article class="metric-tile">
+          <span class="metric-tile__icon bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300"><svg lucideColumns3 [size]="18" [strokeWidth]="1.8"></svg></span>
+          <div><p class="metric-tile__label">Total Columns</p><p class="metric-tile__value">{{ summary().totalColumns | number }}</p><p class="metric-tile__meta">Current scope</p></div>
+        </article>
+        <article class="metric-tile">
+          <span class="metric-tile__icon bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"><svg lucideShieldCheck [size]="18" [strokeWidth]="1.8"></svg></span>
+          <div><p class="metric-tile__label">Data Quality Score</p><p class="metric-tile__value metric-tile__value--small">Unavailable</p><p class="metric-tile__meta">Not returned by API</p></div>
+        </article>
+        <article class="metric-tile">
+          <span class="metric-tile__icon bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"><svg lucideCircleAlert [size]="18" [strokeWidth]="1.8"></svg></span>
+          <div><p class="metric-tile__label">Missing Values</p><p class="metric-tile__value">{{ summary().missingValues | number }}</p><p class="metric-tile__meta">{{ summary().missingPercentage === null ? 'Awaiting analysis' : (summary().missingPercentage | number:'1.0-2') + '% of cells' }}</p></div>
+        </article>
+        <article class="metric-tile">
+          <span class="metric-tile__icon bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"><svg lucideCopy [size]="18" [strokeWidth]="1.8"></svg></span>
+          <div><p class="metric-tile__label">Duplicate Rows</p><p class="metric-tile__value">{{ summary().duplicateRows | number }}</p><p class="metric-tile__meta">{{ summary().duplicatePercentage === null ? 'Awaiting analysis' : (summary().duplicatePercentage | number:'1.0-2') + '% of rows' }}</p></div>
+        </article>
+        <article class="metric-tile">
+          <span class="metric-tile__icon bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300"><svg lucideTriangleAlert [size]="18" [strokeWidth]="1.8"></svg></span>
+          <div><p class="metric-tile__label">Detected Issues</p><p class="metric-tile__value">{{ summary().issueCount | number }}</p><p class="metric-tile__meta">Missing and duplicate signals</p></div>
+        </article>
+      </section>
+
+      <section class="analysis-workspace" aria-label="Analysis workspace">
+        <aside class="scope-panel">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h2 class="font-semibold text-slate-950 dark:text-slate-100">Data Sources</h2>
+              <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Choose analysis scope</p>
+            </div>
+            <span class="badge-neutral">{{ datasets().length }}</span>
+          </div>
+
+          <label class="relative mt-3 block">
+            <span class="sr-only">Search datasets</span>
+            <svg lucideSearch class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" [size]="16" [strokeWidth]="1.8"></svg>
+            <input type="search" class="input-field min-h-10 pl-9" placeholder="Search datasets" [ngModel]="datasetSearch()" (ngModelChange)="updateDatasetSearch($event)" />
+          </label>
+
+          <div role="listbox" aria-label="Analysis scope" class="mt-3 space-y-2">
+            @if (projectId > 0) {
+              <button
+                type="button"
+                role="option"
+                [attr.aria-selected]="isProjectScope()"
+                class="scope-option"
+                [ngClass]="isProjectScope() ? 'scope-option--selected' : ''"
+                (click)="selectProjectScope()"
+                [disabled]="running()"
+              >
+                <span class="scope-option__icon"><svg lucideLayers3 [size]="17" [strokeWidth]="1.8"></svg></span>
+                <span class="min-w-0 flex-1"><strong class="block truncate text-sm">All Project Data</strong><span class="block text-xs text-slate-500 dark:text-slate-400">{{ summary().analyzedDatasets }} results loaded</span></span>
+              </button>
+            }
+
+            <div class="scope-list scrollbar-thin">
+              @for (dataset of filteredDatasets(); track dataset.id) {
+                <button
+                  type="button"
+                  role="option"
+                  [attr.aria-selected]="scope() === dataset.id"
+                  class="scope-option scope-option--dataset"
+                  [ngClass]="scope() === dataset.id ? 'scope-option--selected' : ''"
+                  (click)="selectDataset(dataset)"
+                  [disabled]="running()"
+                >
+                  <span class="min-w-0 flex-1">
+                    <span class="flex items-center gap-2">
+                      <strong class="truncate text-sm" [title]="dataset.tableName">{{ dataset.tableName }}</strong>
+                      @if (hasDatasetIssues(dataset)) { <svg lucideCircleAlert class="shrink-0 text-amber-600" [size]="14" [strokeWidth]="1.8"></svg> }
+                    </span>
+                    <span class="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">{{ datasetDisplayName(dataset) }}</span>
+                    <span class="mt-1.5 flex flex-wrap gap-x-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      <span>{{ dataset.rowCount | number }} rows</span><span>{{ dataset.columnCount }} cols</span>
+                      <span [ngClass]="isDatasetAnalyzed(dataset) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'">{{ isDatasetAnalyzed(dataset) ? 'Analyzed' : 'Not analyzed' }}</span>
+                    </span>
+                  </span>
+                </button>
+              } @empty {
+                <p class="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">No datasets match.</p>
+              }
+            </div>
+          </div>
+        </aside>
+
+        <main class="analysis-main">
+          <div class="analysis-tabs" role="tablist" aria-label="Analysis views">
+            @for (tab of tabs; track tab.id) {
+              <button
+                type="button"
+                role="tab"
+                [attr.aria-selected]="activeTab() === tab.id"
+                class="analysis-tab"
+                [ngClass]="activeTab() === tab.id ? 'analysis-tab--active' : ''"
+                (click)="selectTab(tab.id)"
+              >{{ tab.label }}</button>
             }
           </div>
-        </article>
 
-        <article class="card p-5">
-          <div class="flex items-center justify-between gap-3">
-            <h2 class="font-semibold">Relationship Suggestions</h2>
-            <span class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">Backend contract</span>
-          </div>
-          <p class="mt-3 text-sm text-slate-600">The current analysis response does not expose relationship suggestions to Angular. Manual relationship editing is available later in the workflow.</p>
-        </article>
-      </aside>
-    </div>
+          @if (resultsLoading()) {
+            <section class="space-y-4 p-4 sm:p-5" aria-label="Loading saved analysis results" aria-busy="true">
+              <div class="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800"></div>
+              <div class="grid gap-4 md:grid-cols-2"><div class="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800"></div><div class="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800"></div></div>
+            </section>
+          } @else if (summary().analyzedDatasets === 0) {
+            <section class="p-4 sm:p-5">
+              <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-800/30">
+                <svg lucideChartNoAxesCombined class="mx-auto text-violet-700 dark:text-violet-300" [size]="38" [strokeWidth]="1.7"></svg>
+                <h2 class="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">No saved analysis results yet</h2>
+                <p class="mx-auto mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">Run analysis to load real column profiles, quality metrics, issues, and chart recommendations.</p>
+                <button type="button" class="btn-primary mt-5" (click)="runAnalysis()" [disabled]="running()"><svg lucidePlay [size]="16" [strokeWidth]="1.8"></svg>{{ runButtonLabel() }}</button>
+              </div>
+            </section>
+          } @else if (activeTab() === 'overview') {
+            <section role="tabpanel" class="analysis-tab-panel">
+              <div class="overview-chart-grid">
+                <app-analysis-chart
+                  title="Rows by Data Source"
+                  description="Real row totals for datasets in this scope."
+                  [scope]="scopeLabel()"
+                  [option]="rowsBySourceOption()"
+                  [accessibleSummary]="rowsBySourceSummary()"
+                  emptyMessage="Dataset row counts are unavailable."
+                />
+                <app-analysis-chart
+                  title="Column Type Distribution"
+                  description="Detected columns grouped into five truthful categories."
+                  [scope]="scopeLabel()"
+                  [option]="columnTypeOption()"
+                  [accessibleSummary]="typeDistributionSummary()"
+                  emptyMessage="No detected column types were returned."
+                />
+                <app-analysis-chart
+                  title="Missing Values by Dataset"
+                  description="Missing-value counts from loaded analysis results."
+                  [scope]="scopeLabel()"
+                  [option]="missingValuesOption()"
+                  [accessibleSummary]="missingValuesSummary()"
+                  emptyMessage="No analyzed dataset totals are available."
+                />
+              </div>
 
-    <div class="mt-5 flex justify-end">
-      <a [routerLink]="['/datasets', datasetId, 'dashboard']" class="btn-primary">Continue to Dashboard</a>
-    </div>
-  } @else {
-    <article class="card p-8 text-center">
-      <h2 class="text-xl font-bold text-slate-900">Ready to analyze</h2>
-      <p class="mt-2 text-sm text-slate-500">Run analysis to populate metrics, detected types, and chart recommendations from real backend data.</p>
-      <button type="button" class="btn-primary mt-5" (click)="runAnalysis()" [disabled]="analyzing()">
-        {{ analyzing() ? 'Analyzing...' : 'Run Analysis' }}
-      </button>
-    </article>
+              <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
+                <app-analysis-chart
+                  title="Analysis Coverage"
+                  description="Loaded analysis results, not a quality score."
+                  [scope]="scopeLabel()"
+                  [option]="analysisCoverageOption()"
+                  [accessibleSummary]="coverageSummary()"
+                  height="compact"
+                />
+
+                <article class="content-card">
+                  <div class="flex items-center gap-2">
+                    <svg lucideBadgeCheck class="text-blue-700 dark:text-blue-300" [size]="19" [strokeWidth]="1.8"></svg>
+                    <h2 class="section-heading">Analysis Summary</h2>
+                  </div>
+                  <ul class="mt-4 grid gap-x-6 gap-y-3 text-sm text-slate-600 sm:grid-cols-2 dark:text-slate-300">
+                    @for (statement of analysisSummaryStatements(); track statement) {
+                      <li class="flex gap-2"><svg lucideCheckCircle2 class="mt-0.5 shrink-0 text-teal-600 dark:text-teal-400" [size]="16" [strokeWidth]="1.8"></svg><span>{{ statement }}</span></li>
+                    }
+                  </ul>
+                </article>
+              </div>
+
+              <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                <article class="content-card">
+                  <div class="flex items-center justify-between gap-3"><div class="flex items-center gap-2"><svg lucideTable2 class="text-blue-700 dark:text-blue-300" [size]="19" [strokeWidth]="1.8"></svg><h2 class="section-heading">Column Analysis Preview</h2></div><button type="button" class="text-xs font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-300" (click)="selectTab('columns')">View all</button></div>
+                  <div class="mt-3 overflow-x-auto">
+                    <table class="compact-table min-w-[520px]"><thead><tr><th>Column</th><th>Dataset</th><th>Type</th><th class="text-right">Missing</th></tr></thead><tbody>@for (row of filteredColumns().slice(0, 8); track row.key) { <tr><td class="font-medium text-slate-900 dark:text-slate-100">{{ row.column.columnName }}</td><td>{{ row.datasetName }}</td><td><span class="type-badge">{{ row.column.detectedDataType }}</span></td><td class="text-right">{{ row.column.missingValuesCount | number }}</td></tr> } @empty { <tr><td colspan="4" class="py-8 text-center text-slate-500">No columns available.</td></tr> }</tbody></table>
+                  </div>
+                </article>
+
+                <article class="content-card">
+                  <div class="flex items-center justify-between gap-3"><div class="flex items-center gap-2"><svg lucideTriangleAlert class="text-amber-600 dark:text-amber-400" [size]="19" [strokeWidth]="1.8"></svg><h2 class="section-heading">Most Impacted Columns</h2></div><button type="button" class="text-xs font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-300" (click)="selectTab('quality')">Quality details</button></div>
+                  <div class="mt-3 overflow-x-auto">
+                    <table class="compact-table min-w-[460px]"><thead><tr><th>Column</th><th>Dataset</th><th class="text-right">Missing</th><th class="text-right">Rate</th></tr></thead><tbody>@for (row of impactedColumns().slice(0, 8); track row.key) { <tr><td class="font-medium text-slate-900 dark:text-slate-100">{{ row.column.columnName }}</td><td>{{ row.datasetName }}</td><td class="text-right text-amber-700 dark:text-amber-300">{{ row.column.missingValuesCount | number }}</td><td class="text-right">{{ row.missingPercentage === null ? 'Unavailable' : (row.missingPercentage | number:'1.0-2') + '%' }}</td></tr> } @empty { <tr><td colspan="4" class="py-8 text-center text-slate-500">No impacted columns returned.</td></tr> }</tbody></table>
+                  </div>
+                </article>
+              </div>
+            </section>
+          } @else if (activeTab() === 'columns') {
+            <section role="tabpanel" class="analysis-tab-panel">
+              <div class="flex items-center gap-2"><svg lucideColumns3 class="text-blue-700 dark:text-blue-300" [size]="20" [strokeWidth]="1.8"></svg><h2 class="section-heading text-lg">Column Analysis</h2></div>
+              <div class="filter-grid mt-4">
+                <label class="relative"><span class="sr-only">Search columns</span><svg lucideSearch class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" [size]="16" [strokeWidth]="1.8"></svg><input type="search" class="input-field pl-9" placeholder="Search column or dataset" [ngModel]="columnSearch()" (ngModelChange)="updateColumnSearch($event)" /></label>
+                <label><span class="sr-only">Dataset filter</span><select class="input-field" [ngModel]="columnDatasetFilter()" (ngModelChange)="updateColumnDatasetFilter($event)"><option [ngValue]="'all'">All datasets</option>@for (dataset of scopeDatasets(); track dataset.id) { <option [ngValue]="dataset.id">{{ dataset.tableName }}</option> }</select></label>
+                <label><span class="sr-only">Type filter</span><select class="input-field" [ngModel]="columnTypeFilter()" (ngModelChange)="updateColumnTypeFilter($event)"><option value="all">All types</option>@for (type of columnTypes(); track type) { <option [value]="type">{{ type }}</option> }</select></label>
+                <label><span class="sr-only">Issue filter</span><select class="input-field" [ngModel]="columnIssueFilter()" (ngModelChange)="updateColumnIssueFilter($event)"><option value="all">All issue states</option><option value="with-issues">With issues</option><option value="without-missing">Without missing</option></select></label>
+                <label><span class="sr-only">Sort columns</span><select class="input-field" [ngModel]="columnSort()" (ngModelChange)="updateColumnSort($event)"><option value="missing-desc">Most missing</option><option value="issues-desc">Most issues</option><option value="name-asc">Column name</option></select></label>
+              </div>
+
+              <div class="data-table-shell mt-4">
+                <table class="analysis-data-table min-w-[980px]">
+                  <thead><tr><th>Dataset</th><th>Column</th><th>Type</th><th class="text-right">Missing</th><th class="text-right">Missing %</th><th class="text-right">Unique</th><th class="text-right">Cardinality</th><th class="text-right">Issues</th></tr></thead>
+                  <tbody>
+                    @for (row of pagedColumns(); track row.key) {
+                      <tr tabindex="0" class="cursor-pointer" [class.bg-blue-50]="selectedColumnKey() === row.key" (click)="toggleColumn(row)" (keydown.enter)="toggleColumn(row)"><td><span class="font-medium text-slate-900 dark:text-slate-100">{{ row.datasetName }}</span><span class="mt-0.5 block max-w-44 truncate text-xs text-slate-400">{{ row.sourceName }}</span></td><td class="font-semibold text-slate-900 dark:text-slate-100">{{ row.column.columnName }}</td><td><span class="type-badge">{{ row.column.detectedDataType }}</span></td><td class="text-right" [class.text-amber-700]="row.column.missingValuesCount > 0">{{ row.column.missingValuesCount | number }}</td><td class="text-right">{{ row.missingPercentage === null ? 'Unavailable' : (row.missingPercentage | number:'1.0-2') + '%' }}</td><td class="text-right">{{ row.column.uniqueValuesCount | number }}</td><td class="text-right">{{ row.cardinality === null ? 'Unavailable' : (row.cardinality | number:'1.0-2') + '%' }}</td><td class="text-right">{{ row.issueCount }}</td></tr>
+                    } @empty {
+                      <tr><td colspan="8" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400">No columns match the current filters.</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <div class="pagination-row"><p>Showing {{ pagedColumns().length }} of {{ filteredColumns().length }} columns</p><div><button type="button" class="btn-secondary" (click)="previousColumnPage()" [disabled]="columnPage() <= 1">Previous</button><span>{{ columnPage() }} of {{ columnPageCount() }}</span><button type="button" class="btn-secondary" (click)="nextColumnPage()" [disabled]="columnPage() >= columnPageCount()">Next</button></div></div>
+
+              @if (selectedColumn(); as row) {
+                <article class="column-detail mt-4">
+                  <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p class="text-xs font-medium text-blue-700 dark:text-blue-300">{{ row.datasetName }}</p><h3 class="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">{{ row.column.columnName }}</h3><p class="text-sm text-slate-500 dark:text-slate-400">{{ row.column.detectedDataType }}</p></div><span class="badge-neutral">{{ row.issueCount }} issue signal{{ row.issueCount === 1 ? '' : 's' }}</span></div>
+                  <dl class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"><div><dt>Null values</dt><dd>{{ row.column.missingValuesCount | number }}</dd></div><div><dt>Non-null</dt><dd>{{ row.nonNullCount | number }}</dd></div><div><dt>Unique</dt><dd>{{ row.column.uniqueValuesCount | number }}</dd></div>@if (row.column.numericStats; as stats) { <div><dt>Minimum</dt><dd>{{ stats.min | number }}</dd></div><div><dt>Average</dt><dd>{{ stats.average | number }}</dd></div><div><dt>Maximum</dt><dd>{{ stats.max | number }}</dd></div> }</dl>
+                  @if (row.column.mostCommonValues.length > 0) { <div class="mt-4"><h4 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Most frequent values</h4><div class="mt-2 grid gap-2 md:grid-cols-2">@for (value of row.column.mostCommonValues.slice(0, 6); track value.value) { <div class="rounded-lg bg-white p-3 dark:bg-slate-900"><div class="flex justify-between gap-3 text-xs"><span class="truncate text-slate-600 dark:text-slate-400">{{ formatValue(value.value) }}</span><strong>{{ value.count | number }}</strong></div><div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full rounded-full bg-blue-500" [style.width.%]="topValuePercent(row.column.mostCommonValues, value.count)"></div></div></div> }</div></div> } @else { <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">No top-value distribution was returned for this column.</p> }
+                </article>
+              }
+            </section>
+          } @else if (activeTab() === 'quality') {
+            <section role="tabpanel" class="analysis-tab-panel">
+              <div class="flex items-center gap-2"><svg lucideShieldCheck class="text-emerald-700 dark:text-emerald-300" [size]="20" [strokeWidth]="1.8"></svg><h2 class="section-heading text-lg">Data Quality</h2></div>
+              <div class="quality-grid mt-4"><article><p>Quality score</p><strong>Unavailable</strong><span>Not returned by API</span></article><article><p>Missing-value rate</p><strong>{{ summary().missingPercentage === null ? 'Unavailable' : (summary().missingPercentage | number:'1.0-2') + '%' }}</strong><span>Weighted analyzed cells</span></article><article><p>Duplicate rate</p><strong>{{ summary().duplicatePercentage === null ? 'Unavailable' : (summary().duplicatePercentage | number:'1.0-2') + '%' }}</strong><span>Weighted analyzed rows</span></article><article><p>Datasets needing attention</p><strong>{{ datasetsNeedingAttention() }}</strong><span>Missing or duplicate signals</span></article></div>
+              <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                <app-analysis-chart title="Issues by Type" description="Only issue categories exposed by analysis." [scope]="scopeLabel()" [option]="issuesByTypeOption()" [accessibleSummary]="issuesByTypeSummary()" emptyMessage="No missing-value or duplicate issue counts were detected." />
+                <app-analysis-chart title="Top Missing Columns" description="Columns ranked by real missing-value count." [scope]="scopeLabel()" [option]="topMissingColumnsOption()" [accessibleSummary]="topMissingColumnsSummary()" emptyMessage="No columns with missing values were returned." />
+              </div>
+              <article class="content-card mt-4"><h3 class="section-heading">Most Impacted Columns</h3><div class="mt-3 overflow-x-auto"><table class="compact-table min-w-[620px]"><thead><tr><th>Column</th><th>Dataset</th><th class="text-right">Missing</th><th class="text-right">Rate</th><th class="text-right">Unique</th></tr></thead><tbody>@for (row of impactedColumns(); track row.key) { <tr><td class="font-medium text-slate-900 dark:text-slate-100">{{ row.column.columnName }}</td><td>{{ row.datasetName }}</td><td class="text-right text-amber-700 dark:text-amber-300">{{ row.column.missingValuesCount | number }}</td><td class="text-right">{{ row.missingPercentage === null ? 'Unavailable' : (row.missingPercentage | number:'1.0-2') + '%' }}</td><td class="text-right">{{ row.column.uniqueValuesCount | number }}</td></tr> } @empty { <tr><td colspan="5" class="py-8 text-center text-slate-500">No impacted columns returned.</td></tr> }</tbody></table></div></article>
+            </section>
+          } @else if (activeTab() === 'visualizations') {
+            <section role="tabpanel" class="analysis-tab-panel">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div><div class="flex items-center gap-2"><svg lucideChartPie class="text-violet-700 dark:text-violet-300" [size]="20" [strokeWidth]="1.8"></svg><h2 class="section-heading text-lg">Visualizations</h2></div><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Interactive charts rendered from the current scope and loaded analysis results.</p></div>
+                <div class="chart-controls">
+                  <label><span>Metric</span><select class="input-field" [ngModel]="comparisonMetric()" (ngModelChange)="updateComparisonMetric($event)"><option value="rows">Rows</option><option value="columns">Columns</option><option value="missing">Missing values</option><option value="duplicates">Duplicate rows</option></select></label>
+                  <label><span>Sort</span><select class="input-field" [ngModel]="comparisonOrder()" (ngModelChange)="updateComparisonOrder($event)"><option value="desc">Descending</option><option value="asc">Ascending</option></select></label>
+                  <label><span>Limit</span><select class="input-field" [ngModel]="comparisonLimit()" (ngModelChange)="updateComparisonLimit($event)"><option [ngValue]="5">Top 5</option><option [ngValue]="10">Top 10</option><option [ngValue]="'all'">All</option></select></label>
+                  <label><span>Orientation</span><select class="input-field" [ngModel]="comparisonOrientation()" (ngModelChange)="updateComparisonOrientation($event)"><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></label>
+                </div>
+              </div>
+
+              <div class="visualization-grid mt-4">
+                @if (comparisonChartOption(); as option) { <app-analysis-chart [title]="comparisonMetricLabel() + ' by Data Source'" description="Configurable dataset comparison." [scope]="scopeLabel()" [option]="option" [accessibleSummary]="comparisonSummary()" /> }
+                @if (rowsBySourceOption(); as option) { <app-analysis-chart title="Rows by Data Source" description="Real dataset row totals." [scope]="scopeLabel()" [option]="option" [accessibleSummary]="rowsBySourceSummary()" /> }
+                @if (columnTypeOption(); as option) { <app-analysis-chart title="Column Type Distribution" description="Detected types grouped into supported categories." [scope]="scopeLabel()" [option]="option" [accessibleSummary]="typeDistributionSummary()" /> }
+                @if (missingValuesOption(); as option) { <app-analysis-chart title="Missing Values by Dataset" description="Real missing-value counts." [scope]="scopeLabel()" [option]="option" [accessibleSummary]="missingValuesSummary()" /> }
+                @if (analysisCoverageOption(); as option) { <app-analysis-chart title="Analysis Coverage" description="Analyzed datasets divided by total datasets." [scope]="scopeLabel()" [option]="option" [accessibleSummary]="coverageSummary()" /> }
+                @if (issuesByTypeOption(); as option) { <app-analysis-chart title="Issues by Type" description="Missing values and duplicate rows only." [scope]="scopeLabel()" [option]="option" [accessibleSummary]="issuesByTypeSummary()" /> }
+                @if (duplicateRowsOption(); as option) { <app-analysis-chart title="Duplicate Rows by Dataset" description="Datasets with duplicate-row analysis signals." [scope]="scopeLabel()" [option]="option" [accessibleSummary]="duplicateRowsSummary()" /> }
+                @if (topMissingColumnsOption(); as option) { <app-analysis-chart title="Top Missing Columns" description="Most impacted columns across the current scope." [scope]="scopeLabel()" [option]="option" [accessibleSummary]="topMissingColumnsSummary()" /> }
+                @for (chart of renderedRecommendations(); track chart.key) {
+                  <app-analysis-chart [title]="chart.title" [description]="chart.reason" [scope]="chart.datasetName" [option]="chart.option" [accessibleSummary]="chart.summary" />
+                }
+              </div>
+            </section>
+          } @else {
+            <section role="tabpanel" class="analysis-tab-panel">
+              <div class="flex items-center gap-2"><svg lucideTriangleAlert class="text-amber-600 dark:text-amber-400" [size]="20" [strokeWidth]="1.8"></svg><h2 class="section-heading text-lg">Detected Issues</h2></div>
+              <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Issue signals are limited to missing values and duplicate rows returned by analysis.</p>
+              <div class="filter-grid mt-4">
+                <label class="relative"><span class="sr-only">Search issues</span><svg lucideSearch class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" [size]="16" [strokeWidth]="1.8"></svg><input type="search" class="input-field pl-9" placeholder="Search issue, dataset, or column" [ngModel]="issueSearch()" (ngModelChange)="updateIssueSearch($event)" /></label>
+                <label><span class="sr-only">Dataset filter</span><select class="input-field" [ngModel]="issueDatasetFilter()" (ngModelChange)="updateIssueDatasetFilter($event)"><option [ngValue]="'all'">All datasets</option>@for (dataset of scopeDatasets(); track dataset.id) { <option [ngValue]="dataset.id">{{ dataset.tableName }}</option> }</select></label>
+                <label><span class="sr-only">Issue type filter</span><select class="input-field" [ngModel]="issueTypeFilter()" (ngModelChange)="updateIssueTypeFilter($event)"><option value="all">All issue types</option><option value="Missing values">Missing values</option><option value="Duplicate rows">Duplicate rows</option></select></label>
+              </div>
+              <div class="mt-4 space-y-2">
+                @for (issue of pagedIssues(); track issue.key) {
+                  <article class="issue-row"><span class="issue-row__icon">@if (issue.type === 'Missing values') { <svg lucideCircleAlert [size]="18" [strokeWidth]="1.8"></svg> } @else { <svg lucideCopy [size]="18" [strokeWidth]="1.8"></svg> }</span><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-x-2"><h3 class="font-semibold text-slate-900 dark:text-slate-100">{{ issue.type }}</h3><span class="text-xs text-slate-500 dark:text-slate-400">{{ issue.datasetName }}@if (issue.column) { · {{ issue.column }} }</span></div><p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{{ issue.description }}</p><p class="mt-1 text-xs text-slate-500 dark:text-slate-500">Review this signal during Data Cleaning.</p></div><div class="shrink-0 text-right"><strong class="block text-slate-900 dark:text-slate-100">{{ issue.count | number }}</strong>@if (issue.percentage !== null) { <span class="text-xs text-slate-500 dark:text-slate-400">{{ issue.percentage | number:'1.0-2' }}%</span> }</div></article>
+                } @empty {
+                  <div class="rounded-xl border border-dashed border-emerald-300 bg-emerald-50 p-8 text-center dark:border-emerald-900 dark:bg-emerald-950/20"><svg lucideCheckCircle2 class="mx-auto text-emerald-700 dark:text-emerald-300" [size]="30" [strokeWidth]="1.8"></svg><p class="mt-2 font-semibold text-emerald-800 dark:text-emerald-300">No matching missing-value or duplicate issues.</p></div>
+                }
+              </div>
+              <div class="pagination-row"><p>Showing {{ pagedIssues().length }} of {{ filteredIssues().length }} issues</p><div><button type="button" class="btn-secondary" (click)="previousIssuePage()" [disabled]="issuePage() <= 1">Previous</button><span>{{ issuePage() }} of {{ issuePageCount() }}</span><button type="button" class="btn-secondary" (click)="nextIssuePage()" [disabled]="issuePage() >= issuePageCount()">Next</button></div></div>
+            </section>
+          }
+        </main>
+
+        <aside class="right-rail">
+          <section class="rail-card">
+            <div class="flex items-center gap-2"><svg lucideLayers3 class="text-blue-700 dark:text-blue-300" [size]="18" [strokeWidth]="1.8"></svg><h2 class="font-semibold text-slate-950 dark:text-slate-100">Current Scope</h2></div>
+            <p class="mt-2 truncate text-sm font-medium text-slate-700 dark:text-slate-300">{{ scopeLabel() }}</p>
+            <dl class="mt-3 divide-y divide-slate-100 text-sm dark:divide-slate-800"><div><dt>Datasets</dt><dd>{{ summary().totalDatasets }}</dd></div><div><dt>Results loaded</dt><dd>{{ summary().analyzedDatasets }}</dd></div><div><dt>Failed results</dt><dd>{{ resultLoadFailures().length + executionFailures().length }}</dd></div></dl>
+          </section>
+          <section class="rail-card">
+            <div class="flex items-center gap-2"><svg lucideTriangleAlert class="text-amber-600 dark:text-amber-400" [size]="18" [strokeWidth]="1.8"></svg><h2 class="font-semibold text-slate-950 dark:text-slate-100">Quality Issues</h2></div>
+            <dl class="mt-3 divide-y divide-slate-100 text-sm dark:divide-slate-800"><div><dt>Issue signals</dt><dd>{{ summary().issueCount }}</dd></div><div><dt>Missing values</dt><dd>{{ summary().missingValues | number }}</dd></div><div><dt>Duplicate rows</dt><dd>{{ summary().duplicateRows | number }}</dd></div></dl>
+          </section>
+          <section class="rail-card">
+            <h2 class="font-semibold text-slate-950 dark:text-slate-100">Most Impacted Columns</h2>
+            <div class="mt-3 space-y-2">@for (row of impactedColumns().slice(0, 4); track row.key) { <div class="flex items-center justify-between gap-3 text-sm"><div class="min-w-0"><p class="truncate font-medium text-slate-800 dark:text-slate-200">{{ row.column.columnName }}</p><p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ row.datasetName }}</p></div><strong class="shrink-0 text-amber-700 dark:text-amber-300">{{ row.column.missingValuesCount | number }}</strong></div> } @empty { <p class="text-sm text-slate-500 dark:text-slate-400">No impacted columns.</p> }</div>
+          </section>
+          <section class="next-stage-card">
+            <svg lucideWandSparkles class="text-blue-700 dark:text-blue-300" [size]="22" [strokeWidth]="1.8"></svg>
+            <p class="mt-3 text-xs font-semibold text-blue-700 dark:text-blue-300">Next workflow stage</p>
+            <h2 class="mt-1 font-semibold leading-6 text-slate-950 dark:text-slate-100">Review Data Cleaning before continuing to Schema</h2>
+            <p class="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-400">Data Cleaning will become available when its route is implemented.</p>
+          </section>
+        </aside>
+      </section>
+    }
   }
-</section>
+</div>
