@@ -8,4 +8,10 @@ import { RouterOutlet } from '@angular/router';
   template: '<router-outlet />',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppComponent {}
+export class AppComponent {
+  constructor() {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('darkMode') === 'true') {
+      document.documentElement.classList.add('dark');
+    }
+  }
+}

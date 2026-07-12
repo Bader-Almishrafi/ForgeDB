@@ -1,19 +1,27 @@
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { NgClass } from '@angular/common';
 import { finalize } from 'rxjs';
 import { ApiErrorBody, ProjectRelationshipSuggestion, ProjectSchema } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
 
+interface NodeColorInfo {
+	headerBg: string;
+	bodyGradient: string;
+	glow: string;
+	lineStroke: string;
+}
+
 interface DiagramNode {
 	name: string;
-	columns: { name: string; type: string; primaryKey: boolean }[];
+	columns: { name: string; type: string; primaryKey: boolean; foreignKey: boolean }[];
 	hiddenColumnCount: number;
 	x: number;
 	y: number;
 	width: number;
 	height: number;
-	headerColor: string;
+	theme: NodeColorInfo;
 }
 
 interface DiagramConnection {
@@ -22,6 +30,11 @@ interface DiagramConnection {
 	label: string;
 	labelX: number;
 	labelY: number;
+	strokeColor: string;
+	startX: number;
+	startY: number;
+	endX: number;
+	endY: number;
 }
 
 interface Diagram {
@@ -34,7 +47,7 @@ interface Diagram {
 @Component({
 	selector: 'app-project-er-diagram',
 	standalone: true,
-	imports: [RouterLink],
+	imports: [RouterLink, NgClass],
 	templateUrl: './project-er-diagram.component.html',
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -43,6 +56,7 @@ export class ProjectErDiagramComponent implements OnInit {
 	readonly diagram = signal<Diagram | null>(null);
 	readonly loading = signal(false);
 	readonly undoingId = signal<string | null>(null);
+	readonly selectedNode = signal<DiagramNode | null>(null);
 
 	projectId = 0;
 	errorMessage = '';
@@ -86,14 +100,23 @@ export class ProjectErDiagramComponent implements OnInit {
 			return { width: 720, height: 560, nodes: [], connections: [] };
 		}
 
-		const nodeWidth = 300;
+		const nodeWidth = 240;
 		const rowGap = 64;
-		const headerColors = ['#e0e7ff', '#dbeafe', '#dcfce7', '#fef3c7', '#fce7f3'];
+		const colorThemes: NodeColorInfo[] = [
+			{ headerBg: '#118bfb', bodyGradient: 'from-[#0d2a55]/80 to-[#0e1629]/95', glow: 'rgba(17,139,251,0.2)', lineStroke: '#118bfb' }, // Blue
+			{ headerBg: '#842df5', bodyGradient: 'from-[#2e0e5a]/80 to-[#0e1629]/95', glow: 'rgba(132,45,245,0.2)', lineStroke: '#842df5' }, // Purple
+			{ headerBg: '#2eaaf9', bodyGradient: 'from-[#0d3455]/80 to-[#0e1629]/95', glow: 'rgba(46,170,249,0.2)', lineStroke: '#2eaaf9' }, // Cyan
+		];
+
+		const fkMap = new Set<string>();
+		schema.relationships.forEach(r => fkMap.add(`${r.fromTable}.${r.fromColumn}`));
+
 		const nodes = schema.tables.map((table, index): DiagramNode => {
 			const displayedColumns = table.columns.slice(0, 12).map((column) => ({
 				name: column.name,
 				type: column.sqlType || column.detectedDataType || 'TEXT',
 				primaryKey: column.isPrimaryKeyCandidate,
+				foreignKey: fkMap.has(`${table.tableName}.${column.name}`),
 			}));
 			return {
 				name: table.tableName,
@@ -102,8 +125,8 @@ export class ProjectErDiagramComponent implements OnInit {
 				x: 0,
 				y: 0,
 				width: nodeWidth,
-				height: 62 + displayedColumns.length * 22 + (table.columns.length > displayedColumns.length ? 22 : 0),
-				headerColor: headerColors[index % headerColors.length],
+				height: 52 + displayedColumns.length * 24 + (table.columns.length > displayedColumns.length ? 24 : 0),
+				theme: colorThemes[index % colorThemes.length],
 			};
 		});
 
@@ -151,15 +174,17 @@ export class ProjectErDiagramComponent implements OnInit {
 			const targetPort = targetPorts.get(target.name) ?? 0;
 			sourcePorts.set(source.name, sourcePort + 1);
 			targetPorts.set(target.name, targetPort + 1);
-			const startY = source.y + Math.min(source.height - 18, 55 + sourcePort * 16);
-			const endY = target.y + Math.min(target.height - 18, 55 + targetPort * 16);
-			const controlX = (startX + endX) / 2 + ((index % 3) - 1) * 18;
+			const startY = source.y + Math.min(source.height - 20, 55 + sourcePort * 20);
+			const endY = target.y + Math.min(target.height - 20, 55 + targetPort * 20);
+			const controlX = (startX + endX) / 2;
 			return [{
 				id: relationship.suggestionId || `${relationship.fromTable}-${relationship.toTable}-${index}`,
 				path: `M ${startX} ${startY} C ${controlX} ${startY}, ${controlX} ${endY}, ${endX} ${endY}`,
 				label: relationship.relationshipType || 'RELATED',
 				labelX: controlX,
 				labelY: (startY + endY) / 2 - 8,
+				strokeColor: source.theme.lineStroke,
+				startX, startY, endX, endY
 			}];
 		});
 
@@ -190,5 +215,9 @@ export class ProjectErDiagramComponent implements OnInit {
 
 	relationshipLabel(relationship: ProjectRelationshipSuggestion): string {
 		return `${relationship.fromTable} (${relationship.fromColumn}) → ${relationship.toTable} (${relationship.toColumn})`;
+	}
+
+	selectNode(node: DiagramNode | null): void {
+		this.selectedNode.set(node);
 	}
 }

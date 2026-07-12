@@ -1,106 +1,170 @@
-<section>
-	<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-		<div>
-			<p class="mb-3 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Projects / ER Diagram</p>
-			<h1 class="page-title">Project ER Diagram</h1>
-			<p class="page-subtitle">Visual project schema with all generated tables and accepted relationships.</p>
-		</div>
+<section class="h-full flex flex-col bg-slate-50 dark:bg-[#0d1117] transition-colors duration-300 min-h-[calc(100vh-80px)] -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8">
+	<!-- Top Bar -->
+	<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+		<h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight transition-colors duration-300">ER Diagram</h1>
 
-		<div class="flex flex-wrap gap-3">
-			<button type="button" class="btn-secondary" (click)="loadSchema()" [disabled]="loading()">Refresh</button>
-			<a [routerLink]="['/projects', projectId, 'relationships']" class="btn-primary">Relationships</a>
+		<div class="flex items-center gap-3">
+			<button type="button" class="flex items-center gap-2 rounded-lg bg-white dark:bg-[#21262d] px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300" (click)="loadSchema()">
+				<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+				Save
+			</button>
+			<button type="button" class="flex items-center gap-2 rounded-lg bg-white dark:bg-[#21262d] px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300">
+				<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+				Export
+			</button>
+			<button type="button" class="flex items-center gap-2 rounded-lg bg-[#118bfb] px-3 py-1.5 text-sm font-bold text-white hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20">
+				<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+				Add Table
+			</button>
 		</div>
 	</div>
 
 	@if (errorMessage) {
-	<p class="mb-5 rounded-xl border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors">{{
-		errorMessage }}</p>
-	}
-	@if (successMessage) {
-	<p class="mb-5 rounded-xl border border-emerald-200 dark:border-emerald-900/30 transition-colors bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
+		<p class="mb-5 rounded-xl border border-rose-900/50 bg-rose-900/20 px-4 py-3 text-sm font-semibold text-rose-400">{{ errorMessage }}</p>
 	}
 
 	@if (loading()) {
-	<article class="card p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Loading ER diagram...</article>
+		<div class="flex-1 flex items-center justify-center text-slate-500">Loading ER diagram...</div>
 	} @else if (schema(); as data) {
-	<article class="card p-5">
-		<div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-
-			<div class="min-h-[600px] w-full overflow-auto rounded-xl border border-slate-100 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300/50 p-4">
+		<div class="flex-1 flex gap-5 overflow-hidden">
+			<!-- Canvas Area -->
+			<div class="flex-1 h-full overflow-auto rounded-xl border border-slate-200 dark:border-[#21262d] bg-white dark:bg-[#0d1117] relative transition-colors duration-300">
 				@if (diagram(); as chart) {
-				<svg class="block min-h-[500px]" [attr.width]="chart.width" [attr.height]="chart.height"
-					[attr.viewBox]="'0 0 ' + chart.width + ' ' + chart.height" role="img"
-					[attr.aria-label]="'Entity relationship diagram for ' + data.projectName">
-					<defs>
-						<marker id="relationship-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
-							<path d="M 0 0 L 9 4.5 L 0 9 z" fill="#6366f1" />
-						</marker>
-						<filter id="table-shadow" x="-10%" y="-10%" width="120%" height="120%">
-							<feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity=".12" />
-						</filter>
-					</defs>
+					<svg class="block min-w-full min-h-full text-slate-200 dark:text-[#21262d] transition-colors duration-300" [attr.width]="chart.width" [attr.height]="chart.height" [attr.viewBox]="'0 0 ' + chart.width + ' ' + chart.height" (click)="selectNode(null)">
+						<defs>
+							<pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+								<path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="1"/>
+							</pattern>
+							<!-- Arrow markers for each color -->
+							<marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+								<path d="M 0 0 L 10 5 L 0 10 M 10 0 L 10 10" fill="none" stroke="#118bfb" stroke-width="1.5" />
+							</marker>
+							<marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+								<path d="M 0 0 L 10 5 L 0 10 M 10 0 L 10 10" fill="none" stroke="#842df5" stroke-width="1.5" />
+							</marker>
+							<marker id="arrow-cyan" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+								<path d="M 0 0 L 10 5 L 0 10 M 10 0 L 10 10" fill="none" stroke="#2eaaf9" stroke-width="1.5" />
+							</marker>
+						</defs>
+						
+						<!-- Grid Background -->
+						<rect width="100%" height="100%" fill="url(#grid)" />
 
-					@for (connection of chart.connections; track connection.id) {
-					<path [attr.d]="connection.path" fill="none" stroke="#6366f1" stroke-width="2"
-						stroke-dasharray="5 4" stroke-linecap="round" marker-end="url(#relationship-arrow)">
-						<title>{{ connection.label }}</title>
-					</path>
-					<text [attr.x]="connection.labelX" [attr.y]="connection.labelY" text-anchor="middle"
-						fill="#4f46e5" font-size="10" font-weight="700">{{ connection.label }}</text>
-					}
+						<!-- Connections -->
+						@for (connection of chart.connections; track connection.id) {
+							<path [attr.d]="connection.path" fill="none" [attr.stroke]="connection.strokeColor" stroke-width="2"
+								[attr.marker-end]="connection.strokeColor === '#118bfb' ? 'url(#arrow-blue)' : connection.strokeColor === '#842df5' ? 'url(#arrow-purple)' : 'url(#arrow-cyan)'">
+								<title>{{ connection.label }}</title>
+							</path>
+							<!-- Little start dot -->
+							<circle [attr.cx]="connection.startX" [attr.cy]="connection.startY" r="3" [attr.fill]="connection.strokeColor" />
+							<!-- Relationship Label -->
+							<text [attr.x]="connection.labelX" [attr.y]="connection.labelY" text-anchor="middle"
+								[attr.fill]="connection.strokeColor" font-size="10" font-weight="bold"
+								class="select-none pointer-events-none drop-shadow-sm">{{ connection.label }}</text>
+						}
 
-					@for (node of chart.nodes; track node.name) {
-					<g [attr.transform]="'translate(' + node.x + ' ' + node.y + ')'" filter="url(#table-shadow)">
-						<rect [attr.width]="node.width" [attr.height]="node.height" rx="10" fill="white"
-							stroke="#c7d2fe" stroke-width="1.5" />
-						<path [attr.d]="'M 10 0 H ' + (node.width - 10) + ' Q ' + node.width + ' 0 ' + node.width + ' 10 V 40 H 0 V 10 Q 0 0 10 0'"
-							[attr.fill]="node.headerColor" />
-						<text x="16" y="26" fill="#1e1b4b" font-size="14" font-weight="700">{{ node.name }}</text>
-						<line x1="0" x2="300" y1="40" y2="40" stroke="#c7d2fe" />
-						@for (column of node.columns; track column.name; let row = $index) {
-						<text x="16" [attr.y]="62 + row * 22" fill="#475569" font-size="11">
-							<tspan fill="#6366f1" font-weight="700">{{ column.primaryKey ? 'PK ' : '' }}</tspan>{{ column.name }}
-						</text>
-						<text x="282" [attr.y]="62 + row * 22" text-anchor="end" fill="#94a3b8" font-size="10">{{ column.type }}</text>
+						<!-- Nodes -->
+						@for (node of chart.nodes; track node.name) {
+							<foreignObject [attr.x]="node.x" [attr.y]="node.y" [attr.width]="node.width" [attr.height]="node.height" (click)="$event.stopPropagation(); selectNode(node)" class="cursor-pointer transition-transform hover:scale-[1.02]">
+								<div xmlns="http://www.w3.org/1999/xhtml" class="h-full w-full rounded-xl overflow-hidden border border-[#30363d] bg-gradient-to-br flex flex-col shadow-2xl relative" [ngClass]="node.theme.bodyGradient" [style.box-shadow]="selectedNode()?.name === node.name ? '0 0 0 2px white, 0 0 25px ' + node.theme.glow : '0 0 15px ' + node.theme.glow">
+									<!-- Header -->
+									<div class="px-4 py-2 flex items-center justify-center font-bold text-sm tracking-wide text-white shadow-sm" [style.background]="node.theme.headerBg">
+										{{ node.name }}
+									</div>
+									
+									<!-- Columns -->
+									<div class="flex-1 px-4 py-3 flex flex-col gap-1.5 overflow-hidden">
+										@for (column of node.columns; track column.name) {
+											<div class="flex items-center justify-between text-xs">
+												<div class="flex items-center gap-2">
+													@if (column.primaryKey) {
+														<span class="font-bold text-yellow-400 text-[10px]">PK</span>
+													}
+													@if (column.foreignKey) {
+														<span class="font-bold text-emerald-400 text-[10px]">FK</span>
+													}
+													<span class="truncate max-w-[110px] text-slate-200" [ngClass]="{'ml-4': !column.primaryKey && !column.foreignKey}">{{ column.name }}</span>
+												</div>
+												<span class="text-slate-500 font-mono">{{ column.type }}</span>
+											</div>
+										}
+										@if (node.hiddenColumnCount) {
+											<div class="text-[10px] text-slate-500 mt-1 italic text-center">+ {{ node.hiddenColumnCount }} more</div>
+										}
+									</div>
+								</div>
+							</foreignObject>
 						}
-						@if (node.hiddenColumnCount) {
-						<text x="16" [attr.y]="62 + node.columns.length * 22" fill="#64748b" font-size="10">
-							+ {{ node.hiddenColumnCount }} more columns
-						</text>
-						}
-					</g>
-					}
-				</svg>
+					</svg>
 				} @else {
-				<div class="flex min-h-[500px] items-center justify-center text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">No tables available to draw.</div>
+					<div class="flex min-h-[500px] items-center justify-center text-sm text-slate-500">No tables available to draw.</div>
 				}
 			</div>
 
-			<aside class="rounded-2xl border border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-5">
-				<h2 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">Accepted Relationship Map</h2>
-				<div class="mt-4 space-y-3">
-					@for (relationship of data.relationships; track relationship.suggestionId) {
-					<div class="rounded-xl border border-indigo-100 dark:border-[#3c50e0]/30 transition-colors duration-300 bg-white dark:bg-[#24303f] transition-colors duration-300 p-4">
-						<p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Type: {{
-							relationship.relationshipType }}</p>
-						<p class="mt-2 break-words font-semibold text-slate-900 dark:text-white transition-colors duration-300">{{ relationshipLabel(relationship) }}
-						</p>
-						<p class="mt-1 text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Confidence: {{ relationship.confidence }}</p>
-						<button type="button" class="mt-3 text-xs font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-							(click)="undoRelationship(relationship)" [disabled]="undoingId() === relationship.suggestionId">
-							{{ undoingId() === relationship.suggestionId ? 'Undoing…' : 'Undo acceptance' }}
-						</button>
+			<!-- Right Sidebar (Properties) -->
+			<aside class="w-[320px] xl:w-[380px] shrink-0 rounded-xl border border-slate-200 dark:border-[#21262d] bg-slate-50 dark:bg-[#161b22] p-5 text-slate-700 dark:text-slate-300 overflow-y-auto hidden lg:block shadow-lg transition-colors duration-300">
+				@if (selectedNode(); as node) {
+					<h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-wide mb-6 transition-colors duration-300">{{ node.name }}</h2>
+					
+					<div class="mb-6">
+						<h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider transition-colors duration-300">Properties</h3>
+						<div class="flex flex-col gap-2 rounded-lg bg-white dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] p-3 transition-colors duration-300">
+							<div class="flex justify-between items-center text-sm">
+								<span class="text-slate-500">Name</span>
+								<span class="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-[#21262d] px-2 py-0.5 rounded border border-slate-200 dark:border-[#30363d] transition-colors duration-300">{{ node.name }}</span>
+							</div>
+							<div class="flex justify-between items-center text-sm">
+								<span class="text-slate-500">Columns</span>
+								<span class="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-[#21262d] px-2 py-0.5 rounded border border-slate-200 dark:border-[#30363d] transition-colors duration-300">{{ node.columns.length + node.hiddenColumnCount }}</span>
+							</div>
+						</div>
 					</div>
-					} @empty {
-					<div class="rounded-xl border border-dashed border-slate-300 dark:border-[#313d4f] transition-colors duration-300 bg-white dark:bg-[#24303f] transition-colors duration-300 p-5 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">
-						No accepted relationships yet. Suggested relationships can be reviewed on the Relationships
-						page.
-					</div>
-					}
-				</div>
-			</aside>
 
+					<div class="mb-6">
+						<h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider transition-colors duration-300">Columns</h3>
+						<div class="flex flex-col">
+							@for (col of node.columns; track col.name) {
+								<div class="flex items-center justify-between text-xs py-2 border-b border-slate-200 dark:border-[#30363d] last:border-0 hover:bg-slate-100 dark:hover:bg-[#21262d] px-2 -mx-2 rounded transition-colors duration-300">
+									<div class="flex items-center gap-2">
+										<span class="text-slate-800 dark:text-slate-300 transition-colors duration-300">{{ col.name }}</span>
+									</div>
+									<div class="flex items-center gap-2">
+										<span class="text-slate-500 font-mono">{{ col.type }}</span>
+										<svg class="w-4 h-4 text-slate-400 dark:text-slate-600 cursor-pointer hover:text-indigo-500 dark:hover:text-white transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
+									</div>
+								</div>
+							}
+						</div>
+					</div>
+					
+					<div>
+						<h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider transition-colors duration-300">Relationships</h3>
+						<div class="flex flex-col gap-2">
+							@for (rel of data.relationships; track rel.suggestionId) {
+								@if (rel.fromTable === node.name || rel.toTable === node.name) {
+									<div class="flex items-center justify-between text-xs py-2 border border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#0d1117] rounded-lg px-3 group transition-colors duration-300">
+										<div class="flex flex-col gap-1">
+											<span class="text-slate-700 dark:text-slate-300 truncate pr-2 font-medium transition-colors duration-300">{{ rel.fromTable }} &rarr; {{ rel.toTable }}</span>
+											<span class="text-[10px] font-bold text-indigo-500 uppercase">{{ rel.relationshipType }}</span>
+										</div>
+										<button class="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-500 transition-opacity" (click)="undoRelationship(rel)" [disabled]="undoingId() === rel.suggestionId" title="Remove Relationship">
+											<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+										</button>
+									</div>
+								}
+							}
+						</div>
+					</div>
+				} @else {
+					<div class="h-full flex flex-col items-center justify-center text-slate-500">
+						<svg class="w-12 h-12 mb-4 text-[#30363d]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+						</svg>
+						<p class="text-sm">Select a table to view properties.</p>
+					</div>
+				}
+			</aside>
 		</div>
-	</article>
 	}
 </section>
