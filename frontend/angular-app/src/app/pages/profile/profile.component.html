@@ -1,0 +1,50 @@
+<section class="max-w-4xl mx-auto py-6">
+  <div class="mb-6">
+    <h1 class="page-title">My Profile</h1>
+    <p class="page-subtitle">Manage your account preferences and personal information.</p>
+  </div>
+
+  <div class="card p-6 sm:p-8">
+    <h2 class="text-xl font-bold text-[#1c2434] dark:text-white transition-colors mb-6">Profile Information</h2>
+    
+    <div class="flex flex-col sm:flex-row gap-8 mb-8">
+      <div class="flex flex-col items-center gap-3">
+        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-[#3c50e0] to-purple-500 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+          {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
+        </div>
+        <button type="button" class="text-sm font-semibold text-[#3c50e0] dark:text-indigo-400 hover:text-indigo-700 transition-colors">
+          Change Avatar
+        </button>
+      </div>
+
+      <form (ngSubmit)="saveChanges()" class="flex-1 grid gap-6 sm:grid-cols-2">
+        <label class="block">
+          <span class="mb-2 block text-sm font-semibold text-[#1c2434] dark:text-white transition-colors">First Name</span>
+          <input type="text" name="firstName" [(ngModel)]="user.firstName" class="input-field" required>
+        </label>
+        
+        <label class="block">
+          <span class="mb-2 block text-sm font-semibold text-[#1c2434] dark:text-white transition-colors">Last Name</span>
+          <input type="text" name="lastName" [(ngModel)]="user.lastName" class="input-field" required>
+        </label>
+
+        <label class="block sm:col-span-2">
+          <span class="mb-2 block text-sm font-semibold text-[#1c2434] dark:text-white transition-colors">Email Address</span>
+          <input type="email" name="email" [(ngModel)]="user.email" class="input-field" required>
+        </label>
+
+        <div class="sm:col-span-2 mt-4 pt-6 border-t border-[#e2e8f0] dark:border-[#2e3a47] transition-colors flex justify-end gap-3">
+          @if (successMessage) {
+            <span class="flex items-center text-sm font-semibold text-emerald-600 dark:text-emerald-400 mr-auto">
+              <svg class="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              {{ successMessage }}
+            </span>
+          }
+          <button type="submit" class="btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>

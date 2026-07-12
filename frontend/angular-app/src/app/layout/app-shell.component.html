@@ -221,6 +221,8 @@
 
               @if (dropdownOpen()) {
                 <div class="absolute right-0 mt-3 w-52 rounded-sm border border-[#e2e8f0] dark:border-[#2e3a47] bg-white dark:bg-[#1c2434] p-3 shadow-md z-40">
+                  <a routerLink="/profile" (click)="dropdownOpen.set(false)"
+                    class="block rounded-sm px-4 py-2.5 text-sm font-medium text-[#64748b] hover:text-[#3c50e0] hover:bg-[#f1f5f9] dark:hover:bg-[#24303f] dark:text-[#aeb7c0] mb-1">My Profile</a>
                   <a routerLink="/projects" (click)="dropdownOpen.set(false)"
                     class="block rounded-sm px-4 py-2.5 text-sm font-medium text-[#64748b] hover:text-[#3c50e0] hover:bg-[#f1f5f9] dark:hover:bg-[#24303f] dark:text-[#aeb7c0]">My Projects</a>
                   <button type="button" (click)="logout()"

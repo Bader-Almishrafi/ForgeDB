@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { AppShellComponent } from './layout/app-shell.component';
+import { ProfileComponent } from './pages/profile/profile.component';
 import { AnalyzeDataComponent } from './pages/analyze-data/analyze-data.component';
 import { AnalysisComponent } from './pages/analysis/analysis.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
@@ -52,6 +53,7 @@ export const routes: Routes = [
       { path: 'datasets/:datasetId/schema', component: SchemaReviewComponent },
       { path: 'schemas/:schemaId/relationships', component: RelationshipsComponent },
       { path: 'schemas/:schemaId/deploy', component: DeploymentComponent },
+      { path: 'profile', component: ProfileComponent },
     ],
   },
   { path: '**', redirectTo: '' },
