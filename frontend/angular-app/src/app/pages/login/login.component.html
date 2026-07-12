@@ -1,5 +1,13 @@
-<div class="flex min-h-screen items-center justify-center p-4">
-  <div class="card w-full max-w-[440px] p-8 sm:p-10">
+<div class="flex min-h-screen items-center justify-center p-4 relative">
+  <div class="absolute top-6 left-6 z-10">
+    <a routerLink="/" class="flex items-center gap-2 text-sm font-semibold text-[#64748b] dark:text-[#aeb7c0] hover:text-[#3c50e0] dark:hover:text-white transition-colors duration-300">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+      Back to Home
+    </a>
+  </div>
+  <div class="card w-full max-w-[440px] p-8 sm:p-10 relative z-20">
     @if (!showForgotPasswordState) {
       <div class="mb-8 text-center">
         <h1 class="page-title">Welcome back</h1>
