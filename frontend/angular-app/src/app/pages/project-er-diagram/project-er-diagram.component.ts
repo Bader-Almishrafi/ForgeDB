@@ -157,7 +157,7 @@ export class ProjectErDiagramComponent implements OnInit {
 			return [{
 				id: relationship.suggestionId || `${relationship.fromTable}-${relationship.toTable}-${index}`,
 				path: `M ${startX} ${startY} C ${controlX} ${startY}, ${controlX} ${endY}, ${endX} ${endY}`,
-				label: relationship.fromColumn || relationship.relationshipType || 'RELATED',
+				label: relationship.relationshipType || 'RELATED',
 				labelX: controlX,
 				labelY: (startY + endY) / 2 - 8,
 			}];
@@ -171,7 +171,22 @@ export class ProjectErDiagramComponent implements OnInit {
 		};
 	}
 
-	
+	undoRelationship(relationship: ProjectRelationshipSuggestion): void {
+		this.errorMessage = '';
+		this.successMessage = '';
+		this.undoingId.set(relationship.suggestionId);
+		this.api.rejectProjectRelationship(this.projectId, relationship)
+			.pipe(finalize(() => this.undoingId.set(null)))
+			.subscribe({
+				next: () => {
+					this.successMessage = 'Relationship undone successfully.';
+					this.loadSchema();
+				},
+				error: (error: { error?: ApiErrorBody }) => {
+					this.errorMessage = error.error?.message ?? 'Unable to undo relationship.';
+				},
+			});
+	}
 
 	relationshipLabel(relationship: ProjectRelationshipSuggestion): string {
 		return `${relationship.fromTable} (${relationship.fromColumn}) → ${relationship.toTable} (${relationship.toColumn})`;
