@@ -6,7 +6,7 @@ Teammate visual reference (read-only worktree): `E:/FORGEdb/ForgeDB-erdiagram-re
 
 This file is updated continuously. Do not trust anything below the "Latest update" timestamp line if the git log has moved past the commit SHA listed there — recheck `git log` first.
 
-## Completion percentage: ~35% (Phases 1-2 complete; Phase 3 in progress: auth/home/projects/data-sources done with real Edit/Delete Project + Delete/Replace Dataset shipped end-to-end)
+## Completion percentage: ~55% (Phases 1-3 core pages done: auth/home/projects/data-sources/analysis/cleaning/schema-designer/relationships/ER-diagram all reskinned; 2 critical Data Cleaning bugs found+fixed via real browser testing; Deployment engine — the largest remaining item — not yet started)
 
 ---
 
@@ -123,14 +123,23 @@ _(none currently — all builds/tests green as of this checkpoint)_
 
 ## Latest commit SHA
 
-`7c1d423` — "feat: reskin data-sources and implement Delete/Replace Dataset end-to-end"
+`e3b5724` — "feat: port ER Diagram/Relationships design + fix two critical cleaning bugs"
 
-Prior checkpoints: `1b58981` (design foundation + auth/home/projects + Edit/Delete Project), `7b1eaef` (project-overview + project-create reskin).
+Prior checkpoints: `1b58981` (design foundation + auth/home/projects + Edit/Delete Project), `7b1eaef` (project-overview + project-create reskin), `7c1d423` (data-sources + Delete/Replace Dataset), `7ce2652` (analysis/data-cleaning color harmonization), `36822e7` (schema-designer color harmonization).
+
+## Two real bugs found and fixed via live browser testing (not hypothetical — reproduced against real Postgres)
+
+1. **`CleaningRepository.EnsureRawVersionsAsync` race condition**: check-then-act on "does a raw version exist" with no protection against concurrent callers (the Data Cleaning page fires several endpoints in parallel on load, each invoking this method). Two concurrent inserts of `VersionNumber=1` for the same dataset → Postgres unique-violation → unhandled 500 → frontend showed "Data Cleaning unavailable" for every freshly-analyzed project. Fixed by catching the unique-violation and adopting the concurrent winner's row. Un-reproducible in InMemory tests (no real FK/unique enforcement) — covered by the live Playwright run instead.
+2. **Quality confirmation dead-end for clean data**: both `GetSummaryAsync`'s `CanConfirmQuality` flag and `ConfirmQualityAsync`'s own guard required "at least one cleaning batch has run" — but a dataset with zero detected issues can never produce a batch, so clean data could **never** reach Schema Design, Relationships, or ER Diagram. Fixed both call sites to also allow confirmation when there are simply no outstanding suggestions. Regression test added: `CleaningServiceTests.GetSummary_AllowsQualityConfirmation_ForCleanDataWithNoIssuesAndNoBatches`.
+
+Both fixes were required to get ANY project through the full pipeline — without them, Schema/Relationships/ER Diagram/Deployment are unreachable for a huge share of realistic real-world data (anything without cleaning issues).
 
 ## Verified end-to-end in real browser (Playwright, real backend + real Postgres, not mocked)
 
-Register → create project (wizard, real CSV upload) → project overview → data sources → **Replace Dataset** (new CSV with different columns swaps in correctly, cascade-cleans old versions/cleaning-ops/suggestions) → **Delete Dataset** (empty state shown) → **Delete Project** (cascades cleanly). Zero console errors, zero HTTP 4xx/5xx throughout. This is meaningful because InMemory EF tests don't enforce real FK RESTRICT/CASCADE behavior — this run against real Postgres is what actually proves the cascade-cleanup logic in `DatasetRepository`/`ProjectRepository` is correct.
+Two full runs:
+1. Register → create project (wizard, real CSV upload) → project overview → data sources → **Replace Dataset** → **Delete Dataset** → **Delete Project**. Zero console/network errors.
+2. Register → create project with 2 related CSVs (customers + orders w/ `customer_id` FK-like column) → upload second dataset → **Run Project Analysis** → **Confirm Data Quality** → **Generate Schema** → **Detect Relationships** (3 real suggestions surfaced with genuine heuristic reasoning, 99%/81%/81% confidence) → **Accept** one → **ER Diagram** renders the accepted relationship as a real "MANY TO ONE" connector between real `orders`/`customers` table nodes with correct PK/FK badges and column types. One benign 404 console warning (unconfirmed cause, likely a missing static asset reference — not blocking).
 
 ## Exact next action
 
-Continue Phase 3: reskin `analysis`/`analyze-data` and `data-cleaning` pages (visual only, no known missing backend functionality there), then `project-schema-designer`, then `project-relationships`+`project-er-diagram`, then dataset `dashboard`. After that: Deployment execution engine (Phase 6, largest remaining item), then Excel/API import as time allows, then full build/test pass, then Playwright workflow screenshots into `artifacts/final-ui-integration/`, then Stage 3 docs update.
+Reskin `dashboard` (dataset-scoped) and `project-exports` pages (both quick, no known backend gaps). Then tackle the Deployment execution engine (Phase 6, by far the largest remaining item — needs a new backend endpoint to actually execute generated DDL against Postgres inside a transaction with rollback, persist deployment status/results, plus a new frontend page and nav entry already scaffolded in the app-shell). Then Excel/API import as time allows. Then full build/test pass, Playwright workflow screenshots into `artifacts/final-ui-integration/`, then Stage 3 docs update.
