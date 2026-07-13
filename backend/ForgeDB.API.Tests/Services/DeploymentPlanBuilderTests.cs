@@ -61,7 +61,7 @@ public class DeploymentPlanBuilderTests
     }
 
     [Theory]
-    [InlineData("integer", "42", 42L)]
+    [InlineData("integer", "42", 42)]
     [InlineData("bigint", "42", 42L)]
     [InlineData("numeric(10,2)", "19.99", 19.99)]
     [InlineData("boolean", "true", true)]
@@ -116,6 +116,86 @@ public class DeploymentPlanBuilderTests
         Assert.Equal("p2", parameter.ParameterName);
         Assert.Equal(expected, parameter.NpgsqlDbType);
         Assert.Equal(DBNull.Value, parameter.Value);
+    }
+
+    [Theory]
+    [InlineData("SMALLINT", NpgsqlDbType.Smallint)]
+    [InlineData("INTEGER", NpgsqlDbType.Integer)]
+    [InlineData("BIGINT", NpgsqlDbType.Bigint)]
+    [InlineData("NUMERIC", NpgsqlDbType.Numeric)]
+    [InlineData("DECIMAL", NpgsqlDbType.Numeric)]
+    [InlineData("REAL", NpgsqlDbType.Real)]
+    [InlineData("DOUBLE PRECISION", NpgsqlDbType.Double)]
+    [InlineData("BOOLEAN", NpgsqlDbType.Boolean)]
+    [InlineData("VARCHAR(120)", NpgsqlDbType.Varchar)]
+    [InlineData("TEXT", NpgsqlDbType.Text)]
+    [InlineData("DATE", NpgsqlDbType.Date)]
+    [InlineData("TIMESTAMP", NpgsqlDbType.Timestamp)]
+    [InlineData("TIMESTAMPTZ", NpgsqlDbType.TimestampTz)]
+    [InlineData("UUID", NpgsqlDbType.Uuid)]
+    public void CreateParameter_ExplicitlyTypesNullForEverySupportedStoreType(string sqlType, NpgsqlDbType expected)
+    {
+        var parameter = DeploymentPlanBuilder.CreateParameter(sqlType, "p_t0_r0_c0", DBNull.Value);
+
+        Assert.Equal("p_t0_r0_c0", parameter.ParameterName);
+        Assert.Equal(expected, parameter.NpgsqlDbType);
+        Assert.Equal(DBNull.Value, parameter.Value);
+    }
+
+    [Fact]
+    public void BuildParameterName_IsUniqueAcrossTablesRowsAndRenamedColumns()
+    {
+        var names = (from table in Enumerable.Range(0, 2)
+                     from row in Enumerable.Range(0, 3)
+                     from column in Enumerable.Range(0, 4)
+                     select DeploymentPlanBuilder.BuildParameterName(table, row, column)).ToList();
+
+        Assert.Equal(24, names.Distinct(StringComparer.Ordinal).Count());
+        Assert.Contains("p_t0_r0_c0", names);
+        Assert.Contains("p_t1_r2_c3", names);
+    }
+
+    [Fact]
+    public void AlternatingNullAndNonNullValuesKeepTheirColumnTypesAndNames()
+    {
+        var values = new object[]
+        {
+            DeploymentPlanBuilder.ConvertValue(null, "NUMERIC"),
+            DeploymentPlanBuilder.ConvertValue(JsonSerializer.SerializeToElement("19.95"), "NUMERIC"),
+            DeploymentPlanBuilder.ConvertValue(null, "INTEGER"),
+            DeploymentPlanBuilder.ConvertValue(JsonSerializer.SerializeToElement("7"), "INTEGER"),
+            DeploymentPlanBuilder.ConvertValue(null, "DATE"),
+            DeploymentPlanBuilder.ConvertValue(JsonSerializer.SerializeToElement("2026-07-13"), "DATE"),
+        };
+
+        var sqlTypes = new[] { "NUMERIC", "NUMERIC", "INTEGER", "INTEGER", "DATE", "DATE" };
+        var parameters = values.Select((value, index) => DeploymentPlanBuilder.CreateParameter(
+            sqlTypes[index], DeploymentPlanBuilder.BuildParameterName(0, index / 2, index), value)).ToList();
+
+        Assert.Equal(parameters.Count, parameters.Select(parameter => parameter.ParameterName).Distinct().Count());
+        Assert.Equal(DBNull.Value, parameters[0].Value);
+        Assert.Equal(19.95m, parameters[1].Value);
+        Assert.Equal(DBNull.Value, parameters[2].Value);
+        Assert.Equal(7, parameters[3].Value);
+        Assert.Equal(DBNull.Value, parameters[4].Value);
+        Assert.Equal(new DateOnly(2026, 7, 13), parameters[5].Value);
+    }
+
+    [Fact]
+    public void ConvertValue_ParsesUuidAndTimestampKindsForExplicitBinding()
+    {
+        var uuid = Guid.NewGuid();
+        var parsedUuid = DeploymentPlanBuilder.ConvertValue(JsonSerializer.SerializeToElement(uuid.ToString()), "UUID");
+        var timestamp = Assert.IsType<DateTime>(DeploymentPlanBuilder.ConvertValue(
+            JsonSerializer.SerializeToElement("2026-07-13T20:30:00"), "TIMESTAMP"));
+        var timestampTz = Assert.IsType<DateTime>(DeploymentPlanBuilder.ConvertValue(
+            JsonSerializer.SerializeToElement("2026-07-13T20:30:00Z"), "TIMESTAMPTZ"));
+
+        Assert.Equal(uuid, parsedUuid);
+        Assert.Equal(DateTimeKind.Unspecified, timestamp.Kind);
+        Assert.Equal(new DateTime(2026, 7, 13, 20, 30, 0, DateTimeKind.Unspecified), timestamp);
+        Assert.Equal(DateTimeKind.Utc, timestampTz.Kind);
+        Assert.Equal(new DateTime(2026, 7, 13, 20, 30, 0, DateTimeKind.Utc), timestampTz);
     }
 
     private static (DesignTable Customers, DesignTable Orders, (DesignColumn CustomersId, DesignColumn OrdersCustomerId) Columns) BuildCustomersOrders()

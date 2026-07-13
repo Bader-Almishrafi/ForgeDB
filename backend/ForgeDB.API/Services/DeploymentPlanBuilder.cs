@@ -102,31 +102,80 @@ public static class DeploymentPlanBuilder
         }
 
         var type = sqlType.ToLowerInvariant();
+        SchemaColumnRules.TryNormalizeSqlType(sqlType, out var normalizedType);
 
         if (type.Contains("bool"))
         {
             return bool.TryParse(text, out var boolValue) ? boolValue : DBNull.Value;
         }
 
-        if (type.Contains("int"))
+        if (normalizedType == "SMALLINT")
+        {
+            return short.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var shortValue)
+                ? shortValue
+                : DBNull.Value;
+        }
+
+        if (normalizedType == "INTEGER")
+        {
+            return int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue)
+                ? intValue
+                : DBNull.Value;
+        }
+
+        if (normalizedType == "BIGINT" || type.Contains("int"))
         {
             return long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var longValue)
                 ? longValue
                 : DBNull.Value;
         }
 
-        if (type.Contains("numeric") || type.Contains("decimal") || type.Contains("real") || type.Contains("double") || type.Contains("float"))
+        if (normalizedType == "REAL")
+        {
+            return float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var floatValue)
+                ? floatValue
+                : DBNull.Value;
+        }
+
+        if (normalizedType == "DOUBLE PRECISION" || type.Contains("double") || type.Contains("float"))
+        {
+            return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var doubleValue)
+                ? doubleValue
+                : DBNull.Value;
+        }
+
+        if (normalizedType is "NUMERIC" or "DECIMAL" || type.Contains("numeric") || type.Contains("decimal"))
         {
             return decimal.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var decimalValue)
                 ? decimalValue
                 : DBNull.Value;
         }
 
-        if (type.Contains("timestamp") || type.Contains("date") || type.Contains("time"))
+        if (normalizedType == "DATE")
         {
-            return DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dateValue)
+            return DateOnly.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateValue)
                 ? dateValue
                 : DBNull.Value;
+        }
+
+        if (normalizedType is "TIMESTAMP" or "TIMESTAMPTZ" || type.Contains("timestamp"))
+        {
+            var styles = normalizedType == "TIMESTAMP"
+                ? DateTimeStyles.AllowWhiteSpaces
+                : DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal;
+            if (!DateTime.TryParse(text, CultureInfo.InvariantCulture, styles, out var timestampValue))
+            {
+                return DBNull.Value;
+            }
+
+            return normalizedType == "TIMESTAMP"
+                ? DateTime.SpecifyKind(timestampValue, DateTimeKind.Unspecified)
+                : timestampValue.ToUniversalTime();
+        }
+
+        if (normalizedType == "UUID")
+        {
+            return Guid.TryParse(text, out var guidValue) ? guidValue : DBNull.Value;
         }
 
         return text;
@@ -137,12 +186,39 @@ public static class DeploymentPlanBuilder
     /// the generated design column's validated SQL type into deployment.</summary>
     public static NpgsqlParameter CreateDbNullParameter(string sqlType, int index)
     {
+        return CreateParameter(sqlType, $"p{index}", DBNull.Value);
+    }
+
+    /// <summary>Creates a named, explicitly typed PostgreSQL parameter for both null and non-null
+    /// values. Explicit typing prevents Npgsql from inferring DBNull as text, while caller-supplied
+    /// coordinate names prevent EF-generated parameter names from colliding with typed nulls.</summary>
+    public static NpgsqlParameter CreateParameter(string sqlType, string parameterName, object? value)
+    {
+        var npgsqlType = ResolveNpgsqlDbType(sqlType);
+        return new NpgsqlParameter(parameterName, npgsqlType)
+        {
+            Value = value is null or DBNull ? DBNull.Value : value
+        };
+    }
+
+    public static string BuildParameterName(int tableIndex, int rowIndex, int columnIndex)
+    {
+        if (tableIndex < 0 || rowIndex < 0 || columnIndex < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(tableIndex), "Parameter coordinates cannot be negative.");
+        }
+
+        return $"p_t{tableIndex}_r{rowIndex}_c{columnIndex}";
+    }
+
+    public static NpgsqlDbType ResolveNpgsqlDbType(string sqlType)
+    {
         if (!SchemaColumnRules.TryNormalizeSqlType(sqlType, out var normalized))
         {
             throw new ArgumentException($"Unsupported PostgreSQL type '{sqlType}'.", nameof(sqlType));
         }
 
-        var npgsqlType = normalized switch
+        return normalized switch
         {
             "SMALLINT" => NpgsqlDbType.Smallint,
             "INTEGER" => NpgsqlDbType.Integer,
@@ -159,8 +235,6 @@ public static class DeploymentPlanBuilder
             _ when normalized.StartsWith("VARCHAR(", StringComparison.Ordinal) => NpgsqlDbType.Varchar,
             _ => throw new ArgumentException($"Unsupported PostgreSQL type '{sqlType}'.", nameof(sqlType))
         };
-
-        return new NpgsqlParameter($"p{index}", npgsqlType) { Value = DBNull.Value };
     }
 
     public static string QuoteSchemaQualified(string schemaName, string identifier) =>

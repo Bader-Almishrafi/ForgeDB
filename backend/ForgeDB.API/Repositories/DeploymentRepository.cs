@@ -84,24 +84,23 @@ public class DeploymentRepository : IDeploymentRepository
             await _context.Database.ExecuteSqlRawAsync(ddlSql, cancellationToken);
         }
 
-        foreach (var plan in insertPlans)
+        foreach (var (plan, tableIndex) in insertPlans.Select((value, index) => (value, index)))
         {
             var tableRef = DeploymentPlanBuilder.QuoteSchemaQualified(schemaName, plan.TableName);
             var columnList = string.Join(", ", plan.ColumnNames.Select(SqlIdentifiers.QuoteIfNeeded));
-            var placeholders = string.Join(", ", Enumerable.Range(0, plan.ColumnNames.Count).Select(index => "{" + index + "}"));
-            var insertSql = plan.ColumnNames.Count > 0
-                ? $"INSERT INTO {tableRef} ({columnList}) VALUES ({placeholders})"
-                : null;
 
             var inserted = 0;
-            if (insertSql is not null)
+            if (plan.ColumnNames.Count > 0)
             {
-                foreach (var row in plan.Rows)
+                foreach (var (row, rowIndex) in plan.Rows.Select((value, index) => (value, index)))
                 {
-                    var parameters = row.Select((value, index) => value is DBNull
-                        ? (object)DeploymentPlanBuilder.CreateDbNullParameter(plan.ColumnSqlTypes[index], index)
-                        : value).ToArray();
-                    await _context.Database.ExecuteSqlRawAsync(insertSql, parameters, cancellationToken);
+                    var parameters = row.Select((value, columnIndex) => DeploymentPlanBuilder.CreateParameter(
+                        plan.ColumnSqlTypes[columnIndex],
+                        DeploymentPlanBuilder.BuildParameterName(tableIndex, rowIndex, columnIndex),
+                        value)).ToArray();
+                    var placeholders = string.Join(", ", parameters.Select(parameter => "@" + parameter.ParameterName));
+                    var insertSql = $"INSERT INTO {tableRef} ({columnList}) VALUES ({placeholders})";
+                    await _context.Database.ExecuteSqlRawAsync(insertSql, parameters.Cast<object>().ToArray(), cancellationToken);
                     inserted++;
                 }
             }
