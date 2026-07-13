@@ -20,3 +20,7 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 backend/ForgeDB.API/appsettings.json
+
+# Local verification artifacts (screenshots, generated reports) - never committed
+artifacts/
+.tmp-localappdata/

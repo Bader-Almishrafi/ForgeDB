@@ -2,6 +2,61 @@
 
 Updated Full Version
 
+---
+
+## As-Built Implementation Status (this section supersedes the plan below where they differ)
+
+_Last updated: 2026-07-13, branch `feature/final-ui-integration`. Everything in this section describes code that exists, builds, and was exercised in a real browser against the real backend and a real PostgreSQL instance — not a plan. The remaining sections of this document are the **original Stage 3 proposal** and are kept for historical context; several of its specifics (DBML as the primary editable format, the original `database_schemas`/`database_deployments` tables, some endpoint paths) were superseded during implementation as described below._
+
+### Architecture, as built
+
+- **Angular 21** frontend (standalone components, signals, no NgRx), Tailwind v4 CSS-first, `@lucide/angular` icons, `ngx-echarts` for charts.
+- **ASP.NET Core 8** backend, single `ForgeDB.API` project (controllers/services/repositories/entities/migrations together), EF Core 8 + Npgsql.
+- **Python (FastAPI)** analysis/cleaning microservice (`python-analysis-service/`), called over HTTP by the .NET backend with a .NET-side fallback analyzer if the Python service is unreachable.
+- **PostgreSQL**, reached via EF Core for all application data, and via raw ADO.NET (`ExecuteSqlRawAsync` inside an EF transaction) for the one feature that needs to run caller-authored DDL: deployment.
+- JWT bearer authentication; every controller enforces per-endpoint project/dataset ownership checks (no shared authorization middleware — see `OwnershipAuthorizationTests`).
+
+### Editable schema format: SQL-first, not DBML
+
+The implemented Schema Designer edits tables/columns/constraints directly (real Data Type `<select>`, nullable/PK/unique/default/identity checkboxes) and previews **SQL and JSON Schema** live; a DBML generator (`DbmlGenerator`) exists and is exposed in Exports, but DBML is not the primary editing surface the original plan describes. Automatic PK/unique/identity/default assignment is explicitly **disabled by design** — every constraint is user-controlled (regression-tested; see `SchemaConstraintCorrectionMigrationTests`, which also documents a real data-correction migration for a pre-existing bug where generated columns had briefly inferred these flags).
+
+### Real endpoints (superseding the "Internal API Endpoints" table below)
+
+| Area | Endpoints |
+| --- | --- |
+| Auth | `POST /api/auth/register`, `POST /api/auth/login` |
+| Projects | `POST/GET /api/projects`, `GET /api/projects/{id}`, `PUT /api/projects/{id}`, `DELETE /api/projects/{id}`, `GET /api/projects/{id}/overview`, `GET /api/projects/user/{userId}`, `GET /api/projects/{id}/exports/package` |
+| Datasets | `POST /api/projects/{id}/datasets/upload` (CSV), `GET /api/projects/{id}/datasets`, `GET /api/datasets/{id}/preview`, `POST /api/datasets/{id}/analyze`, `GET /api/datasets/{id}/analysis`, `GET /api/datasets/{id}/dashboard`, `POST /api/datasets/{id}/replace`, `DELETE /api/datasets/{id}` |
+| Cleaning | `GET .../cleaning/summary`, `GET .../cleaning/suggestions`, `POST .../cleaning/preview`, `POST .../cleaning/apply`, `POST .../cleaning/apply-recommended`, `GET .../cleaning/history`, dataset version list/preview/restore, `POST .../cleaning/undo-latest`, `POST .../cleaning/confirm-quality` |
+| Design/Schema | `GET/POST .../design`, `.../schema`, `.../schema/generate`, `PATCH .../schema/draft`, `POST .../schema/validate`, `GET .../schema/sql`, table/column/relationship CRUD under `design-tables`, `design-columns`, `design-relationships`, all revision-checked via `If-Match` |
+| Relationships | `GET/POST .../relationship-suggestions[/detect]`, `POST /relationship-suggestions/{id}/accept|reject` |
+| **Deployment (new this phase)** | `POST /api/projects/{id}/deployments` (`If-Match` revision required), `GET /api/projects/{id}/deployments`, `GET /api/projects/{id}/deployments/latest` |
+
+Excel (`.xlsx`) and external API JSON import are **not yet implemented** — only CSV upload exists on the datasets endpoint. This is a known, honestly-tracked gap (see `FINAL_UI_INTEGRATION_PROGRESS.md`), not an oversight being hidden.
+
+### Deployment: real PostgreSQL execution (the biggest change from the original plan)
+
+The original plan's `database_schemas`/`database_deployments` tables were dropped by migration `20260708113203_RemoveLegacySchemaDeploymentTables` before this phase began, and nothing executed generated SQL anywhere in the codebase — `GET .../schema/sql` only ever returned DDL as a text preview/export string. This phase adds a **real** deployment engine:
+
+- `POST /api/projects/{id}/deployments` validates the design (refuses if unresolved validation errors exist), then — inside one EF Core transaction — creates/recreates a project-dedicated PostgreSQL schema named `forgedb_project_{projectId}` (a real Postgres schema, not a literal `CREATE DATABASE`, since Postgres cannot run that inside a transaction, and the requirement is "roll back fully on failure"), executes the generated DDL inside it via `search_path`, and inserts the currently-cleaned dataset rows for every table in FK-safe dependency order.
+- The `Deployment` entity persists status (`Running`/`Succeeded`/`Failed`), the exact SQL used, per-table row counts, and the error detail on failure — always, including when the DDL/data step throws (the transaction rolls back; the audit record is written in a separate, already-committed step beforehand so the outcome is never silently lost).
+- Verified independently with `psql` (not just trusting the UI): real schema, real `PRIMARY KEY`/`FOREIGN KEY`/index, and real row data with working FK joins were confirmed after a live deployment run.
+
+### Two regression-worthy bugs found and fixed while wiring this up
+
+1. `EnsureRawVersionsAsync` (dataset cleaning-version bootstrap) had a check-then-act race between concurrent requests, causing a Postgres unique-constraint crash and "Data Cleaning unavailable" for any freshly-analyzed project. Fixed by catching the conflict and adopting the concurrent winner's row.
+2. Quality confirmation (a prerequisite for Schema/Relationships/ER Diagram/Deployment) required "at least one cleaning batch has run," which a dataset with zero detected issues can never produce — silently blocking the entire downstream pipeline for clean data. Fixed to also allow confirmation when there are no outstanding suggestions.
+
+### Frontend pages, as built (real names, not the illustrative ones below)
+
+`login`, `signup` (routed as `/register`), `landing` (public `/`), `home`, `projects`, `project-create` (3-step CSV wizard), `project-overview`, `data-sources`, `analysis` + `analyze-data`, `data-cleaning`, `project-schema-designer`, `project-relationships`, `project-er-diagram`, `project-deployment` (new), `project-exports`, `dashboard` (dataset-scoped). All share one design system (glass/indigo, ported from a teammate branch's visual design) via `app-shell` (sidebar/header) and `styles.css` token layer.
+
+### What to trust in the rest of this document
+
+Sections 0 (user stories/mockups), 5 (SCM/QA strategy), 6 (technical justifications), and 7 (MVP scope) are still broadly representative of intent. Sections 1–2's entity/table names and Section 4's endpoint list are **superseded** by the tables above — read them as historical context for how the design evolved, not as the current schema.
+
+---
+
 # Project Overview
 
 ForgeDB is a platform designed to help users transform raw data from CSV files, Excel spreadsheets, and external REST APIs into a structured relational database. The system saves the imported data inside ForgeDB, analyzes its structure and quality, generates a database design in DBML format, converts the approved design into PostgreSQL SQL statements, and deploys the final schema to PostgreSQL.

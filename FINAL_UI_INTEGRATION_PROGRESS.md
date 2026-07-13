@@ -6,7 +6,9 @@ Teammate visual reference (read-only worktree): `E:/FORGEdb/ForgeDB-erdiagram-re
 
 This file is updated continuously. Do not trust anything below the "Latest update" timestamp line if the git log has moved past the commit SHA listed there — recheck `git log` first.
 
-## Completion percentage: ~55% (Phases 1-3 core pages done: auth/home/projects/data-sources/analysis/cleaning/schema-designer/relationships/ER-diagram all reskinned; 2 critical Data Cleaning bugs found+fixed via real browser testing; Deployment engine — the largest remaining item — not yet started)
+## Completion percentage: ~90% of in-scope work (see "Known limitations" for the honest remainder)
+
+**Status: substantially complete.** Every page in the Required Final ForgeDB Scope has been reskinned onto the teammate's exact glass/indigo design system, verified in a real browser against the real backend/Python/Postgres stack, with real (not mock) data throughout. The Deployment execution engine — previously nonexistent — was built end-to-end and independently verified with direct `psql` queries. Two real, previously-latent bugs blocking the entire downstream pipeline (Data Cleaning → Schema → Relationships → ER Diagram → Deployment) for large classes of real-world data were found and fixed with regression coverage. Project Edit/Delete and Dataset Delete/Replace, also previously missing/disabled, were implemented end-to-end. **Not completed:** Excel (.xlsx) import and API/JSON import (see Known Limitations) — explicitly deferred due to session time constraints, not attempted partially/unsafely.
 
 ---
 
@@ -63,69 +65,84 @@ Teammate branch has no ASP.NET/Python backend changes worth diffing — it's a f
 
 ---
 
-## Phase progress
+## Phase progress (final)
 
 - [x] **Phase 1** — Inspect both repos, build integration map (this file).
 - [x] **Phase 2** — Port design foundation (global tokens in `styles.css`, `app-shell` sidebar/header rewrite). Verified in real browser, light+dark, desktop+mobile.
-- [ ] **Phase 3** — Apply design to all existing pages. **Done so far:** login, signup, home, projects (list). **Remaining:** project-overview, project-create, data-sources, analysis, analyze-data, data-cleaning, schema-designer, relationships, ER diagram, exports, dataset dashboard.
-- [ ] **Phase 4** — Re-verify all pages still call real backend/Python (no mock data introduced).
-- [ ] **Phase 5** — Relationships + ER Diagram visual port.
-- [ ] **Phase 6** — Missing Stage 3: Deployment execution engine (backend + frontend). **Sub-item done:** Edit/Delete Project (backend + frontend) — see below.
-- [ ] **Phase 7** — Dashboard finalization.
-- [ ] **Phase 8** — Browser verification (Playwright), screenshots under `artifacts/final-ui-integration/`.
-- [ ] **Phase 9** — Stage 3 documentation update.
+- [x] **Phase 3** — Apply design to all existing pages: login, signup, home, projects (list+create+overview), data-sources, analysis, analyze-data, data-cleaning, schema-designer, relationships, ER diagram, exports, dataset dashboard.
+- [x] **Phase 4** — Re-verified all pages call real backend/Python (no mock data) via live Playwright runs against the real stack.
+- [x] **Phase 5** — Relationships + ER Diagram visual port, with real detected/accepted relationships rendered.
+- [x] **Phase 6** — Missing Stage 3 features: Deployment execution engine (backend + frontend, full DDL+data execution against real Postgres), Edit/Delete Project, Delete/Replace Dataset, wired the previously-dead "Detect Relationships" action.
+- [x] **Phase 7** — Dashboard verified with real analysis data (quality score, chart recommendations, column profiler, numeric summaries, key candidates).
+- [x] **Phase 8** — Browser verification (Playwright): full workflow runs, 4 required viewports, dark mode across 9+ pages, mobile nav drawer. 35+ screenshots in `artifacts/final-ui-integration/` (untracked).
+- [x] **Phase 9** — Stage 3 documentation updated (`docs/stage-3/README.md` "As-Built Implementation Status" section).
 
-## Additional gaps discovered during implementation (not in original inventory)
+## Gaps discovered during implementation (beyond the original Phase 1 inventory) — all fixed except where noted
 
-While reskinning pages, found by reading actual component code (not just the earlier research-agent summaries):
+1. `ProjectsController` had **no PUT/DELETE** — frontend `ProjectCardComponent`'s Edit/Delete buttons were permanently `disabled`. **FIXED**: real endpoints + frontend wiring, cascade-verified, regression-tested.
+2. `DataSourcesComponent` had **no delete dataset, no replace dataset** (only CSV upload existed). **FIXED**: both endpoints built with careful cascade cleanup of CleaningOperation/RelationshipSuggestion/DatasetVersion rows that would otherwise block deletion via RESTRICT FKs; verified against real Postgres.
+3. SQL generation (`SqlSchemaGenerator`) produced text only, **never executed** against Postgres anywhere in the codebase (confirmed via full repo grep). **FIXED**: full Deployment execution engine built and verified with direct `psql` queries.
+4. Relationship auto-detection (`POST .../relationship-suggestions/detect`) existed on the backend but **no frontend page ever called it** — the Relationships page could only ever show suggestions if someone hit the API directly. **FIXED**: added a real "Detect Relationships" button.
+5. `CleaningRepository.EnsureRawVersionsAsync` **race condition**: concurrent requests (the Data Cleaning page fires several endpoints in parallel on load) could both see zero versions and both insert `VersionNumber=1`, crashing with a Postgres unique-violation and showing "Data Cleaning unavailable" for every freshly-analyzed project. **FIXED** by catching the conflict and adopting the concurrent winner's row. Not reproducible in InMemory tests (no real unique-constraint enforcement) — proven fixed via a live Playwright run against real Postgres instead.
+6. Quality confirmation **dead-end for clean data**: both `GetSummaryAsync`'s `CanConfirmQuality` flag and `ConfirmQualityAsync`'s own guard required "at least one cleaning batch has run" — but a dataset with zero detected issues can never produce a batch, permanently blocking Schema/Relationships/ER Diagram/Deployment for any clean dataset. **FIXED** both call sites; regression test added.
+7. Excel (`.xlsx`) import and API/JSON import: **not implemented.** Only CSV upload exists. Explicitly deferred — see Known Limitations.
 
-- `ProjectsController` had **no PUT/DELETE** — frontend `ProjectCardComponent` had Edit/Delete buttons permanently `disabled` with title text admitting "API not implemented." **FIXED THIS SESSION**: added `PUT /api/projects/{id}` and `DELETE /api/projects/{id}` (ownership-checked, cascades verified via EF `OnDelete(DeleteBehavior.Cascade)` already configured for Datasets/DesignModel/RelationshipSuggestions/CleaningBatches/ProjectCleaningState), plus regression tests, plus real frontend wiring (inline edit form + delete-confirm overlay matching teammate's visual pattern from their `projects.component.html`).
-- `DataSourcesComponent` has **no delete dataset, no replace dataset, no Excel import, no API JSON import** — only CSV upload exists (hardcoded `sourceType: 'csv'`). Required Stage 3 scope. Not yet built — next up.
-- Confirmed (via direct backend grep, not just agent summary): SQL generation (`SqlSchemaGenerator`) produces text only, **never executed** against Postgres anywhere in the codebase. Legacy `database_schemas`/`database_deployments` tables were dropped by migration `20260708113203_RemoveLegacySchemaDeploymentTables` and nothing replaced them. This is the Deployment gap — biggest remaining item.
+## Files modified (final list)
 
-## Files modified (running list)
+Frontend foundation: `styles.css`, `app-shell.component.ts/.html`.
+Frontend pages reskinned (`.html` + `.ts` where logic changed): `login`, `signup`, `home`, `projects`, `project-overview`, `project-create`, `data-sources`, `analysis`, `analyze-data`, `data-cleaning` (+ its `.css`), `project-schema-designer` (+ subcomponents `issues-drawer`, `table-editor-panel`, `table-list-panel` + its `.css`), `project-relationships`, `project-er-diagram` (full rewrite), `dashboard`, `project-exports`.
+Frontend shared: `shared/project-card/*` (real edit/delete UI added).
+Frontend services: `forge-api.service.ts`, `design-api.service.ts`, `api.models.ts` (added Project update/delete, Dataset replace/delete, Deployment endpoints + models).
+Frontend routing: `app.routes.ts` (added `/projects/:id/deployment`).
+Backend: `ProjectsController.cs`, `ProjectService.cs`/`IProjectService.cs`, `ProjectRepository.cs`/`IProjectRepository.cs` (Edit/Delete Project); `DatasetsController.cs`, `DatasetImportService.cs`/`IDatasetImportService.cs`, `DatasetRepository.cs`/`IDatasetRepository.cs` (Delete/Replace Dataset); `CleaningRepository.cs`, `CleaningService.cs` (both bug fixes); `ForgeDbContext.cs`, `Program.cs` (Deployment DI + entity registration); `project-relationships.component.ts/.html` equivalent backend already existed (`detectSuggestions`), just needed frontend wiring.
+Tests: `OwnershipAuthorizationTests.cs` (+4), `DesignServiceDeleteColumnTests.cs`/`DesignServiceReorderColumnsTests.cs` (stub fixups), `CleaningServiceTests.cs` (+1 regression test + Fixture clean-data variant).
+Docs: `docs/stage-3/README.md`, `.gitignore` (added `artifacts/`).
 
-- `frontend/angular-app/src/styles.css` — full glassmorphic token/utility-class rewrite (light `#f1f5f9`/`#ffffff`/`#e2e8f0`, dark `#0d1117`/`#161b22`/`#30363d`, indigo-500/600 brand, `.glass-card`, updated `.card`/`.btn-*`/`.badge-*`/`.input-field`/`.data-table`).
-- `frontend/angular-app/src/app/layout/app-shell.component.ts` / `.html` — sidebar 85px↔290px hover+pin expand, grouped nav (Workspace/Analysis/Schema & Design), added ER Diagram/Deployment/Exports nav entries that existed as routes but were missing from nav, removed dead "Settings" entry, 80px glass header, current-project card, breadcrumb navigation preserved.
-- `frontend/angular-app/src/app/pages/login/*`, `signup/*` — added "Back to Home" link, dark-mode label contrast fix; card/button styling inherited free from styles.css.
-- `frontend/angular-app/src/app/pages/home/home.component.html/.ts` — glass hero + glass cards, wired new edit/delete outputs.
-- `frontend/angular-app/src/app/pages/projects/projects.component.html/.ts` — glass filter bar + cards, wired new edit/delete outputs.
-- `frontend/angular-app/src/app/shared/project-card/project-card.component.ts/.html` — added real inline edit form + delete-confirmation overlay (glass style matching teammate), calls new API methods.
-- `frontend/angular-app/src/app/services/forge-api.service.ts`, `api.models.ts` — added `updateProject`/`deleteProject` + `ProjectUpdateRequest`.
-- `backend/ForgeDB.API/Controllers/ProjectsController.cs` — added `PUT`/`DELETE` endpoints, ownership-checked.
-- `backend/ForgeDB.API/Services/ProjectService.cs` + `Interfaces/IProjectService.cs` — added `UpdateProjectAsync`/`DeleteProjectAsync`.
-- `backend/ForgeDB.API/Repositories/ProjectRepository.cs` + `Interfaces/IProjectRepository.cs` — added `UpdateDetailsAsync`/`DeleteAsync`.
-- `backend/ForgeDB.API.Tests/Controllers/OwnershipAuthorizationTests.cs` — added 4 tests for the new endpoints (403 + success cases for both Update and Delete, including cascade verification).
+## Files created (final list)
 
-## Files created (running list)
-
-- `FINAL_UI_INTEGRATION_PROGRESS.md` (this file)
+- `FINAL_UI_INTEGRATION_PROGRESS.md`
 - `backend/ForgeDB.API/Models/DTOs/ProjectUpdateDto.cs`
+- `backend/ForgeDB.API/Models/Entities/Deployment.cs`
+- `backend/ForgeDB.API/Models/DTOs/DeploymentDtos.cs`
+- `backend/ForgeDB.API/Services/DeploymentPlanBuilder.cs` (pure logic: table ordering, value conversion, schema naming)
+- `backend/ForgeDB.API/Services/DeploymentService.cs` + `Interfaces/IDeploymentService.cs`
+- `backend/ForgeDB.API/Repositories/DeploymentRepository.cs` + `Interfaces/IDeploymentRepository.cs`
+- `backend/ForgeDB.API/Controllers/DeploymentController.cs`
+- `backend/ForgeDB.API/Data/Migrations/20260713175229_AddDeployments.cs` (+ `.Designer.cs`)
+- `backend/ForgeDB.API.Tests/Services/DatasetManagementTests.cs`
+- `backend/ForgeDB.API.Tests/Services/DeploymentPlanBuilderTests.cs`
+- `frontend/angular-app/src/app/pages/project-deployment/project-deployment.component.ts` + `.html`
 
-## Tests run
+## Tests run (final)
 
-- `dotnet build backend/ForgeDB.sln` — succeeded, 0 warnings/errors (after stopping the locked dev `dotnet run` process).
-- `dotnet test backend/ForgeDB.sln --filter "FullyQualifiedName~OwnershipAuthorizationTests"` — **11/11 passed** (7 pre-existing + 4 new).
-- `npm run build` (frontend) — succeeded twice (after foundation port, after projects/home changes).
-- Playwright real-browser check (chromium via `npx playwright`, not yet the full required workflow — early smoke check only): register → home → projects → dark mode toggle → login (dark) → 390px mobile. **0 console errors.** Screenshots in session scratchpad (not yet copied to `artifacts/final-ui-integration/` — will do in the dedicated Phase 8 pass).
+- `dotnet build backend/ForgeDB.sln` — 0 warnings, 0 errors.
+- `dotnet test backend/ForgeDB.sln` — **103/103 passed** (81 pre-existing + 4 project ownership + 3 dataset management + 3 cleaning-fix regression + 12 deployment-plan).
+- `npm run build` (frontend) — succeeds cleanly (final size ~973KB initial, within budget).
+- `npm test -- --watch=false` (frontend) — **63/63 passed**, unchanged pre-existing suite, confirmed still green after every reskin pass.
+- `python -m pytest -q` (from `python-analysis-service/`, using its own `.venv`) — **14/14 passed**.
+- `dotnet ef migrations has-pending-model-changes` — **no pending changes** (migration matches model).
+- `git diff --check` — clean, no whitespace conflicts.
+- Real-browser Playwright verification (chromium, live backend+Python+Postgres, real data throughout) — see below.
 
 ## Current failures
 
-_(none currently — all builds/tests green as of this checkpoint)_
+_None._ All builds and test suites are green as of the final commit.
 
-## Known limitations (running list, be honest)
+## Known limitations (final, honest)
 
-- Per-dataset expandable sidebar sub-tree from teammate design not ported (deferred — secondary nav affordance, current dataset routes differ from teammate's).
-- Profile/Settings page not built — outside Required Final ForgeDB Scope, and teammate's own version is non-functional (fake save).
-- Landing (public marketing) page left as current's own version — teammate's equivalent references broken image assets and isn't part of Stage 3 scope.
-- Dataset delete/replace, Excel import, API JSON import not yet built (next up).
-- Deployment execution engine not yet built (largest remaining item).
+- **Excel (.xlsx) import and API/JSON import are not implemented** — only CSV upload exists on the datasets endpoint. This was explicitly deprioritized given session time constraints in favor of the Deployment engine (the largest, most-emphasized gap) and the two pipeline-blocking bug fixes, per the task's own stated priority order. Not attempted partially/unsafely.
+- Per-dataset expandable sidebar sub-tree from the teammate's design was not ported (a secondary nav affordance; current dataset routes differ from the teammate's, and the primary nav already covers dataset-scoped pages).
+- Profile/Settings page was not built — outside the Required Final ForgeDB Scope list, and the teammate's own version has a fake (non-persisting) save action, so copying it would have violated "no fake content."
+- Landing (public marketing) page kept as the current branch's own version — the teammate's equivalent references broken image assets and isn't part of Stage 3 scope.
+- Deployment targets a dedicated PostgreSQL **schema** (`forgedb_project_{id}`) inside the existing database, not a literal separate `CREATE DATABASE` — Postgres cannot run `CREATE DATABASE` inside a transaction, which conflicts with the explicit "execute inside a transaction, roll back fully on failure" requirement. This is a deliberate, documented design decision (see `docs/stage-3/README.md`), not an oversight.
+- Per-row `INSERT` during deployment (rather than a bulk/COPY path) is correctness-first, not performance-optimized; acceptable for the MVP row-count scale but a candidate for future improvement.
+- One benign 404 browser console warning appears during normal use (`GET .../schema` before a project has a generated design) — this is the schema-designer's own code deliberately probing for an existing schema and gracefully treating 404 as "none yet"; not a defect.
 
 ## Latest commit SHA
 
-`e3b5724` — "feat: port ER Diagram/Relationships design + fix two critical cleaning bugs"
+`c22ac3a` — "feat: implement real PostgreSQL deployment execution end-to-end", plus a following (uncommitted at doc-write time, see final git status in the chat response) docs/gitignore checkpoint.
 
-Prior checkpoints: `1b58981` (design foundation + auth/home/projects + Edit/Delete Project), `7b1eaef` (project-overview + project-create reskin), `7c1d423` (data-sources + Delete/Replace Dataset), `7ce2652` (analysis/data-cleaning color harmonization), `36822e7` (schema-designer color harmonization).
+All checkpoints this session, in order: `1b58981` (design foundation + auth/home/projects + Edit/Delete Project) → `7b1eaef` (project-overview + project-create) → `7c1d423` (data-sources + Delete/Replace Dataset) → `7ce2652` (analysis/data-cleaning color) → `36822e7` (schema-designer color) → `9b1b45e` (dashboard/exports color) → `e3b5724` (ER Diagram/Relationships + 2 cleaning bug fixes) → `c22ac3a` (Deployment engine) → final docs/gitignore commit.
 
 ## Two real bugs found and fixed via live browser testing (not hypothetical — reproduced against real Postgres)
 
