@@ -79,6 +79,61 @@ public class OwnershipAuthorizationTests
     }
 
     [Fact]
+    public async Task ProjectsController_Update_Returns403_ForNonOwningUser()
+    {
+        await using var context = NewContext();
+        var (ownerProject, _) = await SeedTwoUsersOneProjectAsync(context, otherUserId: 99);
+        var controller = BuildProjectsController(context, callingUserId: 99);
+
+        var result = await controller.Update(ownerProject.Id, new ProjectUpdateDto { Name = "Hijacked" }, CancellationToken.None);
+
+        var status = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, status.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProjectsController_Update_Succeeds_ForOwningUser_AndPersistsChanges()
+    {
+        await using var context = NewContext();
+        var (ownerProject, ownerUserId) = await SeedTwoUsersOneProjectAsync(context, otherUserId: 99);
+        var controller = BuildProjectsController(context, callingUserId: ownerUserId);
+
+        var result = await controller.Update(ownerProject.Id, new ProjectUpdateDto { Name = "Renamed", Description = "New description" }, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var updated = Assert.IsType<ProjectResponseDto>(ok.Value);
+        Assert.Equal("Renamed", updated.Name);
+        Assert.Equal("New description", updated.Description);
+    }
+
+    [Fact]
+    public async Task ProjectsController_Delete_Returns403_ForNonOwningUser()
+    {
+        await using var context = NewContext();
+        var (ownerProject, _) = await SeedTwoUsersOneProjectAsync(context, otherUserId: 99);
+        var controller = BuildProjectsController(context, callingUserId: 99);
+
+        var result = await controller.Delete(ownerProject.Id, CancellationToken.None);
+
+        var status = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, status.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProjectsController_Delete_Succeeds_ForOwningUser_AndCascadesDataset()
+    {
+        await using var context = NewContext();
+        var (project, dataset, ownerUserId) = await SeedProjectWithDatasetAsync(context, ownerUserId: 1);
+        var controller = BuildProjectsController(context, callingUserId: ownerUserId);
+
+        var result = await controller.Delete(project.Id, CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+        Assert.False(await context.Projects.AnyAsync(p => p.Id == project.Id));
+        Assert.False(await context.Datasets.AnyAsync(d => d.Id == dataset.Id));
+    }
+
+    [Fact]
     public async Task DatasetsController_GetPreview_Returns403_ForNonOwningUser()
     {
         await using var context = NewContext();

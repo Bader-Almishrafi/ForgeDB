@@ -88,6 +88,14 @@ export class HomeComponent implements OnInit {
     this.router.navigate(['/projects', project.id, 'overview']);
   }
 
+  onProjectUpdated(updated: ProjectResponse): void {
+    this.projects.update((projects) => projects.map((project) => project.id === updated.id ? updated : project));
+  }
+
+  onProjectDeleted(projectId: number): void {
+    this.projects.update((projects) => projects.filter((project) => project.id !== projectId));
+  }
+
   private compareProjects(left: ProjectResponse, right: ProjectResponse): number {
     if (this.sortBy() === 'name') {
       return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' });

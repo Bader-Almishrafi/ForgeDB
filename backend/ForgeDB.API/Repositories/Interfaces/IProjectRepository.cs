@@ -10,4 +10,6 @@ public interface IProjectRepository
     Task<bool> UserExistsAsync(int userId, CancellationToken cancellationToken = default);
     Task AddAsync(Project project, CancellationToken cancellationToken = default);
     Task UpdateDashboardConfigAsync(int projectId, string dashboardConfig, DateTime updatedAt, CancellationToken cancellationToken = default);
+    Task<Project?> UpdateDetailsAsync(int projectId, string name, string? description, DateTime updatedAt, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(int projectId, CancellationToken cancellationToken = default);
 }

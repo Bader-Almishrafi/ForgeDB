@@ -93,6 +93,37 @@ public class ProjectService : IProjectService
         return projects.Select(MapToResponse).ToList();
     }
 
+    public async Task<ProjectResponseDto?> UpdateProjectAsync(int projectId, ProjectUpdateDto request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (projectId <= 0)
+        {
+            throw new ArgumentException("ProjectId must be greater than zero.", nameof(projectId));
+        }
+
+        var name = request.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Project name is required.", nameof(request));
+        }
+
+        var description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+        var project = await _projectRepository.UpdateDetailsAsync(projectId, name, description, DateTime.UtcNow, cancellationToken);
+
+        return project is null ? null : MapToResponse(project);
+    }
+
+    public Task<bool> DeleteProjectAsync(int projectId, CancellationToken cancellationToken = default)
+    {
+        if (projectId <= 0)
+        {
+            throw new ArgumentException("ProjectId must be greater than zero.", nameof(projectId));
+        }
+
+        return _projectRepository.DeleteAsync(projectId, cancellationToken);
+    }
+
     public async Task<ProjectOverviewDto> GetProjectOverviewAsync(int projectId, CancellationToken cancellationToken = default)
     {
         var project = await GetWorkspaceProjectAsync(projectId, cancellationToken);

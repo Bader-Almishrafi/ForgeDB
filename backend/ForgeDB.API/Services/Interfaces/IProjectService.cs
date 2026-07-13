@@ -9,4 +9,6 @@ public interface IProjectService
     Task<IReadOnlyList<ProjectResponseDto>?> GetProjectsByUserIdAsync(int userId, CancellationToken cancellationToken = default);
     Task<ProjectOverviewDto> GetProjectOverviewAsync(int projectId, CancellationToken cancellationToken = default);
     Task<ProjectExportPackageDto> GetProjectExportPackageAsync(int projectId, CancellationToken cancellationToken = default);
+    Task<ProjectResponseDto?> UpdateProjectAsync(int projectId, ProjectUpdateDto request, CancellationToken cancellationToken = default);
+    Task<bool> DeleteProjectAsync(int projectId, CancellationToken cancellationToken = default);
 }

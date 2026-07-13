@@ -71,4 +71,37 @@ public class ProjectRepository : IProjectRepository
 
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<Project?> UpdateDetailsAsync(int projectId, string name, string? description, DateTime updatedAt, CancellationToken cancellationToken = default)
+    {
+        var project = await _context.Projects
+            .FirstOrDefaultAsync(project => project.Id == projectId, cancellationToken);
+
+        if (project is null)
+        {
+            return null;
+        }
+
+        project.Name = name;
+        project.Description = description;
+        project.UpdatedAt = updatedAt;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return project;
+    }
+
+    public async Task<bool> DeleteAsync(int projectId, CancellationToken cancellationToken = default)
+    {
+        var project = await _context.Projects
+            .FirstOrDefaultAsync(project => project.Id == projectId, cancellationToken);
+
+        if (project is null)
+        {
+            return false;
+        }
+
+        _context.Projects.Remove(project);
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
 }

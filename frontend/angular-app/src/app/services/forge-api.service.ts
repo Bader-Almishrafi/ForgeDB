@@ -23,6 +23,7 @@ import {
   ProjectOverview,
   ProjectCreateRequest,
   ProjectResponse,
+  ProjectUpdateRequest,
   ProjectCleaningSummary,
   QualityConfirmation,
   RegisterRequest,
@@ -47,6 +48,14 @@ export class ForgeApiService {
 
   getProject(projectId: number): Observable<ProjectResponse> {
     return this.http.get<ProjectResponse>(`${this.baseUrl}/api/projects/${projectId}`);
+  }
+
+  updateProject(projectId: number, request: ProjectUpdateRequest): Observable<ProjectResponse> {
+    return this.http.put<ProjectResponse>(`${this.baseUrl}/api/projects/${projectId}`, request);
+  }
+
+  deleteProject(projectId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/api/projects/${projectId}`);
   }
 
   getProjectOverview(projectId: number): Observable<ProjectOverview> {

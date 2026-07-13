@@ -40,6 +40,11 @@ export interface ProjectCreateRequest {
   description?: string | null;
 }
 
+export interface ProjectUpdateRequest {
+  name: string;
+  description?: string | null;
+}
+
 export interface DatasetResponse {
   id: number;
   projectId: number;

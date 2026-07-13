@@ -75,6 +75,44 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    [HttpPut("{projectId:int}")]
+    public async Task<ActionResult<ProjectResponseDto>> Update(int projectId, [FromBody] ProjectUpdateDto request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await EnsureOwnedProjectAsync(projectId, cancellationToken);
+            var project = await _projectService.UpdateProjectAsync(projectId, request, cancellationToken);
+            return project is null ? NotFound(new { message = "Project not found." }) : Ok(project);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
+        }
+    }
+
+    [HttpDelete("{projectId:int}")]
+    public async Task<IActionResult> Delete(int projectId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await EnsureOwnedProjectAsync(projectId, cancellationToken);
+            var deleted = await _projectService.DeleteProjectAsync(projectId, cancellationToken);
+            return deleted ? NoContent() : NotFound(new { message = "Project not found." });
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
+        }
+    }
+
     [HttpGet("{projectId:int}/overview")]
     public async Task<ActionResult<ProjectOverviewDto>> GetOverview(int projectId, CancellationToken cancellationToken)
     {
