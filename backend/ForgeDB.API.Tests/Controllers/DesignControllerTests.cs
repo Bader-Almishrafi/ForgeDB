@@ -34,6 +34,72 @@ public class DesignControllerTests
         Assert.IsType<NoContentResult>(result.Result);
     }
 
+    [Fact]
+    public async Task CreateRelationship_Returns409_WhenExactRelationshipAlreadyExists()
+    {
+        await using var context = new ForgeDbContext(new DbContextOptionsBuilder<ForgeDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var user = new User
+        {
+            FirstName = "Relationship", LastName = "Owner", Email = $"{Guid.NewGuid()}@example.com",
+            PasswordHash = "x", Role = "user", CreatedAt = DateTime.UtcNow
+        };
+        var project = new Project { Name = "Duplicate relationship", User = user, CreatedAt = DateTime.UtcNow };
+        var design = new DesignModel
+        {
+            Project = project,
+            Revision = 4,
+            Status = DesignStatus.Draft,
+            SourceVersionsJson = "{}",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var sourceTable = new DesignTable { DesignModel = design, Name = "orders", Origin = DesignOrigin.Generated };
+        var targetTable = new DesignTable { DesignModel = design, Name = "customers", Origin = DesignOrigin.Generated };
+        var source = new DesignColumn
+        {
+            DesignTable = sourceTable, Name = "customer_id", SqlType = "INTEGER", Ordinal = 0,
+            Origin = DesignOrigin.Generated
+        };
+        var target = new DesignColumn
+        {
+            DesignTable = targetTable, Name = "customer_id", SqlType = "INTEGER", Ordinal = 0,
+            IsPrimaryKey = true, Origin = DesignOrigin.Generated
+        };
+        sourceTable.Columns.Add(source);
+        targetTable.Columns.Add(target);
+        design.Tables.Add(sourceTable);
+        design.Tables.Add(targetTable);
+        design.Relationships.Add(new DesignRelationship
+        {
+            DesignModel = design,
+            FromColumn = source,
+            ToColumn = target,
+            Cardinality = DesignCardinality.ManyToOne,
+            OnDelete = DesignOnDelete.NoAction,
+            Origin = DesignOrigin.User
+        });
+        context.DesignModels.Add(design);
+        await context.SaveChangesAsync();
+        var controller = BuildController(context, user.Id);
+        controller.Request.Headers.IfMatch = "4";
+
+        var result = await controller.CreateRelationship(
+            design.Id,
+            new ForgeDB.API.Models.DTOs.CreateDesignRelationshipRequestDto
+            {
+                FromColumnId = source.Id,
+                ToColumnId = target.Id,
+                Cardinality = DesignCardinality.ManyToOne,
+                OnDelete = DesignOnDelete.NoAction
+            },
+            CancellationToken.None);
+
+        var conflict = Assert.IsType<ConflictObjectResult>(result.Result);
+        Assert.Contains("identical relationship", conflict.Value!.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(4, design.Revision);
+    }
+
     private static DesignController BuildController(ForgeDbContext context, int userId)
     {
         var designRepository = new DesignRepository(context);

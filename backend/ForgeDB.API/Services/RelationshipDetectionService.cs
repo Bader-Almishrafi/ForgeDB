@@ -135,6 +135,33 @@ public class RelationshipDetectionService : IRelationshipDetectionService
             throw new RelationshipSuggestionConflictException("The suggested columns could not be resolved to design columns.");
         }
 
+        if (sourceColumn.Id == targetColumn.Id)
+        {
+            throw new RelationshipSuggestionConflictException("The suggested source and target resolve to the same design column.");
+        }
+
+        if (!Validation.DesignRelationshipRules.IsValidTarget(targetColumn))
+        {
+            var target = $"{targetColumn.DesignTable?.Name ?? suggestion.TargetDataset?.TableName ?? "unknown"}.{targetColumn.Name}";
+            throw new RelationshipSuggestionConflictException(
+                $"Relationship target '{target}' is unavailable because it is neither a Primary Key nor Unique column.");
+        }
+
+        if (!Validation.DesignRelationshipRules.HaveCompatibleTypes(sourceColumn, targetColumn))
+        {
+            throw new RelationshipSuggestionConflictException(
+                $"Suggested relationship columns have incompatible PostgreSQL types '{sourceColumn.SqlType}' and '{targetColumn.SqlType}'.");
+        }
+
+        if (Validation.DesignRelationshipRules.IsDuplicate(
+            design.Relationships,
+            sourceColumn.Id,
+            targetColumn.Id,
+            DesignCardinality.ManyToOne))
+        {
+            throw new RelationshipSuggestionConflictException("An identical relationship already exists in this design.");
+        }
+
         var now = DateTime.UtcNow;
         suggestion.Status = RelationshipSuggestionStatus.Accepted;
         suggestion.DecidedAt = now;
@@ -173,6 +200,11 @@ public class RelationshipDetectionService : IRelationshipDetectionService
         {
             var current = await _designRepository.GetFullByProjectIdAsync(suggestion.ProjectId, track: false, cancellationToken);
             throw new DesignConcurrencyException(current?.Revision ?? design.Revision);
+        }
+        catch (DbUpdateException exception) when (Validation.DesignRelationshipRules.IsUniqueConstraintViolation(exception))
+        {
+            throw new RelationshipSuggestionConflictException(
+                "An identical relationship was created concurrently. Refresh the relationship queue and try again.");
         }
 
         return new AcceptSuggestionResponseDto

@@ -233,4 +233,89 @@ public class RelationshipDetectionServiceAcceptTests
         Assert.Equal(DesignStatus.Draft, updated.Status);
         Assert.Null(updated.ValidatedAt);
     }
+
+    [Fact]
+    public async Task AcceptAsync_NonKeyTargetIsRejectedWithoutMutatingSuggestionRevisionOrValidation()
+    {
+        var seed = await SeedAsync();
+        using (var setupContext = NewContext(seed.DbName))
+        {
+            var target = await setupContext.DesignColumns.SingleAsync(column => column.Name == "id" && column.DesignTable!.Name == "customers");
+            target.IsPrimaryKey = false;
+            target.IsUnique = false;
+            var design = await setupContext.DesignModels.SingleAsync();
+            design.Status = DesignStatus.Valid;
+            design.ValidatedAt = DateTime.UtcNow;
+            await setupContext.SaveChangesAsync();
+        }
+
+        using (var context = NewContext(seed.DbName))
+        {
+            var service = BuildService(context);
+            var exception = await Assert.ThrowsAsync<RelationshipSuggestionConflictException>(() =>
+                service.AcceptAsync(seed.Suggestion1Id, seed.Revision, CancellationToken.None));
+            Assert.Contains("neither a Primary Key nor Unique", exception.Message, StringComparison.Ordinal);
+        }
+
+        using var verify = NewContext(seed.DbName);
+        Assert.Equal(RelationshipSuggestionStatus.Suggested, (await verify.RelationshipSuggestions.FindAsync(seed.Suggestion1Id))!.Status);
+        Assert.Empty(await verify.DesignRelationships.ToListAsync());
+        var unchanged = await verify.DesignModels.SingleAsync();
+        Assert.Equal(seed.Revision, unchanged.Revision);
+        Assert.Equal(DesignStatus.Valid, unchanged.Status);
+        Assert.NotNull(unchanged.ValidatedAt);
+    }
+
+    [Fact]
+    public async Task AcceptAsync_UniqueNonPrimaryTargetSucceeds()
+    {
+        var seed = await SeedAsync();
+        using (var setupContext = NewContext(seed.DbName))
+        {
+            var target = await setupContext.DesignColumns.SingleAsync(column => column.Name == "id" && column.DesignTable!.Name == "customers");
+            target.IsPrimaryKey = false;
+            target.IsUnique = true;
+            await setupContext.SaveChangesAsync();
+        }
+
+        using var context = NewContext(seed.DbName);
+        var response = await BuildService(context).AcceptAsync(seed.Suggestion1Id, seed.Revision, CancellationToken.None);
+
+        Assert.Equal(RelationshipSuggestionStatus.Accepted, response.Suggestion.Status);
+        Assert.Equal(seed.Revision + 1, response.DesignRevision);
+    }
+
+    [Fact]
+    public async Task AcceptAsync_DuplicateRelationshipIsRejectedWithoutMutation()
+    {
+        var seed = await SeedAsync();
+        using (var setupContext = NewContext(seed.DbName))
+        {
+            var design = await setupContext.DesignModels
+                .Include(item => item.Tables).ThenInclude(table => table.Columns)
+                .SingleAsync();
+            var source = design.Tables.Single(table => table.Name == "orders").Columns.Single(column => column.Name == "customer_id");
+            var target = design.Tables.Single(table => table.Name == "customers").Columns.Single(column => column.Name == "id");
+            design.Relationships.Add(new DesignRelationship
+            {
+                DesignModelId = design.Id,
+                FromColumnId = source.Id,
+                ToColumnId = target.Id,
+                Cardinality = DesignCardinality.ManyToOne,
+                OnDelete = DesignOnDelete.NoAction
+            });
+            await setupContext.SaveChangesAsync();
+        }
+
+        using (var context = NewContext(seed.DbName))
+        {
+            await Assert.ThrowsAsync<RelationshipSuggestionConflictException>(() =>
+                BuildService(context).AcceptAsync(seed.Suggestion1Id, seed.Revision, CancellationToken.None));
+        }
+
+        using var verify = NewContext(seed.DbName);
+        Assert.Single(await verify.DesignRelationships.ToListAsync());
+        Assert.Equal(RelationshipSuggestionStatus.Suggested, (await verify.RelationshipSuggestions.FindAsync(seed.Suggestion1Id))!.Status);
+        Assert.Equal(seed.Revision, (await verify.DesignModels.SingleAsync()).Revision);
+    }
 }

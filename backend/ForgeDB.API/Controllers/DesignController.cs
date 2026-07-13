@@ -308,6 +308,10 @@ public class DesignController : ControllerBase
         {
             return Conflict(new ConflictResponseDto { CurrentRevision = exception.CurrentRevision, Message = exception.Message });
         }
+        catch (DesignRelationshipConflictException exception)
+        {
+            return Conflict(new { message = exception.Message });
+        }
     }
 
     private int GetUserId()

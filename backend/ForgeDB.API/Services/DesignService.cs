@@ -501,6 +501,12 @@ public class DesignService : IDesignService
         var toColumn = design.Tables.SelectMany(t => t.Columns).FirstOrDefault(c => c.Id == request.ToColumnId)
             ?? throw new ArgumentException("toColumnId does not reference a column in this design.");
 
+        ValidateRelationshipEndpoints(fromColumn, toColumn);
+        if (DesignRelationshipRules.IsDuplicate(design.Relationships, fromColumn.Id, toColumn.Id, request.Cardinality))
+        {
+            throw new DesignRelationshipConflictException("An identical relationship already exists in this design.");
+        }
+
         design.Relationships.Add(new DesignRelationship
         {
             DesignModelId = design.Id,
@@ -513,7 +519,14 @@ public class DesignService : IDesignService
             Origin = DesignOrigin.User
         });
 
-        return await SaveAndBuildResponseAsync(design, cancellationToken);
+        try
+        {
+            return await SaveAndBuildResponseAsync(design, cancellationToken);
+        }
+        catch (DbUpdateException exception) when (DesignRelationshipRules.IsUniqueConstraintViolation(exception))
+        {
+            throw new DesignRelationshipConflictException("An identical relationship was created concurrently. Refresh the design and try again.");
+        }
     }
 
     public async Task<DesignResponseDto> UpdateRelationshipAsync(int relationshipId, int ifMatchRevision, UpdateDesignRelationshipRequestDto request, CancellationToken cancellationToken = default)
@@ -529,10 +542,28 @@ public class DesignService : IDesignService
         var relationship = design.Relationships.FirstOrDefault(r => r.Id == relationshipId)
             ?? throw new KeyNotFoundException("Design relationship not found.");
 
+        ValidateRelationshipEndpoints(relationship.FromColumn!, relationship.ToColumn!);
+        if (DesignRelationshipRules.IsDuplicate(
+            design.Relationships,
+            relationship.FromColumnId,
+            relationship.ToColumnId,
+            request.Cardinality,
+            relationship.Id))
+        {
+            throw new DesignRelationshipConflictException("Updating this relationship would create an identical relationship.");
+        }
+
         relationship.Cardinality = request.Cardinality;
         relationship.OnDelete = request.OnDelete;
 
-        return await SaveAndBuildResponseAsync(design, cancellationToken);
+        try
+        {
+            return await SaveAndBuildResponseAsync(design, cancellationToken);
+        }
+        catch (DbUpdateException exception) when (DesignRelationshipRules.IsUniqueConstraintViolation(exception))
+        {
+            throw new DesignRelationshipConflictException("An identical relationship was created concurrently. Refresh the design and try again.");
+        }
     }
 
     public async Task<DesignResponseDto> DeleteRelationshipAsync(int relationshipId, int ifMatchRevision, CancellationToken cancellationToken = default)
@@ -730,6 +761,26 @@ public class DesignService : IDesignService
         if (onDelete is not (DesignOnDelete.NoAction or DesignOnDelete.Cascade or DesignOnDelete.SetNull))
         {
             throw new ArgumentException("onDelete must be 'no-action', 'cascade', or 'set-null'.");
+        }
+    }
+
+    private static void ValidateRelationshipEndpoints(DesignColumn fromColumn, DesignColumn toColumn)
+    {
+        if (fromColumn.Id == toColumn.Id)
+        {
+            throw new ArgumentException("A relationship cannot use the same source and target column.");
+        }
+
+        if (!DesignRelationshipRules.IsValidTarget(toColumn))
+        {
+            var target = $"{toColumn.DesignTable?.Name ?? "unknown"}.{toColumn.Name}";
+            throw new ArgumentException($"Relationship target '{target}' must be a Primary Key or Unique column.");
+        }
+
+        if (!DesignRelationshipRules.HaveCompatibleTypes(fromColumn, toColumn))
+        {
+            throw new ArgumentException(
+                $"Relationship columns must use the same PostgreSQL type; source is '{fromColumn.SqlType}' and target is '{toColumn.SqlType}'.");
         }
     }
 

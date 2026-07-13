@@ -262,6 +262,15 @@ public class ForgeDbContext : DbContext
             entity.ToTable("design_relationships");
             entity.HasKey(relationship => relationship.Id);
             entity.HasIndex(relationship => relationship.DesignModelId);
+            entity.HasIndex(relationship => new
+                {
+                    relationship.DesignModelId,
+                    relationship.FromColumnId,
+                    relationship.ToColumnId,
+                    relationship.Cardinality
+                })
+                .HasDatabaseName(Services.Validation.DesignRelationshipRules.UniqueIndexName)
+                .IsUnique();
             entity.HasIndex(relationship => relationship.FromColumnId);
             entity.HasIndex(relationship => relationship.ToColumnId);
             entity.HasIndex(relationship => relationship.SuggestionId);
