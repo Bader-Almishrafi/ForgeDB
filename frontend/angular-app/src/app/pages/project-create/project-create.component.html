@@ -13,12 +13,12 @@
         <li class="relative flex min-w-0 flex-col items-center text-center" [attr.aria-current]="currentStep() === step.number ? 'step' : null">
           @if (!last) {
             <span class="absolute left-1/2 top-4 h-px w-full bg-slate-200 dark:bg-slate-700" aria-hidden="true">
-              <span class="block h-full bg-blue-600 transition-[width]" [class.w-full]="currentStep() > step.number" [class.w-0]="currentStep() <= step.number"></span>
+              <span class="block h-full bg-indigo-600 transition-[width]" [class.w-full]="currentStep() > step.number" [class.w-0]="currentStep() <= step.number"></span>
             </span>
           }
           <span class="relative z-10 grid h-8 w-8 place-items-center rounded-full border text-xs font-bold transition"
-            [class.border-blue-600]="currentStep() >= step.number"
-            [class.bg-blue-600]="currentStep() >= step.number"
+            [class.border-indigo-600]="currentStep() >= step.number"
+            [class.bg-indigo-600]="currentStep() >= step.number"
             [class.text-white]="currentStep() >= step.number"
             [class.border-slate-300]="currentStep() < step.number"
             [class.bg-white]="currentStep() < step.number"
@@ -33,7 +33,7 @@
             }
           </span>
           <span class="relative z-10 mt-2 bg-white px-1 text-xs font-semibold text-slate-500 sm:text-sm dark:bg-slate-900 dark:text-slate-400"
-            [class.text-blue-700]="currentStep() === step.number" [class.dark:text-blue-300]="currentStep() === step.number">
+            [class.text-indigo-700]="currentStep() === step.number" [class.dark:text-indigo-300]="currentStep() === step.number">
             <span class="sm:hidden">{{ step.shortLabel }}</span>
             <span class="hidden sm:inline">{{ step.label }}</span>
           </span>
@@ -118,10 +118,10 @@
             </div>
           </div>
 
-          <aside class="relative overflow-hidden rounded-2xl border border-blue-100 bg-blue-50/70 p-6 dark:border-blue-900 dark:bg-blue-950/25">
-            <div class="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full border border-blue-200/60 dark:border-blue-800/50" aria-hidden="true"></div>
+          <aside class="relative overflow-hidden rounded-2xl border border-indigo-100 bg-indigo-50/70 p-6 dark:border-indigo-900 dark:bg-indigo-950/25">
+            <div class="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full border border-indigo-200/60 dark:border-indigo-800/50" aria-hidden="true"></div>
             <div class="relative">
-              <div class="grid h-11 w-11 place-items-center rounded-xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100 dark:bg-slate-900 dark:text-blue-300 dark:ring-blue-900">
+              <div class="grid h-11 w-11 place-items-center rounded-xl bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100 dark:bg-slate-900 dark:text-indigo-300 dark:ring-indigo-900">
                 <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 6h5l2 2h9v10H4V6Zm3 15h10M9 12h6m-3-3v6"></path></svg>
               </div>
               <h3 class="mt-5 text-lg font-semibold text-slate-900 dark:text-slate-100">What's next?</h3>
@@ -129,15 +129,15 @@
 
               <ol class="mt-6 space-y-4">
                 <li class="flex gap-3">
-                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-600 text-xs font-bold text-white">1</span>
+                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-indigo-600 text-xs font-bold text-white">1</span>
                   <div><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Bring in data</p><p class="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">Upload CSV files or connect to APIs in the future.</p><span class="mt-1 inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-300">API Coming Soon</span></div>
                 </li>
                 <li class="flex gap-3">
-                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">2</span>
+                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">2</span>
                   <div><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Analyze and clean</p><p class="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">Inspect data quality and prepare reliable records.</p></div>
                 </li>
                 <li class="flex gap-3">
-                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">3</span>
+                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">3</span>
                   <div><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Design and connect</p><p class="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">Build the schema and review table relationships.</p></div>
                 </li>
                 <li class="flex gap-3">
@@ -156,13 +156,13 @@
 
           <fieldset class="mt-7 grid gap-4 lg:grid-cols-2">
             <legend class="sr-only">Data source</legend>
-            <label class="relative flex min-h-36 cursor-pointer items-start gap-4 rounded-2xl border-2 border-blue-500 bg-blue-50/70 p-5 shadow-sm transition hover:bg-blue-50 dark:border-blue-500 dark:bg-blue-950/30 dark:hover:bg-blue-950/40">
+            <label class="relative flex min-h-36 cursor-pointer items-start gap-4 rounded-2xl border-2 border-indigo-500 bg-indigo-50/70 p-5 shadow-sm transition hover:bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/40">
               <input type="radio" name="dataSource" value="csv" checked class="sr-only" aria-label="CSV Files">
-              <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100 dark:bg-slate-900 dark:text-blue-300 dark:ring-blue-900">
+              <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100 dark:bg-slate-900 dark:text-indigo-300 dark:ring-indigo-900">
                 <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.7" aria-hidden="true"><path d="M6 2h9l4 4v16H6V2Zm9 0v5h4M9 12h6m-6 4h6"></path></svg>
               </span>
               <span class="min-w-0 flex-1">
-                <span class="flex items-center justify-between gap-3"><span class="text-lg font-semibold text-slate-900 dark:text-slate-100">CSV Files</span><span class="grid h-6 w-6 place-items-center rounded-full bg-blue-600 text-white"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5 fill-none stroke-current" stroke-width="2.5" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg></span></span>
+                <span class="flex items-center justify-between gap-3"><span class="text-lg font-semibold text-slate-900 dark:text-slate-100">CSV Files</span><span class="grid h-6 w-6 place-items-center rounded-full bg-indigo-600 text-white"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5 fill-none stroke-current" stroke-width="2.5" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg></span></span>
                 <span class="mt-2 block text-sm leading-6 text-slate-600 dark:text-slate-400">Upload one or more CSV files from your computer.</span>
               </span>
             </label>
@@ -192,10 +192,10 @@
               </label>
             </div>
 
-            <label for="csv-file-input" class="mt-5 flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white px-5 py-8 text-center transition hover:border-blue-400 hover:bg-blue-50/50 dark:border-slate-600 dark:bg-slate-900 dark:hover:border-blue-600 dark:hover:bg-blue-950/20"
-              [class.border-blue-500]="dragActive()" [class.bg-blue-50]="dragActive()" [class.dark:bg-blue-950]="dragActive()"
+            <label for="csv-file-input" class="mt-5 flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white px-5 py-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-slate-600 dark:bg-slate-900 dark:hover:border-indigo-600 dark:hover:bg-indigo-950/20"
+              [class.border-indigo-500]="dragActive()" [class.bg-indigo-50]="dragActive()" [class.dark:bg-indigo-950]="dragActive()"
               (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
-              <span class="grid h-12 w-12 place-items-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+              <span class="grid h-12 w-12 place-items-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
                 <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.7" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 14v6h14v-6"></path></svg>
               </span>
               <span class="mt-4 text-sm font-semibold text-slate-800 dark:text-slate-200">Drop CSV files here or browse your computer</span>
@@ -219,10 +219,10 @@
                 <div class="max-h-80 overflow-y-auto p-2">
                   @for (item of csvFiles(); track item.id; let index = $index) {
                     <div class="mb-1 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3 py-3 transition last:mb-0"
-                      [class.border-blue-300]="selectedFileIndex() === index" [class.bg-blue-50]="selectedFileIndex() === index"
-                      [class.dark:border-blue-700]="selectedFileIndex() === index" [class.dark:bg-blue-950/35]="selectedFileIndex() === index"
+                      [class.border-indigo-300]="selectedFileIndex() === index" [class.bg-indigo-50]="selectedFileIndex() === index"
+                      [class.dark:border-indigo-700]="selectedFileIndex() === index" [class.dark:bg-indigo-950/35]="selectedFileIndex() === index"
                       [class.border-transparent]="selectedFileIndex() !== index">
-                      <button type="button" class="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-600 hover:bg-blue-100 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-blue-950"
+                      <button type="button" class="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-600 hover:bg-indigo-100 hover:text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-500 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-indigo-950"
                         [attr.aria-label]="'Select ' + item.file.name" (click)="selectFile(index)">{{ index + 1 }}</button>
                       <button type="button" class="min-w-0 text-left" [attr.aria-label]="'View details for ' + item.file.name" (click)="selectFile(index)">
                         <span class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-200" [title]="item.file.name">{{ item.file.name }}</span>
@@ -246,7 +246,7 @@
                       <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ formatSize(item.file.size) }} · Browser file metadata</p>
                     </div>
                     <span class="inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-                      [class]="item.state === 'failed' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300' : item.state === 'uploaded' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' : item.state === 'uploading' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'">
+                      [class]="item.state === 'failed' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300' : item.state === 'uploaded' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' : item.state === 'uploading' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'">
                       <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>{{ item.state }}
                     </span>
                   </div>
@@ -277,13 +277,13 @@
           <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">Confirm the project details and files. Nothing is sent until you select Create Project.</p>
 
           @if (processing()) {
-            <div class="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900 dark:bg-blue-950/30" role="status" aria-live="polite" aria-busy="true">
+            <div class="mt-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 dark:border-indigo-900 dark:bg-indigo-950/30" role="status" aria-live="polite" aria-busy="true">
               <div class="flex items-center gap-3">
-                <svg viewBox="0 0 24 24" class="h-5 w-5 animate-spin fill-none stroke-blue-700 dark:stroke-blue-300" stroke-width="2" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path></svg>
+                <svg viewBox="0 0 24 24" class="h-5 w-5 animate-spin fill-none stroke-indigo-700 dark:stroke-indigo-300" stroke-width="2" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path></svg>
                 <div>
-                  <p class="font-semibold text-blue-900 dark:text-blue-200">{{ submissionState() === 'creating' ? 'Creating project…' : 'Uploading CSV files…' }}</p>
+                  <p class="font-semibold text-indigo-900 dark:text-indigo-200">{{ submissionState() === 'creating' ? 'Creating project…' : 'Uploading CSV files…' }}</p>
                   @if (submissionState() === 'uploading') {
-                    <p class="mt-1 text-sm text-blue-700 dark:text-blue-300">Processed {{ uploadCompleted() }} of {{ uploadTotal() }} files. Uploads run one at a time.</p>
+                    <p class="mt-1 text-sm text-indigo-700 dark:text-indigo-300">Processed {{ uploadCompleted() }} of {{ uploadTotal() }} files. Uploads run one at a time.</p>
                   }
                 </div>
               </div>
@@ -294,7 +294,7 @@
             <section class="rounded-2xl border border-slate-200 p-5 dark:border-slate-700">
               <div class="flex items-center justify-between gap-3">
                 <h3 class="font-semibold text-slate-900 dark:text-slate-100">Project details</h3>
-                <button type="button" class="text-sm font-semibold text-blue-700 hover:text-blue-800 disabled:opacity-50 dark:text-blue-400 dark:hover:text-blue-300" [disabled]="processing() || createdProject()" (click)="currentStep.set(1)">Edit</button>
+                <button type="button" class="text-sm font-semibold text-indigo-700 hover:text-indigo-800 disabled:opacity-50 dark:text-indigo-400 dark:hover:text-indigo-300" [disabled]="processing() || createdProject()" (click)="currentStep.set(1)">Edit</button>
               </div>
               <dl class="mt-5 space-y-5">
                 <div><dt class="text-xs font-semibold uppercase tracking-wide text-slate-400">Project name</dt><dd class="mt-1 break-words text-sm font-semibold text-slate-800 dark:text-slate-200">{{ projectForm.controls.name.value.trim() }}</dd></div>
@@ -306,14 +306,14 @@
             <section class="min-w-0 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700" aria-labelledby="review-files-heading">
               <header class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-800/60">
                 <div><h3 id="review-files-heading" class="font-semibold text-slate-900 dark:text-slate-100">CSV files</h3><p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{{ csvFiles().length }} selected</p></div>
-                <button type="button" class="text-sm font-semibold text-blue-700 hover:text-blue-800 disabled:opacity-50 dark:text-blue-400 dark:hover:text-blue-300" [disabled]="processing() || createdProject()" (click)="currentStep.set(2)">Edit</button>
+                <button type="button" class="text-sm font-semibold text-indigo-700 hover:text-indigo-800 disabled:opacity-50 dark:text-indigo-400 dark:hover:text-indigo-300" [disabled]="processing() || createdProject()" (click)="currentStep.set(2)">Edit</button>
               </header>
               <ul class="max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
                 @for (item of csvFiles(); track item.id; let index = $index) {
                   <li class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-5 py-3.5">
-                    <span class="grid h-8 w-8 place-items-center rounded-lg bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">{{ index + 1 }}</span>
+                    <span class="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 text-xs font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">{{ index + 1 }}</span>
                     <span class="min-w-0"><span class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-200" [title]="item.file.name">{{ item.file.name }}</span><span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ formatSize(item.file.size) }}</span></span>
-                    <span class="text-xs font-semibold capitalize" [class.text-rose-600]="item.state === 'failed'" [class.text-emerald-600]="item.state === 'uploaded'" [class.text-blue-600]="item.state === 'uploading'" [class.text-slate-500]="item.state === 'selected'">{{ item.state }}</span>
+                    <span class="text-xs font-semibold capitalize" [class.text-rose-600]="item.state === 'failed'" [class.text-emerald-600]="item.state === 'uploaded'" [class.text-indigo-600]="item.state === 'uploading'" [class.text-slate-500]="item.state === 'selected'">{{ item.state }}</span>
                   </li>
                 }
               </ul>

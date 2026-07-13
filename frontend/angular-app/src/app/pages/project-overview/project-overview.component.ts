@@ -54,6 +54,11 @@ export class ProjectOverviewComponent implements OnInit {
   readonly datasetSearch = signal('');
   readonly projectAlerts = signal<AppNotification[]>([]);
   readonly recentActivity = signal<RecentActivity[]>([]);
+  readonly editingProject = signal(false);
+  readonly savingProjectEdit = signal(false);
+  readonly projectEditError = signal('');
+  editProjectName = '';
+  editProjectDescription = '';
   projectId = 0;
 
   readonly selectedDataset = computed(() => this.datasets().find((dataset) => dataset.id === this.selectedDatasetId()) ?? null);
@@ -217,6 +222,39 @@ export class ProjectOverviewComponent implements OnInit {
 
   dismissNavigationNotice(): void {
     this.navigationNotice.set('');
+  }
+
+  startEditProject(): void {
+    const current = this.project();
+    if (!current) return;
+    this.editProjectName = current.name;
+    this.editProjectDescription = current.description ?? '';
+    this.projectEditError.set('');
+    this.editingProject.set(true);
+  }
+
+  cancelEditProject(): void {
+    this.editingProject.set(false);
+    this.projectEditError.set('');
+  }
+
+  saveProjectEdit(): void {
+    const name = this.editProjectName.trim();
+    if (!name || this.savingProjectEdit()) {
+      return;
+    }
+    this.savingProjectEdit.set(true);
+    this.projectEditError.set('');
+    this.api.updateProject(this.projectId, { name, description: this.editProjectDescription.trim() || null })
+      .pipe(finalize(() => this.savingProjectEdit.set(false)))
+      .subscribe({
+        next: (updated) => {
+          this.project.set(updated);
+          this.workflow.setProject(updated);
+          this.editingProject.set(false);
+        },
+        error: (error: unknown) => this.projectEditError.set(this.errorMessage(error, 'Unable to update the project.')),
+      });
   }
 
   private initializeSelection(datasets: DatasetResponse[]): void {
