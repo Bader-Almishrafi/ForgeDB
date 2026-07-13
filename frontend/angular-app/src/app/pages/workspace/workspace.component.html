@@ -1,107 +1,166 @@
-<section>
-  <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+<section class="h-full flex flex-col bg-slate-50 dark:bg-[#0d1117] transition-colors duration-300 min-h-[calc(100vh-80px)] -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8 relative">
+  <!-- Subtle decorative background element for glassmorphism effect -->
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent pointer-events-none"></div>
+
+  <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between relative z-10">
     <div>
-      <p class="mb-3 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Projects / Workspace</p>
-      <h1 class="page-title">{{ project()?.name || 'Project Workspace' }}</h1>
-      <p class="page-subtitle">A guided workspace for upload, validation, analysis, schema review, and deployment SQL.</p>
+      <p class="mb-2 text-sm font-semibold text-slate-500 dark:text-[#8a99ad] uppercase tracking-wider transition-colors duration-300">Projects / Workspace</p>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight transition-colors duration-300">{{ project()?.name || 'Project Workspace' }}</h1>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-2xl transition-colors duration-300">A guided workspace for upload, validation, analysis, schema review, and deployment SQL.</p>
     </div>
-    <div class="flex flex-wrap gap-3">
-      <button type="button" class="btn-secondary" (click)="loadWorkspace()" [disabled]="loading()">Refresh</button>
-      <a [routerLink]="['/projects', projectId, 'upload']" class="btn-primary">Upload Dataset</a>
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="button" class="flex items-center gap-2 rounded-xl bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-5 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm" (click)="loadWorkspace()" [disabled]="loading()">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        Refresh
+      </button>
+      <button type="button" class="flex items-center gap-2 rounded-xl bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-5 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" (click)="analyzeAll()" [disabled]="analyzingAll() || !hasPendingAnalysis()">
+        @if (analyzingAll()) {
+          <svg class="w-4 h-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          Analyzing...
+        } @else {
+          <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+          Analyze All
+        }
+      </button>
+      <a [routerLink]="['/projects', projectId, 'upload']" class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-lg shadow-indigo-500/30 hover:scale-[1.02]">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+        Upload Dataset
+      </a>
     </div>
   </div>
 
   @if (errorMessage) {
-    <p class="mb-5 rounded-xl border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors">{{ errorMessage }}</p>
+    <p class="mb-8 rounded-xl border border-rose-200/50 dark:border-rose-900/30 bg-rose-50/80 dark:bg-rose-900/10 backdrop-blur px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors shadow-sm relative z-10">
+      {{ errorMessage }}
+    </p>
   }
 
-  <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-    <div class="space-y-5">
-      <article class="card p-5">
+  <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] relative z-10">
+    <div class="space-y-6">
+      
+      <!-- Workflow Progress -->
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300">
         <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900 dark:text-white transition-colors duration-300">Workflow Progress</h2>
-            <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Project assets unlock each product step from CSV import to database package.</p>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300 flex items-center gap-2">
+              <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+              Workflow Progress
+            </h2>
+            <p class="mt-1 text-sm font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Project assets unlock each product step from CSV import to database package.</p>
           </div>
-          <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+          <span class="rounded-xl bg-indigo-100/80 dark:bg-indigo-500/20 px-4 py-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 shadow-sm border border-indigo-200/50 dark:border-indigo-500/30 uppercase tracking-wider">
             Next: {{ nextRecommendedStep() }}
           </span>
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-9">
           @for (step of workflowSteps; track step.key) {
-            <div class="rounded-xl border p-4"
-              [class]="workspaceStepState(step.key) === 'locked' ? 'border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 text-slate-400 dark:text-slate-500 transition-colors duration-300' : workspaceStepState(step.key) === 'done' ? 'border-emerald-200 dark:border-emerald-900/30 transition-colors bg-emerald-50 text-emerald-800' : 'border-indigo-200 bg-indigo-50 text-indigo-800'">
-              <p class="text-xs font-semibold uppercase tracking-wide">{{ workspaceStepState(step.key) }}</p>
-              <p class="mt-1 font-semibold">{{ step.label }}</p>
+            <div class="rounded-xl border p-4 transition-all duration-300 flex flex-col justify-center items-center text-center shadow-sm"
+              [class]="workspaceStepState(step.key) === 'locked' ? 'border-white/20 dark:border-white/5 bg-white/40 dark:bg-[#0d1117]/40 text-slate-400 dark:text-[#8a99ad]/60 backdrop-blur' : workspaceStepState(step.key) === 'done' ? 'border-emerald-200/50 dark:border-emerald-500/30 bg-emerald-50/80 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 shadow-emerald-500/10 backdrop-blur' : 'border-indigo-300/50 dark:border-indigo-500/40 bg-indigo-50/90 dark:bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 shadow-md scale-[1.02] backdrop-blur'">
+              <p class="text-[10px] font-bold uppercase tracking-wider mb-1.5 opacity-80 flex items-center gap-1">
+                @if (workspaceStepState(step.key) === 'done') {
+                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                } @else if (workspaceStepState(step.key) === 'locked') {
+                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                }
+                {{ workspaceStepState(step.key) }}
+              </p>
+              <p class="font-bold text-sm leading-tight">{{ step.label }}</p>
             </div>
           }
         </div>
       </article>
 
       @if (!currentDataset()) {
-        <article class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-          <h2 class="font-semibold text-amber-950">Dataset required</h2>
-          <p class="mt-1 text-sm text-amber-700">Upload a CSV to unlock preview, analysis, dashboard, schema, ER diagram, and deployment outputs.</p>
+        <article class="rounded-2xl border border-amber-200/50 dark:border-amber-500/30 bg-amber-50/80 dark:bg-amber-500/10 backdrop-blur-xl p-5 shadow-sm flex items-start gap-4">
+          <div class="bg-amber-100 dark:bg-amber-500/20 p-2 rounded-lg text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
+          <div>
+            <h2 class="font-bold text-amber-900 dark:text-amber-400">Dataset required</h2>
+            <p class="mt-1 text-sm font-medium text-amber-700 dark:text-amber-500/80">Upload a CSV to unlock preview, analysis, dashboard, schema, ER diagram, and deployment outputs.</p>
+          </div>
         </article>
       } @else if (!schema()) {
-        <article class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-          <h2 class="font-semibold text-amber-950">Schema not generated yet</h2>
-          <p class="mt-1 text-sm text-amber-700">Run analysis, then generate a schema to unlock the ER diagram, relationships, and deployment package.</p>
+        <article class="rounded-2xl border border-amber-200/50 dark:border-amber-500/30 bg-amber-50/80 dark:bg-amber-500/10 backdrop-blur-xl p-5 shadow-sm flex items-start gap-4">
+          <div class="bg-amber-100 dark:bg-amber-500/20 p-2 rounded-lg text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </div>
+          <div>
+            <h2 class="font-bold text-amber-900 dark:text-amber-400">Schema not generated yet</h2>
+            <p class="mt-1 text-sm font-medium text-amber-700 dark:text-amber-500/80">Run analysis, then generate a schema to unlock the ER diagram, relationships, and deployment package.</p>
+          </div>
         </article>
       }
 
-      <article class="card p-5">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300">
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900 dark:text-white transition-colors duration-300">Project Datasets</h2>
-            <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">All uploaded files remain available. Select any dataset to preview, analyze, dashboard, or generate schema.</p>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300 flex items-center gap-2">
+              <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+              Project Datasets
+            </h2>
+            <p class="mt-1 text-sm font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">All uploaded files remain available. Select any dataset to preview, analyze, dashboard, or generate schema.</p>
           </div>
           @if (currentDataset(); as dataset) {
-            <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+            <span class="rounded-xl bg-indigo-100/80 dark:bg-indigo-500/20 border border-indigo-200/50 dark:border-indigo-500/30 px-3 py-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 shadow-sm uppercase tracking-wider">
               Selected: {{ dataset.tableName }}
             </span>
           }
         </div>
 
         @if (loading()) {
-          <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Loading workspace...</p>
+          <div class="py-12 flex flex-col items-center justify-center text-slate-500 dark:text-[#8a99ad]">
+            <svg class="w-10 h-10 mb-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <p class="text-sm font-medium">Loading workspace...</p>
+          </div>
         } @else if (datasets().length === 0) {
-          <div class="rounded-2xl border border-dashed border-slate-300 dark:border-[#313d4f] transition-colors duration-300 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-8 text-center">
-            <h3 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">No dataset uploaded yet</h3>
-            <p class="mt-2 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Upload a CSV to unlock preview, analysis, dashboard, and schema steps.</p>
-            <a [routerLink]="['/projects', projectId, 'upload']" class="btn-primary mt-5">Upload First Dataset</a>
+          <div class="rounded-2xl border border-dashed border-slate-300 dark:border-[#30363d] bg-white/40 dark:bg-[#0d1117]/40 backdrop-blur p-8 text-center transition-colors duration-300 shadow-sm">
+            <h3 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">No dataset uploaded yet</h3>
+            <p class="mt-2 text-sm font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Upload a CSV to unlock preview, analysis, dashboard, and schema steps.</p>
+            <a [routerLink]="['/projects', projectId, 'upload']" class="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 text-sm font-bold text-white hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-lg shadow-indigo-500/30 hover:scale-[1.02]">
+              Upload First Dataset
+            </a>
           </div>
         } @else {
-          <div class="grid gap-3 lg:grid-cols-2">
+          <div class="grid gap-5 lg:grid-cols-2">
             @for (dataset of datasets(); track dataset.id) {
-              <section class="rounded-2xl border p-4 transition"
-                [class]="isSelectedDataset(dataset) ? 'border-indigo-300 bg-indigo-50/60 dark:bg-[#3c50e0]/20 transition-colors duration-300 ring-2 ring-indigo-100' : 'border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 bg-white dark:bg-[#24303f] transition-colors duration-300'">
-                <div class="flex items-start justify-between gap-3">
+              <section class="rounded-2xl border p-5 transition-all duration-300 relative overflow-hidden group cursor-pointer"
+                [class]="isSelectedDataset(dataset) ? 'border-indigo-300/60 dark:border-indigo-500/50 bg-indigo-50/70 dark:bg-indigo-500/10 shadow-lg scale-[1.01] backdrop-blur ring-1 ring-indigo-200/50' : 'border-white/60 dark:border-white/5 bg-white/60 dark:bg-[#0d1117]/60 shadow-sm hover:shadow-md hover:border-indigo-200/50 dark:hover:border-indigo-500/30 backdrop-blur'"
+                (click)="selectDataset(dataset)">
+                
+                @if (isSelectedDataset(dataset)) {
+                  <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none"></div>
+                  <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                }
+
+                <div class="flex items-start justify-between gap-3 relative z-10">
                   <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Dataset #{{ dataset.id }}</p>
-                    <p class="mt-1 font-semibold text-slate-900 dark:text-white transition-colors duration-300">{{ dataset.tableName }}</p>
-                    <p class="mt-1 text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">{{ dataset.sourceName || dataset.sourceType }} / {{ dataset.createdAt | date:'short' }}</p>
+                    <p class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Dataset #{{ dataset.id }}</p>
+                    <p class="mt-1 text-lg font-bold text-slate-900 dark:text-white transition-colors duration-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">{{ dataset.tableName }}</p>
+                    <p class="mt-1 text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300 flex items-center gap-1.5">
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      {{ dataset.sourceName || dataset.sourceType }} / {{ dataset.createdAt | date:'short' }}
+                    </p>
                   </div>
-                  <span [class]="datasetStatusClass(dataset)">{{ dataset.status }}</span>
+                  <span class="px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider rounded-lg shadow-sm border border-black/5 dark:border-white/5" [ngClass]="datasetStatusClass(dataset)">{{ dataset.status }}</span>
                 </div>
-                <div class="mt-4 grid grid-cols-4 gap-2 text-center text-xs">
-                  <div class="rounded-lg bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-2"><strong class="block text-slate-900 dark:text-white transition-colors duration-300">{{ dataset.rowCount }}</strong>Rows</div>
-                  <div class="rounded-lg bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-2"><strong class="block text-slate-900 dark:text-white transition-colors duration-300">{{ dataset.columnCount }}</strong>Cols</div>
-                  <div class="rounded-lg bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-2"><strong class="block text-slate-900 dark:text-white transition-colors duration-300">{{ dataset.missingValuesCount }}</strong>Missing</div>
-                  <div class="rounded-lg bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-2"><strong class="block text-slate-900 dark:text-white transition-colors duration-300">{{ dataset.duplicateRowsCount }}</strong>Dupes</div>
+                <div class="mt-5 grid grid-cols-4 gap-2 text-center text-xs relative z-10">
+                  <div class="rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 p-2 shadow-sm"><strong class="block text-lg text-slate-900 dark:text-white font-light">{{ dataset.rowCount | number }}</strong><span class="text-slate-500 dark:text-[#8a99ad] font-semibold">Rows</span></div>
+                  <div class="rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 p-2 shadow-sm"><strong class="block text-lg text-slate-900 dark:text-white font-light">{{ dataset.columnCount }}</strong><span class="text-slate-500 dark:text-[#8a99ad] font-semibold">Cols</span></div>
+                  <div class="rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 p-2 shadow-sm"><strong class="block text-lg text-slate-900 dark:text-white font-light" [ngClass]="dataset.missingValuesCount > 0 ? 'text-rose-500 dark:text-rose-400' : ''">{{ dataset.missingValuesCount | number }}</strong><span class="text-slate-500 dark:text-[#8a99ad] font-semibold">Missing</span></div>
+                  <div class="rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 p-2 shadow-sm"><strong class="block text-lg text-slate-900 dark:text-white font-light" [ngClass]="dataset.duplicateRowsCount > 0 ? 'text-amber-500 dark:text-amber-400' : ''">{{ dataset.duplicateRowsCount | number }}</strong><span class="text-slate-500 dark:text-[#8a99ad] font-semibold">Dupes</span></div>
                 </div>
-                <div class="mt-4 flex flex-wrap gap-2">
-                  <button type="button" class="btn-secondary py-2" (click)="selectDataset(dataset)">
-                    {{ isSelectedDataset(dataset) ? 'Selected' : 'Select' }}
-                  </button>
-                  <a [routerLink]="['/datasets', dataset.id, 'preview']" class="btn-secondary py-2" (click)="selectDataset(dataset)">Preview</a>
-                  <a [routerLink]="['/datasets', dataset.id, 'explorer']" class="btn-secondary py-2" (click)="selectDataset(dataset)">Explore</a>
-                  <a [routerLink]="['/datasets', dataset.id, 'analyze']" class="btn-secondary py-2" (click)="selectDataset(dataset)">Analyze</a>
-                  <a [routerLink]="['/datasets', dataset.id, 'profile']" class="btn-secondary py-2" (click)="selectDataset(dataset)">Profile</a>
-                  <a [routerLink]="['/datasets', dataset.id, 'schema']" [queryParams]="schemaQueryParams(dataset)" class="btn-secondary py-2"
-                    (click)="selectDataset(dataset)">{{ schemaActionLabel(dataset) }}</a>
-                </div>
+                
+                @if (isSelectedDataset(dataset)) {
+                  <div class="mt-5 grid grid-cols-3 gap-2 relative z-10" (click)="$event.stopPropagation()">
+                    <a [routerLink]="['/datasets', dataset.id, 'preview']" class="text-center rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 px-2 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all shadow-sm">Preview</a>
+                    <a [routerLink]="['/datasets', dataset.id, 'explorer']" class="text-center rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 px-2 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all shadow-sm">Explore</a>
+                    <a [routerLink]="['/datasets', dataset.id, 'analyze']" class="text-center rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 px-2 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all shadow-sm">Analyze</a>
+                    <a [routerLink]="['/datasets', dataset.id, 'dashboard']" class="text-center rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 px-2 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all shadow-sm">Dashboard</a>
+                    <a [routerLink]="['/datasets', dataset.id, 'schema']" [queryParams]="schemaQueryParams(dataset)" class="col-span-2 text-center rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 px-2 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all shadow-sm">{{ schemaActionLabel(dataset) }}</a>
+                  </div>
+                }
               </section>
             }
           </div>
@@ -109,33 +168,64 @@
       </article>
     </div>
 
-    <aside class="space-y-5">
-      <article class="card p-5">
-        <h2 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">Project Summary</h2>
-        <div class="mt-4 space-y-3 text-sm">
-          <div><p class="text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Description</p><p class="font-medium text-slate-800">{{ project()?.description || 'No description yet.' }}</p></div>
-          <div><p class="text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Created</p><p class="font-medium text-slate-800">{{ project()?.createdAt | date:'medium' }}</p></div>
-          <div><p class="text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Datasets</p><p class="font-medium text-slate-800">{{ datasets().length }}</p></div>
-          <div><p class="text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Schema</p><p class="font-medium text-slate-800">{{ schema()?.schemaName || 'Not generated' }}</p></div>
+    <!-- Sidebar Guidelines -->
+    <aside class="space-y-6">
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300 sticky top-6">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white transition-colors duration-300 border-b border-slate-200/50 dark:border-[#30363d]/50 pb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          Project Info
+        </h2>
+        <div class="mt-5 space-y-4 text-sm">
+          <div class="bg-white/50 dark:bg-[#0d1117]/50 rounded-xl p-3 border border-white/40 dark:border-white/5">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] mb-1">Description</p>
+            <p class="font-medium text-slate-800 dark:text-slate-200">{{ project()?.description || 'No description yet.' }}</p>
+          </div>
+          <div class="bg-white/50 dark:bg-[#0d1117]/50 rounded-xl p-3 border border-white/40 dark:border-white/5">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] mb-1">Created</p>
+            <p class="font-medium text-slate-800 dark:text-slate-200">{{ project()?.createdAt | date:'medium' }}</p>
+          </div>
+          <div class="bg-white/50 dark:bg-[#0d1117]/50 rounded-xl p-3 border border-white/40 dark:border-white/5">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] mb-1">Datasets</p>
+            <p class="font-bold text-indigo-600 dark:text-indigo-400 text-xl">{{ datasets().length }}</p>
+          </div>
+          <div class="bg-white/50 dark:bg-[#0d1117]/50 rounded-xl p-3 border border-white/40 dark:border-white/5">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] mb-1">Schema</p>
+            <p class="font-medium text-slate-800 dark:text-slate-200">
+              @if (schema()) {
+                <span class="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                  {{ schema()?.schemaName }}
+                </span>
+              } @else {
+                <span class="text-amber-600 dark:text-amber-400 italic">Not generated</span>
+              }
+            </p>
+          </div>
         </div>
       </article>
 
-      <article class="card p-5">
-        <h2 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">Relationship Readiness</h2>
-        <p class="mt-1 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Key-like and matching columns across real project datasets.</p>
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white transition-colors duration-300 flex items-center gap-2">
+          <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+          Relationship Readiness
+        </h2>
+        <p class="mt-2 text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Key-like and matching columns across real project datasets.</p>
         @if (relationshipReadiness().length === 0) {
-          <div class="mt-4 rounded-2xl border border-dashed border-slate-300 dark:border-[#313d4f] transition-colors duration-300 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-4 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">
+          <div class="mt-4 rounded-xl border border-dashed border-slate-300 dark:border-[#30363d] bg-white/40 dark:bg-[#0d1117]/40 backdrop-blur p-4 text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300 text-center">
             Upload or select datasets to inspect columns for future relationship mapping.
           </div>
         } @else {
-          <div class="mt-4 space-y-3">
+          <div class="mt-5 space-y-3">
             @for (item of relationshipReadiness(); track item.columnName) {
-              <div class="rounded-xl border border-slate-100 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-3">
-                <p class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">{{ item.columnName }}</p>
-                <p class="mt-1 text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">{{ item.reason }}</p>
-                <div class="mt-2 flex flex-wrap gap-1.5">
+              <div class="rounded-xl border border-white/60 dark:border-white/5 bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur p-4 transition-colors shadow-sm">
+                <p class="font-bold text-slate-900 dark:text-white transition-colors duration-300 flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  {{ item.columnName }}
+                </p>
+                <p class="mt-1.5 text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300 italic">{{ item.reason }}</p>
+                <div class="mt-3 flex flex-wrap gap-1.5">
                   @for (dataset of item.datasets; track dataset.id) {
-                    <span class="rounded-full bg-white dark:bg-[#24303f] transition-colors duration-300 px-2 py-1 text-[11px] font-semibold text-slate-600 dark:text-[#aeb7c0] transition-colors duration-300">{{ dataset.tableName }}</span>
+                    <span class="rounded-lg bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 px-2 py-1 text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider shadow-sm">{{ dataset.tableName }}</span>
                   }
                 </div>
               </div>
@@ -144,30 +234,44 @@
         }
       </article>
 
-      <article class="card p-5">
-        <h2 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">Quick Actions</h2>
-        <div class="mt-4 space-y-2">
-          <a [routerLink]="['/projects', projectId, 'upload']" class="btn-secondary w-full justify-start">Upload dataset</a>
-          @if (currentDataset(); as dataset) {
-            <a [routerLink]="['/datasets', dataset.id, 'preview']" class="btn-secondary w-full justify-start">Preview and validate</a>
-            <a [routerLink]="['/datasets', dataset.id, 'analyze']" class="btn-secondary w-full justify-start">Analyze dataset</a>
-            <a [routerLink]="['/datasets', dataset.id, 'dashboard']" class="btn-secondary w-full justify-start">Open dashboard</a>
-            <a [routerLink]="['/datasets', dataset.id, 'schema']" class="btn-secondary w-full justify-start">Review schema</a>
-          } @else {
-            <button class="btn-secondary w-full justify-start" disabled>Preview and validate</button>
-            <button class="btn-secondary w-full justify-start" disabled>Analyze dataset</button>
-            <button class="btn-secondary w-full justify-start" disabled>Open dashboard</button>
-            <button class="btn-secondary w-full justify-start" disabled>Review schema</button>
-          }
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white transition-colors duration-300 flex items-center gap-2">
+          <svg class="w-5 h-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          Quick Actions
+        </h2>
+        <div class="mt-5 space-y-2">
+          <a [routerLink]="['/projects', projectId, 'upload']" class="flex items-center justify-between w-full rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all shadow-sm group">
+            Upload dataset
+            <svg class="w-4 h-4 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          </a>
+          
           @if (schema(); as currentSchema) {
             <a [routerLink]="['/datasets', currentSchema.datasetId, 'schema']" [queryParams]="{ schemaId: currentSchema.schemaId, tab: 'er' }"
-              class="btn-secondary w-full justify-start">View ER diagram</a>
-            <a [routerLink]="['/schemas', currentSchema.schemaId, 'relationships']" class="btn-secondary w-full justify-start">Edit relationships</a>
-            <a [routerLink]="['/schemas', currentSchema.schemaId, 'deploy']" class="btn-primary w-full">Generate deployment SQL</a>
+              class="flex items-center justify-between w-full rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all shadow-sm group">
+              View ER diagram
+              <svg class="w-4 h-4 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </a>
+            <a [routerLink]="['/schemas', currentSchema.schemaId, 'relationships']" class="flex items-center justify-between w-full rounded-xl bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-500/30 transition-all shadow-sm group">
+              Edit relationships
+              <svg class="w-4 h-4 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </a>
+            <a [routerLink]="['/schemas', currentSchema.schemaId, 'deploy']" class="flex items-center justify-between w-full rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-3 text-sm font-bold text-white hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-lg shadow-indigo-500/30 hover:scale-[1.02] mt-4">
+              Generate deployment SQL
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+            </a>
           } @else {
-            <button class="btn-secondary w-full justify-start" disabled>View ER diagram</button>
-            <button class="btn-secondary w-full justify-start" disabled>Edit relationships</button>
-            <button class="btn-primary w-full" disabled>Generate deployment SQL</button>
+            <button class="flex items-center justify-between w-full rounded-xl bg-white/40 dark:bg-[#21262d]/40 border border-slate-200/30 dark:border-[#30363d]/30 px-4 py-3 text-sm font-bold text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-sm" disabled>
+              View ER diagram
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            </button>
+            <button class="flex items-center justify-between w-full rounded-xl bg-white/40 dark:bg-[#21262d]/40 border border-slate-200/30 dark:border-[#30363d]/30 px-4 py-3 text-sm font-bold text-slate-400 dark:text-slate-500 cursor-not-allowed shadow-sm" disabled>
+              Edit relationships
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            </button>
+            <button class="flex items-center justify-between w-full rounded-xl bg-indigo-500/50 dark:bg-indigo-600/50 px-4 py-3 text-sm font-bold text-white/70 cursor-not-allowed shadow-sm mt-4" disabled>
+              Generate deployment SQL
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            </button>
           }
         </div>
       </article>

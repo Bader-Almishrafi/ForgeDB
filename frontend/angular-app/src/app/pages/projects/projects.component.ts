@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,7 +11,7 @@ import { WorkflowStateService } from '../../services/workflow-state.service';
 @Component({
   selector: 'app-projects',
   standalone: true,
-  imports: [DatePipe, FormsModule],
+  imports: [CommonModule, DatePipe, FormsModule],
   templateUrl: './projects.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

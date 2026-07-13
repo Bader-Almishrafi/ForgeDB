@@ -1,15 +1,15 @@
-import { NgClass } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { ApiErrorBody, ChartRecommendation, DashboardResponse, DashboardTopValues, DatasetAnalysisResponse, NumericColumnStats, ValueFrequency } from '../../services/api.models';
+import { ApiErrorBody, ChartRecommendation, DashboardResponse, DashboardTopValues, DatasetAnalysisResponse, NumericColumnStats, ValueFrequency, DatasetResponse } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [NgClass, RouterLink],
+  imports: [CommonModule, RouterLink],
   templateUrl: './dashboard.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -28,16 +28,37 @@ export class DashboardComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private workflow: WorkflowStateService,
+    private location: Location
   ) {}
 
-  ngOnInit(): void {
-    this.datasetId = Number(this.route.snapshot.paramMap.get('datasetId'));
-    if (!Number.isFinite(this.datasetId) || this.datasetId <= 0) {
-      this.router.navigate(['/projects']);
-      return;
-    }
+  readonly datasets = signal<DatasetResponse[]>([]);
 
-    this.loadDashboard();
+  ngOnInit(): void {
+    this.route.paramMap.subscribe(params => {
+      this.datasetId = Number(params.get('datasetId'));
+      if (!Number.isFinite(this.datasetId) || this.datasetId <= 0) {
+        this.router.navigate(['/projects']);
+        return;
+      }
+      this.loadDashboard();
+    });
+
+    if (this.workflow.projectId()) {
+      this.api.getProjectDatasets(this.workflow.projectId()!).subscribe(ds => {
+        this.datasets.set(ds);
+      });
+    }
+  }
+
+  onDatasetSelect(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    if (select.value) {
+      this.router.navigate(['/datasets', select.value, 'dashboard']);
+    }
+  }
+
+  goBack(): void {
+    this.location.back();
   }
 
   loadDashboard(): void {

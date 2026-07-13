@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiErrorBody, DatasetPreview } from '../../services/api.models';
@@ -8,7 +9,7 @@ import { WorkflowStateService } from '../../services/workflow-state.service';
 @Component({
   selector: 'app-analysis',
   standalone: true,
-  imports: [RouterLink],
+  imports: [CommonModule, RouterLink],
   templateUrl: './analysis.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

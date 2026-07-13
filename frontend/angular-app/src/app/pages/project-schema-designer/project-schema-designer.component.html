@@ -1,51 +1,85 @@
-<section>
-  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+<section class="h-full flex flex-col bg-slate-50 dark:bg-[#0d1117] transition-colors duration-300 min-h-[calc(100vh-80px)] -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8 relative">
+  <!-- Decorative background element for glassmorphism -->
+  <div class="absolute top-0 right-0 w-full h-[500px] bg-gradient-to-bl from-blue-500/10 to-indigo-500/5 pointer-events-none rounded-bl-full"></div>
+
+  <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between relative z-10">
     <div>
-      <p class="mb-3 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Projects / Schema Designer</p>
-      <h1 class="page-title">Project Schema Designer</h1>
-      <p class="page-subtitle">A project-level schema composed from all uploaded datasets and accepted relationships.</p>
+      <p class="mb-2 text-sm font-semibold text-slate-500 dark:text-[#8a99ad] uppercase tracking-wider transition-colors duration-300">Projects / Schema Designer</p>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight transition-colors duration-300">Project Schema Designer</h1>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-2xl transition-colors duration-300">A project-level schema composed from all uploaded datasets and accepted relationships.</p>
     </div>
-    <div class="flex flex-wrap gap-3">
-      <button type="button" class="btn-secondary" (click)="loadSchema()" [disabled]="loading()">Refresh</button>
-      <button type="button" class="btn-primary" (click)="generateSchema()" [disabled]="generating()">
+    <div class="flex items-center gap-3">
+      <button type="button" class="flex items-center gap-2 rounded-lg bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm" (click)="loadSchema()" [disabled]="loading()">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        Refresh
+      </button>
+      <button type="button" class="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-bold text-white hover:bg-indigo-700 transition-all duration-300 shadow-lg shadow-indigo-500/30 hover:-translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none" (click)="generateSchema()" [disabled]="generating()">
+        <svg *ngIf="generating()" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        <svg *ngIf="!generating()" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
         {{ generating() ? 'Generating...' : 'Generate Project Schema' }}
       </button>
     </div>
   </div>
 
   @if (errorMessage) {
-    <p class="mb-5 rounded-xl border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors">{{ errorMessage }}</p>
+    <p class="mb-6 rounded-xl border border-rose-200/50 dark:border-rose-900/30 bg-rose-50/80 dark:bg-rose-900/10 backdrop-blur px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors shadow-sm">{{ errorMessage }}</p>
   }
   @if (successMessage) {
-    <p class="mb-5 rounded-xl border border-emerald-200 dark:border-emerald-900/30 transition-colors bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
+    <p class="mb-6 rounded-xl border border-emerald-200/50 dark:border-emerald-900/30 bg-emerald-50/80 dark:bg-emerald-900/20 backdrop-blur px-4 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-colors shadow-sm">{{ successMessage }}</p>
   }
 
   @if (loading()) {
-    <article class="card p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Loading schema...</article>
+    <div class="flex-1 flex flex-col items-center justify-center text-slate-500 dark:text-[#8a99ad] transition-colors duration-300 min-h-[300px] relative z-10">
+      <svg class="w-10 h-10 mb-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      <p class="text-sm font-medium">Loading schema...</p>
+    </div>
   } @else if (schema(); as data) {
-    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-      <div class="space-y-5">
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_440px] items-start relative z-10">
+      <div class="space-y-6">
         @for (table of data.tables; track table.datasetId) {
-          <article class="card overflow-hidden">
-            <div class="border-b border-slate-100 bg-slate-900 px-5 py-4 text-white">
+          <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl shadow-xl overflow-hidden transition-colors duration-300 group hover:shadow-2xl">
+            <div class="bg-white/80 dark:bg-[#21262d]/80 px-6 py-4 border-b border-slate-200/50 dark:border-[#30363d]/50 transition-colors duration-300">
               <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 class="font-semibold">{{ table.tableName }}</h2>
-                  <p class="text-xs text-slate-300">Dataset #{{ table.datasetId }} / {{ table.status }}</p>
+                <div class="flex items-center gap-3">
+                  <div class="rounded-lg bg-indigo-50 dark:bg-indigo-500/20 p-2 border border-indigo-100/50 dark:border-indigo-500/30 transition-colors">
+                    <svg class="w-5 h-5 text-indigo-500 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+                  </div>
+                  <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white tracking-wide transition-colors">{{ table.tableName }}</h2>
+                    <p class="text-[11px] font-medium text-slate-500 dark:text-[#8a99ad] uppercase tracking-widest mt-0.5 transition-colors">Dataset #{{ table.datasetId }} • <span [class.text-emerald-500]="table.status === 'Analyzed'" [class.text-amber-500]="table.status !== 'Analyzed'">{{ table.status }}</span></p>
+                  </div>
                 </div>
-                <span class="rounded-full bg-white dark:bg-[#24303f] transition-colors duration-300/10 px-2.5 py-1 text-xs font-semibold">{{ table.columns.length }} columns</span>
+                <span class="rounded-full bg-slate-100 dark:bg-[#30363d] border border-slate-200 dark:border-[#404854] px-3 py-1 text-xs font-bold text-slate-600 dark:text-slate-300 transition-colors">{{ table.columns.length }} columns</span>
               </div>
             </div>
-            <div class="table-wrap rounded-none border-0">
-              <table class="data-table">
-                <thead><tr><th>Column</th><th>SQL Type</th><th>Required</th><th>Key Candidate</th></tr></thead>
-                <tbody>
+            <div class="overflow-x-auto bg-white/30 dark:bg-black/10">
+              <table class="w-full text-left text-sm text-slate-600 dark:text-slate-400">
+                <thead class="bg-slate-50/50 dark:bg-[#0d1117]/50 text-xs uppercase text-slate-500 dark:text-[#8a99ad] font-bold border-b border-slate-200/50 dark:border-[#30363d]/50">
+                  <tr>
+                    <th class="px-6 py-4">Column</th>
+                    <th class="px-6 py-4">SQL Type</th>
+                    <th class="px-6 py-4">Required</th>
+                    <th class="px-6 py-4">Key Candidate</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100/50 dark:divide-[#21262d]/50">
                   @for (column of table.columns; track column.name) {
-                    <tr>
-                      <td class="font-medium">{{ column.name }}</td>
-                      <td>{{ column.sqlType }}</td>
-                      <td>{{ column.isNullable ? 'No' : 'Yes' }}</td>
-                      <td>{{ column.isPrimaryKeyCandidate ? 'Yes' : '-' }}</td>
+                    <tr class="hover:bg-slate-50/80 dark:hover:bg-[#1c2434]/80 transition-colors">
+                      <td class="px-6 py-3.5 font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        {{ column.name }}
+                      </td>
+                      <td class="px-6 py-3.5 font-mono text-[11px] font-bold text-indigo-600 dark:text-indigo-400">{{ column.sqlType }}</td>
+                      <td class="px-6 py-3.5">
+                        <span class="rounded px-2 py-0.5 text-[10px] font-bold uppercase" [class.bg-rose-100]="!column.isNullable" [class.text-rose-700]="!column.isNullable" [class.dark:bg-rose-500/20]="!column.isNullable" [class.dark:text-rose-400]="!column.isNullable" [class.bg-slate-100]="column.isNullable" [class.text-slate-600]="column.isNullable" [class.dark:bg-[#30363d]]="column.isNullable" [class.dark:text-slate-400]="column.isNullable">{{ column.isNullable ? 'No' : 'Yes' }}</span>
+                      </td>
+                      <td class="px-6 py-3.5">
+                        @if (column.isPrimaryKeyCandidate) {
+                          <span class="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase border border-amber-200 dark:border-amber-500/30"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd" /></svg> PK</span>
+                        } @else {
+                          <span class="text-slate-300 dark:text-[#30363d]">-</span>
+                        }
+                      </td>
                     </tr>
                   }
                 </tbody>
@@ -53,36 +87,63 @@
             </div>
           </article>
         } @empty {
-          <article class="card p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">No datasets available for schema generation.</article>
+          <article class="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-slate-300/70 dark:border-[#30363d]/70 bg-white/40 dark:bg-[#161b22]/40 backdrop-blur transition-colors duration-300">
+            <svg class="w-12 h-12 text-slate-400 dark:text-[#404854] mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+            <p class="text-lg font-bold text-slate-900 dark:text-white mb-1">No datasets available</p>
+            <p class="text-sm text-slate-500 dark:text-[#8a99ad]">Upload datasets to start generating your schema.</p>
+          </article>
         }
       </div>
 
-      <aside class="space-y-5">
-        <article class="card p-5">
-          <h2 class="font-semibold">Accepted Relationships</h2>
-          <div class="mt-4 space-y-2">
+      <aside class="space-y-6">
+        <article class="rounded-2xl border border-emerald-200/50 dark:border-emerald-900/30 bg-emerald-50/40 dark:bg-[#161b22]/70 backdrop-blur-xl p-5 shadow-lg transition-colors duration-300">
+          <div class="mb-4 flex items-center justify-between border-b border-emerald-100/50 dark:border-[#30363d]/50 pb-3 transition-colors duration-300">
+            <h2 class="font-bold text-emerald-900 dark:text-emerald-300 flex items-center gap-2">
+              <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+              Accepted Relationships
+            </h2>
+            <span class="rounded-full bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 shadow-sm">{{ data.relationships.length }}</span>
+          </div>
+          <div class="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
             @for (relationship of data.relationships; track relationship.suggestionId) {
-              <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-                <p class="break-words font-semibold text-emerald-950">{{ relationshipLabel(relationship) }}</p>
-                <p class="mt-1 text-xs text-emerald-700">Type: {{ relationship.relationshipType }}</p>
+              <div class="group flex items-center justify-between rounded-lg border border-white/60 dark:border-white/5 bg-white/80 dark:bg-[#21262d]/80 backdrop-blur p-3 transition-colors duration-300 hover:border-emerald-300 dark:hover:border-emerald-500/30 shadow-sm">
+                <div>
+                  <p class="truncate text-[11px] font-bold text-slate-800 dark:text-slate-200 font-mono transition-colors duration-300" [title]="relationshipLabel(relationship)">{{ relationshipLabel(relationship) }}</p>
+                  <p class="mt-1 text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">{{ relationship.relationshipType }}</p>
+                </div>
               </div>
             } @empty {
-              <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">No accepted relationships yet.</p>
+              <p class="text-center text-xs font-medium text-slate-400 dark:text-[#8a99ad] py-4 bg-white/30 dark:bg-black/10 rounded-lg border border-dashed border-emerald-200/50 dark:border-emerald-900/30">No accepted relationships yet.</p>
             }
           </div>
         </article>
 
-        <article class="card overflow-hidden">
-          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-            <h2 class="font-semibold">Preview</h2>
-            <button type="button" class="btn-secondary py-2" (click)="copyPreview(data)">{{ copied() ? 'Copied' : 'Copy' }}</button>
+        <!-- Premium Code Window Redesign -->
+        <article class="rounded-2xl border border-slate-200 dark:border-[#30363d] bg-[#0d1117] shadow-2xl overflow-hidden flex flex-col">
+          
+          <div class="flex items-center justify-between bg-[#161b22] border-b border-[#30363d] px-4 py-3">
+            <div class="flex items-center gap-2">
+              <div class="flex gap-1.5">
+                <div class="w-3 h-3 rounded-full bg-rose-500"></div>
+                <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+                <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+              </div>
+              <span class="ml-3 text-xs font-semibold text-[#8a99ad] tracking-wider uppercase">Schema Preview</span>
+            </div>
+            <button type="button" class="flex items-center gap-1.5 rounded bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] px-2.5 py-1 text-xs font-bold text-white transition-colors" (click)="copyPreview(data)">
+              <svg *ngIf="!copied()" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+              <svg *ngIf="copied()" class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+              {{ copied() ? 'Copied!' : 'Copy' }}
+            </button>
           </div>
-          <div class="flex border-b border-slate-100 text-sm font-semibold">
-            <button type="button" class="flex-1 px-3 py-2" [class.text-indigo-600]="activePreview() === 'sql'" (click)="activePreview.set('sql')">SQL</button>
-            <button type="button" class="flex-1 px-3 py-2" [class.text-indigo-600]="activePreview() === 'dbml'" (click)="activePreview.set('dbml')">DBML</button>
-            <button type="button" class="flex-1 px-3 py-2" [class.text-indigo-600]="activePreview() === 'json'" (click)="activePreview.set('json')">JSON</button>
+          
+          <div class="flex border-b border-[#30363d] text-[11px] font-bold uppercase tracking-wider bg-[#0d1117]">
+            <button type="button" class="flex-1 px-3 py-2.5 transition-colors" [class.bg-[#161b22]]="activePreview() === 'sql'" [class.text-white]="activePreview() === 'sql'" [class.border-t-2]="activePreview() === 'sql'" [class.border-indigo-500]="activePreview() === 'sql'" [class.text-[#8a99ad]]="activePreview() !== 'sql'" [class.hover:bg-[#161b22]]="activePreview() !== 'sql'" [class.hover:text-white]="activePreview() !== 'sql'" (click)="activePreview.set('sql')">SQL</button>
+            <button type="button" class="flex-1 px-3 py-2.5 transition-colors border-l border-[#30363d]" [class.bg-[#161b22]]="activePreview() === 'dbml'" [class.text-white]="activePreview() === 'dbml'" [class.border-t-2]="activePreview() === 'dbml'" [class.border-indigo-500]="activePreview() === 'dbml'" [class.text-[#8a99ad]]="activePreview() !== 'dbml'" [class.hover:bg-[#161b22]]="activePreview() !== 'dbml'" [class.hover:text-white]="activePreview() !== 'dbml'" (click)="activePreview.set('dbml')">DBML</button>
+            <button type="button" class="flex-1 px-3 py-2.5 transition-colors border-l border-[#30363d]" [class.bg-[#161b22]]="activePreview() === 'json'" [class.text-white]="activePreview() === 'json'" [class.border-t-2]="activePreview() === 'json'" [class.border-indigo-500]="activePreview() === 'json'" [class.text-[#8a99ad]]="activePreview() !== 'json'" [class.hover:bg-[#161b22]]="activePreview() !== 'json'" [class.hover:text-white]="activePreview() !== 'json'" (click)="activePreview.set('json')">JSON</button>
           </div>
-          <pre class="max-h-[520px] overflow-auto bg-[#fbfcff] p-5 text-[12px] leading-5 text-slate-700"><code>{{ previewText(data) }}</code></pre>
+          
+          <pre class="max-h-[520px] overflow-auto bg-[#0d1117] p-5 text-[13px] leading-relaxed text-[#c9d1d9] font-mono selection:bg-[#264f78]"><code>{{ previewText(data) }}</code></pre>
         </article>
       </aside>
     </div>

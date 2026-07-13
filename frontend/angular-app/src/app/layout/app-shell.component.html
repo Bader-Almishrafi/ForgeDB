@@ -8,36 +8,36 @@
   <aside
     (mouseenter)="sidebarHovered.set(true)"
     (mouseleave)="sidebarHovered.set(false)"
-    class="fixed inset-y-0 left-0 z-50 flex flex-col overflow-x-hidden overflow-y-auto bg-[#1c2434] duration-300 ease-linear lg:translate-x-0 transition-all whitespace-nowrap"
+    class="fixed inset-y-0 left-0 z-50 flex flex-col overflow-x-hidden overflow-y-auto bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl border-r border-slate-200/50 dark:border-white/10 duration-300 ease-linear lg:translate-x-0 transition-all whitespace-nowrap"
     [ngClass]="[
       sidebarOpen() ? 'translate-x-0' : '-translate-x-full',
       sidebarPinned() || sidebarHovered() || sidebarOpen() ? 'w-[290px]' : 'w-[85px]'
     ]">
     
     <!-- SIDEBAR HEADER -->
-    <div class="flex items-center justify-between gap-2 px-6 py-5.5 lg:py-6.5 border-b border-white/10">
+    <div class="flex items-center justify-between gap-2 px-6 py-5.5 lg:py-6.5 border-b border-slate-200/50 dark:border-white/10">
       <a routerLink="/projects" class="flex items-center gap-3 mt-4" (click)="closeSidebar()">
-        <div class="grid min-h-10 min-w-10 place-items-center rounded bg-[#3c50e0] shadow-sm">
+        <div class="grid min-h-10 min-w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-md">
           <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-white" stroke-width="2">
             <ellipse cx="12" cy="5.5" rx="7" ry="3"></ellipse>
             <path d="M5 5.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6M5 11.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6"></path>
           </svg>
         </div>
         <div class="transition-opacity duration-300" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">
-          <span class="block text-xl font-bold tracking-tight text-white">ForgeDB</span>
+          <span class="block text-xl font-bold tracking-tight text-slate-900 dark:text-white">ForgeDB</span>
         </div>
       </a>
 
       <!-- Pin Button -->
-      <button class="hidden lg:block text-[#aeb7c0] hover:text-white transition-opacity duration-300 ml-auto mr-4"
+      <button class="hidden lg:block text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-300 ml-auto mr-4"
               [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()"
               (click)="togglePin()">
-        <svg class="h-5 w-5 fill-current" viewBox="0 0 24 24" [ngClass]="sidebarPinned() ? 'text-white' : 'text-[#8a99ad]'">
+        <svg class="h-5 w-5 fill-current" viewBox="0 0 24 24" [ngClass]="sidebarPinned() ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'">
           <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"></path>
         </svg>
       </button>
 
-      <button class="block lg:hidden text-white hover:text-gray-300 min-w-6" (click)="closeSidebar()">
+      <button class="block lg:hidden text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white min-w-6" (click)="closeSidebar()">
         <svg class="h-6 w-6 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
         </svg>
@@ -50,7 +50,7 @@
         
         <!-- WORKSPACE GROUP -->
         <div>
-          <h3 class="mb-4 ml-4 text-xs font-semibold uppercase tracking-wider text-[#8a99ad] transition-opacity duration-300"
+          <h3 class="mb-4 ml-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] transition-opacity duration-300"
               [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">Workspace</h3>
           <ul class="mb-6 flex flex-col gap-1.5">
             @for (item of navItems; track item.label) {
@@ -59,8 +59,8 @@
                   @if (item.enabled() && item.route(); as route) {
                     <a [routerLink]="route" [queryParams]="item.queryParams ? item.queryParams() : null"
                       [routerLinkActiveOptions]="item.exact ? {exact: true} : {exact: false}"
-                      routerLinkActive="bg-[#333a48] text-white"
-                      class="group relative flex items-center gap-4 rounded-sm px-4 py-2 font-medium text-[#aeb7c0] duration-300 ease-in-out hover:bg-[#333a48] hover:text-white"
+                      routerLinkActive="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-bold border-indigo-200 dark:border-indigo-500/30"
+                      class="group relative flex items-center gap-4 rounded-xl px-4 py-2 font-medium text-slate-600 dark:text-slate-400 border border-transparent duration-300 ease-in-out hover:bg-slate-100 dark:hover:bg-[#21262d] hover:text-slate-900 dark:hover:text-white"
                       (click)="closeSidebar()">
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
@@ -68,7 +68,7 @@
                       <span class="transition-opacity duration-300" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
                     </a>
                   } @else {
-                    <div class="flex items-center gap-4 rounded-sm px-4 py-2 font-medium text-[#4f5e74] bg-[#24303f]/50 border border-[#3d4d62]/50">
+                    <div class="flex items-center gap-4 rounded-xl px-4 py-2 font-medium text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-[#161b22]/50 border border-slate-100/50 dark:border-[#30363d]/50">
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current opacity-70" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
                       </svg>
@@ -83,7 +83,7 @@
 
         <!-- ANALYSIS GROUP -->
         <div>
-          <h3 class="mb-4 ml-4 text-xs font-semibold uppercase tracking-wider text-[#8a99ad] transition-opacity duration-300"
+          <h3 class="mb-4 ml-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] transition-opacity duration-300"
               [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">Analysis</h3>
           <ul class="mb-6 flex flex-col gap-1.5">
             @for (item of navItems; track item.label) {
@@ -92,8 +92,8 @@
                   @if (item.enabled() && item.route(); as route) {
                     <a [routerLink]="route" [queryParams]="item.queryParams ? item.queryParams() : null"
                       [routerLinkActiveOptions]="item.exact ? {exact: true} : {exact: false}"
-                      routerLinkActive="bg-[#333a48] text-white"
-                      class="group relative flex items-center gap-4 rounded-sm px-4 py-2 font-medium text-[#aeb7c0] duration-300 ease-in-out hover:bg-[#333a48] hover:text-white"
+                      routerLinkActive="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-bold border-indigo-200 dark:border-indigo-500/30"
+                      class="group relative flex items-center gap-4 rounded-xl px-4 py-2 font-medium text-slate-600 dark:text-slate-400 border border-transparent duration-300 ease-in-out hover:bg-slate-100 dark:hover:bg-[#21262d] hover:text-slate-900 dark:hover:text-white"
                       (click)="closeSidebar()">
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
@@ -101,7 +101,7 @@
                       <span class="transition-opacity duration-300" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
                     </a>
                   } @else {
-                    <div class="flex items-center gap-4 rounded-sm px-4 py-2 font-medium text-[#4f5e74] bg-[#24303f]/50 border border-[#3d4d62]/50">
+                    <div class="flex items-center gap-4 rounded-xl px-4 py-2 font-medium text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-[#161b22]/50 border border-slate-100/50 dark:border-[#30363d]/50">
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current opacity-70" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
                       </svg>
@@ -116,7 +116,7 @@
 
         <!-- SCHEMA & DESIGN GROUP -->
         <div>
-          <h3 class="mb-4 ml-4 text-xs font-semibold uppercase tracking-wider text-[#8a99ad] transition-opacity duration-300"
+          <h3 class="mb-4 ml-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] transition-opacity duration-300"
               [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">Schema & Design</h3>
           <ul class="mb-6 flex flex-col gap-1.5">
             @for (item of navItems; track item.label) {
@@ -125,8 +125,8 @@
                   @if (item.enabled() && item.route(); as route) {
                     <a [routerLink]="route" [queryParams]="item.queryParams ? item.queryParams() : null"
                       [routerLinkActiveOptions]="item.exact ? {exact: true} : {exact: false}"
-                      routerLinkActive="bg-[#333a48] text-white"
-                      class="group relative flex items-center gap-4 rounded-sm px-4 py-2 font-medium text-[#aeb7c0] duration-300 ease-in-out hover:bg-[#333a48] hover:text-white"
+                      routerLinkActive="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-bold border-indigo-200 dark:border-indigo-500/30"
+                      class="group relative flex items-center gap-4 rounded-xl px-4 py-2 font-medium text-slate-600 dark:text-slate-400 border border-transparent duration-300 ease-in-out hover:bg-slate-100 dark:hover:bg-[#21262d] hover:text-slate-900 dark:hover:text-white"
                       (click)="closeSidebar()">
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
@@ -134,7 +134,7 @@
                       <span class="transition-opacity duration-300" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
                     </a>
                   } @else {
-                    <div class="flex items-center gap-4 rounded-sm px-4 py-2 font-medium text-[#4f5e74] bg-[#24303f]/50 border border-[#3d4d62]/50">
+                    <div class="flex items-center gap-4 rounded-xl px-4 py-2 font-medium text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-[#161b22]/50 border border-slate-100/50 dark:border-[#30363d]/50">
                       <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current opacity-70" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
                         <path [attr.d]="item.icon"></path>
                       </svg>
@@ -146,21 +146,74 @@
             }
           </ul>
         </div>
+
+        <!-- DATASETS -->
+        @if (datasets().length > 0) {
+          <div class="mt-6">
+            <h3 class="mb-4 ml-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] transition-opacity duration-300"
+                [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">Datasets</h3>
+            
+            @for (dataset of datasets(); track dataset.id) {
+              <div class="mb-2">
+                <button (click)="toggleDatasetExpanded(dataset.id)" class="flex w-full items-center justify-between mb-2 ml-4 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-opacity duration-300 hover:text-slate-900 dark:hover:text-white pr-6 outline-none"
+                    [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">
+                  <div class="flex items-center gap-2">
+                    <svg class="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                    </svg>
+                    <span class="truncate max-w-[140px]" [title]="dataset.tableName">{{ dataset.tableName }}</span>
+                  </div>
+                  <svg class="h-4 w-4 transition-transform duration-200" [class.rotate-180]="!isDatasetExpanded(dataset.id)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                @if (isDatasetExpanded(dataset.id)) {
+                <ul class="mb-4 flex flex-col gap-1.5 ml-2 border-l border-slate-200/50 dark:border-white/10 pl-2">
+                  @for (item of getDatasetNavItems(dataset.id); track item.label) {
+                    <li>
+                      @if (item.enabled() && item.route(); as route) {
+                        <a [routerLink]="route" [queryParams]="item.queryParams ? item.queryParams() : null"
+                          [routerLinkActiveOptions]="item.exact ? {exact: true} : {exact: false}"
+                          routerLinkActive="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-bold border-indigo-200 dark:border-indigo-500/30"
+                          class="group relative flex items-center gap-3 rounded-xl px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-[#aeb7c0] border border-transparent duration-300 ease-in-out hover:bg-slate-100 dark:hover:bg-[#21262d] hover:text-slate-900 dark:hover:text-white"
+                          (click)="closeSidebar()">
+                          <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
+                            <path [attr.d]="item.icon"></path>
+                          </svg>
+                          <span class="transition-opacity duration-300" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
+                        </a>
+                      } @else {
+                        <div class="flex items-center gap-3 rounded-xl px-3 py-1.5 text-sm font-medium text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-[#161b22]/50 border border-slate-100/50 dark:border-[#30363d]/50">
+                          <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current opacity-70" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7">
+                            <path [attr.d]="item.icon"></path>
+                          </svg>
+                          <span class="transition-opacity duration-300 opacity-70" [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">{{ item.label }}</span>
+                        </div>
+                      }
+                    </li>
+                  }
+                </ul>
+                }
+              </div>
+            }
+          </div>
+        }
       </nav>
 
       <!-- CURRENT PROJECT CARD -->
-      <div class="mx-4 mt-auto mb-6 rounded-sm border border-[#313d4f] bg-[#24303f] p-5 transition-opacity duration-300"
+      <div class="mx-4 mt-auto mb-6 rounded-xl border border-slate-200/50 dark:border-[#30363d]/50 bg-white/60 dark:bg-[#21262d]/60 backdrop-blur-md p-5 transition-opacity duration-300 shadow-sm"
            [class.opacity-0]="!sidebarPinned() && !sidebarHovered() && !sidebarOpen()">
-        <p class="text-xs font-semibold uppercase tracking-wider text-[#8a99ad]">Current Project</p>
-        <p class="mt-1 truncate text-sm font-semibold text-white">{{ projectName() || 'No project selected' }}</p>
-        <div class="mt-4 space-y-2 text-xs text-[#aeb7c0]">
-          <p class="truncate"><span class="text-[#8a99ad]">Dataset:</span> {{ datasetName() || 'None' }}</p>
-          <p class="truncate"><span class="text-[#8a99ad]">Status:</span> {{ datasetStatus() || 'Not analyzed' }}</p>
-          <p class="truncate"><span class="text-[#8a99ad]">Schema:</span> {{ schemaName() || 'None' }}</p>
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad]">Current Project</p>
+        <p class="mt-1 truncate text-sm font-bold text-slate-900 dark:text-white">{{ projectName() || 'No project selected' }}</p>
+        <div class="mt-4 space-y-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
+          <p class="truncate"><span class="text-slate-400 dark:text-[#8a99ad]">Dataset:</span> {{ datasetName() || 'None' }}</p>
+          <p class="truncate"><span class="text-slate-400 dark:text-[#8a99ad]">Status:</span> {{ datasetStatus() || 'Not analyzed' }}</p>
+          <p class="truncate"><span class="text-slate-400 dark:text-[#8a99ad]">Schema:</span> {{ schemaName() || 'None' }}</p>
         </div>
         @if (projectId()) {
           <a [routerLink]="['/projects', projectId(), 'overview']" (click)="closeSidebar()"
-            class="mt-5 inline-flex w-full items-center justify-center rounded-sm bg-[#3c50e0] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#2d3da9]">
+            class="mt-5 flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:from-indigo-600 hover:to-indigo-700 shadow-sm hover:scale-[1.02]">
             Overview
           </a>
         }

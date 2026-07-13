@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiErrorBody, ProjectRelationshipSuggestion, ProjectSchema } from '../../services/api.models';
@@ -8,6 +9,7 @@ import { WorkflowStateService } from '../../services/workflow-state.service';
 @Component({
   selector: 'app-project-schema-designer',
   standalone: true,
+  imports: [CommonModule],
   templateUrl: './project-schema-designer.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

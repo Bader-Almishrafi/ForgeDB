@@ -1,75 +1,167 @@
-<section>
-  <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+<section class="h-full flex flex-col bg-slate-50 dark:bg-[#0d1117] transition-colors duration-300 min-h-[calc(100vh-80px)] -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8 relative">
+  <!-- Subtle decorative background element for glassmorphism effect -->
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent pointer-events-none"></div>
+
+  <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between relative z-10">
     <div>
-      <p class="mb-3 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Datasets / Analyze Data</p>
-      <h1 class="page-title">Analyze Data</h1>
-      <p class="page-subtitle">Run enhanced profiling through the backend analysis pipeline and review the result.</p>
+      <p class="mb-2 text-sm font-semibold text-slate-500 dark:text-[#8a99ad] uppercase tracking-wider transition-colors duration-300">Datasets / Analyze Data</p>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight transition-colors duration-300">Analyze Data</h1>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-2xl transition-colors duration-300">Run enhanced profiling through the backend analysis pipeline and review the result.</p>
     </div>
-    <div class="flex flex-wrap gap-3">
-      <a [routerLink]="['/datasets', datasetId, 'preview']" class="btn-secondary">Back to Preview</a>
-      <button type="button" class="btn-secondary" (click)="loadAnalysis()" [disabled]="loading()">Refresh</button>
-      <button type="button" class="btn-primary" (click)="runAnalysis()" [disabled]="analyzing()">
+    <div class="flex flex-wrap items-center gap-3">
+      <a [routerLink]="['/datasets', datasetId, 'preview']" class="flex items-center gap-2 rounded-xl bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-5 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+        Back to Preview
+      </a>
+      <button type="button" class="flex items-center gap-2 rounded-xl bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-5 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm" (click)="loadAnalysis()" [disabled]="loading()">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        Refresh
+      </button>
+      <button type="button" class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-lg shadow-indigo-500/30 hover:scale-[1.02]" (click)="runAnalysis()" [disabled]="analyzing()">
+        <svg *ngIf="analyzing()" class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        @if (!analyzing()) {
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+        }
         {{ analyzing() ? 'Analyzing...' : 'Run Analysis' }}
       </button>
     </div>
   </div>
 
-  <article class="mb-5 rounded-2xl border border-indigo-200 bg-indigo-50 p-5">
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h2 class="font-semibold text-indigo-950">Backend-powered analysis</h2>
-        <p class="mt-1 text-sm text-indigo-700">The frontend calls the ASP.NET Core backend only. Enhanced profiling is handled behind that API boundary.</p>
+  <article class="mb-8 rounded-2xl border border-indigo-200/50 dark:border-indigo-500/30 bg-indigo-50/80 dark:bg-indigo-900/10 backdrop-blur-xl p-6 shadow-sm relative z-10">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex items-start gap-4">
+        <div class="p-3 bg-indigo-100/80 dark:bg-indigo-500/20 rounded-xl text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" /></svg>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-indigo-950 dark:text-indigo-300">Backend-powered analysis</h2>
+          <p class="mt-1 text-sm font-medium text-indigo-800/80 dark:text-indigo-400/80 max-w-3xl">The frontend calls the ASP.NET Core backend only. Enhanced profiling is handled behind that API boundary.</p>
+        </div>
       </div>
-      <span class="rounded-full bg-white dark:bg-[#24303f] transition-colors duration-300 px-3 py-1 text-xs font-semibold text-indigo-700">No direct Python calls</span>
+      <span class="rounded-xl bg-white/80 dark:bg-[#161b22]/80 backdrop-blur border border-indigo-200/50 dark:border-indigo-500/30 px-4 py-2 text-xs font-bold text-indigo-700 dark:text-indigo-400 shadow-sm whitespace-nowrap uppercase tracking-wider">No direct Python calls</span>
     </div>
   </article>
 
   @if (errorMessage) {
-    <p class="mb-5 rounded-xl border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors">{{ errorMessage }}</p>
+    <p class="mb-8 rounded-xl border border-rose-200/50 dark:border-rose-900/30 bg-rose-50/80 dark:bg-rose-900/10 backdrop-blur px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 shadow-sm relative z-10">
+      {{ errorMessage }}
+    </p>
   }
   @if (successMessage) {
-    <p class="mb-5 rounded-xl border border-emerald-200 dark:border-emerald-900/30 transition-colors bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ successMessage }}</p>
+    <p class="mb-8 rounded-xl border border-emerald-200/50 dark:border-emerald-900/30 bg-emerald-50/80 dark:bg-emerald-900/20 backdrop-blur px-4 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-400 shadow-sm relative z-10">
+      {{ successMessage }}
+    </p>
   }
 
   @if (loading()) {
-    <article class="card p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Loading saved analysis...</article>
+    <div class="flex-1 flex flex-col items-center justify-center text-slate-500 dark:text-[#8a99ad] transition-colors duration-300 min-h-[400px] relative z-10">
+      <svg class="w-10 h-10 mb-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      <p class="text-sm font-medium">Loading saved analysis...</p>
+    </div>
   } @else if (analysis(); as data) {
-    <article class="card mb-5 p-5">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300 mb-8 relative z-10">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Selected Dataset</p>
-          <h2 class="mt-1 text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">{{ data.tableName }}</h2>
-          <p class="mt-1 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Dataset #{{ data.datasetId }} / Status: {{ data.status }}</p>
+          <p class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-1">Selected Dataset</p>
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-white transition-colors duration-300 flex items-center gap-2">
+            <svg class="w-6 h-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+            {{ data.tableName }}
+          </h2>
+          <p class="mt-1 text-sm font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Dataset #{{ data.datasetId }} / Status: <span class="capitalize">{{ data.status }}</span></p>
         </div>
         @if (data.analyzedAt) {
-          <span class="badge-success">Analyzed</span>
+          <span class="rounded-xl bg-emerald-50/80 dark:bg-emerald-500/10 border border-emerald-200/50 dark:border-emerald-500/30 px-4 py-2 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 shadow-sm flex items-center gap-1.5 backdrop-blur">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            Analyzed
+          </span>
         } @else {
-          <span class="badge-warning">Profile available before saved analysis</span>
+          <span class="rounded-xl bg-amber-50/80 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/30 px-4 py-2 text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 shadow-sm flex items-center gap-1.5 backdrop-blur">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            Profile available before saved analysis
+          </span>
         }
       </div>
     </article>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <article class="card p-5"><p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Rows</p><p class="mt-2 text-3xl font-bold">{{ data.analysisResult.rowCount }}</p></article>
-      <article class="card p-5"><p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Columns</p><p class="mt-2 text-3xl font-bold">{{ data.analysisResult.columnCount }}</p></article>
-      <article class="card p-5"><p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Missing Values</p><p class="mt-2 text-3xl font-bold">{{ data.analysisResult.missingValuesCount }}</p></article>
-      <article class="card p-5"><p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Duplicate Rows</p><p class="mt-2 text-3xl font-bold">{{ data.analysisResult.duplicateRowsCount }}</p></article>
+    <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4 mb-8 relative z-10">
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 group">
+        <div class="flex items-center gap-3 mb-2 text-slate-500 dark:text-[#8a99ad]">
+          <div class="rounded-xl bg-indigo-100/80 dark:bg-indigo-500/20 p-2 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30 group-hover:scale-110 transition-transform">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+          </div>
+          <p class="text-sm font-bold uppercase tracking-wider">Rows</p>
+        </div>
+        <p class="text-4xl font-bold text-slate-900 dark:text-white mt-3">{{ data.analysisResult.rowCount }}</p>
+      </article>
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 group">
+        <div class="flex items-center gap-3 mb-2 text-slate-500 dark:text-[#8a99ad]">
+          <div class="rounded-xl bg-emerald-100/80 dark:bg-emerald-500/20 p-2 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/30 group-hover:scale-110 transition-transform">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" /></svg>
+          </div>
+          <p class="text-sm font-bold uppercase tracking-wider">Columns</p>
+        </div>
+        <p class="text-4xl font-bold text-slate-900 dark:text-white mt-3">{{ data.analysisResult.columnCount }}</p>
+      </article>
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 group">
+        <div class="flex items-center gap-3 mb-2 text-slate-500 dark:text-[#8a99ad]">
+          <div class="rounded-xl bg-rose-100/80 dark:bg-rose-500/20 p-2 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-500/30 group-hover:scale-110 transition-transform">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
+          <p class="text-sm font-bold uppercase tracking-wider">Missing Values</p>
+        </div>
+        <p class="text-4xl font-bold text-slate-900 dark:text-white mt-3" [ngClass]="data.analysisResult.missingValuesCount > 0 ? 'text-rose-600 dark:text-rose-400' : ''">{{ data.analysisResult.missingValuesCount }}</p>
+      </article>
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 group">
+        <div class="flex items-center gap-3 mb-2 text-slate-500 dark:text-[#8a99ad]">
+          <div class="rounded-xl bg-amber-100/80 dark:bg-amber-500/20 p-2 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/30 group-hover:scale-110 transition-transform">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+          </div>
+          <p class="text-sm font-bold uppercase tracking-wider">Duplicate Rows</p>
+        </div>
+        <p class="text-4xl font-bold text-slate-900 dark:text-white mt-3" [ngClass]="data.analysisResult.duplicateRowsCount > 0 ? 'text-amber-600 dark:text-amber-400' : ''">{{ data.analysisResult.duplicateRowsCount }}</p>
+      </article>
     </div>
 
-    <div class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <article class="card p-5">
-        <h2 class="font-semibold">Detected Column Types</h2>
-        <div class="table-wrap mt-4">
-          <table class="data-table">
-            <thead><tr><th>Column</th><th>Detected Type</th><th>Missing</th><th>Unique</th><th>Nullable</th></tr></thead>
-            <tbody>
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] mb-8 relative z-10">
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl shadow-xl overflow-hidden flex flex-col transition-colors duration-300">
+        <div class="border-b border-slate-200/50 dark:border-[#30363d]/50 px-6 py-5 bg-white/40 dark:bg-[#0d1117]/40 flex items-center justify-between">
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300 flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+            Detected Column Types
+          </h2>
+          <span class="rounded-xl bg-indigo-100/80 dark:bg-indigo-500/20 px-3 py-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 shadow-sm border border-indigo-200/50 dark:border-indigo-500/30 uppercase tracking-wider">
+            {{ data.analysisResult.columns.length }} Columns
+          </span>
+        </div>
+        <div class="flex-1 overflow-x-auto p-6 pt-0">
+          <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap mt-4">
+            <thead class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] border-b-2 border-slate-200/50 dark:border-[#30363d]/50">
+              <tr>
+                <th class="px-4 py-3">Column</th>
+                <th class="px-4 py-3">Detected Type</th>
+                <th class="px-4 py-3">Missing</th>
+                <th class="px-4 py-3">Unique</th>
+                <th class="px-4 py-3">Nullable</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100/50 dark:divide-[#21262d]/50">
               @for (column of data.analysisResult.columns; track column.columnName) {
-                <tr>
-                  <td class="font-medium">{{ column.columnName }}</td>
-                  <td>{{ column.detectedDataType }}</td>
-                  <td>{{ column.missingValuesCount }}</td>
-                  <td>{{ column.uniqueValuesCount }}</td>
-                  <td>{{ column.isNullable ? 'Yes' : 'No' }}</td>
+                <tr class="hover:bg-white/80 dark:hover:bg-[#21262d]/80 transition-colors group">
+                  <td class="px-4 py-4 font-bold text-slate-900 dark:text-white">{{ column.columnName }}</td>
+                  <td class="px-4 py-4">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] uppercase tracking-wider font-bold shadow-sm" [ngClass]="'bg-slate-100/80 dark:bg-[#30363d] text-slate-800 dark:text-slate-200 border border-slate-200/50 dark:border-[#30363d]'">
+                      {{ column.detectedDataType }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-4 font-medium">{{ column.missingValuesCount }}</td>
+                  <td class="px-4 py-4 font-medium">{{ column.uniqueValuesCount }}</td>
+                  <td class="px-4 py-4">
+                    @if (column.isNullable) {
+                      <span class="text-amber-600 dark:text-amber-400 font-bold">Yes</span>
+                    } @else {
+                      <span class="text-slate-600 dark:text-slate-400 font-medium">No</span>
+                    }
+                  </td>
                 </tr>
               }
             </tbody>
@@ -77,44 +169,68 @@
         </div>
       </article>
 
-      <aside class="space-y-5">
-        <article class="card p-5">
-          <h2 class="font-semibold">Chart Recommendations</h2>
-          <div class="mt-4 space-y-3">
+      <aside class="space-y-6">
+        <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300">
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300 mb-6 flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            Chart Recommendations
+          </h2>
+          <div class="space-y-4">
             @for (chart of data.chartRecommendations; track chart.title) {
-              <div class="rounded-xl border border-slate-100 p-3">
-                <div class="flex justify-between gap-3">
-                  <strong class="text-sm">{{ chart.title }}</strong>
-                  <span class="rounded-full bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700">{{ chart.chartType }}</span>
+              <div class="rounded-xl border border-white/60 dark:border-white/5 bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur p-4 transition-colors hover:border-indigo-300/50 dark:hover:border-indigo-500/30 shadow-sm group">
+                <div class="flex justify-between items-start gap-3 mb-2">
+                  <strong class="text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{{ chart.title }}</strong>
+                  <span class="rounded-lg bg-indigo-100/80 dark:bg-indigo-500/20 border border-indigo-200/50 dark:border-indigo-500/30 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 whitespace-nowrap shadow-sm">{{ chart.chartType }}</span>
                 </div>
-                <p class="mt-2 text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">{{ chart.reason || 'No reason provided.' }}</p>
+                <p class="text-xs font-medium text-slate-500 dark:text-[#8a99ad] leading-relaxed">{{ chart.reason || 'No reason provided.' }}</p>
               </div>
             } @empty {
-              <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">No chart recommendations returned.</p>
+              <div class="rounded-xl border border-dashed border-slate-300 dark:border-[#30363d] bg-white/40 dark:bg-[#0d1117]/40 backdrop-blur p-6 text-center shadow-sm">
+                <p class="text-sm font-semibold text-slate-500 dark:text-[#8a99ad]">No chart recommendations returned.</p>
+              </div>
             }
           </div>
         </article>
 
-        <article class="card p-5">
-          <div class="flex items-center justify-between gap-3">
-            <h2 class="font-semibold">Relationship Suggestions</h2>
-            <span class="rounded-full bg-slate-100 dark:bg-[#313d4f] transition-colors duration-300 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Backend contract</span>
+        <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+              Relationship Suggestions
+            </h2>
+            <span class="rounded-lg bg-white/80 dark:bg-[#21262d]/80 border border-slate-200/50 dark:border-[#30363d]/50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 whitespace-nowrap shadow-sm">Backend contract</span>
           </div>
-          <p class="mt-3 text-sm text-slate-600 dark:text-[#aeb7c0] transition-colors duration-300">The current analysis response does not expose relationship suggestions to Angular. Manual relationship editing is available later in the workflow.</p>
+          <div class="rounded-xl border border-dashed border-slate-300 dark:border-[#30363d] bg-white/40 dark:bg-[#0d1117]/40 backdrop-blur p-5 text-center shadow-sm">
+            <p class="text-sm font-medium text-slate-500 dark:text-[#8a99ad] leading-relaxed">The current analysis response does not expose relationship suggestions to Angular. Manual relationship editing is available later in the workflow.</p>
+          </div>
         </article>
       </aside>
     </div>
 
-    <div class="mt-5 flex justify-end">
-      <a [routerLink]="['/datasets', datasetId, 'dashboard']" class="btn-primary">Continue to Dashboard</a>
+    <div class="mt-8 flex justify-end pb-8 relative z-10">
+      <a [routerLink]="['/datasets', datasetId, 'dashboard']" class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 text-sm font-bold text-white hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-lg shadow-indigo-500/30 hover:scale-[1.02]">
+        Continue to Dashboard
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+      </a>
     </div>
   } @else {
-    <article class="card p-8 text-center">
-      <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">Ready to analyze</h2>
-      <p class="mt-2 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Run analysis to populate metrics, detected types, and chart recommendations from real backend data.</p>
-      <button type="button" class="btn-primary mt-5" (click)="runAnalysis()" [disabled]="analyzing()">
-        {{ analyzing() ? 'Analyzing...' : 'Run Analysis' }}
-      </button>
+    <article class="flex-1 rounded-2xl border-2 border-dashed border-slate-300 dark:border-[#30363d] bg-white/40 dark:bg-[#0d1117]/40 backdrop-blur grid place-items-center p-8 text-center transition-colors duration-300 min-h-[400px] relative z-10">
+      <div class="flex flex-col items-center justify-center max-w-md">
+        <div class="grid h-16 w-16 place-items-center rounded-2xl bg-indigo-100/80 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 mb-6 shadow-sm border border-indigo-200/50 dark:border-indigo-500/30">
+          <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900 dark:text-white transition-colors duration-300">Ready to analyze</h2>
+        <p class="mt-3 text-sm font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300 leading-relaxed">Run analysis to populate metrics, detected types, and chart recommendations from real backend data.</p>
+        <button type="button" class="mt-8 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-8 py-3.5 text-sm font-bold text-white hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-lg shadow-indigo-500/30 w-full sm:w-auto hover:scale-[1.02]" (click)="runAnalysis()" [disabled]="analyzing()">
+          <svg *ngIf="analyzing()" class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          @if (!analyzing()) {
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          }
+          {{ analyzing() ? 'Analyzing...' : 'Run Analysis' }}
+        </button>
+      </div>
     </article>
   }
 </section>

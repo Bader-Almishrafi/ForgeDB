@@ -3,6 +3,10 @@ import { NgClass } from '@angular/common';
 import { Params, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { WorkflowStateService } from '../services/workflow-state.service';
+import { ForgeApiService } from '../services/forge-api.service';
+import { DatasetResponse } from '../services/api.models';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { catchError, filter, of, switchMap } from 'rxjs';
 
 interface NavItem {
     label: string;
@@ -49,10 +53,14 @@ export class AppShellComponent {
     readonly schemaId = this.workflow.schemaId;
     readonly schemaName = this.workflow.schemaName;
 
+    readonly projectToolsExpanded = signal(true);
+    readonly expandedDatasets = signal<Set<number>>(new Set());
+    readonly datasets = signal<DatasetResponse[]>([]);
+
     readonly navItems: NavItem[] = [
         { label: 'Projects', group: 'Workspace', route: () => '/projects', enabled: () => true, icon: 'M3.75 6.75h5.19l1.06 1.5h10.25v9.75a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V6.75Z', exact: true },
         { label: 'Overview', group: 'Workspace', route: () => this.projectId() ? `/projects/${this.projectId()}/overview` : null, enabled: () => this.projectId() !== null, icon: 'M4 13h6V4H4v9Zm10 7h6V4h-6v16ZM4 20h6v-5H4v5Z' },
-        { label: 'Datasets', group: 'Workspace', route: () => this.projectId() ? `/projects/${this.projectId()}/datasets` : null, enabled: () => this.projectId() !== null, icon: 'M4 6h16M4 12h16M4 18h16' },
+        { label: 'Workspace', group: 'Workspace', route: () => this.projectId() ? `/projects/${this.projectId()}/workspace` : null, enabled: () => this.projectId() !== null, icon: 'M4 6h16M4 12h16M4 18h16' },
         { label: 'Data Explorer', group: 'Analysis', route: () => this.datasetId() ? `/datasets/${this.datasetId()}/explorer` : null, enabled: () => this.datasetId() !== null, icon: 'M4 5h16v14H4zM4 10h16M10 5v14' },
         { label: 'Profile Dashboard', group: 'Analysis', route: () => this.datasetId() ? `/datasets/${this.datasetId()}/profile` : null, enabled: () => this.datasetId() !== null, icon: 'M4 19V5m0 14h16M8 16v-5m4 5V8m4 8v-7' },
         { label: 'Relationships', group: 'Schema & Design', route: () => this.projectId() ? `/projects/${this.projectId()}/relationships` : null, enabled: () => this.projectId() !== null, icon: 'M7 7h4v4H7zM13 13h4v4h-4zM11 9h3a3 3 0 0 1 3 3v1' },
@@ -60,6 +68,14 @@ export class AppShellComponent {
         { label: 'ER Diagram', group: 'Schema & Design', route: () => this.projectId() ? `/projects/${this.projectId()}/er-diagram` : null, enabled: () => this.projectId() !== null, icon: 'M6 7h5v4H6zM13 13h5v4h-5zM11 9h2a3 3 0 0 1 3 3v1' },
         { label: 'Exports', group: 'Schema & Design', route: () => this.projectId() ? `/projects/${this.projectId()}/exports` : null, enabled: () => this.projectId() !== null, icon: 'M12 3v10m0 0 4-4m-4 4-4-4M5 17h14v4H5z' },
     ];
+
+    getDatasetNavItems(datasetId: number): NavItem[] {
+        return [
+            { label: 'Data Explorer', group: 'Analysis', route: () => `/datasets/${datasetId}/explorer`, enabled: () => true, icon: 'M4 5h16v14H4zM4 10h16M10 5v14' },
+            { label: 'Profile Dashboard', group: 'Analysis', route: () => `/datasets/${datasetId}/profile`, enabled: () => true, icon: 'M4 19V5m0 14h16M8 16v-5m4 5V8m4 8v-7' },
+            { label: 'Schema Review', group: 'Schema & Design', route: () => `/datasets/${datasetId}/schema`, enabled: () => true, icon: 'M5 5h6v6H5zM13 5h6v6h-6zM5 13h6v6H5zM13 13h6v6h-6z' },
+        ];
+    }
 
     readonly workflowSteps: WorkflowStep[] = [
         {
@@ -141,7 +157,21 @@ export class AppShellComponent {
         public router: Router,
         private authService: AuthService,
         private workflow: WorkflowStateService,
+        private api: ForgeApiService,
     ) {
+        toObservable(this.projectId).pipe(
+            filter((id) => id !== null),
+            switchMap((id) => this.api.getProjectDatasets(id!).pipe(
+                catchError(() => of([]))
+            ))
+        ).subscribe((datasets) => {
+            this.datasets.set(datasets);
+            const currentDatasetId = this.datasetId();
+            if (currentDatasetId) {
+                this.expandedDatasets.set(new Set([currentDatasetId]));
+            }
+        });
+
         effect(() => {
             localStorage.setItem('sidebarPinned', String(this.sidebarPinned()));
         });
@@ -158,6 +188,20 @@ export class AppShellComponent {
 
     togglePin(): void {
         this.sidebarPinned.update((v) => !v);
+    }
+
+    toggleDatasetExpanded(datasetId: number): void {
+        const current = new Set(this.expandedDatasets());
+        if (current.has(datasetId)) {
+            current.delete(datasetId);
+        } else {
+            current.add(datasetId);
+        }
+        this.expandedDatasets.set(current);
+    }
+
+    isDatasetExpanded(datasetId: number): boolean {
+        return this.expandedDatasets().has(datasetId);
     }
 
     toggleDarkMode(): void {

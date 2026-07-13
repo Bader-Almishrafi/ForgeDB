@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { NgClass } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { finalize } from 'rxjs';
 import { ApiErrorBody, ProjectRelationshipSuggestion, ProjectSchema } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
@@ -49,7 +49,7 @@ interface Diagram {
 @Component({
 	selector: 'app-project-er-diagram',
 	standalone: true,
-	imports: [NgClass],
+	imports: [CommonModule],
 	templateUrl: './project-er-diagram.component.html',
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -1,62 +1,84 @@
-<section>
-  <p class="mb-3 text-sm font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">
-    Projects / {{ project()?.name || 'Project' }} / Upload Data
-  </p>
+<section class="h-full flex flex-col bg-slate-50 dark:bg-[#0d1117] transition-colors duration-300 min-h-[calc(100vh-80px)] -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8 relative">
+  <!-- Subtle decorative background element for glassmorphism effect -->
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent pointer-events-none"></div>
 
-  <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+  <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between relative z-10">
     <div>
-      <h1 class="page-title">Upload Data</h1>
-      <p class="page-subtitle">Import a real CSV into the selected project and continue to preview validation.</p>
+      <p class="mb-2 text-sm font-semibold text-slate-500 dark:text-[#8a99ad] uppercase tracking-wider transition-colors duration-300">Projects / {{ project()?.name || 'Project' }} / Upload Data</p>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight transition-colors duration-300">Upload Data</h1>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-2xl transition-colors duration-300">Import a real CSV into the selected project and continue to preview validation.</p>
     </div>
-    <div class="flex flex-wrap gap-3">
-      <a [routerLink]="['/projects', projectId, 'workspace']" class="btn-secondary">Workspace</a>
-      <button type="button" class="btn-secondary" (click)="loadDatasets()" [disabled]="loading()">Refresh</button>
+    <div class="flex items-center gap-3">
+      <button type="button" class="flex items-center gap-2 rounded-xl bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-5 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm" (click)="loadDatasets()" [disabled]="loading()">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        Refresh
+      </button>
+      <a [routerLink]="['/projects', projectId, 'workspace']" class="flex items-center gap-2 rounded-xl bg-indigo-50/80 dark:bg-indigo-500/10 backdrop-blur border border-indigo-200/50 dark:border-indigo-500/30 px-5 py-2.5 text-sm font-bold text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all duration-300 shadow-sm">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+        Workspace
+      </a>
     </div>
   </div>
 
-  <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+  <div class="flex-1 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] items-start relative z-10">
     <div class="space-y-6">
-      <article class="card">
+      
+      <!-- Upload Card -->
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300">
         <form #uploadForm="ngForm" (ngSubmit)="uploadCsv()" class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <label class="flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-sm border-2 border-dashed border-[#e2e8f0] dark:border-[#2e3a47] transition-colors bg-[#f8fafc] dark:bg-[#1c2434] transition-colors px-4 text-center transition hover:border-[#3c50e0] hover:bg-[#f1f5f9] dark:hover:bg-[#24303f] transition-colors">
+          
+          <label class="group relative flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 dark:border-[#30363d] bg-white/40 dark:bg-[#0d1117]/40 backdrop-blur px-6 py-8 text-center transition-all duration-300 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10">
+            <div class="absolute inset-0 rounded-xl bg-indigo-500/0 group-hover:bg-indigo-500/5 dark:group-hover:bg-indigo-500/10 transition-colors pointer-events-none"></div>
             <input type="file" class="hidden" accept=".csv" (change)="onFileSelected($event)" />
-            <div class="grid h-16 w-16 place-items-center rounded-full bg-[#3c50e0] text-white shadow-sm">
-              <svg viewBox="0 0 24 24" class="h-9 w-9 fill-none stroke-current" stroke-width="1.5">
+            
+            <div class="grid h-16 w-16 place-items-center rounded-2xl bg-indigo-100/80 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-inner mb-4 transition-transform group-hover:scale-110 duration-300 border border-indigo-200/50 dark:border-indigo-500/30">
+              <svg viewBox="0 0 24 24" class="h-8 w-8 fill-none stroke-current" stroke-width="1.8">
                 <path d="M12 16V4m0 0L7 9m5-5 5 5M5 14a4 4 0 0 0 0 8h14a4 4 0 0 0 .4-7.98A7 7 0 0 0 6.2 11.7 4 4 0 0 0 5 14Z"></path>
               </svg>
             </div>
-            <p class="mt-5 font-bold text-[#1c2434] dark:text-white transition-colors">Choose or drop your CSV file</p>
-            <p class="my-2 text-sm font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">Wide CSVs, missing values, duplicate rows, and typed columns are handled by the backend workflow.</p>
-            <span class="btn-secondary">Browse Files</span>
+            
+            <p class="text-lg font-bold text-slate-900 dark:text-white transition-colors duration-300">Choose or drop your CSV file</p>
+            <p class="mt-2 max-w-sm text-sm font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Wide CSVs, missing values, duplicate rows, and typed columns are handled by the backend workflow.</p>
+            
+            <div class="mt-6 rounded-xl bg-white dark:bg-[#21262d] border border-slate-200/50 dark:border-[#30363d]/50 px-5 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300 shadow-sm group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all duration-300">
+              Browse Files
+            </div>
+            
             @if (selectedFileName) {
-              <p class="mt-3 rounded-sm bg-[#dcfce7] dark:bg-emerald-900/20 transition-colors px-3 py-2 text-sm font-medium text-[#166534] dark:text-emerald-400 transition-colors">
+              <div class="mt-5 flex items-center gap-2 rounded-xl bg-emerald-50/90 dark:bg-emerald-900/40 backdrop-blur border border-emerald-200/50 dark:border-emerald-900/50 px-4 py-2.5 text-sm font-bold text-emerald-700 dark:text-emerald-400 transition-colors z-10 relative shadow-sm">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 Selected: {{ selectedFileName }}
-              </p>
+              </div>
             }
           </label>
-
+          
           <div class="space-y-5">
             <label class="block">
-              <span class="mb-2 block text-sm font-medium text-[#1c2434] dark:text-white transition-colors">Table Name</span>
-              <input name="tableName" [(ngModel)]="tableName" class="input-field" placeholder="raw_dataset">
+              <span class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Table Name</span>
+              <input name="tableName" [(ngModel)]="tableName" class="w-full rounded-xl border border-white/60 dark:border-white/5 bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur px-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-sm" placeholder="raw_dataset">
             </label>
-            <div class="rounded-sm bg-[#f1f5f9] dark:bg-[#24303f] transition-colors p-4 text-sm text-[#64748b] dark:text-[#aeb7c0] transition-colors">
-              <p class="font-bold text-[#1c2434] dark:text-white transition-colors">Upload contract</p>
-              <p class="mt-1">The backend expects multipart field key <strong class="text-[#24303f] dark:text-white transition-colors">file</strong>, plus tableName, sourceType, and sourceName.</p>
+            
+            <div class="rounded-xl border border-indigo-200/50 dark:border-indigo-500/30 bg-indigo-50/80 dark:bg-indigo-500/10 backdrop-blur p-4 text-sm text-slate-700 dark:text-[#aeb7c0] transition-colors duration-300 shadow-sm">
+              <p class="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-2 mb-1.5">
+                <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Upload contract
+              </p>
+              <p class="leading-relaxed font-medium">The backend expects multipart field key <strong class="text-indigo-700 dark:text-indigo-400 bg-indigo-100/50 dark:bg-indigo-500/20 px-1.5 py-0.5 rounded">file</strong>, plus tableName, sourceType, and sourceName.</p>
             </div>
 
             @if (errorMessage) {
-              <p class="rounded-sm border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-3 py-2 text-sm font-medium text-rose-700 dark:text-rose-400 transition-colors">
+              <p class="rounded-xl border border-rose-200/50 dark:border-rose-900/30 bg-rose-50/80 dark:bg-rose-900/10 backdrop-blur px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors shadow-sm">
                 {{ errorMessage }}
               </p>
             }
             @if (successMessage) {
-              <p class="rounded-sm border border-emerald-200 dark:border-emerald-900/30 transition-colors bg-[#dcfce7] dark:bg-emerald-900/20 transition-colors px-3 py-2 text-sm font-medium text-[#166534] dark:text-emerald-400 transition-colors">
+              <p class="rounded-xl border border-emerald-200/50 dark:border-emerald-900/30 bg-emerald-50/80 dark:bg-emerald-900/20 backdrop-blur px-4 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-colors shadow-sm">
                 {{ successMessage }}
               </p>
             }
 
-            <button type="submit" class="btn-primary w-full" [disabled]="!selectedFile || uploading()">
+            <button type="submit" class="w-full flex justify-center items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-5 py-3.5 text-sm font-bold text-white hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:pointer-events-none mt-auto hover:scale-[1.02]" [disabled]="!selectedFile || uploading()">
+              <svg *ngIf="uploading()" class="w-5 h-5 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
               {{ uploading() ? 'Uploading...' : 'Upload CSV' }}
             </button>
           </div>
@@ -64,53 +86,87 @@
       </article>
 
       @if (uploadedDataset(); as dataset) {
-        <article class="rounded-sm border border-emerald-200 dark:border-emerald-900/30 transition-colors bg-[#dcfce7] dark:bg-emerald-900/20 transition-colors p-5">
+        <article class="rounded-2xl border border-emerald-300/50 dark:border-emerald-500/30 bg-emerald-50/90 dark:bg-emerald-500/10 backdrop-blur-xl p-5 shadow-lg shadow-emerald-500/10 transition-colors duration-300 transform animate-[fadeIn_0.5s_ease-out]">
           <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 class="font-bold text-[#166534] dark:text-emerald-400 transition-colors">Upload complete: {{ dataset.tableName }}</h2>
-              <p class="mt-1 text-sm text-[#15803d] dark:text-emerald-400 transition-colors">{{ dataset.rowCount }} rows / {{ dataset.columnCount }} columns / {{ dataset.status }}</p>
+            <div class="flex items-center gap-4">
+              <div class="rounded-full bg-emerald-100/80 dark:bg-emerald-500/20 p-2.5 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200/50 dark:border-emerald-500/30">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+              </div>
+              <div>
+                <h2 class="font-bold text-emerald-900 dark:text-emerald-300 text-lg transition-colors">Upload complete: {{ dataset.tableName }}</h2>
+                <p class="mt-1 text-xs font-bold text-emerald-700 dark:text-emerald-400/80 transition-colors uppercase tracking-wider flex items-center gap-2">
+                  <span>{{ dataset.rowCount | number }} rows</span>
+                  <span class="w-1 h-1 rounded-full bg-emerald-400"></span>
+                  <span>{{ dataset.columnCount }} columns</span>
+                  <span class="w-1 h-1 rounded-full bg-emerald-400"></span>
+                  <span>{{ dataset.status }}</span>
+                </p>
+              </div>
             </div>
-            <a [routerLink]="['/datasets', dataset.id, 'preview']" class="btn-primary">Continue to Preview</a>
+            <a [routerLink]="['/datasets', dataset.id, 'preview']" class="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/30 hover:scale-[1.02]">
+              Continue to Preview
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            </a>
           </div>
         </article>
       }
 
-      <article class="card p-0">
-        <div class="border-b border-[#e2e8f0] dark:border-[#2e3a47] transition-colors px-5 py-4">
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl shadow-xl transition-colors duration-300 overflow-hidden flex flex-col">
+        <div class="border-b border-slate-200/50 dark:border-[#30363d]/50 px-6 py-5 bg-white/40 dark:bg-[#0d1117]/40">
           <div class="flex items-center justify-between">
             <div>
-              <h2 class="font-bold text-[#1c2434] dark:text-white transition-colors">Project Datasets</h2>
-              <p class="mt-1 text-xs font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">No mock data. This list comes from the backend.</p>
+              <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300 flex items-center gap-2">
+                <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+                Project Datasets
+              </h2>
+              <p class="mt-1 text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors">No mock data. This list comes from the backend.</p>
             </div>
-            <span class="rounded bg-[#f1f5f9] dark:bg-[#24303f] transition-colors px-2.5 py-1 text-xs font-semibold text-[#64748b] dark:text-[#aeb7c0] transition-colors">{{ datasets().length }}</span>
+            <span class="flex items-center justify-center px-3 py-1 rounded-xl bg-indigo-100/80 dark:bg-indigo-500/20 border border-indigo-200/50 dark:border-indigo-500/30 text-sm font-bold text-indigo-700 dark:text-indigo-400 shadow-sm">{{ datasets().length }}</span>
           </div>
         </div>
 
-        <div class="p-5">
+        <div class="p-6">
           @if (loading()) {
-            <p class="text-sm font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">Loading datasets...</p>
+            <div class="py-8 flex flex-col items-center justify-center text-slate-500 dark:text-[#8a99ad]">
+              <svg class="w-8 h-8 mb-3 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              <p class="text-sm font-medium">Loading datasets...</p>
+            </div>
           } @else if (datasets().length === 0) {
-            <p class="text-sm font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">No datasets uploaded yet.</p>
+            <div class="py-12 flex flex-col items-center justify-center text-slate-500 dark:text-[#8a99ad] text-center">
+              <svg class="w-12 h-12 mb-4 text-slate-400/50 dark:text-[#30363d]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+              <p class="text-base font-bold text-slate-700 dark:text-slate-300">No datasets uploaded yet</p>
+              <p class="text-sm mt-1 font-medium">Upload a CSV above to get started.</p>
+            </div>
           } @else {
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead><tr><th>ID</th><th>Source</th><th>Table</th><th>Rows</th><th>Columns</th><th>Status</th><th>Actions</th></tr></thead>
-                <tbody>
+            <div class="overflow-x-auto -mx-6 px-6 pb-4">
+              <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                <thead class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] border-b-2 border-slate-200/50 dark:border-[#30363d]/50">
+                  <tr>
+                    <th class="px-4 py-3">ID</th>
+                    <th class="px-4 py-3">Table</th>
+                    <th class="px-4 py-3">Rows</th>
+                    <th class="px-4 py-3">Cols</th>
+                    <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100/50 dark:divide-[#21262d]/50">
                   @for (dataset of datasets(); track dataset.id) {
-                    <tr>
-                      <td class="font-medium">#{{ dataset.id }}</td>
-                      <td>{{ dataset.sourceName || dataset.sourceType }}</td>
-                      <td class="font-medium text-[#3c50e0]">{{ dataset.tableName }}</td>
-                      <td>{{ dataset.rowCount }}</td>
-                      <td>{{ dataset.columnCount }}</td>
-                      <td><span [class]="dataset.status === 'Analyzed' ? 'badge-success' : 'badge-warning'">{{ dataset.status }}</span></td>
-                      <td>
-                        <div class="flex flex-wrap gap-2">
-                          <a [routerLink]="['/datasets', dataset.id, 'preview']" class="btn-secondary">Preview</a>
-                          <a [routerLink]="['/datasets', dataset.id, 'explorer']" class="btn-secondary">Explore</a>
-                          <a [routerLink]="['/datasets', dataset.id, 'analyze']" class="btn-secondary">Analyze</a>
-                          <a [routerLink]="['/datasets', dataset.id, 'profile']" class="btn-secondary">Profile</a>
-                          <a [routerLink]="['/datasets', dataset.id, 'schema']" class="btn-secondary">Schema</a>
+                    <tr class="hover:bg-white/80 dark:hover:bg-[#21262d]/80 transition-colors group">
+                      <td class="px-4 py-4 font-bold text-slate-900 dark:text-white">#{{ dataset.id }}</td>
+                      <td class="px-4 py-4 font-bold text-indigo-600 dark:text-indigo-400">{{ dataset.tableName }}</td>
+                      <td class="px-4 py-4 font-medium">{{ dataset.rowCount | number }}</td>
+                      <td class="px-4 py-4 font-medium">{{ dataset.columnCount }}</td>
+                      <td class="px-4 py-4">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] uppercase tracking-wider font-bold shadow-sm" [ngClass]="dataset.status === 'Analyzed' ? 'bg-emerald-100/80 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/30' : 'bg-amber-100/80 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/30'">
+                          {{ dataset.status }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-4 text-right">
+                        <div class="inline-flex rounded-xl shadow-sm p-1 bg-slate-100/50 dark:bg-[#0d1117]/50 border border-slate-200/50 dark:border-[#30363d]/50">
+                          <a [routerLink]="['/datasets', dataset.id, 'preview']" class="px-3 py-1.5 text-xs font-bold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-[#30363d] hover:shadow-sm transition-all">Preview</a>
+                          <a [routerLink]="['/datasets', dataset.id, 'profile']" class="px-3 py-1.5 text-xs font-bold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-[#30363d] hover:shadow-sm transition-all">Profile</a>
+                          <a [routerLink]="['/datasets', dataset.id, 'schema']" class="px-3 py-1.5 text-xs font-bold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-[#30363d] hover:shadow-sm transition-all">Schema</a>
                         </div>
                       </td>
                     </tr>
@@ -123,39 +179,55 @@
       </article>
     </div>
 
+    <!-- Sidebar Guidelines -->
     <aside class="space-y-6">
-      <article class="card">
-        <h2 class="font-bold text-[#1c2434] dark:text-white transition-colors border-b border-[#e2e8f0] dark:border-[#2e3a47] transition-colors pb-4">Upload Readiness</h2>
-        <ul class="mt-4 space-y-3 text-sm font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">
-          <li class="flex items-start gap-2">
-            <svg class="h-5 w-5 shrink-0 text-[#3c50e0]" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-            </svg>
-            Header row required.
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300 sticky top-6">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white transition-colors border-b border-slate-200/50 dark:border-[#30363d]/50 pb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          Upload Readiness
+        </h2>
+        <ul class="mt-5 space-y-4 text-sm font-medium text-slate-600 dark:text-slate-300 transition-colors">
+          <li class="flex items-start gap-3">
+            <div class="rounded-lg bg-indigo-100/80 dark:bg-indigo-500/20 p-1.5 text-indigo-600 dark:text-indigo-400 shrink-0 shadow-sm border border-indigo-200/50 dark:border-indigo-500/30 mt-0.5">
+              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <span>Header row required.</span>
           </li>
-          <li class="flex items-start gap-2">
-            <svg class="h-5 w-5 shrink-0 text-[#3c50e0]" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-            </svg>
-            Empty values are imported as missing values.
+          <li class="flex items-start gap-3">
+            <div class="rounded-lg bg-indigo-100/80 dark:bg-indigo-500/20 p-1.5 text-indigo-600 dark:text-indigo-400 shrink-0 shadow-sm border border-indigo-200/50 dark:border-indigo-500/30 mt-0.5">
+              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <span>Empty values are imported as missing values.</span>
           </li>
-          <li class="flex items-start gap-2">
-            <svg class="h-5 w-5 shrink-0 text-[#3c50e0]" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-            </svg>
-            Duplicate rows are detected during analysis.
+          <li class="flex items-start gap-3">
+            <div class="rounded-lg bg-indigo-100/80 dark:bg-indigo-500/20 p-1.5 text-indigo-600 dark:text-indigo-400 shrink-0 shadow-sm border border-indigo-200/50 dark:border-indigo-500/30 mt-0.5">
+              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <span>Duplicate rows are detected during analysis.</span>
           </li>
-          <li class="flex items-start gap-2">
-            <svg class="h-5 w-5 shrink-0 text-[#3c50e0]" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-            </svg>
-            Column names with spaces or underscores are preserved.
+          <li class="flex items-start gap-3">
+            <div class="rounded-lg bg-indigo-100/80 dark:bg-indigo-500/20 p-1.5 text-indigo-600 dark:text-indigo-400 shrink-0 shadow-sm border border-indigo-200/50 dark:border-indigo-500/30 mt-0.5">
+              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <span>Column names with spaces or underscores are preserved.</span>
           </li>
         </ul>
-      </article>
-      <article class="card">
-        <h2 class="font-bold text-[#1c2434] dark:text-white transition-colors border-b border-[#e2e8f0] dark:border-[#2e3a47] transition-colors pb-4">Next Step</h2>
-        <p class="mt-4 text-sm font-medium text-[#64748b] dark:text-[#aeb7c0] transition-colors">After upload, preview the rows before running analysis.</p>
+        
+        <div class="mt-6 rounded-xl bg-white/50 dark:bg-[#0d1117]/50 backdrop-blur border border-white/40 dark:border-white/5 p-4 shadow-sm">
+          <h3 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            Next Step
+          </h3>
+          <p class="text-sm font-medium text-slate-600 dark:text-[#aeb7c0]">After upload, preview the rows before running analysis.</p>
+        </div>
       </article>
     </aside>
   </div>

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -18,12 +19,14 @@ interface DiagramColumn {
   name: string;
   sqlType: string | null;
   isNullable: boolean | null;
+  isPrimaryKey?: boolean;
+  isForeignKey?: boolean;
 }
 
 @Component({
   selector: 'app-schema-review',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './schema-review.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -189,6 +192,7 @@ export class SchemaReviewComponent implements OnInit {
   diagramTables(schema: SchemaResponse): DiagramTable[] {
     const tables = new Map<string, Map<string, DiagramColumn>>();
     const generatedColumns = new Map(schema.generatedColumns.map((column): [string, SchemaColumn] => [column.name, column]));
+    const foreignKeys = new Set(this.relationships(schema).map(r => `${r.fromTable}.${r.fromColumn}`));
 
     tables.set(
       schema.generatedTableName,
@@ -198,13 +202,15 @@ export class SchemaReviewComponent implements OnInit {
           name: column.name,
           sqlType: column.sqlType || null,
           isNullable: column.isNullable,
+          isPrimaryKey: column.name.toLowerCase() === 'id' || column.name.toLowerCase() === `${schema.generatedTableName.toLowerCase()}_id`,
+          isForeignKey: foreignKeys.has(`${schema.generatedTableName}.${column.name}`),
         },
       ])),
     );
 
     this.relationships(schema).forEach((relationship) => {
-      this.addDiagramColumn(tables, generatedColumns, schema.generatedTableName, relationship.fromTable, relationship.fromColumn);
-      this.addDiagramColumn(tables, generatedColumns, schema.generatedTableName, relationship.toTable, relationship.toColumn);
+      this.addDiagramColumn(tables, generatedColumns, schema.generatedTableName, relationship.fromTable, relationship.fromColumn, foreignKeys);
+      this.addDiagramColumn(tables, generatedColumns, schema.generatedTableName, relationship.toTable, relationship.toColumn, foreignKeys);
     });
 
     return Array.from(tables.entries()).map(([name, columns]) => ({
@@ -265,6 +271,7 @@ export class SchemaReviewComponent implements OnInit {
     generatedTableName: string,
     table: string,
     column: string,
+    foreignKeys: Set<string>,
   ): void {
     const tableName = table || 'unknown_table';
     const columnName = column || 'unknown_column';
@@ -273,12 +280,16 @@ export class SchemaReviewComponent implements OnInit {
       tables.set(tableName, new Map<string, DiagramColumn>());
     }
 
-    const generatedColumn = tableName === generatedTableName ? generatedColumns.get(columnName) : null;
-    tables.get(tableName)?.set(columnName, {
-      name: columnName,
-      sqlType: generatedColumn?.sqlType || null,
-      isNullable: generatedColumn ? generatedColumn.isNullable : null,
-    });
+    if (!tables.get(tableName)?.has(columnName)) {
+      const generatedColumn = tableName === generatedTableName ? generatedColumns.get(columnName) : null;
+      tables.get(tableName)?.set(columnName, {
+        name: columnName,
+        sqlType: generatedColumn?.sqlType || null,
+        isNullable: generatedColumn ? generatedColumn.isNullable : null,
+        isPrimaryKey: columnName.toLowerCase() === 'id' || columnName.toLowerCase() === `${tableName.toLowerCase()}_id`,
+        isForeignKey: foreignKeys.has(`${tableName}.${columnName}`),
+      });
+    }
   }
 
   private isTab(tab: string | null): tab is SchemaReviewTab {

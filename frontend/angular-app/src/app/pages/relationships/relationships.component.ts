@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -9,7 +10,7 @@ import { WorkflowStateService } from '../../services/workflow-state.service';
 @Component({
   selector: 'app-relationships',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './relationships.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

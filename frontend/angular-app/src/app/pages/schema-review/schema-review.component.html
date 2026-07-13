@@ -1,88 +1,151 @@
-<section>
-  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+<section class="h-full flex flex-col bg-slate-50 dark:bg-[#0d1117] transition-colors duration-300 min-h-[calc(100vh-80px)] -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8 relative">
+  <!-- Subtle decorative background element for glassmorphism effect -->
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent pointer-events-none"></div>
+
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8 relative z-10">
     <div>
-      <p class="mb-3 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Datasets / Schema Review</p>
-      <h1 class="page-title">Schema Review</h1>
-      <p class="page-subtitle">Generate and inspect the PostgreSQL schema before editing relationships.</p>
+      <p class="mb-2 text-sm font-semibold text-slate-500 dark:text-[#8a99ad] uppercase tracking-wider transition-colors duration-300">Datasets / Schema Review</p>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight transition-colors duration-300">Schema Review</h1>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-2xl transition-colors duration-300">Generate and inspect the PostgreSQL schema before editing relationships.</p>
     </div>
-    <div class="flex flex-wrap gap-3">
-      <a [routerLink]="['/datasets', datasetId, 'dashboard']" class="btn-secondary">Dashboard</a>
+    <div class="flex flex-wrap items-center gap-3">
+      <a [routerLink]="['/datasets', datasetId, 'dashboard']" class="flex items-center gap-2 rounded-xl bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-5 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
+        Dashboard
+      </a>
       @if (schema(); as currentSchema) {
-        <a [routerLink]="['/schemas', currentSchema.schemaId, 'relationships']" class="btn-primary">Continue to Relationships</a>
+        <a [routerLink]="['/schemas', currentSchema.schemaId, 'relationships']" class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-lg shadow-indigo-500/30 hover:scale-[1.02]">
+          Continue to Relationships
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+        </a>
       }
     </div>
   </div>
 
-  <article class="card mt-5 p-5">
-    <form #schemaForm="ngForm" (ngSubmit)="generateSchema()" class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px]">
-      <label>
-        <span class="mb-1.5 block text-sm font-medium text-slate-700">Schema Name</span>
-        <input name="schemaName" [(ngModel)]="schemaName" class="input-field" placeholder="raw_dataset_schema">
-      </label>
-      <button type="submit" class="btn-primary self-end" [disabled]="generating()">
+  <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300 mb-8 relative z-10">
+    <form #schemaForm="ngForm" (ngSubmit)="generateSchema()" class="flex flex-col md:flex-row md:items-end gap-4 w-full">
+      <div class="flex-1 max-w-xl">
+        <label class="block">
+          <span class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Schema Name</span>
+          <input name="schemaName" [(ngModel)]="schemaName" class="w-full appearance-none bg-white/50 dark:bg-[#0d1117]/50 backdrop-blur border border-slate-200/50 dark:border-[#30363d]/50 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm placeholder:text-slate-400 dark:placeholder:text-[#8a99ad]" placeholder="raw_dataset_schema">
+        </label>
+      </div>
+      <button type="submit" class="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-3 text-sm font-bold text-white hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-lg shadow-indigo-500/30 min-w-[180px] hover:scale-[1.02]" [disabled]="generating()">
+        <svg *ngIf="generating()" class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        @if (!generating()) {
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+        }
         {{ generating() ? 'Generating...' : schema() ? 'Regenerate Schema' : 'Generate Schema' }}
       </button>
     </form>
   </article>
 
   @if (errorMessage) {
-    <p class="mt-5 rounded-xl border border-rose-200 dark:border-rose-900/30 transition-colors bg-rose-50 dark:bg-rose-900/10 transition-colors px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors">
+    <p class="mb-8 rounded-xl border border-rose-200/50 dark:border-rose-900/30 bg-rose-50/80 dark:bg-rose-900/10 backdrop-blur px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 transition-colors shadow-sm relative z-10">
       {{ errorMessage }}
     </p>
   }
   @if (successMessage) {
-    <p class="mt-5 rounded-xl border border-emerald-200 dark:border-emerald-900/30 transition-colors bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+    <p class="mb-8 rounded-xl border border-emerald-200/50 dark:border-emerald-900/30 bg-emerald-50/80 dark:bg-emerald-900/20 backdrop-blur px-4 py-3 text-sm font-semibold text-emerald-700 dark:text-emerald-400 transition-colors shadow-sm relative z-10">
       {{ successMessage }}
     </p>
   }
 
   @if (loading()) {
-    <article class="card mt-5 p-6 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Loading schema...</article>
+    <div class="flex-1 flex flex-col items-center justify-center text-slate-500 dark:text-[#8a99ad] transition-colors duration-300 min-h-[400px] relative z-10">
+      <svg class="w-10 h-10 mb-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      <p class="text-sm font-medium">Loading schema...</p>
+    </div>
   } @else if (schema(); as currentSchema) {
-    <div class="mt-6 flex gap-7 overflow-x-auto border-b border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 text-sm font-semibold">
-      <button type="button" class="border-b-2 px-2 pb-3"
-        [class]="activeTab() === 'tables' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 dark:text-[#8a99ad] transition-colors duration-300'"
-        (click)="setTab('tables')">Tables</button>
-      <button type="button" class="border-b-2 px-2 pb-3"
-        [class]="activeTab() === 'sql' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 dark:text-[#8a99ad] transition-colors duration-300'"
-        (click)="setTab('sql')">SQL Preview</button>
-      <button type="button" class="border-b-2 px-2 pb-3"
-        [class]="activeTab() === 'er' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 dark:text-[#8a99ad] transition-colors duration-300'"
-        (click)="setTab('er')">ER Diagram</button>
-      <button type="button" class="border-b-2 px-2 pb-3"
-        [class]="activeTab() === 'constraints' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 dark:text-[#8a99ad] transition-colors duration-300'"
-        (click)="setTab('constraints')">Constraints</button>
-      <button type="button" class="border-b-2 px-2 pb-3"
-        [class]="activeTab() === 'export' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 dark:text-[#8a99ad] transition-colors duration-300'"
-        (click)="setTab('export')">Export</button>
+    
+    <div class="mb-8 overflow-x-auto relative z-10">
+      <div class="flex gap-2 inline-flex bg-white/60 dark:bg-[#161b22]/60 backdrop-blur-xl p-1.5 rounded-2xl border border-white/40 dark:border-white/10 shadow-lg whitespace-nowrap">
+        <button type="button" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2"
+          [class]="activeTab() === 'tables' ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-[#2a3441]/50'"
+          (click)="setTab('tables')">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+          Tables
+        </button>
+        <button type="button" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2"
+          [class]="activeTab() === 'sql' ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-[#2a3441]/50'"
+          (click)="setTab('sql')">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+          SQL Preview
+        </button>
+        <button type="button" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2"
+          [class]="activeTab() === 'er' ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-[#2a3441]/50'"
+          (click)="setTab('er')">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+          ER Diagram
+        </button>
+        <button type="button" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2"
+          [class]="activeTab() === 'constraints' ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-[#2a3441]/50'"
+          (click)="setTab('constraints')">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+          Constraints
+        </button>
+        <button type="button" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2"
+          [class]="activeTab() === 'export' ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-[#2a3441]/50'"
+          (click)="setTab('export')">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+          Export
+        </button>
+      </div>
     </div>
 
     @if (activeTab() === 'tables') {
-      <div class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <article class="card p-5">
-          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 class="text-lg font-semibold">Generated Table: {{ currentSchema.generatedTableName }}</h2>
-              <p class="text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Schema {{ currentSchema.schemaName }} / Version {{ currentSchema.version }}</p>
+      <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px] mb-8 relative z-10">
+        <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl shadow-xl overflow-hidden flex flex-col transition-colors duration-300">
+          <div class="border-b border-slate-200/50 dark:border-[#30363d]/50 px-6 py-5 bg-white/40 dark:bg-[#0d1117]/40">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">Generated Table: <span class="text-indigo-600 dark:text-indigo-400">{{ currentSchema.generatedTableName }}</span></h2>
+                <p class="mt-1 text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Schema {{ currentSchema.schemaName }} / Version {{ currentSchema.version }}</p>
+              </div>
+              <span class="rounded-xl bg-emerald-100/80 dark:bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 shadow-sm border border-emerald-200/50 dark:border-emerald-500/30 uppercase tracking-wider">
+                {{ currentSchema.generatedColumns.length }} columns
+              </span>
             </div>
-            <span class="badge-success">{{ currentSchema.generatedColumns.length }} columns</span>
           </div>
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead><tr><th>Column Name</th><th>Source Column</th><th>Detected Type</th><th>SQL Type</th><th>Nullable</th><th>Sample Values</th></tr></thead>
-              <tbody>
+          <div class="flex-1 overflow-x-auto p-6 pt-0">
+            <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap mt-4">
+              <thead class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] border-b-2 border-slate-200/50 dark:border-[#30363d]/50">
+                <tr>
+                  <th class="px-4 py-4">Column Name</th>
+                  <th class="px-4 py-4">Source Column</th>
+                  <th class="px-4 py-4">Detected Type</th>
+                  <th class="px-4 py-4">SQL Type</th>
+                  <th class="px-4 py-4">Nullable</th>
+                  <th class="px-4 py-4">Sample Values</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100/50 dark:divide-[#21262d]/50">
                 @for (column of currentSchema.generatedColumns; track column.name) {
-                  <tr>
-                    <td class="font-medium">{{ column.name }}</td>
-                    <td>{{ column.sourceColumnName }}</td>
-                    <td>{{ column.detectedDataType }}</td>
-                    <td>{{ column.sqlType }}</td>
-                    <td>{{ column.isNullable ? 'Yes' : 'No' }}</td>
-                    <td>
-                      @if (sampleValues(column).length > 0) {
-                        <span class="text-slate-600 dark:text-[#aeb7c0] transition-colors duration-300">{{ sampleValues(column).join(', ') }}</span>
+                  <tr class="hover:bg-white/50 dark:hover:bg-[#21262d]/50 transition-colors group">
+                    <td class="px-4 py-4 font-bold text-slate-900 dark:text-white">{{ column.name }}</td>
+                    <td class="px-4 py-4">{{ column.sourceColumnName }}</td>
+                    <td class="px-4 py-4">
+                      <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] uppercase tracking-wider font-bold bg-slate-100/80 dark:bg-[#30363d] text-slate-800 dark:text-slate-200 shadow-sm border border-slate-200/50 dark:border-[#30363d]">
+                        {{ column.detectedDataType }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-4">
+                      <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] uppercase tracking-wider font-bold bg-indigo-100/80 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30 shadow-sm">
+                        {{ column.sqlType }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-4">
+                      @if (column.isNullable) {
+                        <span class="text-amber-600 dark:text-amber-400 font-semibold">Yes</span>
                       } @else {
-                        <span class="text-slate-400 dark:text-slate-500 transition-colors duration-300">Not available</span>
+                        <span class="text-slate-600 dark:text-slate-400 font-medium">No</span>
+                      }
+                    </td>
+                    <td class="px-4 py-4 truncate max-w-xs font-medium" [title]="sampleValues(column).join(', ')">
+                      @if (sampleValues(column).length > 0) {
+                        <span class="text-slate-500 dark:text-[#aeb7c0]">{{ sampleValues(column).join(', ') }}</span>
+                      } @else {
+                        <span class="text-slate-400 dark:text-slate-500 italic">Not available</span>
                       }
                     </td>
                   </tr>
@@ -92,64 +155,95 @@
           </div>
         </article>
 
-        <aside class="card p-5">
-          <h2 class="font-semibold">Schema Metadata</h2>
-          <div class="mt-4 space-y-3 text-sm">
-            <div class="flex justify-between"><span class="text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Schema ID</span><strong>{{ currentSchema.schemaId }}</strong></div>
-            <div class="flex justify-between"><span class="text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Dataset ID</span><strong>{{ currentSchema.datasetId }}</strong></div>
-            <div class="flex justify-between"><span class="text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Status</span><strong>{{ currentSchema.status }}</strong></div>
+        <aside class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300 self-start">
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">Schema Metadata</h2>
+          <div class="mt-6 space-y-4">
+            <div class="rounded-xl border border-white/60 dark:border-white/5 bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur p-4 flex items-center justify-between transition-colors shadow-sm">
+              <span class="text-sm font-semibold text-slate-500 dark:text-[#8a99ad]">Schema ID</span>
+              <strong class="text-lg text-slate-900 dark:text-white">{{ currentSchema.schemaId }}</strong>
+            </div>
+            <div class="rounded-xl border border-white/60 dark:border-white/5 bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur p-4 flex items-center justify-between transition-colors shadow-sm">
+              <span class="text-sm font-semibold text-slate-500 dark:text-[#8a99ad]">Dataset ID</span>
+              <strong class="text-lg text-slate-900 dark:text-white">{{ currentSchema.datasetId }}</strong>
+            </div>
+            <div class="rounded-xl border border-white/60 dark:border-white/5 bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur p-4 flex items-center justify-between transition-colors shadow-sm">
+              <span class="text-sm font-semibold text-slate-500 dark:text-[#8a99ad]">Status</span>
+              <span class="rounded-lg bg-emerald-100/80 dark:bg-emerald-500/20 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 shadow-sm border border-emerald-200/50 dark:border-emerald-500/30">{{ currentSchema.status }}</span>
+            </div>
           </div>
         </aside>
       </div>
     }
 
     @if (activeTab() === 'sql') {
-      <article class="card mt-5 p-5">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-semibold">SQL Preview</h2>
-            <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Review the SQL that creates the generated table.</p>
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl shadow-xl overflow-hidden flex flex-col transition-colors duration-300 mb-8 relative z-10">
+        <div class="border-b border-slate-200/50 dark:border-[#30363d]/50 px-6 py-5 bg-white/40 dark:bg-[#0d1117]/40">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">SQL Preview</h2>
+              <p class="mt-1 text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Review the SQL that creates the generated table.</p>
+            </div>
+            <button type="button" class="flex items-center gap-2 rounded-xl bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-5 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm" (click)="copySql(currentSchema)">
+              @if (copiedTarget() === 'sql') {
+                <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                <span class="text-emerald-600 dark:text-emerald-400">Copied</span>
+              } @else {
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                <span>Copy SQL</span>
+              }
+            </button>
           </div>
-          <button type="button" class="btn-secondary" (click)="copySql(currentSchema)">
-            {{ copiedTarget() === 'sql' ? 'Copied' : 'Copy SQL' }}
-          </button>
         </div>
-        <pre class="max-h-[650px] overflow-auto rounded-2xl border border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 bg-[#fbfcff] p-5 text-[13px] leading-6 text-slate-700 scrollbar-thin"><code>{{ sqlText(currentSchema) }}</code></pre>
+        <div class="p-6 bg-slate-900/90 backdrop-blur-xl overflow-hidden">
+          <pre class="max-h-[650px] overflow-auto text-[13px] leading-relaxed text-slate-300 font-mono scrollbar-thin rounded-xl bg-black/40 p-5 shadow-inner border border-white/10"><code>{{ sqlText(currentSchema) }}</code></pre>
+        </div>
       </article>
     }
 
     @if (activeTab() === 'er') {
-      <article class="card mt-5 p-5">
-        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300 mb-8 relative z-10">
+        <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 class="text-lg font-semibold">ER Diagram</h2>
-            <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">A generated database map from the current schema and saved relationships.</p>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">ER Diagram</h2>
+            <p class="mt-1 text-sm font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">A generated database map from the current schema and saved relationships.</p>
           </div>
-          <a [routerLink]="['/schemas', currentSchema.schemaId, 'relationships']" class="btn-secondary">Edit Relationships</a>
+          <a [routerLink]="['/schemas', currentSchema.schemaId, 'relationships']" class="flex items-center gap-2 rounded-xl bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-5 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            Edit Relationships
+          </a>
         </div>
 
-        <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div class="grid gap-6 md:grid-cols-2 content-start">
             @for (table of diagramTables(currentSchema); track table.name) {
-              <section class="overflow-hidden rounded-2xl border border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 bg-white dark:bg-[#24303f] transition-colors duration-300 shadow-sm">
-                <div class="border-b border-slate-100 bg-slate-900 px-4 py-3 text-white">
-                  <h3 class="font-semibold">{{ table.name }}</h3>
-                  <p class="text-xs text-slate-300">Table</p>
+              <section class="overflow-hidden rounded-2xl border border-white/20 dark:border-[#30363d]/50 bg-white/40 dark:bg-[#1c2434]/40 backdrop-blur shadow-md transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                <div class="border-b border-indigo-500/30 bg-gradient-to-r from-indigo-500/80 to-indigo-700/80 backdrop-blur px-5 py-4 text-white flex items-center justify-between">
+                  <h3 class="font-bold text-lg flex items-center gap-2 text-white">
+                    <svg class="w-5 h-5 text-indigo-100" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                    {{ table.name }}
+                  </h3>
+                  <span class="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-white/20 shadow-sm backdrop-blur-sm">Table</span>
                 </div>
-                <div class="divide-y divide-slate-100">
+                <div class="divide-y divide-slate-200/50 dark:divide-[#30363d]/50">
                   @for (column of table.columns; track column.name) {
-                    <div class="grid gap-1 px-4 py-2.5 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                      <span class="font-medium text-slate-800">{{ column.name }}</span>
-                      <span class="text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">
-                        @if (column.sqlType) {
-                          {{ column.sqlType }}
-                        } @else {
-                          referenced column
-                        }
-                      </span>
+                    <div class="flex items-center justify-between px-5 py-4 hover:bg-white/50 dark:hover:bg-[#24303f]/50 transition-colors">
+                      <div class="flex flex-col gap-1">
+                        <span class="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                          @if(column.isPrimaryKey) {
+                            <svg class="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                          } @else if(column.isForeignKey) {
+                            <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                          }
+                          {{ column.name }}
+                        </span>
+                        <span class="text-xs font-medium text-slate-500 dark:text-[#8a99ad]">
+                          {{ column.sqlType || 'referenced column' }}
+                        </span>
+                      </div>
                       @if (column.isNullable !== null) {
-                        <span class="text-xs font-medium text-slate-400 dark:text-slate-500 transition-colors duration-300 sm:col-span-2">
-                          {{ column.isNullable ? 'Nullable' : 'Required' }}
+                        <span class="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-lg shadow-sm border" 
+                              [ngClass]="column.isNullable ? 'bg-slate-100/80 dark:bg-[#30363d] text-slate-600 dark:text-slate-400 border-slate-200/50 dark:border-[#30363d]/50' : 'bg-rose-100/80 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-200/50 dark:border-rose-500/30'">
+                          {{ column.isNullable ? 'NULL' : 'NOT NULL' }}
                         </span>
                       }
                     </div>
@@ -159,21 +253,29 @@
             }
           </div>
 
-          <aside class="rounded-2xl border border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-5">
-            <h3 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">Relationship Map</h3>
+          <aside class="rounded-2xl border border-white/60 dark:border-white/5 bg-white/40 dark:bg-[#0d1117]/40 backdrop-blur shadow-inner p-6 self-start">
+            <h3 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300 mb-6 flex items-center gap-2">
+              <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+              Relationship Map
+            </h3>
             @if (relationships(currentSchema).length === 0) {
-              <div class="mt-4 rounded-xl border border-dashed border-slate-300 dark:border-[#313d4f] transition-colors duration-300 bg-white dark:bg-[#24303f] transition-colors duration-300 p-5 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">
-                This schema currently has one generated table and no saved relationships. Add one to draw a relationship card here.
+              <div class="rounded-xl border border-dashed border-slate-300 dark:border-[#30363d] bg-white/50 dark:bg-[#1c2434]/50 backdrop-blur p-6 text-center transition-colors shadow-sm">
+                <p class="text-sm font-bold text-slate-700 dark:text-slate-300">No saved relationships</p>
+                <p class="mt-2 text-xs font-medium text-slate-500 dark:text-[#8a99ad]">
+                  This schema currently has one generated table and no saved relationships. Add one to draw a relationship card here.
+                </p>
               </div>
             } @else {
-              <div class="mt-4 space-y-3">
+              <div class="space-y-4">
                 @for (relationship of relationships(currentSchema); track $index) {
-                  <div class="rounded-xl border border-indigo-100 dark:border-[#3c50e0]/30 transition-colors duration-300 bg-white dark:bg-[#24303f] transition-colors duration-300 p-4">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">
-                      Type: {{ relationshipTypeLabel(relationship) }}
-                    </p>
-                    <p class="mt-2 break-words font-semibold text-slate-900 dark:text-white transition-colors duration-300">{{ relationshipLabel(relationship) }}</p>
-                    <p class="mt-1 text-xs text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">{{ relationship.name || 'Unnamed relationship' }}</p>
+                  <div class="rounded-xl border border-white/60 dark:border-white/5 bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-1 hover:border-indigo-300/50 dark:hover:border-indigo-500/30 group">
+                    <div class="flex justify-between items-center mb-3">
+                      <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-indigo-100/80 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30 shadow-sm">
+                        {{ relationshipTypeLabel(relationship) }}
+                      </span>
+                    </div>
+                    <p class="font-bold text-slate-800 dark:text-slate-200 break-words mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{{ relationshipLabel(relationship) }}</p>
+                    <p class="text-xs font-medium text-slate-500 dark:text-[#8a99ad]">{{ relationship.name || 'Unnamed relationship' }}</p>
                   </div>
                 }
               </div>
@@ -184,87 +286,144 @@
     }
 
     @if (activeTab() === 'constraints') {
-      <article class="card mt-5 p-5">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-semibold">Constraints & Relationships</h2>
-            <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Relationships are managed manually in the next step.</p>
+      <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl shadow-xl overflow-hidden flex flex-col transition-colors duration-300 mb-8 relative z-10">
+        <div class="border-b border-slate-200/50 dark:border-[#30363d]/50 px-6 py-5 bg-white/40 dark:bg-[#0d1117]/40">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">Constraints & Relationships</h2>
+              <p class="mt-1 text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Relationships are managed manually in the next step.</p>
+            </div>
+            <a [routerLink]="['/schemas', currentSchema.schemaId, 'relationships']" class="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:from-indigo-600 hover:to-indigo-700 transition-all shadow-md shadow-indigo-500/30 hover:scale-[1.02]">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              Edit Relationships
+            </a>
           </div>
-          <a [routerLink]="['/schemas', currentSchema.schemaId, 'relationships']" class="btn-primary">Edit Relationships</a>
         </div>
 
-        @if (relationships(currentSchema).length === 0) {
-          <div class="rounded-2xl border border-dashed border-slate-300 dark:border-[#313d4f] transition-colors duration-300 bg-slate-50 dark:bg-[#1c2434] transition-colors duration-300 p-8 text-center">
-            <h3 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">No relationships yet</h3>
-            <p class="mt-2 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Add manual relationships in the next step to produce ALTER TABLE statements when supported.</p>
-          </div>
-        } @else {
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead><tr><th>Name</th><th>Relationship</th><th>Type</th></tr></thead>
-              <tbody>
-                @for (relationship of relationships(currentSchema); track $index) {
+        <div class="p-6">
+          @if (relationships(currentSchema).length === 0) {
+            <div class="rounded-2xl border-2 border-dashed border-slate-300 dark:border-[#30363d] bg-white/40 dark:bg-[#0d1117]/40 backdrop-blur p-12 text-center transition-colors">
+              <div class="grid h-16 w-16 place-items-center rounded-2xl bg-indigo-100/80 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 mb-5 mx-auto shadow-sm border border-indigo-200/50 dark:border-indigo-500/30">
+                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+              </div>
+              <h3 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">No relationships yet</h3>
+              <p class="mt-2 text-sm font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300 max-w-lg mx-auto">Add manual relationships in the next step to produce ALTER TABLE statements when supported.</p>
+            </div>
+          } @else {
+            <div class="overflow-x-auto rounded-xl border border-slate-200/50 dark:border-[#30363d]/50 bg-white/40 dark:bg-[#0d1117]/40 backdrop-blur">
+              <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                <thead class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad] border-b-2 border-slate-200/50 dark:border-[#30363d]/50">
                   <tr>
-                    <td class="font-medium">{{ relationship.name || 'relationship_' + ($index + 1) }}</td>
-                    <td>{{ relationshipLabel(relationship) }}</td>
-                    <td>Type: {{ relationshipTypeLabel(relationship) }}</td>
+                    <th class="px-5 py-4">Name</th>
+                    <th class="px-5 py-4">Relationship</th>
+                    <th class="px-5 py-4">Type</th>
                   </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        }
+                </thead>
+                <tbody class="divide-y divide-slate-100/50 dark:divide-[#21262d]/50">
+                  @for (relationship of relationships(currentSchema); track $index) {
+                    <tr class="hover:bg-white/80 dark:hover:bg-[#21262d]/80 transition-colors">
+                      <td class="px-5 py-4 font-bold text-slate-900 dark:text-white">{{ relationship.name || 'relationship_' + ($index + 1) }}</td>
+                      <td class="px-5 py-4 font-medium">{{ relationshipLabel(relationship) }}</td>
+                      <td class="px-5 py-4">
+                        <span class="px-2.5 py-1 rounded-lg text-[10px] uppercase tracking-wider font-bold bg-indigo-100/80 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30 shadow-sm">
+                          {{ relationshipTypeLabel(relationship) }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
       </article>
     }
 
     @if (activeTab() === 'export') {
-      <div class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <article class="card p-5">
-          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] mb-8 relative z-10">
+        <article class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl shadow-xl overflow-hidden flex flex-col transition-colors duration-300">
+          <div class="border-b border-slate-200/50 dark:border-[#30363d]/50 px-6 py-5 bg-white/40 dark:bg-[#0d1117]/40 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 class="text-lg font-semibold">Download Database Outputs</h2>
-              <p class="text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Client-side exports generated from the real schema response.</p>
+              <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">Download Database Outputs</h2>
+              <p class="mt-1 text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Client-side exports generated from the real schema response.</p>
             </div>
-            <span class="badge-success">Ready</span>
+            <span class="rounded-xl bg-emerald-100/80 dark:bg-emerald-500/20 px-4 py-2 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 shadow-sm border border-emerald-200/50 dark:border-emerald-500/30 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Ready
+            </span>
           </div>
 
-          <div class="grid gap-3 md:grid-cols-3">
-            <button type="button" class="rounded-2xl border border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 bg-white dark:bg-[#24303f] transition-colors duration-300 p-4 text-left hover:border-indigo-200 hover:bg-indigo-50/30 dark:bg-[#3c50e0]/10 transition-colors duration-300"
+          <div class="p-6 grid gap-4 sm:grid-cols-3">
+            <button type="button" class="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-white/60 dark:border-white/5 bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur p-6 text-center hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:bg-white dark:hover:bg-[#24303f] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 shadow-sm"
               (click)="downloadSql(currentSchema)">
-              <span class="block font-semibold text-slate-900 dark:text-white transition-colors duration-300">Download SQL</span>
-              <span class="mt-1 block text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">forgedb-schema.sql</span>
+              <div class="p-3 rounded-xl bg-sky-100/80 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 group-hover:scale-110 transition-transform shadow-sm border border-sky-200/50 dark:border-sky-500/30">
+                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              </div>
+              <div>
+                <span class="block font-bold text-slate-900 dark:text-white transition-colors duration-300">Download SQL</span>
+                <span class="mt-1 block text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">forgedb-schema.sql</span>
+              </div>
             </button>
-            <button type="button" class="rounded-2xl border border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 bg-white dark:bg-[#24303f] transition-colors duration-300 p-4 text-left hover:border-indigo-200 hover:bg-indigo-50/30 dark:bg-[#3c50e0]/10 transition-colors duration-300"
+            <button type="button" class="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-white/60 dark:border-white/5 bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur p-6 text-center hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:bg-white dark:hover:bg-[#24303f] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 shadow-sm"
               (click)="downloadDbml(currentSchema)">
-              <span class="block font-semibold text-slate-900 dark:text-white transition-colors duration-300">Download DBML</span>
-              <span class="mt-1 block text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">forgedb-schema.dbml</span>
+              <div class="p-3 rounded-xl bg-purple-100/80 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform shadow-sm border border-purple-200/50 dark:border-purple-500/30">
+                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              </div>
+              <div>
+                <span class="block font-bold text-slate-900 dark:text-white transition-colors duration-300">Download DBML</span>
+                <span class="mt-1 block text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">forgedb-schema.dbml</span>
+              </div>
             </button>
-            <button type="button" class="rounded-2xl border border-slate-200 dark:border-[#2e3a47] transition-colors duration-300 bg-white dark:bg-[#24303f] transition-colors duration-300 p-4 text-left hover:border-indigo-200 hover:bg-indigo-50/30 dark:bg-[#3c50e0]/10 transition-colors duration-300"
+            <button type="button" class="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-white/60 dark:border-white/5 bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur p-6 text-center hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:bg-white dark:hover:bg-[#24303f] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 shadow-sm"
               (click)="downloadJson(currentSchema)">
-              <span class="block font-semibold text-slate-900 dark:text-white transition-colors duration-300">Download JSON schema</span>
-              <span class="mt-1 block text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">forgedb-schema.json</span>
+              <div class="p-3 rounded-xl bg-amber-100/80 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform shadow-sm border border-amber-200/50 dark:border-amber-500/30">
+                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+              </div>
+              <div>
+                <span class="block font-bold text-slate-900 dark:text-white transition-colors duration-300">Download JSON</span>
+                <span class="mt-1 block text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">forgedb-schema.json</span>
+              </div>
             </button>
           </div>
         </article>
 
-        <aside class="card p-5">
-          <h2 class="font-semibold text-slate-900 dark:text-white transition-colors duration-300">Copy Outputs</h2>
-          <p class="mt-1 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Use copy for presentation demos and quick review.</p>
-          <div class="mt-4 space-y-3">
-            <button type="button" class="btn-secondary w-full" (click)="copySql(currentSchema)">
-              {{ copiedTarget() === 'sql' ? 'SQL Copied' : 'Copy SQL' }}
+        <aside class="rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 shadow-xl transition-colors duration-300 self-start">
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">Copy Outputs</h2>
+          <p class="mt-2 text-xs font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300 leading-relaxed">Use copy for presentation demos and quick review without downloading.</p>
+          <div class="mt-6 space-y-3">
+            <button type="button" class="w-full flex items-center justify-center gap-2 rounded-xl bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors shadow-sm hover:-translate-y-0.5" (click)="copySql(currentSchema)">
+              @if (copiedTarget() === 'sql') {
+                <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                <span class="text-emerald-600 dark:text-emerald-400">SQL Copied</span>
+              } @else {
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                <span>Copy SQL</span>
+              }
             </button>
-            <button type="button" class="btn-secondary w-full" (click)="copyDbml(currentSchema)">
-              {{ copiedTarget() === 'dbml' ? 'DBML Copied' : 'Copy DBML' }}
+            <button type="button" class="w-full flex items-center justify-center gap-2 rounded-xl bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors shadow-sm hover:-translate-y-0.5" (click)="copyDbml(currentSchema)">
+              @if (copiedTarget() === 'dbml') {
+                <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                <span class="text-emerald-600 dark:text-emerald-400">DBML Copied</span>
+              } @else {
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                <span>Copy DBML</span>
+              }
             </button>
           </div>
         </aside>
       </div>
     }
   } @else {
-    <article class="card mt-5 p-8 text-center">
-      <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">No schema generated yet</h2>
-      <p class="mt-2 text-sm text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Generate a schema to review columns, SQL preview, and constraints.</p>
+    <article class="flex-1 rounded-2xl border-2 border-dashed border-slate-300 dark:border-[#30363d] bg-white/40 dark:bg-[#0d1117]/40 backdrop-blur grid place-items-center p-8 text-center transition-colors duration-300 min-h-[400px] relative z-10">
+      <div class="flex flex-col items-center justify-center">
+        <div class="grid h-16 w-16 place-items-center rounded-2xl bg-indigo-100/80 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 mb-5 shadow-sm border border-indigo-200/50 dark:border-indigo-500/30">
+          <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+          </svg>
+        </div>
+        <h2 class="text-xl font-bold text-slate-900 dark:text-white transition-colors duration-300">No schema generated yet</h2>
+        <p class="mt-2 max-w-sm text-sm font-medium text-slate-500 dark:text-[#8a99ad] transition-colors duration-300">Generate a schema to review columns, SQL preview, and constraints.</p>
+      </div>
     </article>
   }
 </section>

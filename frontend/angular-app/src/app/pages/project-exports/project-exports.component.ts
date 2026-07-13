@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -10,7 +10,7 @@ import { WorkflowStateService } from '../../services/workflow-state.service';
 @Component({
   selector: 'app-project-exports',
   standalone: true,
-  imports: [DatePipe, RouterLink],
+  imports: [CommonModule, DatePipe, RouterLink],
   templateUrl: './project-exports.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

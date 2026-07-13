@@ -1,7 +1,7 @@
-import { DatePipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, finalize, of } from 'rxjs';
+import { catchError, finalize, of, from, concatMap } from 'rxjs';
 import { ApiErrorBody, DatasetResponse, ProjectResponse, SchemaResponse } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
@@ -17,7 +17,7 @@ interface RelationshipReadinessItem {
 @Component({
   selector: 'app-workspace',
   standalone: true,
-  imports: [DatePipe, RouterLink],
+  imports: [CommonModule, DatePipe, RouterLink],
   templateUrl: './workspace.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -29,6 +29,7 @@ export class WorkspaceComponent implements OnInit {
   readonly schemaByDataset = signal<Record<number, SchemaResponse | null>>({});
   readonly columnsByDataset = signal<Record<number, string[]>>({});
   readonly loading = signal(false);
+  readonly analyzingAll = signal(false);
 
   projectId = 0;
   errorMessage = '';
@@ -103,6 +104,27 @@ export class WorkspaceComponent implements OnInit {
     this.currentDataset.set(dataset);
     this.workflow.setDataset(dataset);
     this.loadDatasetSchema(dataset.id, true);
+  }
+
+  hasPendingAnalysis(): boolean {
+    return this.datasets().some((d) => d.status !== 'Analyzed');
+  }
+
+  analyzeAll(): void {
+    const pendingDatasets = this.datasets().filter((d) => d.status !== 'Analyzed');
+    if (pendingDatasets.length === 0) return;
+
+    this.analyzingAll.set(true);
+    
+    from(pendingDatasets).pipe(
+      concatMap((dataset) => this.api.analyzeDataset(dataset.id, { analysisType: 'profile' }).pipe(
+        catchError(() => of(null))
+      )),
+      finalize(() => {
+        this.analyzingAll.set(false);
+        this.loadWorkspace();
+      })
+    ).subscribe();
   }
 
   workspaceStepState(step: WorkspaceStep): 'done' | 'active' | 'locked' {

@@ -1,199 +1,218 @@
-<section class="h-full flex flex-col bg-slate-50 dark:bg-[#0d1117] transition-colors duration-300 min-h-[calc(100vh-80px)] -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8">
-	<!-- Top Bar -->
-	<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-		<h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight transition-colors duration-300">ER Diagram</h1>
+<section class="h-full flex flex-col bg-slate-50 dark:bg-[#0d1117] transition-colors duration-300 min-h-[calc(100vh-80px)] -m-4 md:-m-6 lg:-m-8 p-4 md:p-6 lg:p-8 relative">
+  <!-- Top Bar -->
+  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between relative z-10">
+    <div>
+      <p class="mb-1 text-xs font-semibold text-slate-500 dark:text-[#8a99ad] uppercase tracking-wider transition-colors duration-300">Projects / Visualization</p>
+      <h1 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight transition-colors duration-300">ER Diagram</h1>
+    </div>
 
-		<div class="flex items-center gap-3">
-			<button type="button" class="flex items-center gap-2 rounded-lg bg-white dark:bg-[#21262d] px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300" (click)="loadSchema()">
-				<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-				Save
-			</button>
-			<button type="button" class="flex items-center gap-2 rounded-lg bg-white dark:bg-[#21262d] px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300">
-				<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-				Export
-			</button>
-			<button type="button" class="flex items-center gap-2 rounded-lg bg-[#118bfb] px-3 py-1.5 text-sm font-bold text-white hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20">
-				<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-				Add Table
-			</button>
-		</div>
-	</div>
+    <div class="flex items-center gap-3">
+      <button type="button" class="flex items-center gap-2 rounded-lg bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm" (click)="loadSchema()">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Save
+      </button>
+      <button type="button" class="flex items-center gap-2 rounded-lg bg-white/80 dark:bg-[#21262d]/80 backdrop-blur px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200/50 dark:border-[#30363d]/50 hover:bg-slate-100 dark:hover:bg-[#30363d] transition-colors duration-300 shadow-sm">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Export
+      </button>
+      <button type="button" class="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/20">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+        Add Table
+      </button>
+    </div>
+  </div>
 
-	@if (errorMessage) {
-		<p class="mb-5 rounded-xl border border-rose-900/50 bg-rose-900/20 px-4 py-3 text-sm font-semibold text-rose-400">{{ errorMessage }}</p>
-	}
+  @if (errorMessage) {
+    <p class="mb-5 rounded-xl border border-rose-200/50 dark:border-rose-900/30 bg-rose-50/80 dark:bg-rose-900/10 backdrop-blur px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400 shadow-sm transition-colors">{{ errorMessage }}</p>
+  }
 
-	@if (loading()) {
-		<div class="flex-1 flex items-center justify-center text-slate-500">Loading ER diagram...</div>
-	} @else if (schema(); as data) {
-		<div class="flex-1 flex gap-5 overflow-hidden">
-			<!-- Canvas Area -->
-			<div class="flex-1 h-full overflow-auto rounded-xl border border-slate-200 dark:border-[#21262d] bg-white dark:bg-[#0d1117] relative transition-colors duration-300">
-				@if (diagram(); as chart) {
-					<svg class="block min-w-full min-h-full text-slate-200 dark:text-[#21262d] transition-colors duration-300" [attr.width]="chart.width" [attr.height]="chart.height" [attr.viewBox]="'0 0 ' + chart.width + ' ' + chart.height" (click)="selectNode(null)">
-						<defs>
-							<pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-								<path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="1"/>
-							</pattern>
-							<!-- Arrow markers for each color -->
-							<marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
-								<path d="M 0 0 L 10 5 L 0 10 M 10 0 L 10 10" fill="none" stroke="#118bfb" stroke-width="1.5" />
-							</marker>
-							<marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
-								<path d="M 0 0 L 10 5 L 0 10 M 10 0 L 10 10" fill="none" stroke="#842df5" stroke-width="1.5" />
-							</marker>
-							<marker id="arrow-cyan" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
-								<path d="M 0 0 L 10 5 L 0 10 M 10 0 L 10 10" fill="none" stroke="#2eaaf9" stroke-width="1.5" />
-							</marker>
-							<!-- Dot markers -->
-							<marker id="dot-blue" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-								<circle cx="3" cy="3" r="2" fill="#118bfb" />
-							</marker>
-							<marker id="dot-purple" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-								<circle cx="3" cy="3" r="2" fill="#842df5" />
-							</marker>
-							<marker id="dot-cyan" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-								<circle cx="3" cy="3" r="2" fill="#2eaaf9" />
-							</marker>
-							<!-- One (Double Bar) markers -->
-							<marker id="one-blue" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
-								<path d="M 4 2 L 4 10 M 8 2 L 8 10" fill="none" stroke="#118bfb" stroke-width="1.5" />
-							</marker>
-							<marker id="one-purple" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
-								<path d="M 4 2 L 4 10 M 8 2 L 8 10" fill="none" stroke="#842df5" stroke-width="1.5" />
-							</marker>
-							<marker id="one-cyan" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
-								<path d="M 4 2 L 4 10 M 8 2 L 8 10" fill="none" stroke="#2eaaf9" stroke-width="1.5" />
-							</marker>
-							<!-- Many (Crow's Foot) markers -->
-							<marker id="many-blue" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
-								<path d="M 2 3 L 10 6 L 2 9 M 10 2 L 10 10" fill="none" stroke="#118bfb" stroke-width="1.5" />
-							</marker>
-							<marker id="many-purple" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
-								<path d="M 2 3 L 10 6 L 2 9 M 10 2 L 10 10" fill="none" stroke="#842df5" stroke-width="1.5" />
-							</marker>
-							<marker id="many-cyan" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
-								<path d="M 2 3 L 10 6 L 2 9 M 10 2 L 10 10" fill="none" stroke="#2eaaf9" stroke-width="1.5" />
-							</marker>
-						</defs>
-						
-						<!-- Grid Background -->
-						<rect width="100%" height="100%" fill="url(#grid)" />
+  @if (loading()) {
+    <div class="flex-1 flex flex-col items-center justify-center text-slate-500 dark:text-[#8a99ad] transition-colors duration-300 relative z-10 min-h-[400px]">
+      <svg class="w-10 h-10 mb-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      <p class="text-sm font-medium">Loading ER diagram...</p>
+    </div>
+  } @else if (schema(); as data) {
+    <div class="flex-1 flex gap-5 overflow-hidden relative z-10">
+      <!-- Canvas Area -->
+      <div class="flex-1 h-full overflow-auto rounded-2xl border border-white/40 dark:border-white/10 bg-white/50 dark:bg-[#0d1117]/80 backdrop-blur shadow-inner relative transition-colors duration-300">
+        @if (diagram(); as chart) {
+          <svg class="block min-w-full min-h-full text-slate-200 dark:text-[#21262d] transition-colors duration-300" [attr.width]="chart.width" [attr.height]="chart.height" [attr.viewBox]="'0 0 ' + chart.width + ' ' + chart.height" (click)="selectNode(null)">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="1"/>
+              </pattern>
+              <!-- Arrow markers for each color -->
+              <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 M 10 0 L 10 10" fill="none" stroke="#6366f1" stroke-width="1.5" />
+              </marker>
+              <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 M 10 0 L 10 10" fill="none" stroke="#a855f7" stroke-width="1.5" />
+              </marker>
+              <marker id="arrow-cyan" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 M 10 0 L 10 10" fill="none" stroke="#0ea5e9" stroke-width="1.5" />
+              </marker>
+              <!-- Dot markers -->
+              <marker id="dot-blue" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                <circle cx="3" cy="3" r="2" fill="#6366f1" />
+              </marker>
+              <marker id="dot-purple" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                <circle cx="3" cy="3" r="2" fill="#a855f7" />
+              </marker>
+              <marker id="dot-cyan" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                <circle cx="3" cy="3" r="2" fill="#0ea5e9" />
+              </marker>
+              <!-- One (Double Bar) markers -->
+              <marker id="one-blue" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+                <path d="M 4 2 L 4 10 M 8 2 L 8 10" fill="none" stroke="#6366f1" stroke-width="1.5" />
+              </marker>
+              <marker id="one-purple" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+                <path d="M 4 2 L 4 10 M 8 2 L 8 10" fill="none" stroke="#a855f7" stroke-width="1.5" />
+              </marker>
+              <marker id="one-cyan" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+                <path d="M 4 2 L 4 10 M 8 2 L 8 10" fill="none" stroke="#0ea5e9" stroke-width="1.5" />
+              </marker>
+              <!-- Many (Crow's Foot) markers -->
+              <marker id="many-blue" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+                <path d="M 2 3 L 10 6 L 2 9 M 10 2 L 10 10" fill="none" stroke="#6366f1" stroke-width="1.5" />
+              </marker>
+              <marker id="many-purple" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+                <path d="M 2 3 L 10 6 L 2 9 M 10 2 L 10 10" fill="none" stroke="#a855f7" stroke-width="1.5" />
+              </marker>
+              <marker id="many-cyan" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+                <path d="M 2 3 L 10 6 L 2 9 M 10 2 L 10 10" fill="none" stroke="#0ea5e9" stroke-width="1.5" />
+              </marker>
+            </defs>
+            
+            <!-- Grid Background -->
+            <rect width="100%" height="100%" fill="url(#grid)" />
 
-						<!-- Connections -->
-						@for (connection of chart.connections; track connection.id) {
-							<path [attr.d]="connection.path" fill="none" [attr.stroke]="connection.strokeColor" stroke-width="2"
-								[attr.marker-start]="connection.markerStart"
-								[attr.marker-end]="connection.markerEnd">
-								<title>{{ connection.label }}</title>
-							</path>
-							<!-- Relationship Label -->
-							<text [attr.x]="connection.labelX" [attr.y]="connection.labelY" text-anchor="middle"
-								[attr.fill]="connection.strokeColor" font-size="10" font-weight="bold"
-								class="select-none pointer-events-none drop-shadow-sm">{{ connection.label }}</text>
-						}
+            <!-- Connections -->
+            @for (connection of chart.connections; track connection.id) {
+              <path [attr.d]="connection.path" fill="none" [attr.stroke]="connection.strokeColor" stroke-width="2.5"
+                [attr.marker-start]="connection.markerStart"
+                [attr.marker-end]="connection.markerEnd"
+                class="transition-all duration-300 drop-shadow">
+                <title>{{ connection.label }}</title>
+              </path>
+              <!-- Relationship Label -->
+              <rect [attr.x]="connection.labelX - 45" [attr.y]="connection.labelY - 10" width="90" height="20" rx="10" fill="#0d1117" class="drop-shadow-sm opacity-90" />
+              <text [attr.x]="connection.labelX" [attr.y]="connection.labelY + 4" text-anchor="middle"
+                [attr.fill]="connection.strokeColor" font-size="11" font-weight="bold"
+                class="select-none pointer-events-none drop-shadow-sm uppercase tracking-wider">{{ connection.label }}</text>
+            }
 
-						<!-- Nodes -->
-						@for (node of chart.nodes; track node.name) {
-							<foreignObject [attr.x]="node.x" [attr.y]="node.y" [attr.width]="node.width" [attr.height]="node.height" (click)="$event.stopPropagation(); selectNode(node)" class="cursor-pointer transition-transform hover:scale-[1.02]">
-								<div xmlns="http://www.w3.org/1999/xhtml" class="h-full w-full rounded-xl overflow-hidden border border-[#30363d] bg-gradient-to-br flex flex-col shadow-2xl relative" [ngClass]="node.theme.bodyGradient" [style.box-shadow]="selectedNode()?.name === node.name ? '0 0 0 2px white, 0 0 25px ' + node.theme.glow : '0 0 15px ' + node.theme.glow">
-									<!-- Header -->
-									<div class="px-4 py-2 flex items-center justify-center font-bold text-sm tracking-wide text-white shadow-sm" [style.background]="node.theme.headerBg">
-										{{ node.name }}
-									</div>
-									
-									<!-- Columns -->
-									<div class="flex-1 px-4 py-3 flex flex-col gap-1.5 overflow-hidden">
-										@for (column of node.columns; track column.name) {
-											<div class="flex items-center justify-between text-xs">
-												<div class="flex items-center gap-2">
-													@if (column.primaryKey) {
-														<span class="font-bold text-yellow-400 text-[10px]">PK</span>
-													}
-													@if (column.foreignKey) {
-														<span class="font-bold text-emerald-400 text-[10px]">FK</span>
-													}
-													<span class="truncate max-w-[110px] text-slate-200" [ngClass]="{'ml-4': !column.primaryKey && !column.foreignKey}">{{ column.name }}</span>
-												</div>
-												<span class="text-slate-500 font-mono">{{ column.type }}</span>
-											</div>
-										}
-										@if (node.hiddenColumnCount) {
-											<div class="text-[10px] text-slate-500 mt-1 italic text-center">+ {{ node.hiddenColumnCount }} more</div>
-										}
-									</div>
-								</div>
-							</foreignObject>
-						}
-					</svg>
-				} @else {
-					<div class="flex min-h-[500px] items-center justify-center text-sm text-slate-500">No tables available to draw.</div>
-				}
-			</div>
+            <!-- Nodes -->
+            @for (node of chart.nodes; track node.name) {
+              <foreignObject [attr.x]="node.x" [attr.y]="node.y" [attr.width]="node.width" [attr.height]="node.height" (click)="$event.stopPropagation(); selectNode(node)" class="cursor-pointer transition-transform hover:scale-[1.02]">
+                <div xmlns="http://www.w3.org/1999/xhtml" class="h-full w-full rounded-xl overflow-hidden border border-[#404854]/60 bg-slate-900/90 dark:bg-[#161b22]/90 backdrop-blur-md flex flex-col shadow-2xl relative transition-shadow duration-300" [style.box-shadow]="selectedNode()?.name === node.name ? '0 0 0 2px white, 0 0 30px ' + node.theme.glow : '0 10px 25px -5px rgba(0,0,0,0.5)'">
+                  <!-- Header -->
+                  <div class="px-4 py-2.5 flex items-center justify-between font-bold text-sm tracking-wide text-white shadow-sm bg-gradient-to-r" [ngClass]="node.theme.bodyGradient">
+                    <span>{{ node.name }}</span>
+                    <span class="text-[10px] bg-black/20 px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/10">{{ node.columns.length + (node.hiddenColumnCount || 0) }}</span>
+                  </div>
+                  
+                  <!-- Columns -->
+                  <div class="flex-1 px-3 py-2 flex flex-col gap-1 overflow-hidden bg-slate-900/50 dark:bg-[#0d1117]/50">
+                    @for (column of node.columns; track column.name) {
+                      <div class="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-white/5 transition-colors">
+                        <div class="flex items-center gap-2">
+                          @if (column.primaryKey) {
+                            <span class="font-bold text-amber-400 text-[9px] bg-amber-400/10 px-1 rounded border border-amber-400/20">PK</span>
+                          }
+                          @if (column.foreignKey) {
+                            <span class="font-bold text-emerald-400 text-[9px] bg-emerald-400/10 px-1 rounded border border-emerald-400/20">FK</span>
+                          }
+                          <span class="truncate max-w-[100px] text-slate-300 font-medium" [ngClass]="{'ml-6': !column.primaryKey && !column.foreignKey}">{{ column.name }}</span>
+                        </div>
+                        <span class="text-slate-500 font-mono text-[10px]">{{ column.type }}</span>
+                      </div>
+                    }
+                    @if (node.hiddenColumnCount) {
+                      <div class="text-[10px] text-slate-500 mt-2 font-medium italic text-center bg-white/5 py-1 rounded">+ {{ node.hiddenColumnCount }} more columns</div>
+                    }
+                  </div>
+                </div>
+              </foreignObject>
+            }
+          </svg>
+        } @else {
+          <div class="flex min-h-[500px] items-center justify-center text-sm text-slate-500 dark:text-[#8a99ad] font-medium">No tables available to draw.</div>
+        }
+      </div>
 
-			<!-- Right Sidebar (Properties) -->
-			<aside class="w-[320px] xl:w-[380px] shrink-0 rounded-xl border border-slate-200 dark:border-[#21262d] bg-slate-50 dark:bg-[#161b22] p-5 text-slate-700 dark:text-slate-300 overflow-y-auto hidden lg:block shadow-lg transition-colors duration-300">
-				@if (selectedNode(); as node) {
-					<h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-wide mb-6 transition-colors duration-300">{{ node.name }}</h2>
-					
-					<div class="mb-6">
-						<h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider transition-colors duration-300">Properties</h3>
-						<div class="flex flex-col gap-2 rounded-lg bg-white dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] p-3 transition-colors duration-300">
-							<div class="flex justify-between items-center text-sm">
-								<span class="text-slate-500">Name</span>
-								<span class="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-[#21262d] px-2 py-0.5 rounded border border-slate-200 dark:border-[#30363d] transition-colors duration-300">{{ node.name }}</span>
-							</div>
-							<div class="flex justify-between items-center text-sm">
-								<span class="text-slate-500">Columns</span>
-								<span class="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-[#21262d] px-2 py-0.5 rounded border border-slate-200 dark:border-[#30363d] transition-colors duration-300">{{ node.columns.length + node.hiddenColumnCount }}</span>
-							</div>
-						</div>
-					</div>
+      <!-- Right Sidebar (Properties) -->
+      <aside class="w-[320px] xl:w-[380px] shrink-0 rounded-2xl border border-white/40 dark:border-white/10 bg-white/70 dark:bg-[#161b22]/70 backdrop-blur-xl p-6 text-slate-700 dark:text-slate-300 overflow-y-auto hidden lg:block shadow-xl transition-colors duration-300">
+        @if (selectedNode(); as node) {
+          <div class="flex items-center gap-3 mb-6">
+            <div class="p-2.5 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+            </div>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-wide transition-colors duration-300">{{ node.name }}</h2>
+          </div>
+          
+          <div class="mb-6">
+            <h3 class="text-xs font-bold text-slate-500 dark:text-[#8a99ad] mb-3 uppercase tracking-wider transition-colors duration-300">Properties</h3>
+            <div class="flex flex-col gap-2 rounded-xl bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur-sm border border-slate-200/50 dark:border-[#30363d]/50 p-4 transition-colors duration-300 shadow-sm">
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-600 dark:text-[#8a99ad] font-medium">Table Name</span>
+                <span class="text-slate-900 dark:text-white font-bold bg-white dark:bg-[#21262d] px-2.5 py-1 rounded-md border border-slate-200 dark:border-[#30363d] transition-colors shadow-sm">{{ node.name }}</span>
+              </div>
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-600 dark:text-[#8a99ad] font-medium">Columns</span>
+                <span class="text-slate-900 dark:text-white font-bold bg-white dark:bg-[#21262d] px-2.5 py-1 rounded-md border border-slate-200 dark:border-[#30363d] transition-colors shadow-sm">{{ node.columns.length + (node.hiddenColumnCount || 0) }}</span>
+              </div>
+            </div>
+          </div>
 
-					<div class="mb-6">
-						<h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider transition-colors duration-300">Columns</h3>
-						<div class="flex flex-col">
-							@for (col of node.columns; track col.name) {
-								<div class="flex items-center justify-between text-xs py-2 border-b border-slate-200 dark:border-[#30363d] last:border-0 hover:bg-slate-100 dark:hover:bg-[#21262d] px-2 -mx-2 rounded transition-colors duration-300">
-									<div class="flex items-center gap-2">
-										<span class="text-slate-800 dark:text-slate-300 transition-colors duration-300">{{ col.name }}</span>
-									</div>
-									<div class="flex items-center gap-2">
-										<span class="text-slate-500 font-mono">{{ col.type }}</span>
-										<svg class="w-4 h-4 text-slate-400 dark:text-slate-600 cursor-pointer hover:text-indigo-500 dark:hover:text-white transition-colors duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
-									</div>
-								</div>
-							}
-						</div>
-					</div>
-					
-					<div>
-						<h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider transition-colors duration-300">Relationships</h3>
-						<div class="flex flex-col gap-2">
-							@for (rel of data.relationships; track rel.suggestionId) {
-								@if (rel.fromTable === node.name || rel.toTable === node.name) {
-									<div class="flex items-center justify-between text-xs py-2 border border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#0d1117] rounded-lg px-3 group transition-colors duration-300">
-										<div class="flex flex-col gap-1">
-											<span class="text-slate-700 dark:text-slate-300 truncate pr-2 text-[11px] font-medium transition-colors duration-300" [title]="relationshipLabel(rel)">{{ relationshipLabel(rel) }}</span>
-											<span class="text-[10px] font-bold text-indigo-500 uppercase">{{ rel.relationshipType }}</span>
-										</div>
-										<button class="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-500 transition-opacity" (click)="undoRelationship(rel)" [disabled]="undoingId() === rel.suggestionId" title="Remove Relationship">
-											<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-										</button>
-									</div>
-								}
-							}
-						</div>
-					</div>
-				} @else {
-					<div class="h-full flex flex-col items-center justify-center text-slate-500">
-						<svg class="w-12 h-12 mb-4 text-[#30363d]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-						</svg>
-						<p class="text-sm">Select a table to view properties.</p>
-					</div>
-				}
-			</aside>
-		</div>
-	}
+          <div class="mb-6">
+            <h3 class="text-xs font-bold text-slate-500 dark:text-[#8a99ad] mb-3 uppercase tracking-wider transition-colors duration-300">Columns</h3>
+            <div class="flex flex-col rounded-xl border border-slate-200/50 dark:border-[#30363d]/50 bg-white/40 dark:bg-[#0d1117]/40 backdrop-blur shadow-sm overflow-hidden">
+              @for (col of node.columns; track col.name) {
+                <div class="flex items-center justify-between text-xs py-2.5 px-4 border-b border-slate-200/50 dark:border-[#30363d]/50 last:border-0 hover:bg-white/80 dark:hover:bg-[#21262d]/80 transition-colors duration-300 group">
+                  <div class="flex items-center gap-2">
+                    <span class="text-slate-800 dark:text-slate-200 font-bold transition-colors duration-300">{{ col.name }}</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-slate-500 font-mono text-[11px] bg-slate-100 dark:bg-[#161b22] px-1.5 py-0.5 rounded border border-slate-200 dark:border-[#30363d]">{{ col.type }}</span>
+                    <button type="button" class="text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+          
+          <div>
+            <h3 class="text-xs font-bold text-slate-500 dark:text-[#8a99ad] mb-3 uppercase tracking-wider transition-colors duration-300">Relationships</h3>
+            <div class="flex flex-col gap-3">
+              @for (rel of data.relationships; track rel.suggestionId) {
+                @if (rel.fromTable === node.name || rel.toTable === node.name) {
+                  <div class="flex items-center justify-between text-xs py-3 border border-slate-200/50 dark:border-[#30363d]/50 bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur rounded-xl px-4 group transition-all duration-300 hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500/50">
+                    <div class="flex flex-col gap-1.5">
+                      <span class="text-slate-800 dark:text-slate-200 font-bold truncate pr-2 font-mono transition-colors duration-300" [title]="relationshipLabel(rel)">{{ relationshipLabel(rel) }}</span>
+                      <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full w-fit border border-indigo-100 dark:border-indigo-500/20">{{ rel.relationshipType }}</span>
+                    </div>
+                    <button type="button" class="p-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-500/20 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 border border-rose-100 dark:border-rose-500/20" (click)="undoRelationship(rel)" [disabled]="undoingId() === rel.suggestionId" title="Remove Relationship">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="h-full flex flex-col items-center justify-center text-slate-500 dark:text-[#8a99ad] transition-colors">
+            <div class="rounded-full bg-slate-100 dark:bg-[#21262d] p-4 mb-4 border border-slate-200 dark:border-[#30363d] shadow-sm">
+              <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+              </svg>
+            </div>
+            <p class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">No table selected</p>
+            <p class="text-xs font-medium">Select a table node to view its properties.</p>
+          </div>
+        }
+      </aside>
+    </div>
+  }
 </section>
