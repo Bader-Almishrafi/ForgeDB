@@ -94,10 +94,14 @@ describe('ProjectSchemaDesignerComponent', () => {
     expect(component.selectedTableId()).toBe(1);
   });
 
-  it('represents the no-schema state without fake tables', () => {
-    component.design.set(null);
+  it('handles the typed empty-schema response without a 404 request', () => {
+    designApi['getSchema'].mockReturnValueOnce(of(null));
+    component.loadWorkspace();
+    fixture.detectChanges();
+
     expect(component.tableCount()).toBe(0);
     expect(component.selectedTable()).toBeNull();
+    expect(component.feedback()).toBeNull();
   });
 
   it('calls real schema generation and respects the cleaning gate', () => {

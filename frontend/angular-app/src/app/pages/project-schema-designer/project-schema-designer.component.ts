@@ -8,7 +8,7 @@ import {
   LucideFileCheck2, LucidePencil, LucideRefreshCw, LucideSave, LucideTable2,
   LucideTriangleAlert,
 } from '@lucide/angular';
-import { Observable, Subject, catchError, finalize, forkJoin, of, take } from 'rxjs';
+import { Observable, Subject, finalize, forkJoin, take } from 'rxjs';
 import { DesignColumn, DesignModelResponse, DesignTable, ProjectCleaningSummary, ValidationIssue } from '../../services/api.models';
 import { DesignApiService } from '../../services/design-api.service';
 import { ForgeApiService } from '../../services/forge-api.service';
@@ -153,7 +153,7 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
     forkJoin({
       project: this.api.getProject(this.projectId),
       cleaning: this.api.getProjectCleaningSummary(this.projectId),
-      schema: this.schemaApi.getSchema(this.projectId).pipe(catchError(error => this.isNotFound(error) ? of(null) : this.rethrow(error))),
+      schema: this.schemaApi.getSchema(this.projectId),
     }).pipe(finalize(() => this.loading.set(false))).subscribe({
       next: ({ project, cleaning, schema }) => {
         this.projectName.set(project.name);
@@ -586,9 +586,7 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
 
   private quote(identifier: string): string { return /^[a-z_][a-z0-9_]{0,62}$/.test(identifier) && !reservedWords.has(identifier) ? identifier : `"${identifier.replaceAll('"', '""')}"`; }
   private onDeleteSql(value: string): string { return value === 'cascade' ? 'CASCADE' : value === 'set-null' ? 'SET NULL' : 'NO ACTION'; }
-  private isNotFound(error: unknown): boolean { return error instanceof HttpErrorResponse && error.status === 404; }
   private isConflict(error: unknown): boolean { return error instanceof HttpErrorResponse && error.status === 409; }
-  private rethrow(error: unknown): Observable<never> { return new Observable(subscriber => subscriber.error(error)); }
   private errorMessage(error: unknown, fallback: string): string {
     if (error instanceof HttpErrorResponse) {
       const detail = error.error?.detail ?? error.error?.message;

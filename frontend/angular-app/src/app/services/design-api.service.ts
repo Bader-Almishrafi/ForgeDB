@@ -33,8 +33,8 @@ export class DesignApiService {
     return this.http.get<DesignModelResponse>(`${this.baseUrl}/api/projects/${projectId}/design`);
   }
 
-  getSchema(projectId: number): Observable<DesignModelResponse> {
-    return this.http.get<DesignModelResponse>(`${this.baseUrl}/api/projects/${projectId}/schema`);
+  getSchema(projectId: number): Observable<DesignModelResponse | null> {
+    return this.http.get<DesignModelResponse | null>(`${this.baseUrl}/api/projects/${projectId}/schema`);
   }
 
   generateSchema(projectId: number, revision?: number): Observable<DesignModelResponse> {

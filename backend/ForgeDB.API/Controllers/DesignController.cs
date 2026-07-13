@@ -99,7 +99,7 @@ public class DesignController : ControllerBase
         {
             await EnsureOwnedProjectAsync(projectId, cancellationToken);
             var schema = await _designService.GetSchemaWorkspaceAsync(projectId, cancellationToken);
-            return schema is null ? NotFound(new { message = "No schema draft exists for this project yet." }) : Ok(schema);
+            return schema is null ? NoContent() : Ok(schema);
         }
         catch (UnauthorizedAccessException exception)
         {
