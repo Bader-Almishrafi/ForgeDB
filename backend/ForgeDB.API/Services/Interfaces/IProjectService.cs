@@ -14,4 +14,5 @@ public interface IProjectService
     Task<ProjectSchemaDto> GetProjectSchemaAsync(int projectId, CancellationToken cancellationToken = default);
     Task<ProjectSchemaDto> GenerateProjectSchemaAsync(int projectId, CancellationToken cancellationToken = default);
     Task<ProjectExportPackageDto> GetProjectExportPackageAsync(int projectId, CancellationToken cancellationToken = default);
+    Task DeleteProjectAsync(int projectId, CancellationToken cancellationToken = default);
 }

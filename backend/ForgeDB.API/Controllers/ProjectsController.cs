@@ -183,4 +183,22 @@ public class ProjectsController : ControllerBase
             return NotFound(new { message = exception.Message });
         }
     }
+
+    [HttpDelete("{projectId:int}")]
+    public async Task<ActionResult> Delete(int projectId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _projectService.DeleteProjectAsync(projectId, cancellationToken);
+            return NoContent();
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
+    }
 }

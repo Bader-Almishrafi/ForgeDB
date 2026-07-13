@@ -16,7 +16,7 @@
     <div class="flex flex-col sm:flex-row gap-8 lg:gap-12 mb-8">
       <div class="flex flex-col items-center gap-4">
         <div class="w-28 h-28 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg ring-4 ring-white/50 dark:ring-[#0d1117]/50 border border-indigo-200/50 dark:border-indigo-500/30">
-          {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
+          {{ (user.firstName | slice:0:1) || '' }}{{ (user.lastName | slice:0:1) || '' }}
         </div>
         <button type="button" class="text-sm font-bold text-indigo-700 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors py-1.5 px-3 rounded-xl hover:bg-white/80 dark:hover:bg-[#21262d]/80 backdrop-blur shadow-sm border border-transparent hover:border-slate-200/50 dark:hover:border-[#30363d]/50">
           Change Avatar
@@ -26,17 +26,17 @@
       <form (ngSubmit)="saveChanges()" class="flex-1 grid gap-6 sm:grid-cols-2">
         <label class="block">
           <span class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">First Name</span>
-          <input type="text" name="firstName" [(ngModel)]="user.firstName" class="w-full appearance-none bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur border border-slate-200/50 dark:border-[#30363d]/50 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm" required>
+          <input type="text" name="firstName" [(ngModel)]="user.firstName" class="w-full appearance-none bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur border border-slate-200/50 dark:border-[#30363d]/50 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm" required placeholder="Enter your first name">
         </label>
         
         <label class="block">
           <span class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Last Name</span>
-          <input type="text" name="lastName" [(ngModel)]="user.lastName" class="w-full appearance-none bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur border border-slate-200/50 dark:border-[#30363d]/50 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm" required>
+          <input type="text" name="lastName" [(ngModel)]="user.lastName" class="w-full appearance-none bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur border border-slate-200/50 dark:border-[#30363d]/50 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm" required placeholder="Enter your last name">
         </label>
 
         <label class="block sm:col-span-2">
           <span class="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300">Email Address</span>
-          <input type="email" name="email" [(ngModel)]="user.email" class="w-full appearance-none bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur border border-slate-200/50 dark:border-[#30363d]/50 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm" required>
+          <input type="email" name="email" [(ngModel)]="user.email" class="w-full appearance-none bg-white/60 dark:bg-[#0d1117]/60 backdrop-blur border border-slate-200/50 dark:border-[#30363d]/50 text-slate-700 dark:text-slate-300 text-sm font-semibold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm" required placeholder="your@email.com">
         </label>
 
         <div class="sm:col-span-2 mt-4 pt-6 border-t border-slate-200/50 dark:border-[#30363d]/50 flex items-center justify-between gap-4 flex-wrap-reverse">

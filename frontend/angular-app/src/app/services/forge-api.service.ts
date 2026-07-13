@@ -45,6 +45,10 @@ export class ForgeApiService {
     return this.http.get<ProjectResponse>(`${this.baseUrl}/api/projects/${projectId}`);
   }
 
+  deleteProject(projectId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/api/projects/${projectId}`);
+  }
+
   getProjectOverview(projectId: number): Observable<ProjectOverview> {
     return this.http.get<ProjectOverview>(`${this.baseUrl}/api/projects/${projectId}/overview`);
   }

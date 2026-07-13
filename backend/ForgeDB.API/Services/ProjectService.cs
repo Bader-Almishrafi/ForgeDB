@@ -178,6 +178,16 @@ public class ProjectService : IProjectService
         };
     }
 
+    public async Task DeleteProjectAsync(int projectId, CancellationToken cancellationToken = default)
+    {
+        if (projectId <= 0)
+        {
+            throw new ArgumentException("ProjectId must be greater than zero.", nameof(projectId));
+        }
+
+        await _projectRepository.DeleteAsync(projectId, cancellationToken);
+    }
+
     private async Task<IReadOnlyList<ProjectRelationshipSuggestionDto>> SaveRelationshipDecisionAsync(
         int projectId,
         ProjectRelationshipDecisionDto request,

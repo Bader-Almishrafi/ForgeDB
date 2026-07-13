@@ -72,4 +72,23 @@ public class ProjectRepository : IProjectRepository
 
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task DeleteAsync(int projectId, CancellationToken cancellationToken = default)
+    {
+        var project = await _context.Projects
+            .Include(p => p.Datasets)
+                .ThenInclude(d => d.Columns)
+            .Include(p => p.Datasets)
+                .ThenInclude(d => d.Rows)
+            .Include(p => p.DatabaseSchemas)
+            .FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+
+        if (project is null)
+        {
+            throw new KeyNotFoundException("Project not found.");
+        }
+
+        _context.Projects.Remove(project);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }

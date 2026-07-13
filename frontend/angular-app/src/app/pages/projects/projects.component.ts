@@ -90,6 +90,39 @@ export class ProjectsComponent implements OnInit {
     this.router.navigate(['/projects', project.id, 'overview']);
   }
 
+  readonly confirmDeleteId = signal<number | null>(null);
+  readonly deleting = signal(false);
+
+  confirmDelete(project: ProjectResponse): void {
+    this.confirmDeleteId.set(project.id);
+  }
+
+  cancelDelete(): void {
+    this.confirmDeleteId.set(null);
+  }
+
+  deleteProject(project: ProjectResponse): void {
+    this.deleting.set(true);
+    this.errorMessage = '';
+
+    this.api.deleteProject(project.id)
+      .pipe(finalize(() => {
+        this.deleting.set(false);
+        this.confirmDeleteId.set(null);
+      }))
+      .subscribe({
+        next: () => {
+          this.projects.update((list) => list.filter((p) => p.id !== project.id));
+          this.successMessage = `Project "${project.name}" deleted.`;
+          this.workflow.clearAll();
+          setTimeout(() => { this.successMessage = ''; }, 3000);
+        },
+        error: (error: { error?: ApiErrorBody }) => {
+          this.errorMessage = error.error?.message ?? 'Unable to delete project.';
+        },
+      });
+  }
+
   private requireUserId(): number | null {
     const userId = this.authService.userId();
     if (userId === null) {
