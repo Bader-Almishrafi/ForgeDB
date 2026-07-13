@@ -5,14 +5,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, map, of, Subject, switchMap, tap } from 'rxjs';
-import { DatasetAnalysisResponse, DatasetPreview, DatasetResponse, ExcelWorkbookPreview, ProjectResponse } from '../../services/api.models';
+import { ApiConnectionTest, ApiJsonImportRequest, ApiJsonPreview, DatasetAnalysisResponse, DatasetPreview, DatasetResponse, ExcelWorkbookPreview, ProjectResponse } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
 import { formatFileSize, isCsvFile } from '../project-create/project-create.utils';
 
 type WorkspaceMode = 'selected' | 'all';
 type DatasetTab = 'overview' | 'preview' | 'quality';
-type UploadSource = 'csv' | 'excel';
+type UploadSource = 'csv' | 'excel' | 'api';
 
 interface QualityIssue {
   type: string;
@@ -60,6 +60,12 @@ export class DataSourcesComponent implements OnInit {
   readonly uploadFile = signal<File | null>(null);
   readonly excelPreview = signal<ExcelWorkbookPreview | null>(null);
   readonly excelPreviewLoading = signal(false);
+  readonly apiUrl = signal('');
+  readonly apiArrayPath = signal('');
+  readonly apiConnection = signal<ApiConnectionTest | null>(null);
+  readonly apiPreview = signal<ApiJsonPreview | null>(null);
+  readonly apiTesting = signal(false);
+  readonly apiPreviewLoading = signal(false);
   readonly uploadError = signal('');
   readonly uploadSuccess = signal('');
   readonly uploading = signal(false);
@@ -87,7 +93,9 @@ export class DataSourcesComponent implements OnInit {
   readonly previewRows = computed(() => (this.preview()?.rows ?? []).slice(0, 10));
   readonly previewColumns = computed(() => this.preview()?.columns ?? []);
   readonly canImportUpload = computed(() => {
-    if (!this.uploadFile() || this.uploading() || this.excelPreviewLoading()) return false;
+    if (this.uploading() || this.excelPreviewLoading() || this.apiTesting() || this.apiPreviewLoading()) return false;
+    if (this.uploadSource() === 'api') return !!this.apiPreview() && this.apiUrl().trim().length > 0;
+    if (!this.uploadFile()) return false;
     return this.uploadSource() === 'csv' || !!this.excelPreview()?.selectedWorksheet;
   });
   readonly qualityIssues = computed<QualityIssue[]>(() => {
@@ -244,10 +252,14 @@ export class DataSourcesComponent implements OnInit {
   }
 
   selectUploadSource(source: UploadSource): void {
-    if (this.uploading() || this.excelPreviewLoading() || this.uploadSource() === source) return;
+    if (this.uploading() || this.excelPreviewLoading() || this.apiTesting() || this.apiPreviewLoading() || this.uploadSource() === source) return;
     this.uploadSource.set(source);
     this.uploadFile.set(null);
     this.excelPreview.set(null);
+    this.apiConnection.set(null);
+    this.apiPreview.set(null);
+    this.apiUrl.set('');
+    this.apiArrayPath.set('');
     this.uploadError.set('');
     this.dragActive.set(false);
   }
@@ -369,6 +381,10 @@ export class DataSourcesComponent implements OnInit {
     event.preventDefault();
     this.dragActive.set(false);
     if (this.uploading()) return;
+    if (this.uploadSource() === 'api') {
+      this.uploadError.set('API imports use the URL fields instead of a local file.');
+      return;
+    }
 
     const files = event.dataTransfer?.files;
     if (files && files.length > 1) {
@@ -381,9 +397,13 @@ export class DataSourcesComponent implements OnInit {
   }
 
   clearUpload(): void {
-    if (this.uploading()) return;
+    if (this.uploading() || this.apiTesting() || this.apiPreviewLoading()) return;
     this.uploadFile.set(null);
     this.excelPreview.set(null);
+    this.apiConnection.set(null);
+    this.apiPreview.set(null);
+    this.apiUrl.set('');
+    this.apiArrayPath.set('');
     this.uploadError.set('');
     this.uploadOpen.set(false);
   }
@@ -413,6 +433,10 @@ export class DataSourcesComponent implements OnInit {
   }
 
   importUpload(): void {
+    if (this.uploadSource() === 'api') {
+      this.importApiDataset();
+      return;
+    }
     const file = this.uploadFile();
     if (!file || !this.canImportUpload()) return;
 
@@ -445,6 +469,42 @@ export class DataSourcesComponent implements OnInit {
   onWorksheetSelected(event: Event): void {
     const worksheet = (event.target as HTMLSelectElement).value;
     if (worksheet) this.loadExcelPreview(worksheet);
+  }
+
+  updateApiUrl(value: string): void {
+    this.apiUrl.set(value);
+    this.apiConnection.set(null);
+    this.apiPreview.set(null);
+    this.uploadError.set('');
+  }
+
+  updateApiArrayPath(value: string): void {
+    this.apiArrayPath.set(value);
+    this.apiConnection.set(null);
+    this.apiPreview.set(null);
+    this.uploadError.set('');
+  }
+
+  testApiConnection(): void {
+    if (!this.apiUrl().trim() || this.apiTesting()) return;
+    this.apiTesting.set(true);
+    this.uploadError.set('');
+    this.apiConnection.set(null);
+    this.api.testApiConnection(this.apiRequest()).pipe(finalize(() => this.apiTesting.set(false))).subscribe({
+      next: (result) => this.apiConnection.set(result),
+      error: (error: unknown) => this.uploadError.set(this.errorMessage(error, 'Unable to connect to this API.')),
+    });
+  }
+
+  previewApiData(): void {
+    if (!this.apiUrl().trim() || this.apiPreviewLoading()) return;
+    this.apiPreviewLoading.set(true);
+    this.uploadError.set('');
+    this.apiPreview.set(null);
+    this.api.previewApi(this.apiRequest()).pipe(finalize(() => this.apiPreviewLoading.set(false))).subscribe({
+      next: (result) => this.apiPreview.set(result),
+      error: (error: unknown) => this.uploadError.set(this.errorMessage(error, 'Unable to preview data from this API.')),
+    });
   }
 
   previewValue(row: Record<string, unknown>, column: string): string {
@@ -500,6 +560,31 @@ export class DataSourcesComponent implements OnInit {
         this.uploadError.set(this.errorMessage(error, 'Unable to read this Excel workbook.'));
       },
     });
+  }
+
+  private importApiDataset(): void {
+    if (!this.canImportUpload()) return;
+    this.uploading.set(true);
+    this.uploadError.set('');
+    this.uploadSuccess.set('');
+    this.api.importApi(this.projectId, this.apiRequest()).pipe(finalize(() => this.uploading.set(false))).subscribe({
+      next: (dataset) => {
+        this.uploadSuccess.set(`${dataset.sourceName || dataset.tableName} imported successfully.`);
+        this.uploadOpen.set(false);
+        this.apiConnection.set(null);
+        this.apiPreview.set(null);
+        this.apiUrl.set('');
+        this.apiArrayPath.set('');
+        this.workflow.setDataset(dataset);
+        this.loadDatasets(dataset.id);
+      },
+      error: (error: unknown) => this.uploadError.set(this.errorMessage(error, 'Unable to import data from this API.')),
+    });
+  }
+
+  private apiRequest(): ApiJsonImportRequest {
+    const arrayPath = this.apiArrayPath().trim();
+    return { apiUrl: this.apiUrl().trim(), arrayPath: arrayPath || null };
   }
 
   private restoreSelection(datasets: DatasetResponse[], preferredId?: number): void {

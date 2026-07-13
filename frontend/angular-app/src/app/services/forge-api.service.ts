@@ -4,6 +4,9 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   AuthResponse,
+  ApiConnectionTest,
+  ApiJsonImportRequest,
+  ApiJsonPreview,
   CleanedDatasetPreview,
   CleaningApplyRecommendedRequest,
   CleaningApplyRequest,
@@ -73,6 +76,18 @@ export class ForgeApiService {
 
   previewExcel(formData: FormData): Observable<ExcelWorkbookPreview> {
     return this.http.post<ExcelWorkbookPreview>(`${this.baseUrl}/api/datasets/excel/preview`, formData);
+  }
+
+  testApiConnection(request: ApiJsonImportRequest): Observable<ApiConnectionTest> {
+    return this.http.post<ApiConnectionTest>(`${this.baseUrl}/api/datasets/api/test`, request);
+  }
+
+  previewApi(request: ApiJsonImportRequest): Observable<ApiJsonPreview> {
+    return this.http.post<ApiJsonPreview>(`${this.baseUrl}/api/datasets/api/preview`, request);
+  }
+
+  importApi(projectId: number, request: ApiJsonImportRequest): Observable<DatasetResponse> {
+    return this.http.post<DatasetResponse>(`${this.baseUrl}/api/projects/${projectId}/datasets/api`, request);
   }
 
   replaceDataset(datasetId: number, formData: FormData): Observable<DatasetResponse> {

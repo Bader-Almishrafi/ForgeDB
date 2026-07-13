@@ -117,12 +117,40 @@
             <button type="button" role="radio" data-testid="excel-source-option" class="rounded-2xl border-2 p-4 text-left transition" [attr.aria-checked]="uploadSource() === 'excel'" [class.border-indigo-500]="uploadSource() === 'excel'" [class.bg-indigo-50]="uploadSource() === 'excel'" [class.dark:bg-indigo-950]="uploadSource() === 'excel'" [class.border-slate-200]="uploadSource() !== 'excel'" [class.dark:border-slate-700]="uploadSource() !== 'excel'" (click)="selectUploadSource('excel')">
               <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">Excel workbook</span><span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">Select a real worksheet</span>
             </button>
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 opacity-75 dark:border-slate-700 dark:bg-slate-800/50">
-              <span class="flex items-center justify-between gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">API / JSON <span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] uppercase dark:bg-slate-700">Coming Soon</span></span><span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">HTTP JSON arrays</span>
-            </div>
+            <button type="button" role="radio" data-testid="api-source-option" class="rounded-2xl border-2 p-4 text-left transition" [attr.aria-checked]="uploadSource() === 'api'" [class.border-indigo-500]="uploadSource() === 'api'" [class.bg-indigo-50]="uploadSource() === 'api'" [class.dark:bg-indigo-950]="uploadSource() === 'api'" [class.border-slate-200]="uploadSource() !== 'api'" [class.dark:border-slate-700]="uploadSource() !== 'api'" (click)="selectUploadSource('api')">
+              <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">API / JSON</span><span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">Import an HTTP JSON array</span>
+            </button>
           </div>
 
           <div class="mt-5 min-w-0">
+            @if (uploadSource() === 'api') {
+              <section class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/40 sm:p-5" data-testid="api-import-form">
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="api-url-input">API URL
+                    <input id="api-url-input" data-testid="api-url-input" type="url" class="input-field mt-2" placeholder="https://api.example.com/items" autocomplete="url" [ngModel]="apiUrl()" (ngModelChange)="updateApiUrl($event)" [disabled]="uploading() || apiTesting() || apiPreviewLoading()" />
+                  </label>
+                  <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="api-array-path-input">JSON array path <span class="font-normal text-slate-400">(optional)</span>
+                    <input id="api-array-path-input" data-testid="api-array-path-input" type="text" class="input-field mt-2" placeholder="result.items" autocomplete="off" [ngModel]="apiArrayPath()" (ngModelChange)="updateApiArrayPath($event)" [disabled]="uploading() || apiTesting() || apiPreviewLoading()" />
+                  </label>
+                </div>
+                <p class="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">ForgeDB performs a read-only HTTP GET. Direct arrays are detected automatically; use a dot path such as <code>data</code> or <code>result.items</code> for nested arrays.</p>
+                <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <button type="button" data-testid="test-api-connection-button" class="btn-secondary" (click)="testApiConnection()" [disabled]="!apiUrl().trim() || apiTesting() || apiPreviewLoading() || uploading()">{{ apiTesting() ? 'Testing Connection…' : 'Test Connection' }}</button>
+                  <button type="button" data-testid="preview-api-button" class="btn-secondary" (click)="previewApiData()" [disabled]="!apiUrl().trim() || apiPreviewLoading() || apiTesting() || uploading()">{{ apiPreviewLoading() ? 'Loading Preview…' : 'Preview Data' }}</button>
+                </div>
+                @if (apiConnection(); as connection) {
+                  <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300" role="status" data-testid="api-connection-success">
+                    <p class="font-semibold">Connection successful</p><p class="mt-1 text-xs">HTTP {{ connection.statusCode }} · {{ connection.recordCount | number }} records · {{ connection.responseBytes | number }} bytes</p>
+                  </div>
+                }
+                @if (apiPreview(); as result) {
+                  <section class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900" data-testid="api-preview">
+                    <dl class="grid grid-cols-2 gap-3 border-b border-slate-200 p-4 text-sm sm:grid-cols-3 dark:border-slate-700"><div><dt class="text-xs text-slate-500">Rows</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ result.rowCount | number }}</dd></div><div><dt class="text-xs text-slate-500">Columns</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ result.columnCount | number }}</dd></div><div class="col-span-2 min-w-0 sm:col-span-1"><dt class="text-xs text-slate-500">Array path</dt><dd class="mt-1 truncate font-semibold text-slate-900 dark:text-slate-100">{{ result.arrayPath || 'Direct array' }}</dd></div></dl>
+                    <div class="max-w-full overflow-x-auto"><table class="w-max min-w-full text-left text-xs"><thead class="bg-slate-50 uppercase text-slate-500 dark:bg-slate-800"><tr>@for (column of result.columns; track column) { <th class="whitespace-nowrap px-3 py-2 font-semibold">{{ column }}</th> }</tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">@for (row of result.rows; track $index) { <tr>@for (column of result.columns; track column) { <td class="whitespace-nowrap px-3 py-2 text-slate-700 dark:text-slate-300">{{ previewValue(row, column) }}</td> }</tr> }</tbody></table></div>
+                  </section>
+                }
+              </section>
+            } @else {
             <label for="dataset-file-input" class="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-7 text-center transition focus-within:ring-4 focus-within:ring-indigo-100 dark:focus-within:ring-indigo-950" [ngClass]="dragActive() ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40' : 'border-slate-300 bg-slate-50/70 hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-slate-600 dark:bg-slate-800/50 dark:hover:border-indigo-600'" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
               <span class="grid h-12 w-12 place-items-center rounded-xl bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-indigo-300 dark:ring-slate-700"><svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M12 16V4m0 0 4 4m-4-4-4 4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"></path></svg></span>
               <span class="mt-4 text-sm font-semibold text-slate-800 dark:text-slate-200">Choose a {{ uploadSource() === 'excel' ? '.xlsx workbook' : '.csv file' }} or drop it here</span>
@@ -157,10 +185,11 @@
                 }
               </section>
             }
+            }
             @if (uploadError()) { <p class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300" role="alert" aria-live="assertive">{{ uploadError() }}</p> }
             <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
               <button type="button" class="btn-secondary sm:min-w-24" (click)="clearUpload()" [disabled]="uploading()">Cancel</button>
-              <button type="button" data-testid="import-dataset-button" class="btn-primary sm:min-w-32" (click)="importUpload()" [disabled]="!canImportUpload()">{{ uploading() ? 'Importing' : uploadSource() === 'excel' ? 'Import Excel' : 'Import CSV' }}</button>
+              <button type="button" data-testid="import-dataset-button" class="btn-primary sm:min-w-32" (click)="importUpload()" [disabled]="!canImportUpload()">{{ uploading() ? 'Importing…' : uploadSource() === 'api' ? 'Import Dataset' : uploadSource() === 'excel' ? 'Import Excel' : 'Import CSV' }}</button>
             </div>
           </div>
         </div>
@@ -212,15 +241,14 @@
     } @else if (datasets().length === 0) {
       <section class="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div class="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300"><svg viewBox="0 0 24 24" class="h-7 w-7 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16v5H4V6Zm0 7h16v5H4v-5Zm3-4h.01M7 16h.01"></path></svg></div>
-        <h2 class="mt-4 text-xl font-semibold text-slate-950 dark:text-slate-100">No data sources yet</h2><p class="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">Add a CSV file to begin analyzing and building your database.</p><button type="button" class="btn-primary mt-5" (click)="openUpload()">Add CSV File</button>
-        <div class="mx-auto mt-6 max-w-md rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left dark:border-slate-700 dark:bg-slate-800/60"><div class="flex items-center justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-slate-100">API Connection</h3><span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-300">Coming Soon</span></div><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">API imports require future backend integration.</p></div>
+        <h2 class="mt-4 text-xl font-semibold text-slate-950 dark:text-slate-100">No data sources yet</h2><p class="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">Import CSV, Excel, or an HTTP JSON API to begin analyzing and building your database.</p><button type="button" class="btn-primary mt-5" (click)="openUpload()">Add Data Source</button>
       </section>
     } @else {
       <section class="grid min-w-0 gap-5 xl:grid-cols-[280px_minmax(0,1fr)_380px]" aria-labelledby="data-sources-workspace-heading">
         <aside class="flex min-w-0 flex-col rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:sticky xl:top-5 xl:max-h-[calc(100vh-2.5rem)]">
           <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800"><div><p class="eyebrow">Project files</p><h2 id="data-sources-workspace-heading" class="mt-1 font-semibold text-slate-950 dark:text-slate-100">All Data Sources <span class="text-slate-400">({{ datasets().length }})</span></h2></div><span class="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><ellipse cx="12" cy="6" rx="6.5" ry="2.75"></ellipse><path d="M5.5 6v6c0 1.52 2.91 2.75 6.5 2.75s6.5-1.23 6.5-2.75V6"></path></svg></span></div>
           <label for="dataset-search" class="relative mt-4 block"><span class="sr-only">Search data sources</span><svg viewBox="0 0 24 24" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 fill-none stroke-slate-400" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg><input id="dataset-search" type="search" class="input-field min-h-11 pl-10" placeholder="Search data sources" [ngModel]="search()" (ngModelChange)="updateSearch($event)" /></label>
-          <div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1"><button type="button" class="btn-primary w-full whitespace-nowrap px-3" (click)="openUpload()"><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span>Add CSV File</span></button><button type="button" class="btn-secondary w-full whitespace-nowrap px-3" (click)="showAllFiles()">View All Files</button></div>
+          <div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1"><button type="button" class="btn-primary w-full whitespace-nowrap px-3" (click)="openUpload()"><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span>Add Data Source</span></button><button type="button" class="btn-secondary w-full whitespace-nowrap px-3" (click)="showAllFiles()">View All Files</button></div>
           @if (datasetsError()) { <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300" role="alert"><p>{{ datasetsError() }}</p><button type="button" class="mt-2 font-semibold underline" (click)="loadDatasets()">Try again</button></div> }
           <div role="listbox" aria-label="Project datasets" class="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 xl:max-h-[32rem]">
             @for (dataset of filteredDatasets(); track dataset.id) {
@@ -231,7 +259,7 @@
               <div class="rounded-2xl border border-dashed border-slate-300 p-5 text-center dark:border-slate-700"><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">No data sources match the search.</p><button type="button" class="btn-secondary mt-3" (click)="updateSearch('')">Clear Search</button></div>
             }
           </div>
-          <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400"><div class="flex items-center justify-between gap-3"><span class="font-semibold text-slate-700 dark:text-slate-300">API Connection</span><span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600 dark:bg-slate-700 dark:text-slate-300">Coming Soon</span></div><p class="mt-1.5 leading-5">Future API imports require backend support.</p></div>
+          <div class="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-3.5 text-xs text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/25 dark:text-indigo-300"><p class="font-semibold">API / JSON imports are available</p><p class="mt-1.5 leading-5">Use Add Data Source to test, preview, and persist an HTTP JSON array.</p></div>
         </aside>
 
         @if (mode() === 'all') {

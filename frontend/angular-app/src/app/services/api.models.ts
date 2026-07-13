@@ -76,6 +76,31 @@ export interface ExcelWorkbookPreview {
   rows: Record<string, unknown>[];
 }
 
+export interface ApiJsonImportRequest {
+  apiUrl: string;
+  arrayPath?: string | null;
+  tableName?: string | null;
+}
+
+export interface ApiConnectionTest {
+  success: boolean;
+  url: string;
+  statusCode: number;
+  contentType: string;
+  responseBytes: number;
+  recordCount: number;
+  message: string;
+}
+
+export interface ApiJsonPreview {
+  url: string;
+  arrayPath?: string | null;
+  rowCount: number;
+  columnCount: number;
+  columns: string[];
+  rows: Record<string, unknown>[];
+}
+
 export interface DatasetAnalysisRequest {
   analysisType: string;
   options?: unknown;

@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Repositories.Interfaces;
+using ForgeDB.API.Services.Importing;
 using ForgeDB.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -44,6 +45,66 @@ public class DatasetsController : ControllerBase
         catch (ArgumentException exception)
         {
             return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpPost("datasets/api/test")]
+    public async Task<ActionResult<ApiConnectionTestDto>> TestApiConnection(
+        ApiJsonImportRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _datasetImportService.TestApiConnectionAsync(request, cancellationToken));
+        }
+        catch (ApiImportException exception)
+        {
+            return ApiImportError(exception);
+        }
+    }
+
+    [HttpPost("datasets/api/preview")]
+    public async Task<ActionResult<ApiJsonPreviewDto>> PreviewApi(
+        ApiJsonImportRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _datasetImportService.PreviewApiAsync(request, cancellationToken));
+        }
+        catch (ApiImportException exception)
+        {
+            return ApiImportError(exception);
+        }
+    }
+
+    [HttpPost("projects/{projectId:int}/datasets/api")]
+    public async Task<ActionResult<DatasetResponseDto>> ImportApi(
+        int projectId,
+        ApiJsonImportRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await EnsureProjectOwnedAsync(projectId, cancellationToken);
+            var dataset = await _datasetImportService.ImportApiAsync(projectId, request, cancellationToken);
+            return CreatedAtAction(nameof(GetPreview), new { datasetId = dataset.Id }, dataset);
+        }
+        catch (ApiImportException exception)
+        {
+            return ApiImportError(exception);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { code = "validation_error", message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { code = "forbidden", message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { code = "not_found", message = exception.Message });
         }
     }
 
@@ -234,6 +295,9 @@ public class DatasetsController : ControllerBase
             ? userId
             : throw new UnauthorizedAccessException("The authentication token does not contain a valid user identifier.");
     }
+
+    private ObjectResult ApiImportError(ApiImportException exception) =>
+        StatusCode(exception.StatusCode, new { code = exception.Code, message = exception.Message });
 
     private async Task EnsureProjectOwnedAsync(int projectId, CancellationToken cancellationToken)
     {

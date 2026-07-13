@@ -163,6 +163,22 @@ public class OwnershipAuthorizationTests
     }
 
     [Fact]
+    public async Task DatasetsController_ImportApi_Returns403_ForNonOwningUser()
+    {
+        await using var context = NewContext();
+        var (project, _, _) = await SeedProjectWithDatasetAsync(context, ownerUserId: 1);
+        var controller = BuildDatasetsController(context, callingUserId: 99);
+
+        var result = await controller.ImportApi(project.Id, new ApiJsonImportRequestDto
+        {
+            ApiUrl = "https://example.com/data"
+        }, CancellationToken.None);
+
+        var status = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, status.StatusCode);
+    }
+
+    [Fact]
     public async Task DatasetsController_Delete_Returns403_ForNonOwningUser()
     {
         await using var context = NewContext();

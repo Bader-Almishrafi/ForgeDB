@@ -20,17 +20,20 @@ public class DatasetImportService : IDatasetImportService
     private readonly IPythonAnalysisClient _pythonAnalysisClient;
     private readonly ILogger<DatasetImportService> _logger;
     private readonly IExcelWorkbookReader? _excelWorkbookReader;
+    private readonly IApiJsonImportService? _apiJsonImportService;
 
     public DatasetImportService(
         IDatasetRepository datasetRepository,
         IPythonAnalysisClient pythonAnalysisClient,
         ILogger<DatasetImportService> logger,
-        IExcelWorkbookReader? excelWorkbookReader = null)
+        IExcelWorkbookReader? excelWorkbookReader = null,
+        IApiJsonImportService? apiJsonImportService = null)
     {
         _datasetRepository = datasetRepository;
         _pythonAnalysisClient = pythonAnalysisClient;
         _logger = logger;
         _excelWorkbookReader = excelWorkbookReader;
+        _apiJsonImportService = apiJsonImportService;
     }
 
     public async Task<DatasetResponseDto> UploadDatasetAsync(int projectId, DatasetUploadDto request, CancellationToken cancellationToken = default)
@@ -104,6 +107,72 @@ public class DatasetImportService : IDatasetImportService
                     StringComparer.Ordinal))
                 .ToList() ?? []
         };
+    }
+
+    public async Task<ApiConnectionTestDto> TestApiConnectionAsync(
+        ApiJsonImportRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var imported = await RequireApiImportService().FetchAsync(request, cancellationToken);
+        return new ApiConnectionTestDto
+        {
+            Success = true,
+            Url = imported.FinalUri.AbsoluteUri,
+            StatusCode = imported.StatusCode,
+            ContentType = imported.ContentType,
+            ResponseBytes = imported.ResponseBytes,
+            RecordCount = imported.Data.Rows.Count,
+            Message = $"Connection succeeded and returned {imported.Data.Rows.Count:N0} usable records."
+        };
+    }
+
+    public async Task<ApiJsonPreviewDto> PreviewApiAsync(
+        ApiJsonImportRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var imported = await RequireApiImportService().FetchAsync(request, cancellationToken);
+        return new ApiJsonPreviewDto
+        {
+            Url = imported.FinalUri.AbsoluteUri,
+            ArrayPath = imported.ArrayPath,
+            RowCount = imported.Data.Rows.Count,
+            ColumnCount = imported.Data.Columns.Count,
+            Columns = imported.Data.Columns,
+            Rows = imported.Data.Rows.Take(10)
+                .Select(row => (IDictionary<string, object?>)row.ToDictionary(value => value.Key, value => (object?)value.Value, StringComparer.Ordinal))
+                .ToList()
+        };
+    }
+
+    public async Task<DatasetResponseDto> ImportApiAsync(
+        int projectId,
+        ApiJsonImportRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        if (projectId <= 0) throw new ArgumentException("ProjectId must be greater than zero.", nameof(projectId));
+        if (!await _datasetRepository.ProjectExistsAsync(projectId, cancellationToken)) throw new KeyNotFoundException("Project not found.");
+
+        var importedAt = DateTime.UtcNow;
+        var imported = await RequireApiImportService().FetchAsync(request, cancellationToken);
+        var result = BuildImportResult(imported.Data, importedAt);
+        var dataset = new Dataset
+        {
+            ProjectId = projectId,
+            TableName = ResolveApiTableName(request.TableName, imported.FinalUri),
+            SourceType = "api",
+            SourceName = imported.FinalUri.GetLeftPart(UriPartial.Path),
+            SourceUrl = imported.FinalUri.AbsoluteUri,
+            RowCount = result.Rows.Count,
+            ColumnCount = result.Columns.Count,
+            MissingValuesCount = result.MissingValuesCount,
+            DuplicateRowsCount = result.DuplicateRowsCount,
+            Status = "Imported",
+            CreatedAt = importedAt,
+            Columns = result.Columns.ToList(),
+            Rows = result.Rows.ToList()
+        };
+        await _datasetRepository.AddAsync(dataset, cancellationToken);
+        return MapToResponse(dataset);
     }
 
     public async Task<IEnumerable<DatasetResponseDto>> GetProjectDatasetsAsync(int projectId, CancellationToken cancellationToken = default)
@@ -334,6 +403,20 @@ public class DatasetImportService : IDatasetImportService
     {
         return _excelWorkbookReader
             ?? throw new InvalidOperationException("Excel workbook import is not configured.");
+    }
+
+    private IApiJsonImportService RequireApiImportService() => _apiJsonImportService
+        ?? throw new InvalidOperationException("API JSON import is not configured.");
+
+    private static string ResolveApiTableName(string? requested, Uri uri)
+    {
+        var value = string.IsNullOrWhiteSpace(requested)
+            ? uri.Segments.LastOrDefault()?.Trim('/')
+            : requested.Trim();
+        if (string.IsNullOrWhiteSpace(value)) value = uri.Host.Split('.')[0];
+        var normalized = new string(value.Select(character => char.IsAsciiLetterOrDigit(character) || character == '_' ? character : '_').ToArray()).Trim('_');
+        if (string.IsNullOrWhiteSpace(normalized)) normalized = "api_dataset";
+        return normalized.Length <= 100 ? normalized : normalized[..100];
     }
 
     private static void ValidateCsvFile(IFormFile? file)

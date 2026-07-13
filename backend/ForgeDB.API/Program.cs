@@ -40,6 +40,13 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IDatasetImportService, DatasetImportService>();
 builder.Services.AddSingleton<IExcelWorkbookReader, ExcelWorkbookReader>();
+builder.Services.Configure<ApiImportOptions>(builder.Configuration.GetSection(ApiImportOptions.SectionName));
+builder.Services.AddSingleton<IHostAddressResolver, SystemHostAddressResolver>();
+builder.Services.AddScoped<IApiJsonImportService, ApiJsonImportService>();
+builder.Services.AddHttpClient<IApiJsonClient, ApiJsonClient>()
+	.ConfigurePrimaryHttpMessageHandler(serviceProvider => SafeApiHttpHandler.Create(
+		serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ApiImportOptions>>().Value,
+		serviceProvider.GetRequiredService<IHostEnvironment>()));
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ICleaningService, CleaningService>();
 builder.Services.AddScoped<IDesignService, DesignService>();

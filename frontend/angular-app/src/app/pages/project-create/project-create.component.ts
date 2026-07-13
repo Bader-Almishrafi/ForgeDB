@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Observable, Subject, catchError, concatMap, from, map, of, switchMap, take, tap, toArray } from 'rxjs';
-import { DatasetResponse, ExcelWorkbookPreview, ProjectResponse } from '../../services/api.models';
+import { ApiConnectionTest, ApiJsonImportRequest, ApiJsonPreview, DatasetResponse, ExcelWorkbookPreview, ProjectResponse } from '../../services/api.models';
 import { AuthService } from '../../services/auth.service';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { UnsavedChangesAware } from '../../services/unsaved-changes.guard';
@@ -15,7 +15,7 @@ type WizardStep = 1 | 2 | 3;
 type SubmissionState = 'idle' | 'creating' | 'uploading' | 'partial' | 'success';
 type FileUploadState = 'selected' | 'uploading' | 'uploaded' | 'failed';
 type FeedbackKind = 'success' | 'warning' | 'error';
-type WizardSource = 'csv' | 'excel';
+type WizardSource = 'csv' | 'excel' | 'api';
 
 interface WizardCsvFile {
   id: string;
@@ -75,6 +75,15 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
   readonly csvFiles = signal<WizardCsvFile[]>([]);
   readonly excelFile = signal<WizardExcelFile | null>(null);
   readonly excelPreviewLoading = signal(false);
+  readonly apiUrl = signal('');
+  readonly apiArrayPath = signal('');
+  readonly apiConnection = signal<ApiConnectionTest | null>(null);
+  readonly apiPreview = signal<ApiJsonPreview | null>(null);
+  readonly apiTesting = signal(false);
+  readonly apiPreviewLoading = signal(false);
+  readonly apiImportState = signal<FileUploadState>('selected');
+  readonly apiDataset = signal<DatasetResponse | null>(null);
+  readonly apiError = signal('');
   readonly selectedFileIndex = signal(-1);
   readonly dragActive = signal(false);
   readonly submissionState = signal<SubmissionState>('idle');
@@ -119,22 +128,30 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
   });
   readonly uploadedFiles = computed(() => this.csvFiles().filter((item) => item.state === 'uploaded'));
   readonly failedFiles = computed(() => this.csvFiles().filter((item) => item.state === 'failed'));
-  readonly sourceReady = computed(() => this.selectedSource() === 'csv'
-    ? this.csvFiles().length > 0
-    : !!this.excelFile()?.preview?.selectedWorksheet);
-  readonly uploadedCount = computed(() => this.selectedSource() === 'csv'
-    ? this.uploadedFiles().length
-    : this.excelFile()?.state === 'uploaded' ? 1 : 0);
-  readonly failedCount = computed(() => this.selectedSource() === 'csv'
-    ? this.failedFiles().length
-    : this.excelFile()?.state === 'failed' ? 1 : 0);
+  readonly sourceReady = computed(() => {
+    if (this.selectedSource() === 'csv') return this.csvFiles().length > 0;
+    if (this.selectedSource() === 'excel') return !!this.excelFile()?.preview?.selectedWorksheet;
+    return this.apiUrl().trim().length > 0 && !!this.apiPreview();
+  });
+  readonly uploadedCount = computed(() => {
+    if (this.selectedSource() === 'csv') return this.uploadedFiles().length;
+    if (this.selectedSource() === 'excel') return this.excelFile()?.state === 'uploaded' ? 1 : 0;
+    return this.apiImportState() === 'uploaded' ? 1 : 0;
+  });
+  readonly failedCount = computed(() => {
+    if (this.selectedSource() === 'csv') return this.failedFiles().length;
+    if (this.selectedSource() === 'excel') return this.excelFile()?.state === 'failed' ? 1 : 0;
+    return this.apiImportState() === 'failed' ? 1 : 0;
+  });
   readonly hasUnsavedChanges = computed(() => {
     const value = this.formValue();
     return value.name.length > 0
       || value.description.length > 0
       || this.currentStep() !== 1
       || this.csvFiles().length > 0
-      || !!this.excelFile();
+      || !!this.excelFile()
+      || this.apiUrl().length > 0
+      || this.apiArrayPath().length > 0;
   });
 
   constructor() {
@@ -163,7 +180,9 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
           title: 'Data source required',
           message: this.selectedSource() === 'excel'
             ? 'Choose a valid .xlsx workbook and select a worksheet to continue.'
-            : 'Add at least one CSV file to continue.',
+            : this.selectedSource() === 'api'
+              ? 'Enter an HTTP or HTTPS API URL and preview its JSON array to continue.'
+              : 'Add at least one CSV file to continue.',
         });
         return;
       }
@@ -172,9 +191,59 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
   }
 
   selectSource(source: WizardSource): void {
-    if (this.processing() || this.selectedSource() === source) return;
+    if (this.processing() || this.apiTesting() || this.apiPreviewLoading() || this.selectedSource() === source) return;
     this.selectedSource.set(source);
     this.feedback.set(null);
+  }
+
+  updateApiUrl(value: string): void {
+    this.apiUrl.set(value);
+    this.resetApiResults();
+  }
+
+  updateApiArrayPath(value: string): void {
+    this.apiArrayPath.set(value);
+    this.resetApiResults();
+  }
+
+  testApiConnection(): void {
+    if (!this.apiUrl().trim() || this.apiTesting() || this.processing()) return;
+    this.apiTesting.set(true);
+    this.apiConnection.set(null);
+    this.apiError.set('');
+    this.feedback.set(null);
+    this.api.testApiConnection(this.apiRequest()).subscribe({
+      next: (connection) => {
+        this.apiTesting.set(false);
+        this.apiConnection.set(connection);
+      },
+      error: (error: unknown) => {
+        this.apiTesting.set(false);
+        const message = this.errorMessage(error, 'Unable to connect to this API.');
+        this.apiError.set(message);
+        this.feedback.set({ kind: 'error', title: 'API connection failed', message });
+      },
+    });
+  }
+
+  previewApiData(): void {
+    if (!this.apiUrl().trim() || this.apiPreviewLoading() || this.processing()) return;
+    this.apiPreviewLoading.set(true);
+    this.apiPreview.set(null);
+    this.apiError.set('');
+    this.feedback.set(null);
+    this.api.previewApi(this.apiRequest()).subscribe({
+      next: (preview) => {
+        this.apiPreviewLoading.set(false);
+        this.apiPreview.set(preview);
+      },
+      error: (error: unknown) => {
+        this.apiPreviewLoading.set(false);
+        const message = this.errorMessage(error, 'Unable to preview data from this API.');
+        this.apiError.set(message);
+        this.feedback.set({ kind: 'error', title: 'API preview failed', message });
+      },
+    });
   }
 
   onExcelFileInput(event: Event): void {
@@ -308,9 +377,11 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
         this.createdProject.set(project);
         this.workflow.setProject(project);
       }),
-      switchMap((project) => (source === 'excel' && excel
-        ? this.uploadExcel(project, excel)
-        : this.uploadFiles(project, files)).pipe(map((results) => ({ project, results })))),
+      switchMap((project) => (source === 'api'
+        ? this.importApi(project)
+        : source === 'excel' && excel
+          ? this.uploadExcel(project, excel)
+          : this.uploadFiles(project, files)).pipe(map((results) => ({ project, results })))),
     ).subscribe({
       next: ({ project }) => this.handleUploadCompletion(project),
       error: (error: unknown) => {
@@ -333,9 +404,11 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
     }
 
     this.feedback.set(null);
-    (this.selectedSource() === 'excel' && failedExcel
-      ? this.uploadExcel(project, failedExcel)
-      : this.uploadFiles(project, failed)).subscribe({
+    (this.selectedSource() === 'api'
+      ? this.importApi(project)
+      : this.selectedSource() === 'excel' && failedExcel
+        ? this.uploadExcel(project, failedExcel)
+        : this.uploadFiles(project, failed)).subscribe({
       next: () => this.handleUploadCompletion(project),
     });
   }
@@ -347,9 +420,11 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
     }
 
     const uploaded = this.uploadedCount();
-    const failedNames = this.selectedSource() === 'excel'
-      ? this.excelFile()?.file.name ?? ''
-      : this.failedFiles().map((item) => item.file.name).join(', ');
+    const failedNames = this.selectedSource() === 'api'
+      ? this.apiUrl()
+      : this.selectedSource() === 'excel'
+        ? this.excelFile()?.file.name ?? ''
+        : this.failedFiles().map((item) => item.file.name).join(', ');
     this.allowNavigation = true;
     void this.router.navigate(['/projects', project.id, 'overview'], {
       state: {
@@ -555,6 +630,30 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
     );
   }
 
+  private importApi(project: ProjectResponse): Observable<UploadResult[]> {
+    this.submissionState.set('uploading');
+    this.uploadCompleted.set(0);
+    this.uploadTotal.set(1);
+    this.apiImportState.set('uploading');
+    this.apiError.set('');
+    return this.api.importApi(project.id, this.apiRequest()).pipe(
+      map((dataset): UploadResult => ({ fileId: 'api', success: true, dataset })),
+      catchError((error: unknown) => of<UploadResult>({ fileId: 'api', success: false, error: this.errorMessage(error, 'API import failed.') })),
+      tap((result) => {
+        if (result.success && result.dataset) {
+          this.apiImportState.set('uploaded');
+          this.apiDataset.set(result.dataset);
+          this.workflow.setDataset(result.dataset);
+        } else {
+          this.apiImportState.set('failed');
+          this.apiError.set(result.error ?? 'API import failed.');
+        }
+        this.uploadCompleted.set(1);
+      }),
+      map((result) => [result]),
+    );
+  }
+
   private handleUploadCompletion(project: ProjectResponse): void {
     if (this.failedCount() > 0) {
       const uploaded = this.uploadedCount();
@@ -604,6 +703,20 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
         this.feedback.set({ kind: 'error', title: 'Workbook preview failed', message });
       },
     });
+  }
+
+  private apiRequest(): ApiJsonImportRequest {
+    const arrayPath = this.apiArrayPath().trim();
+    return { apiUrl: this.apiUrl().trim(), arrayPath: arrayPath || null };
+  }
+
+  private resetApiResults(): void {
+    this.apiConnection.set(null);
+    this.apiPreview.set(null);
+    this.apiDataset.set(null);
+    this.apiImportState.set('selected');
+    this.apiError.set('');
+    this.feedback.set(null);
   }
 
   private tableNameFromFile(file: File, worksheet?: string): string {
