@@ -42,6 +42,7 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ICleaningService, CleaningService>();
 builder.Services.AddScoped<IDesignService, DesignService>();
 builder.Services.AddScoped<IRelationshipDetectionService, RelationshipDetectionService>();
+builder.Services.AddScoped<IDeploymentService, DeploymentService>();
 builder.Services.AddSingleton<IDesignValidationService, DesignValidationService>();
 builder.Services.AddSingleton<IDesignSchemaGenerator, SqlSchemaGenerator>();
 builder.Services.AddSingleton<IDesignSchemaGenerator, DbmlGenerator>();
@@ -68,6 +69,7 @@ builder.Services.AddScoped<IDatasetRepository, DatasetRepository>();
 builder.Services.AddScoped<ICleaningRepository, CleaningRepository>();
 builder.Services.AddScoped<IDesignRepository, DesignRepository>();
 builder.Services.AddScoped<IRelationshipSuggestionRepository, RelationshipSuggestionRepository>();
+builder.Services.AddScoped<IDeploymentRepository, DeploymentRepository>();
 builder.Services.AddScoped<IPasswordHasher<ForgeDB.API.Models.Entities.User>, PasswordHasher<ForgeDB.API.Models.Entities.User>>();
 
 var jwtKey = builder.Configuration["Jwt:Key"];

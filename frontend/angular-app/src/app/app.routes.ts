@@ -8,6 +8,7 @@ import { LandingComponent } from './pages/landing/landing.component';
 import { LoginComponent } from './pages/login/login.component';
 import { ProjectsComponent } from './pages/projects/projects.component';
 import { ProjectCreateComponent } from './pages/project-create/project-create.component';
+import { ProjectDeploymentComponent } from './pages/project-deployment/project-deployment.component';
 import { ProjectErDiagramComponent } from './pages/project-er-diagram/project-er-diagram.component';
 import { ProjectExportsComponent } from './pages/project-exports/project-exports.component';
 import { ProjectOverviewComponent } from './pages/project-overview/project-overview.component';
@@ -43,6 +44,7 @@ export const routes: Routes = [
       { path: 'projects/:projectId/relationships', component: ProjectRelationshipsComponent },
       { path: 'projects/:projectId/schema-designer', component: ProjectSchemaDesignerComponent, canDeactivate: [unsavedChangesGuard] },
       { path: 'projects/:projectId/er-diagram', component: ProjectErDiagramComponent },
+      { path: 'projects/:projectId/deployment', component: ProjectDeploymentComponent },
       { path: 'projects/:projectId/exports', component: ProjectExportsComponent },
       { path: 'datasets/:datasetId/preview', component: AnalysisComponent },
       { path: 'datasets/:datasetId/explorer', component: AnalysisComponent },

@@ -24,6 +24,7 @@ public class ForgeDbContext : DbContext
     public DbSet<DesignColumn> DesignColumns => Set<DesignColumn>();
     public DbSet<DesignRelationship> DesignRelationships => Set<DesignRelationship>();
     public DbSet<RelationshipSuggestion> RelationshipSuggestions => Set<RelationshipSuggestion>();
+    public DbSet<Deployment> Deployments => Set<Deployment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -315,6 +316,20 @@ public class ForgeDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(suggestion => suggestion.TargetDatasetId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Deployment>(entity =>
+        {
+            entity.ToTable("deployments");
+            entity.HasKey(deployment => deployment.Id);
+            entity.Property(deployment => deployment.CreatedTablesJson).HasColumnType("jsonb");
+            entity.Property(deployment => deployment.InsertedRowCountsJson).HasColumnType("jsonb");
+            entity.HasIndex(deployment => new { deployment.ProjectId, deployment.StartedAt });
+
+            entity.HasOne(deployment => deployment.Project)
+                .WithMany()
+                .HasForeignKey(deployment => deployment.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

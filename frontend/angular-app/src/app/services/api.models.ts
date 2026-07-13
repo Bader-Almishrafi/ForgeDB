@@ -575,6 +575,21 @@ export interface SchemaSqlPreview {
   sql: string;
 }
 
+export interface DeploymentResponse {
+  id: number;
+  projectId: number;
+  designRevision: number;
+  schemaName: string;
+  status: 'Running' | 'Succeeded' | 'Failed' | string;
+  generatedSql: string;
+  errorMessage?: string | null;
+  createdTables: string[];
+  insertedRowCounts: Record<string, number>;
+  totalRowsInserted: number;
+  startedAt: string;
+  completedAt?: string | null;
+}
+
 export interface GenerateDesignRequest {
   mode: 'merge' | 'replace';
 }

@@ -7,6 +7,7 @@ import {
   CreateDesignColumnRequest,
   CreateDesignRelationshipRequest,
   CreateDesignTableRequest,
+  DeploymentResponse,
   DesignModelResponse,
   RelationshipSuggestion,
   UpdateDesignColumnRequest,
@@ -183,6 +184,25 @@ export class DesignApiService {
   /** True when an error response is a 409 revision conflict (stale If-Match). */
   isRevisionConflict(error: unknown): boolean {
     return typeof error === 'object' && error !== null && (error as { status?: number }).status === 409;
+  }
+
+  /** Executes the validated design against real PostgreSQL: creates a project-scoped schema,
+   * runs the generated DDL, and inserts the currently cleaned dataset rows, all inside one
+   * transaction that rolls back fully on failure. Requires If-Match like every other mutation. */
+  deployProject(projectId: number, revision: number): Observable<DeploymentResponse> {
+    return this.http.post<DeploymentResponse>(
+      `${this.baseUrl}/api/projects/${projectId}/deployments`,
+      {},
+      { headers: this.ifMatch(revision) },
+    );
+  }
+
+  getDeploymentHistory(projectId: number): Observable<DeploymentResponse[]> {
+    return this.http.get<DeploymentResponse[]>(`${this.baseUrl}/api/projects/${projectId}/deployments`);
+  }
+
+  getLatestDeployment(projectId: number): Observable<DeploymentResponse> {
+    return this.http.get<DeploymentResponse>(`${this.baseUrl}/api/projects/${projectId}/deployments/latest`);
   }
 
   private ifMatch(revision: number): HttpHeaders {
