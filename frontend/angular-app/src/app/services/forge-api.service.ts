@@ -17,6 +17,7 @@ import {
   DatasetAnalysisResponse,
   DatasetPreview,
   DatasetResponse,
+  ExcelWorkbookPreview,
   DatasetVersion,
   LoginRequest,
   ProjectExportPackage,
@@ -68,6 +69,10 @@ export class ForgeApiService {
 
   uploadDataset(projectId: number, formData: FormData): Observable<DatasetResponse> {
     return this.http.post<DatasetResponse>(`${this.baseUrl}/api/projects/${projectId}/datasets/upload`, formData);
+  }
+
+  previewExcel(formData: FormData): Observable<ExcelWorkbookPreview> {
+    return this.http.post<ExcelWorkbookPreview>(`${this.baseUrl}/api/datasets/excel/preview`, formData);
   }
 
   replaceDataset(datasetId: number, formData: FormData): Observable<DatasetResponse> {

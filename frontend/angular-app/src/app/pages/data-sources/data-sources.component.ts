@@ -5,13 +5,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, map, of, Subject, switchMap, tap } from 'rxjs';
-import { DatasetAnalysisResponse, DatasetPreview, DatasetResponse, ProjectResponse } from '../../services/api.models';
+import { DatasetAnalysisResponse, DatasetPreview, DatasetResponse, ExcelWorkbookPreview, ProjectResponse } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
 import { formatFileSize, isCsvFile } from '../project-create/project-create.utils';
 
 type WorkspaceMode = 'selected' | 'all';
 type DatasetTab = 'overview' | 'preview' | 'quality';
+type UploadSource = 'csv' | 'excel';
 
 interface QualityIssue {
   type: string;
@@ -55,7 +56,10 @@ export class DataSourcesComponent implements OnInit {
   readonly qualityLoading = signal(false);
   readonly qualityError = signal('');
   readonly uploadOpen = signal(false);
+  readonly uploadSource = signal<UploadSource>('csv');
   readonly uploadFile = signal<File | null>(null);
+  readonly excelPreview = signal<ExcelWorkbookPreview | null>(null);
+  readonly excelPreviewLoading = signal(false);
   readonly uploadError = signal('');
   readonly uploadSuccess = signal('');
   readonly uploading = signal(false);
@@ -82,6 +86,10 @@ export class DataSourcesComponent implements OnInit {
   readonly totalColumns = computed(() => this.datasets().reduce((sum, dataset) => sum + dataset.columnCount, 0));
   readonly previewRows = computed(() => (this.preview()?.rows ?? []).slice(0, 10));
   readonly previewColumns = computed(() => this.preview()?.columns ?? []);
+  readonly canImportUpload = computed(() => {
+    if (!this.uploadFile() || this.uploading() || this.excelPreviewLoading()) return false;
+    return this.uploadSource() === 'csv' || !!this.excelPreview()?.selectedWorksheet;
+  });
   readonly qualityIssues = computed<QualityIssue[]>(() => {
     const result = this.analysis()?.analysisResult;
     if (!result) return [];
@@ -235,6 +243,15 @@ export class DataSourcesComponent implements OnInit {
     this.uploadOpen.set(true);
   }
 
+  selectUploadSource(source: UploadSource): void {
+    if (this.uploading() || this.excelPreviewLoading() || this.uploadSource() === source) return;
+    this.uploadSource.set(source);
+    this.uploadFile.set(null);
+    this.excelPreview.set(null);
+    this.uploadError.set('');
+    this.dragActive.set(false);
+  }
+
   openReplace(): void {
     this.replaceError.set('');
     this.replaceFile.set(null);
@@ -356,7 +373,7 @@ export class DataSourcesComponent implements OnInit {
     const files = event.dataTransfer?.files;
     if (files && files.length > 1) {
       this.uploadFile.set(null);
-      this.uploadError.set('Upload one CSV file at a time.');
+      this.uploadError.set('Upload one file at a time.');
       return;
     }
 
@@ -366,6 +383,7 @@ export class DataSourcesComponent implements OnInit {
   clearUpload(): void {
     if (this.uploading()) return;
     this.uploadFile.set(null);
+    this.excelPreview.set(null);
     this.uploadError.set('');
     this.uploadOpen.set(false);
   }
@@ -394,29 +412,39 @@ export class DataSourcesComponent implements OnInit {
     return issue.severity === 'Needs Attention' ? 'badge-warning' : 'badge-neutral';
   }
 
-  uploadCsv(): void {
+  importUpload(): void {
     const file = this.uploadFile();
-    if (!file || this.uploading()) return;
+    if (!file || !this.canImportUpload()) return;
 
     this.uploading.set(true);
     this.uploadError.set('');
     this.uploadSuccess.set('');
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('sourceType', 'csv');
+    formData.append('sourceType', this.uploadSource());
     formData.append('sourceName', file.name);
-    formData.append('tableName', file.name.replace(/\.csv$/i, '').replace(/[^a-zA-Z0-9_]+/g, '_') || 'dataset');
+    const worksheet = this.excelPreview()?.selectedWorksheet;
+    if (this.uploadSource() === 'excel' && worksheet) formData.append('worksheetName', worksheet);
+    const baseName = file.name.replace(/\.(csv|xlsx)$/i, '');
+    const tableName = this.uploadSource() === 'excel' && worksheet ? `${baseName}_${worksheet}` : baseName;
+    formData.append('tableName', tableName.replace(/[^a-zA-Z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'dataset');
 
     this.api.uploadDataset(this.projectId, formData).pipe(finalize(() => this.uploading.set(false))).subscribe({
       next: (dataset) => {
-        this.uploadSuccess.set(`${dataset.sourceName || dataset.tableName} uploaded successfully.`);
+        this.uploadSuccess.set(`${dataset.sourceName || dataset.tableName} imported successfully.`);
         this.uploadFile.set(null);
+        this.excelPreview.set(null);
         this.uploadOpen.set(false);
         this.workflow.setDataset(dataset);
         this.loadDatasets(dataset.id);
       },
-      error: (error: unknown) => this.uploadError.set(this.errorMessage(error, 'Unable to upload the CSV file.')),
+      error: (error: unknown) => this.uploadError.set(this.errorMessage(error, `Unable to import the ${this.uploadSource() === 'excel' ? 'Excel workbook' : 'CSV file'}.`)),
     });
+  }
+
+  onWorksheetSelected(event: Event): void {
+    const worksheet = (event.target as HTMLSelectElement).value;
+    if (worksheet) this.loadExcelPreview(worksheet);
   }
 
   previewValue(row: Record<string, unknown>, column: string): string {
@@ -439,17 +467,39 @@ export class DataSourcesComponent implements OnInit {
   private acceptFile(file: File | null): void {
     this.uploadError.set('');
     if (!file) return;
-    if (!file.name.toLocaleLowerCase().endsWith('.csv')) {
+    const extension = this.uploadSource() === 'excel' ? '.xlsx' : '.csv';
+    if (!file.name.toLocaleLowerCase().endsWith(extension)) {
       this.uploadFile.set(null);
-      this.uploadError.set('Only CSV files are supported.');
+      this.excelPreview.set(null);
+      this.uploadError.set(this.uploadSource() === 'excel' ? 'Only .xlsx Excel workbooks are supported.' : 'Only CSV files are supported.');
       return;
     }
-    if (!isCsvFile(file)) {
+    if (file.size <= 0 || (this.uploadSource() === 'csv' && !isCsvFile(file))) {
       this.uploadFile.set(null);
-      this.uploadError.set('Empty CSV files cannot be uploaded.');
+      this.excelPreview.set(null);
+      this.uploadError.set(`Empty ${this.uploadSource() === 'excel' ? 'Excel workbooks' : 'CSV files'} cannot be uploaded.`);
       return;
     }
     this.uploadFile.set(file);
+    this.excelPreview.set(null);
+    if (this.uploadSource() === 'excel') this.loadExcelPreview();
+  }
+
+  private loadExcelPreview(worksheetName?: string): void {
+    const file = this.uploadFile();
+    if (!file || this.uploadSource() !== 'excel') return;
+    this.excelPreviewLoading.set(true);
+    this.uploadError.set('');
+    const formData = new FormData();
+    formData.append('file', file);
+    if (worksheetName) formData.append('worksheetName', worksheetName);
+    this.api.previewExcel(formData).pipe(finalize(() => this.excelPreviewLoading.set(false))).subscribe({
+      next: (preview) => this.excelPreview.set(preview),
+      error: (error: unknown) => {
+        this.excelPreview.set(null);
+        this.uploadError.set(this.errorMessage(error, 'Unable to read this Excel workbook.'));
+      },
+    });
   }
 
   private restoreSelection(datasets: DatasetResponse[], preferredId?: number): void {

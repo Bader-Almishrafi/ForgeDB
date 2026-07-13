@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Observable, Subject, catchError, concatMap, from, map, of, switchMap, take, tap, toArray } from 'rxjs';
-import { DatasetResponse, ProjectResponse } from '../../services/api.models';
+import { DatasetResponse, ExcelWorkbookPreview, ProjectResponse } from '../../services/api.models';
 import { AuthService } from '../../services/auth.service';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { UnsavedChangesAware } from '../../services/unsaved-changes.guard';
@@ -15,10 +15,20 @@ type WizardStep = 1 | 2 | 3;
 type SubmissionState = 'idle' | 'creating' | 'uploading' | 'partial' | 'success';
 type FileUploadState = 'selected' | 'uploading' | 'uploaded' | 'failed';
 type FeedbackKind = 'success' | 'warning' | 'error';
+type WizardSource = 'csv' | 'excel';
 
 interface WizardCsvFile {
   id: string;
   file: File;
+  state: FileUploadState;
+  error?: string;
+  dataset?: DatasetResponse;
+}
+
+interface WizardExcelFile {
+  id: string;
+  file: File;
+  preview: ExcelWorkbookPreview | null;
   state: FileUploadState;
   error?: string;
   dataset?: DatasetResponse;
@@ -61,8 +71,10 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
   readonly stayButton = viewChild<ElementRef<HTMLButtonElement>>('stayButton');
   readonly leaveButton = viewChild<ElementRef<HTMLButtonElement>>('leaveButton');
   readonly currentStep = signal<WizardStep>(1);
-  readonly selectedSource = signal<'csv'>('csv');
+  readonly selectedSource = signal<WizardSource>('csv');
   readonly csvFiles = signal<WizardCsvFile[]>([]);
+  readonly excelFile = signal<WizardExcelFile | null>(null);
+  readonly excelPreviewLoading = signal(false);
   readonly selectedFileIndex = signal(-1);
   readonly dragActive = signal(false);
   readonly submissionState = signal<SubmissionState>('idle');
@@ -107,12 +119,22 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
   });
   readonly uploadedFiles = computed(() => this.csvFiles().filter((item) => item.state === 'uploaded'));
   readonly failedFiles = computed(() => this.csvFiles().filter((item) => item.state === 'failed'));
+  readonly sourceReady = computed(() => this.selectedSource() === 'csv'
+    ? this.csvFiles().length > 0
+    : !!this.excelFile()?.preview?.selectedWorksheet);
+  readonly uploadedCount = computed(() => this.selectedSource() === 'csv'
+    ? this.uploadedFiles().length
+    : this.excelFile()?.state === 'uploaded' ? 1 : 0);
+  readonly failedCount = computed(() => this.selectedSource() === 'csv'
+    ? this.failedFiles().length
+    : this.excelFile()?.state === 'failed' ? 1 : 0);
   readonly hasUnsavedChanges = computed(() => {
     const value = this.formValue();
     return value.name.length > 0
       || value.description.length > 0
       || this.currentStep() !== 1
-      || this.csvFiles().length > 0;
+      || this.csvFiles().length > 0
+      || !!this.excelFile();
   });
 
   constructor() {
@@ -135,16 +157,50 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
     }
 
     if (this.currentStep() === 2) {
-      if (this.csvFiles().length === 0) {
+      if (!this.sourceReady()) {
         this.feedback.set({
           kind: 'error',
-          title: 'CSV file required',
-          message: 'Add at least one CSV file to continue.',
+          title: 'Data source required',
+          message: this.selectedSource() === 'excel'
+            ? 'Choose a valid .xlsx workbook and select a worksheet to continue.'
+            : 'Add at least one CSV file to continue.',
         });
         return;
       }
       this.currentStep.set(3);
     }
+  }
+
+  selectSource(source: WizardSource): void {
+    if (this.processing() || this.selectedSource() === source) return;
+    this.selectedSource.set(source);
+    this.feedback.set(null);
+  }
+
+  onExcelFileInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+    if (!file) return;
+    if (!file.name.toLocaleLowerCase().endsWith('.xlsx') || file.size <= 0) {
+      this.excelFile.set(null);
+      this.feedback.set({ kind: 'error', title: 'Workbook not added', message: 'Choose a non-empty Excel workbook with a .xlsx extension.' });
+      return;
+    }
+    const item: WizardExcelFile = { id: `excel-${++this.fileSequence}`, file, preview: null, state: 'selected' };
+    this.excelFile.set(item);
+    this.loadExcelPreview();
+  }
+
+  onExcelWorksheetChange(event: Event): void {
+    const worksheet = (event.target as HTMLSelectElement).value;
+    if (worksheet) this.loadExcelPreview(worksheet);
+  }
+
+  removeExcelFile(): void {
+    if (this.processing() || this.excelPreviewLoading()) return;
+    this.excelFile.set(null);
+    this.feedback.set(null);
   }
 
   previousStep(): void {
@@ -220,8 +276,13 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
     return formatFileSize(bytes);
   }
 
+  previewValue(row: Record<string, unknown>, column: string): string {
+    const value = row[column];
+    return value === null || value === undefined ? 'Not available' : String(value);
+  }
+
   createProject(): void {
-    if (this.processing() || this.currentStep() !== 3 || !this.projectForm.valid || this.csvFiles().length === 0 || this.createdProject()) {
+    if (this.processing() || this.currentStep() !== 3 || !this.projectForm.valid || !this.sourceReady() || this.createdProject()) {
       return;
     }
 
@@ -232,7 +293,9 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
     }
 
     const value = this.projectForm.getRawValue();
+    const source = this.selectedSource();
     const files = [...this.csvFiles()];
+    const excel = this.excelFile();
     this.feedback.set(null);
     this.submissionState.set('creating');
 
@@ -245,7 +308,9 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
         this.createdProject.set(project);
         this.workflow.setProject(project);
       }),
-      switchMap((project) => this.uploadFiles(project, files).pipe(map((results) => ({ project, results })))),
+      switchMap((project) => (source === 'excel' && excel
+        ? this.uploadExcel(project, excel)
+        : this.uploadFiles(project, files)).pipe(map((results) => ({ project, results })))),
     ).subscribe({
       next: ({ project }) => this.handleUploadCompletion(project),
       error: (error: unknown) => {
@@ -262,12 +327,15 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
   retryFailedUploads(): void {
     const project = this.createdProject();
     const failed = this.failedFiles();
-    if (!project || failed.length === 0 || this.processing()) {
+    const failedExcel = this.excelFile()?.state === 'failed' ? this.excelFile() : null;
+    if (!project || this.failedCount() === 0 || this.processing()) {
       return;
     }
 
     this.feedback.set(null);
-    this.uploadFiles(project, failed).subscribe({
+    (this.selectedSource() === 'excel' && failedExcel
+      ? this.uploadExcel(project, failedExcel)
+      : this.uploadFiles(project, failed)).subscribe({
       next: () => this.handleUploadCompletion(project),
     });
   }
@@ -278,12 +346,14 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
       return;
     }
 
-    const uploaded = this.uploadedFiles().length;
-    const failedNames = this.failedFiles().map((item) => item.file.name).join(', ');
+    const uploaded = this.uploadedCount();
+    const failedNames = this.selectedSource() === 'excel'
+      ? this.excelFile()?.file.name ?? ''
+      : this.failedFiles().map((item) => item.file.name).join(', ');
     this.allowNavigation = true;
     void this.router.navigate(['/projects', project.id, 'overview'], {
       state: {
-        notice: `${project.name} was created and ${uploaded} CSV file${uploaded === 1 ? '' : 's'} uploaded. Failed uploads: ${failedNames}.`,
+        notice: `${project.name} was created and ${uploaded} data source${uploaded === 1 ? '' : 's'} imported. Failed imports: ${failedNames}.`,
       },
     });
   }
@@ -451,15 +521,49 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
     );
   }
 
+  private uploadExcel(project: ProjectResponse, item: WizardExcelFile): Observable<UploadResult[]> {
+    const worksheet = item.preview?.selectedWorksheet;
+    if (!worksheet) {
+      this.updateExcel({ state: 'failed', error: 'Select a worksheet before importing.' });
+      return of([{ fileId: item.id, success: false, error: 'Select a worksheet before importing.' }]);
+    }
+
+    this.submissionState.set('uploading');
+    this.uploadCompleted.set(0);
+    this.uploadTotal.set(1);
+    this.updateExcel({ state: 'uploading', error: undefined });
+    const formData = new FormData();
+    formData.append('file', item.file);
+    formData.append('sourceType', 'excel');
+    formData.append('sourceName', item.file.name);
+    formData.append('worksheetName', worksheet);
+    formData.append('tableName', this.tableNameFromFile(item.file, worksheet));
+
+    return this.api.uploadDataset(project.id, formData).pipe(
+      map((dataset): UploadResult => ({ fileId: item.id, success: true, dataset })),
+      catchError((error: unknown) => of<UploadResult>({ fileId: item.id, success: false, error: this.errorMessage(error, 'Excel import failed.') })),
+      tap((result) => {
+        if (result.success && result.dataset) {
+          this.updateExcel({ state: 'uploaded', dataset: result.dataset, error: undefined });
+          this.workflow.setDataset(result.dataset);
+        } else {
+          this.updateExcel({ state: 'failed', error: result.error ?? 'Excel import failed.' });
+        }
+        this.uploadCompleted.set(1);
+      }),
+      map((result) => [result]),
+    );
+  }
+
   private handleUploadCompletion(project: ProjectResponse): void {
-    if (this.failedFiles().length > 0) {
-      const uploaded = this.uploadedFiles().length;
-      const failed = this.failedFiles().length;
+    if (this.failedCount() > 0) {
+      const uploaded = this.uploadedCount();
+      const failed = this.failedCount();
       this.submissionState.set('partial');
       this.feedback.set({
         kind: 'warning',
         title: 'Project created with upload issues',
-        message: `The project was created, but some CSV files could not be uploaded. ${uploaded} succeeded and ${failed} failed.`,
+        message: `The project was created, but some data sources could not be imported. ${uploaded} succeeded and ${failed} failed.`,
       });
       return;
     }
@@ -476,9 +580,35 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
     this.csvFiles.update((files) => files.map((item) => item.id === id ? { ...item, ...update } : item));
   }
 
-  private tableNameFromFile(file: File): string {
-    return file.name
-      .replace(/\.csv$/i, '')
+  private updateExcel(update: Partial<WizardExcelFile>): void {
+    this.excelFile.update((item) => item ? { ...item, ...update } : null);
+  }
+
+  private loadExcelPreview(worksheetName?: string): void {
+    const item = this.excelFile();
+    if (!item) return;
+    this.excelPreviewLoading.set(true);
+    this.feedback.set(null);
+    const formData = new FormData();
+    formData.append('file', item.file);
+    if (worksheetName) formData.append('worksheetName', worksheetName);
+    this.api.previewExcel(formData).subscribe({
+      next: (preview) => {
+        this.excelPreviewLoading.set(false);
+        this.updateExcel({ preview, error: undefined });
+      },
+      error: (error: unknown) => {
+        this.excelPreviewLoading.set(false);
+        const message = this.errorMessage(error, 'Unable to read this Excel workbook.');
+        this.updateExcel({ preview: null, error: message });
+        this.feedback.set({ kind: 'error', title: 'Workbook preview failed', message });
+      },
+    });
+  }
+
+  private tableNameFromFile(file: File, worksheet?: string): string {
+    const base = file.name.replace(/\.(csv|xlsx)$/i, '');
+    return `${base}${worksheet ? `_${worksheet}` : ''}`
       .replace(/[^a-zA-Z0-9_]+/g, '_')
       .replace(/^_+|_+$/g, '') || 'dataset';
   }

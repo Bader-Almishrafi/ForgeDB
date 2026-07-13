@@ -5,6 +5,7 @@ using ForgeDB.API.Clients;
 using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
+using ForgeDB.API.Services.Importing;
 using ForgeDB.API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 
@@ -18,15 +19,18 @@ public class DatasetImportService : IDatasetImportService
     private readonly IDatasetRepository _datasetRepository;
     private readonly IPythonAnalysisClient _pythonAnalysisClient;
     private readonly ILogger<DatasetImportService> _logger;
+    private readonly IExcelWorkbookReader? _excelWorkbookReader;
 
     public DatasetImportService(
         IDatasetRepository datasetRepository,
         IPythonAnalysisClient pythonAnalysisClient,
-        ILogger<DatasetImportService> logger)
+        ILogger<DatasetImportService> logger,
+        IExcelWorkbookReader? excelWorkbookReader = null)
     {
         _datasetRepository = datasetRepository;
         _pythonAnalysisClient = pythonAnalysisClient;
         _logger = logger;
+        _excelWorkbookReader = excelWorkbookReader;
     }
 
     public async Task<DatasetResponseDto> UploadDatasetAsync(int projectId, DatasetUploadDto request, CancellationToken cancellationToken = default)
@@ -46,13 +50,11 @@ public class DatasetImportService : IDatasetImportService
             throw new ArgumentException("Upload request is required.", nameof(request));
         }
 
-        ValidateCsvFile(request.File);
-
-        var sourceType = ResolveSourceType(request.SourceType);
-        var sourceName = ResolveSourceName(request);
+        var sourceType = ResolveSourceType(request.SourceType, request.File);
         var tableName = ResolveTableName(request);
         var importedAt = DateTime.UtcNow;
-        var importResult = await ParseCsvAsync(request.File!, importedAt, cancellationToken);
+        var (importResult, selectionName) = await ParseUploadAsync(sourceType, request, importedAt, cancellationToken);
+        var sourceName = ResolveSourceName(request, selectionName);
 
         var dataset = new Dataset
         {
@@ -74,6 +76,34 @@ public class DatasetImportService : IDatasetImportService
         await _datasetRepository.AddAsync(dataset, cancellationToken);
 
         return MapToResponse(dataset);
+    }
+
+    public async Task<ExcelWorkbookPreviewDto> PreviewExcelAsync(
+        ExcelPreviewRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request?.File is null)
+        {
+            throw new ArgumentException("Excel workbook is required.", nameof(request));
+        }
+
+        var workbook = await RequireExcelReader().ReadAsync(request.File, request.WorksheetName, cancellationToken);
+        var selected = workbook.SelectedSheet;
+        return new ExcelWorkbookPreviewDto
+        {
+            FileName = Path.GetFileName(request.File.FileName),
+            Worksheets = workbook.Worksheets,
+            SelectedWorksheet = selected?.SelectionName,
+            RowCount = selected?.Rows.Count ?? 0,
+            ColumnCount = selected?.Columns.Count ?? 0,
+            Columns = selected?.Columns ?? [],
+            Rows = selected?.Rows.Take(10)
+                .Select(row => (IDictionary<string, object?>)row.ToDictionary(
+                    value => value.Key,
+                    value => (object?)value.Value,
+                    StringComparer.Ordinal))
+                .ToList() ?? []
+        };
     }
 
     public async Task<IEnumerable<DatasetResponseDto>> GetProjectDatasetsAsync(int projectId, CancellationToken cancellationToken = default)
@@ -174,15 +204,14 @@ public class DatasetImportService : IDatasetImportService
             throw new ArgumentException("Replace request is required.", nameof(request));
         }
 
-        ValidateCsvFile(request.File);
-
-        var sourceName = ResolveSourceName(request);
+        var sourceType = ResolveSourceType(request.SourceType, request.File);
         var importedAt = DateTime.UtcNow;
-        var importResult = await ParseCsvAsync(request.File!, importedAt, cancellationToken);
+        var (importResult, selectionName) = await ParseUploadAsync(sourceType, request, importedAt, cancellationToken);
+        var sourceName = ResolveSourceName(request, selectionName);
 
         var dataset = await _datasetRepository.ReplaceContentAsync(
             datasetId,
-            "csv",
+            sourceType,
             sourceName,
             string.IsNullOrWhiteSpace(request.SourceUrl) ? null : request.SourceUrl.Trim(),
             importResult.Columns,
@@ -279,6 +308,34 @@ public class DatasetImportService : IDatasetImportService
         };
     }
 
+    private async Task<(CsvImportResult Result, string? SelectionName)> ParseUploadAsync(
+        string sourceType,
+        DatasetUploadDto request,
+        DateTime importedAt,
+        CancellationToken cancellationToken)
+    {
+        if (sourceType == "csv")
+        {
+            ValidateCsvFile(request.File);
+            return (await ParseCsvAsync(request.File!, importedAt, cancellationToken), null);
+        }
+
+        var workbook = await RequireExcelReader().ReadAsync(request.File!, request.WorksheetName, cancellationToken);
+        var selected = workbook.SelectedSheet;
+        if (selected is null)
+        {
+            throw new ArgumentException("Select one of the non-empty worksheets before importing the Excel workbook.");
+        }
+
+        return (BuildImportResult(selected, importedAt), selected.SelectionName);
+    }
+
+    private IExcelWorkbookReader RequireExcelReader()
+    {
+        return _excelWorkbookReader
+            ?? throw new InvalidOperationException("Excel workbook import is not configured.");
+    }
+
     private static void ValidateCsvFile(IFormFile? file)
     {
         if (file is null)
@@ -291,6 +348,11 @@ public class DatasetImportService : IDatasetImportService
             throw new ArgumentException("Uploaded CSV file is empty.");
         }
 
+        if (file.Length > ExcelWorkbookReader.MaximumFileBytes)
+        {
+            throw new ArgumentException($"The CSV file exceeds the {ExcelWorkbookReader.MaximumFileBytes / 1024 / 1024} MB upload limit.");
+        }
+
         var extension = Path.GetExtension(file.FileName);
         if (!string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase))
         {
@@ -298,30 +360,34 @@ public class DatasetImportService : IDatasetImportService
         }
     }
 
-    private static string ResolveSourceType(string? sourceType)
+    private static string ResolveSourceType(string? sourceType, IFormFile? file)
     {
         var normalizedSourceType = string.IsNullOrWhiteSpace(sourceType)
-            ? "csv"
+            ? string.Equals(Path.GetExtension(file?.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase) ? "excel" : "csv"
             : sourceType.Trim().ToLowerInvariant();
 
-        if (!string.Equals(normalizedSourceType, "csv", StringComparison.OrdinalIgnoreCase))
+        if (normalizedSourceType is not ("csv" or "excel"))
         {
-            throw new ArgumentException("Only CSV sourceType is supported.");
+            throw new ArgumentException("Only CSV and Excel source types are supported by file upload.");
         }
 
-        return "csv";
+        return normalizedSourceType;
     }
 
-    private static string? ResolveSourceName(DatasetUploadDto request)
+    private static string? ResolveSourceName(DatasetUploadDto request, string? selectionName = null)
     {
-        if (!string.IsNullOrWhiteSpace(request.SourceName))
+        var sourceName = !string.IsNullOrWhiteSpace(request.SourceName)
+            ? request.SourceName.Trim()
+            : string.IsNullOrWhiteSpace(request.File?.FileName)
+                ? null
+                : Path.GetFileName(request.File.FileName);
+
+        if (!string.IsNullOrWhiteSpace(selectionName) && sourceName is not null)
         {
-            return request.SourceName.Trim();
+            return $"{sourceName} · {selectionName}";
         }
 
-        return string.IsNullOrWhiteSpace(request.File?.FileName)
-            ? null
-            : Path.GetFileName(request.File.FileName);
+        return sourceName;
     }
 
     private static string ResolveTableName(DatasetUploadDto request)
@@ -422,6 +488,60 @@ public class DatasetImportService : IDatasetImportService
                 SampleValues = JsonSerializer.Serialize(stat.SampleValues)
             })
             .ToList();
+
+        return new CsvImportResult(
+            columns,
+            rows,
+            columnStats.Sum(stat => stat.MissingValuesCount),
+            duplicateRowsCount);
+    }
+
+    private static CsvImportResult BuildImportResult(TabularImportData data, DateTime importedAt)
+    {
+        if (data.Columns.Count == 0)
+        {
+            throw new ArgumentException("Imported data must contain at least one column.");
+        }
+
+        var columnStats = data.Columns.Select(column => new ColumnImportStats(column)).ToList();
+        var rows = new List<DatasetRow>(data.Rows.Count);
+        var seenRows = new HashSet<string>(StringComparer.Ordinal);
+        var duplicateRowsCount = 0;
+
+        for (var rowIndex = 0; rowIndex < data.Rows.Count; rowIndex++)
+        {
+            var input = data.Rows[rowIndex];
+            var rowData = new Dictionary<string, string?>(data.Columns.Count, StringComparer.Ordinal);
+            for (var columnIndex = 0; columnIndex < data.Columns.Count; columnIndex++)
+            {
+                var column = data.Columns[columnIndex];
+                input.TryGetValue(column, out var value);
+                columnStats[columnIndex].Observe(value);
+                rowData[column] = value;
+            }
+
+            var rowJson = JsonSerializer.Serialize(rowData);
+            if (!seenRows.Add(rowJson))
+            {
+                duplicateRowsCount++;
+            }
+            rows.Add(new DatasetRow
+            {
+                RowNumber = rowIndex + 1,
+                RowData = rowJson,
+                CreatedAt = importedAt
+            });
+        }
+
+        var columns = columnStats.Select(stat => new DatasetColumn
+        {
+            ColumnName = stat.ColumnName,
+            DetectedDataType = stat.DetectedDataType,
+            MissingValuesCount = stat.MissingValuesCount,
+            UniqueValuesCount = stat.UniqueValuesCount,
+            IsNullable = stat.MissingValuesCount > 0,
+            SampleValues = JsonSerializer.Serialize(stat.SampleValues)
+        }).ToList();
 
         return new CsvImportResult(
             columns,

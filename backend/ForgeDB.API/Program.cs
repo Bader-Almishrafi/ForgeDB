@@ -5,6 +5,7 @@ using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services;
 using ForgeDB.API.Services.Generators;
 using ForgeDB.API.Services.Interfaces;
+using ForgeDB.API.Services.Importing;
 using ForgeDB.API.Services.Validation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +39,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IDatasetImportService, DatasetImportService>();
+builder.Services.AddSingleton<IExcelWorkbookReader, ExcelWorkbookReader>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<ICleaningService, CleaningService>();
 builder.Services.AddScoped<IDesignService, DesignService>();

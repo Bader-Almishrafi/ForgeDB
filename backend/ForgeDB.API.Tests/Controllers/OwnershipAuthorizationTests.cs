@@ -147,6 +147,22 @@ public class OwnershipAuthorizationTests
     }
 
     [Fact]
+    public async Task DatasetsController_UploadExcel_Returns403_ForNonOwningUser()
+    {
+        await using var context = NewContext();
+        var (project, _, _) = await SeedProjectWithDatasetAsync(context, ownerUserId: 1);
+        var controller = BuildDatasetsController(context, callingUserId: 99);
+
+        var result = await controller.Upload(project.Id, new DatasetUploadDto
+        {
+            SourceType = "excel"
+        }, CancellationToken.None);
+
+        var status = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, status.StatusCode);
+    }
+
+    [Fact]
     public async Task DatasetsController_Delete_Returns403_ForNonOwningUser()
     {
         await using var context = NewContext();

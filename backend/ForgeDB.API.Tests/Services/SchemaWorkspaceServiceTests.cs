@@ -14,7 +14,7 @@ namespace ForgeDB.API.Tests.Services;
 public class SchemaWorkspaceServiceTests
 {
     [Fact]
-    public async Task GenerateSchema_CreatesExactlyOneTablePerConfirmedCsvVersion()
+    public async Task GenerateSchema_CreatesExactlyOneTablePerConfirmedDatasetVersion_RegardlessOfSourceType()
     {
         await using var context = NewContext();
         var seed = await SeedConfirmedProjectAsync(context);
@@ -22,9 +22,9 @@ public class SchemaWorkspaceServiceTests
 
         var result = await service.GenerateSchemaAsync(seed.ProjectId, seed.UserId, null);
 
-        Assert.Equal(2, result.Tables.Count);
+        Assert.Equal(3, result.Tables.Count);
         Assert.All(result.Tables, table => Assert.NotNull(table.SourceDatasetVersionId));
-        Assert.DoesNotContain(result.Tables, table => table.SourceName == "external-api");
+        Assert.Contains(result.Tables, table => table.SourceName == "external-api");
         Assert.All(result.Tables.SelectMany(table => table.Columns), column =>
         {
             Assert.False(column.IsPrimaryKey);
@@ -33,7 +33,7 @@ public class SchemaWorkspaceServiceTests
             Assert.Null(column.DefaultValue);
         });
         Assert.Equal(DesignStatus.Draft, result.Status);
-        Assert.Equal(2, result.SourceVersions.Count);
+        Assert.Equal(3, result.SourceVersions.Count);
     }
 
     [Fact]

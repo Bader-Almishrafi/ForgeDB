@@ -66,6 +66,16 @@ export interface DatasetPreview {
   rows: Record<string, unknown>[];
 }
 
+export interface ExcelWorkbookPreview {
+  fileName: string;
+  worksheets: string[];
+  selectedWorksheet?: string | null;
+  rowCount: number;
+  columnCount: number;
+  columns: string[];
+  rows: Record<string, unknown>[];
+}
+
 export interface DatasetAnalysisRequest {
   analysisType: string;
   options?: unknown;

@@ -5,6 +5,7 @@ namespace ForgeDB.API.Services.Interfaces;
 public interface IDatasetImportService
 {
     Task<DatasetResponseDto> UploadDatasetAsync(int projectId, DatasetUploadDto request, CancellationToken cancellationToken = default);
+    Task<ExcelWorkbookPreviewDto> PreviewExcelAsync(ExcelPreviewRequestDto request, CancellationToken cancellationToken = default);
     Task<IEnumerable<DatasetResponseDto>> GetProjectDatasetsAsync(int projectId, CancellationToken cancellationToken = default);
     Task<DatasetPreviewDto> GetDatasetPreviewAsync(int datasetId, CancellationToken cancellationToken = default);
     Task<DatasetAnalysisResponseDto> GetDatasetAnalysisAsync(int datasetId, CancellationToken cancellationToken = default);

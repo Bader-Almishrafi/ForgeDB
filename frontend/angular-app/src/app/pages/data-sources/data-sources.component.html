@@ -105,17 +105,29 @@
     @if (uploadOpen()) {
       <section class="overflow-hidden rounded-3xl border border-indigo-200 bg-white shadow-md shadow-indigo-100/40 dark:border-indigo-900 dark:bg-slate-900 dark:shadow-black/20" aria-labelledby="upload-heading">
         <div class="border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-teal-50/40 px-5 py-4 dark:border-slate-700 dark:from-indigo-950/35 dark:to-teal-950/15 sm:px-6">
-          <p class="eyebrow">CSV import</p>
+          <p class="eyebrow">Dataset import</p>
           <h2 id="upload-heading" class="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">Add a new data source</h2>
-          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Upload one CSV file to this project.</p>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Choose an existing import path without leaving this project.</p>
         </div>
-        <div class="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div class="min-w-0">
-            <label for="csv-file-input" class="flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-8 text-center transition focus-within:ring-4 focus-within:ring-indigo-100 dark:focus-within:ring-indigo-950" [ngClass]="dragActive() ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40' : 'border-slate-300 bg-slate-50/70 hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-slate-600 dark:bg-slate-800/50 dark:hover:border-indigo-600'" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+        <div class="p-5 sm:p-6">
+          <div class="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Import source">
+            <button type="button" role="radio" data-testid="csv-source-option" class="rounded-2xl border-2 p-4 text-left transition" [attr.aria-checked]="uploadSource() === 'csv'" [class.border-indigo-500]="uploadSource() === 'csv'" [class.bg-indigo-50]="uploadSource() === 'csv'" [class.dark:bg-indigo-950]="uploadSource() === 'csv'" [class.border-slate-200]="uploadSource() !== 'csv'" [class.dark:border-slate-700]="uploadSource() !== 'csv'" (click)="selectUploadSource('csv')">
+              <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">CSV file</span><span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">Import a .csv file</span>
+            </button>
+            <button type="button" role="radio" data-testid="excel-source-option" class="rounded-2xl border-2 p-4 text-left transition" [attr.aria-checked]="uploadSource() === 'excel'" [class.border-indigo-500]="uploadSource() === 'excel'" [class.bg-indigo-50]="uploadSource() === 'excel'" [class.dark:bg-indigo-950]="uploadSource() === 'excel'" [class.border-slate-200]="uploadSource() !== 'excel'" [class.dark:border-slate-700]="uploadSource() !== 'excel'" (click)="selectUploadSource('excel')">
+              <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">Excel workbook</span><span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">Select a real worksheet</span>
+            </button>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 opacity-75 dark:border-slate-700 dark:bg-slate-800/50">
+              <span class="flex items-center justify-between gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">API / JSON <span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] uppercase dark:bg-slate-700">Coming Soon</span></span><span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">HTTP JSON arrays</span>
+            </div>
+          </div>
+
+          <div class="mt-5 min-w-0">
+            <label for="dataset-file-input" class="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-7 text-center transition focus-within:ring-4 focus-within:ring-indigo-100 dark:focus-within:ring-indigo-950" [ngClass]="dragActive() ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40' : 'border-slate-300 bg-slate-50/70 hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-slate-600 dark:bg-slate-800/50 dark:hover:border-indigo-600'" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
               <span class="grid h-12 w-12 place-items-center rounded-xl bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-indigo-300 dark:ring-slate-700"><svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M12 16V4m0 0 4 4m-4-4-4 4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"></path></svg></span>
-              <span class="mt-4 text-sm font-semibold text-slate-800 dark:text-slate-200">Choose a CSV file or drop it here</span>
-              <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">One non-empty .csv file per upload</span>
-              <input id="csv-file-input" type="file" class="sr-only" accept=".csv,text/csv" (change)="onFileSelected($event)" [disabled]="uploading()" />
+              <span class="mt-4 text-sm font-semibold text-slate-800 dark:text-slate-200">Choose a {{ uploadSource() === 'excel' ? '.xlsx workbook' : '.csv file' }} or drop it here</span>
+              <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">One non-empty file per import · 10 MB maximum</span>
+              <input id="dataset-file-input" data-testid="dataset-file-input" type="file" class="sr-only" [accept]="uploadSource() === 'excel' ? '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : '.csv,text/csv'" (change)="onFileSelected($event)" [disabled]="uploading() || excelPreviewLoading()" />
             </label>
             @if (uploadFile(); as file) {
               <div class="mt-3 flex min-w-0 items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/25">
@@ -123,17 +135,34 @@
                 <div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-slate-800 dark:text-slate-200" [title]="file.name">{{ file.name }}</p><p class="text-xs text-slate-500 dark:text-slate-400">{{ formatSize(file.size) }}</p></div>
               </div>
             }
+            @if (excelPreviewLoading()) {
+              <div class="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm font-semibold text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-300" role="status">Reading workbook and detecting non-empty worksheets…</div>
+            }
+            @if (uploadSource() === 'excel' && excelPreview(); as workbook) {
+              <section class="mt-4 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700" data-testid="excel-preview">
+                <div class="grid gap-4 border-b border-slate-200 bg-slate-50 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.6fr)] sm:items-end dark:border-slate-700 dark:bg-slate-800/60">
+                  <div><p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Workbook</p><p class="mt-1 truncate text-sm font-semibold text-slate-900 dark:text-slate-100" [title]="workbook.fileName">{{ workbook.fileName }}</p></div>
+                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Worksheet
+                    <select data-testid="worksheet-selector" class="input-field mt-1" [value]="workbook.selectedWorksheet || ''" (change)="onWorksheetSelected($event)" [disabled]="excelPreviewLoading()">
+                      @if (!workbook.selectedWorksheet) { <option value="">Select a worksheet</option> }
+                      @for (worksheet of workbook.worksheets; track worksheet) { <option [value]="worksheet">{{ worksheet }}</option> }
+                    </select>
+                  </label>
+                </div>
+                @if (workbook.selectedWorksheet) {
+                  <dl class="grid grid-cols-3 gap-3 p-4 text-sm"><div><dt class="text-xs text-slate-500">Worksheet</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ workbook.selectedWorksheet }}</dd></div><div><dt class="text-xs text-slate-500">Rows</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ workbook.rowCount | number }}</dd></div><div><dt class="text-xs text-slate-500">Columns</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ workbook.columnCount | number }}</dd></div></dl>
+                  <div class="max-w-full overflow-x-auto"><table class="w-max min-w-full text-left text-xs"><thead class="border-y border-slate-200 bg-slate-50 uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800"><tr>@for (column of workbook.columns; track column) { <th class="whitespace-nowrap px-3 py-2 font-semibold">{{ column }}</th> }</tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">@for (row of workbook.rows; track $index) { <tr>@for (column of workbook.columns; track column) { <td class="whitespace-nowrap px-3 py-2 text-slate-700 dark:text-slate-300">{{ previewValue(row, column) }}</td> }</tr> }</tbody></table></div>
+                } @else {
+                  <p class="p-4 text-sm text-slate-600 dark:text-slate-400">This workbook has {{ workbook.worksheets.length }} non-empty worksheets. Select the one to import.</p>
+                }
+              </section>
+            }
             @if (uploadError()) { <p class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300" role="alert" aria-live="assertive">{{ uploadError() }}</p> }
             <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
               <button type="button" class="btn-secondary sm:min-w-24" (click)="clearUpload()" [disabled]="uploading()">Cancel</button>
-              <button type="button" class="btn-primary sm:min-w-32" (click)="uploadCsv()" [disabled]="!uploadFile() || uploading()">{{ uploading() ? 'Uploading' : 'Upload CSV' }}</button>
+              <button type="button" data-testid="import-dataset-button" class="btn-primary sm:min-w-32" (click)="importUpload()" [disabled]="!canImportUpload()">{{ uploading() ? 'Importing' : uploadSource() === 'excel' ? 'Import Excel' : 'Import CSV' }}</button>
             </div>
           </div>
-          <aside class="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/50" aria-labelledby="api-coming-soon-title">
-            <div class="grid h-10 w-10 place-items-center rounded-xl bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-700"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M8 12h8m-4-4v8M5 5a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V5Z"></path></svg></div>
-            <div class="mt-4 flex items-start justify-between gap-3"><h3 id="api-coming-soon-title" class="font-semibold text-slate-900 dark:text-slate-100">API Connection</h3><span class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-700 dark:text-slate-300">Coming Soon</span></div>
-            <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">API imports require future backend integration. This card is informational only.</p>
-          </aside>
         </div>
       </section>
     }

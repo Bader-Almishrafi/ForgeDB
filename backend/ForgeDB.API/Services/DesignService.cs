@@ -58,15 +58,12 @@ public class DesignService : IDesignService
 
         var activeVersions = await cleaning.GetActiveProjectVersionsAsync(projectId, cancellationToken);
         var sourceVersions = activeVersions
-            .Where(item => item.Dataset.SourceType.Equals("csv", StringComparison.OrdinalIgnoreCase))
             .ToDictionary(item => item.Dataset.Id, item => item.Version.Id);
-        var datasets = (await _datasetRepository.GetByProjectIdWithColumnsAsync(projectId, cancellationToken))
-            .Where(dataset => dataset.SourceType.Equals("csv", StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        var datasets = (await _datasetRepository.GetByProjectIdWithColumnsAsync(projectId, cancellationToken)).ToList();
 
         if (datasets.Count == 0)
         {
-            throw new InvalidOperationException("No confirmed CSV datasets are available for schema generation.");
+            throw new InvalidOperationException("No confirmed datasets are available for schema generation.");
         }
 
         var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: true, cancellationToken);
@@ -802,15 +799,13 @@ public class DesignService : IDesignService
         if (!await _cleaningRepository.IsSchemaReadyAsync(design.ProjectId, cancellationToken)) return true;
 
         var active = await _cleaningRepository.GetActiveProjectVersionsAsync(design.ProjectId, cancellationToken);
-        var activeCsvVersions = active
-            .Where(item => item.Dataset.SourceType.Equals("csv", StringComparison.OrdinalIgnoreCase))
-            .ToDictionary(item => item.Dataset.Id, item => item.Version.Id);
+        var activeVersions = active.ToDictionary(item => item.Dataset.Id, item => item.Version.Id);
         var schemaVersions = design.Tables
             .Where(table => table.SourceDatasetId.HasValue && table.SourceDatasetVersionId.HasValue)
             .ToDictionary(table => table.SourceDatasetId!.Value, table => table.SourceDatasetVersionId!.Value);
 
-        return activeCsvVersions.Count != schemaVersions.Count
-            || activeCsvVersions.Any(pair => !schemaVersions.TryGetValue(pair.Key, out var versionId) || versionId != pair.Value);
+        return activeVersions.Count != schemaVersions.Count
+            || activeVersions.Any(pair => !schemaVersions.TryGetValue(pair.Key, out var versionId) || versionId != pair.Value);
     }
 
     private List<Validation.ValidationIssue> BuildValidationIssues(DesignModel design, bool stale)

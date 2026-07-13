@@ -13,6 +13,7 @@ namespace ForgeDB.API.Controllers;
 [Route("api")]
 public class DatasetsController : ControllerBase
 {
+    private const long MaximumImportRequestBytes = 10 * 1024 * 1024;
     private readonly IDatasetImportService _datasetImportService;
     private readonly IDashboardService _dashboardService;
     private readonly IProjectRepository _projectRepository;
@@ -30,7 +31,24 @@ public class DatasetsController : ControllerBase
         _datasetRepository = datasetRepository;
     }
 
+    [HttpPost("datasets/excel/preview")]
+    [RequestSizeLimit(MaximumImportRequestBytes)]
+    public async Task<ActionResult<ExcelWorkbookPreviewDto>> PreviewExcel(
+        [FromForm] ExcelPreviewRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _datasetImportService.PreviewExcelAsync(request, cancellationToken));
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
     [HttpPost("projects/{projectId:int}/datasets/upload")]
+    [RequestSizeLimit(MaximumImportRequestBytes)]
     public async Task<ActionResult<DatasetResponseDto>> Upload(int projectId, [FromForm] DatasetUploadDto request, CancellationToken cancellationToken)
     {
         try
@@ -54,6 +72,7 @@ public class DatasetsController : ControllerBase
     }
 
     [HttpPost("datasets/{datasetId:int}/replace")]
+    [RequestSizeLimit(MaximumImportRequestBytes)]
     public async Task<ActionResult<DatasetResponseDto>> Replace(int datasetId, [FromForm] DatasetUploadDto request, CancellationToken cancellationToken)
     {
         try
