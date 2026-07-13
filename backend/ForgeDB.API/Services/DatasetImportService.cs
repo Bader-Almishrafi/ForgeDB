@@ -152,6 +152,48 @@ public class DatasetImportService : IDatasetImportService
         return analysis.Analysis;
     }
 
+    public Task<bool> DeleteDatasetAsync(int datasetId, CancellationToken cancellationToken = default)
+    {
+        if (datasetId <= 0)
+        {
+            throw new ArgumentException("DatasetId must be greater than zero.", nameof(datasetId));
+        }
+
+        return _datasetRepository.DeleteAsync(datasetId, cancellationToken);
+    }
+
+    public async Task<DatasetResponseDto?> ReplaceDatasetAsync(int datasetId, DatasetUploadDto request, CancellationToken cancellationToken = default)
+    {
+        if (datasetId <= 0)
+        {
+            throw new ArgumentException("DatasetId must be greater than zero.", nameof(datasetId));
+        }
+
+        if (request is null)
+        {
+            throw new ArgumentException("Replace request is required.", nameof(request));
+        }
+
+        ValidateCsvFile(request.File);
+
+        var sourceName = ResolveSourceName(request);
+        var importedAt = DateTime.UtcNow;
+        var importResult = await ParseCsvAsync(request.File!, importedAt, cancellationToken);
+
+        var dataset = await _datasetRepository.ReplaceContentAsync(
+            datasetId,
+            "csv",
+            sourceName,
+            string.IsNullOrWhiteSpace(request.SourceUrl) ? null : request.SourceUrl.Trim(),
+            importResult.Columns,
+            importResult.Rows,
+            importResult.MissingValuesCount,
+            importResult.DuplicateRowsCount,
+            cancellationToken);
+
+        return dataset is null ? null : MapToResponse(dataset);
+    }
+
     public async Task<DatasetAnalysisResponseDto> GetDatasetAnalysisAsync(int datasetId, CancellationToken cancellationToken = default)
     {
         if (datasetId <= 0)

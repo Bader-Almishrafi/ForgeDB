@@ -60,6 +60,13 @@ export class DataSourcesComponent implements OnInit {
   readonly uploadSuccess = signal('');
   readonly uploading = signal(false);
   readonly dragActive = signal(false);
+  readonly replaceOpen = signal(false);
+  readonly replaceFile = signal<File | null>(null);
+  readonly replaceError = signal('');
+  readonly replacing = signal(false);
+  readonly confirmingDeleteDataset = signal(false);
+  readonly deletingDataset = signal(false);
+  readonly deleteError = signal('');
   projectId = 0;
 
   readonly selectedDataset = computed(() => this.datasets().find((dataset) => dataset.id === this.selectedDatasetId()) ?? null);
@@ -226,6 +233,83 @@ export class DataSourcesComponent implements OnInit {
     this.uploadError.set('');
     this.uploadSuccess.set('');
     this.uploadOpen.set(true);
+  }
+
+  openReplace(): void {
+    this.replaceError.set('');
+    this.replaceFile.set(null);
+    this.replaceOpen.set(true);
+  }
+
+  cancelReplace(): void {
+    if (this.replacing()) return;
+    this.replaceOpen.set(false);
+    this.replaceFile.set(null);
+    this.replaceError.set('');
+  }
+
+  onReplaceFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+    this.replaceError.set('');
+    if (!file) return;
+    if (!file.name.toLocaleLowerCase().endsWith('.csv') || !isCsvFile(file)) {
+      this.replaceError.set('Only a non-empty CSV file is supported.');
+      return;
+    }
+    this.replaceFile.set(file);
+  }
+
+  replaceDataset(): void {
+    const dataset = this.selectedDataset();
+    const file = this.replaceFile();
+    if (!dataset || !file || this.replacing()) return;
+
+    this.replacing.set(true);
+    this.replaceError.set('');
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('sourceType', 'csv');
+    formData.append('sourceName', file.name);
+
+    this.api.replaceDataset(dataset.id, formData).pipe(finalize(() => this.replacing.set(false))).subscribe({
+      next: (updated) => {
+        this.replaceOpen.set(false);
+        this.replaceFile.set(null);
+        this.uploadSuccess.set(`${this.displayName(updated)} was replaced successfully. Re-analyze to refresh quality metrics.`);
+        this.loadDatasets(updated.id);
+      },
+      error: (error: unknown) => this.replaceError.set(this.errorMessage(error, 'Unable to replace this dataset.')),
+    });
+  }
+
+  confirmDeleteDataset(): void {
+    this.deleteError.set('');
+    this.confirmingDeleteDataset.set(true);
+  }
+
+  cancelDeleteDataset(): void {
+    this.confirmingDeleteDataset.set(false);
+  }
+
+  deleteDataset(): void {
+    const dataset = this.selectedDataset();
+    if (!dataset || this.deletingDataset()) return;
+
+    this.deletingDataset.set(true);
+    this.deleteError.set('');
+    this.api.deleteDataset(dataset.id).pipe(finalize(() => this.deletingDataset.set(false))).subscribe({
+      next: () => {
+        this.confirmingDeleteDataset.set(false);
+        this.uploadSuccess.set(`${this.displayName(dataset)} was deleted.`);
+        this.loadDatasets();
+      },
+      error: (error: unknown) => {
+        this.confirmingDeleteDataset.set(false);
+        this.deleteError.set(this.errorMessage(error, 'Unable to delete this dataset.'));
+      },
+    });
   }
 
   refreshPreview(): void {

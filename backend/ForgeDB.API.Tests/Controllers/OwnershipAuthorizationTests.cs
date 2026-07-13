@@ -147,6 +147,32 @@ public class OwnershipAuthorizationTests
     }
 
     [Fact]
+    public async Task DatasetsController_Delete_Returns403_ForNonOwningUser()
+    {
+        await using var context = NewContext();
+        var (_, dataset, _) = await SeedProjectWithDatasetAsync(context, ownerUserId: 1);
+        var controller = BuildDatasetsController(context, callingUserId: 99);
+
+        var result = await controller.Delete(dataset.Id, CancellationToken.None);
+
+        var status = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, status.StatusCode);
+    }
+
+    [Fact]
+    public async Task DatasetsController_Replace_Returns403_ForNonOwningUser()
+    {
+        await using var context = NewContext();
+        var (_, dataset, _) = await SeedProjectWithDatasetAsync(context, ownerUserId: 1);
+        var controller = BuildDatasetsController(context, callingUserId: 99);
+
+        var result = await controller.Replace(dataset.Id, new DatasetUploadDto(), CancellationToken.None);
+
+        var status = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, status.StatusCode);
+    }
+
+    [Fact]
     public async Task DatasetsController_GetByProject_Returns403_ForNonOwningUser()
     {
         await using var context = NewContext();

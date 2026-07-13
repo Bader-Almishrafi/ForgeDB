@@ -4,6 +4,7 @@ using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ForgeDB.API.Repositories;
 
@@ -153,6 +154,110 @@ public class DatasetRepository : IDatasetRepository
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<bool> DeleteAsync(int datasetId, CancellationToken cancellationToken = default)
+    {
+        var dataset = await _context.Datasets
+            .Include(dataset => dataset.Versions)
+            .FirstOrDefaultAsync(dataset => dataset.Id == datasetId, cancellationToken);
+
+        if (dataset is null)
+        {
+            return false;
+        }
+
+        IDbContextTransaction? transaction = null;
+        if (_context.Database.IsRelational())
+        {
+            transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        }
+
+        var suggestions = await _context.RelationshipSuggestions
+            .Where(suggestion => suggestion.SourceDatasetId == datasetId || suggestion.TargetDatasetId == datasetId)
+            .ToListAsync(cancellationToken);
+        var operations = await _context.CleaningOperations
+            .Where(operation => operation.DatasetId == datasetId)
+            .ToListAsync(cancellationToken);
+
+        _context.RelationshipSuggestions.RemoveRange(suggestions);
+        _context.CleaningOperations.RemoveRange(operations);
+        dataset.ActiveVersionId = null;
+        _context.Datasets.Remove(dataset);
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return true;
+    }
+
+    public async Task<Dataset?> ReplaceContentAsync(
+        int datasetId,
+        string sourceType,
+        string? sourceName,
+        string? sourceUrl,
+        IReadOnlyList<DatasetColumn> columns,
+        IReadOnlyList<DatasetRow> rows,
+        int missingValuesCount,
+        int duplicateRowsCount,
+        CancellationToken cancellationToken = default)
+    {
+        var dataset = await _context.Datasets
+            .Include(dataset => dataset.Columns)
+            .Include(dataset => dataset.Rows)
+            .Include(dataset => dataset.Versions)
+            .FirstOrDefaultAsync(dataset => dataset.Id == datasetId, cancellationToken);
+
+        if (dataset is null)
+        {
+            return null;
+        }
+
+        IDbContextTransaction? transaction = null;
+        if (_context.Database.IsRelational())
+        {
+            transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        }
+
+        var suggestions = await _context.RelationshipSuggestions
+            .Where(suggestion => suggestion.SourceDatasetId == datasetId || suggestion.TargetDatasetId == datasetId)
+            .ToListAsync(cancellationToken);
+        var operations = await _context.CleaningOperations
+            .Where(operation => operation.DatasetId == datasetId)
+            .ToListAsync(cancellationToken);
+
+        _context.RelationshipSuggestions.RemoveRange(suggestions);
+        _context.CleaningOperations.RemoveRange(operations);
+        _context.DatasetVersions.RemoveRange(dataset.Versions);
+        _context.DatasetColumns.RemoveRange(dataset.Columns);
+        _context.DatasetRows.RemoveRange(dataset.Rows);
+
+        dataset.ActiveVersionId = null;
+        dataset.SourceType = sourceType;
+        dataset.SourceName = sourceName;
+        dataset.SourceUrl = sourceUrl;
+        dataset.RowCount = rows.Count;
+        dataset.ColumnCount = columns.Count;
+        dataset.MissingValuesCount = missingValuesCount;
+        dataset.DuplicateRowsCount = duplicateRowsCount;
+        dataset.Status = "Imported";
+        dataset.AnalysisResultJson = null;
+        dataset.AnalyzedAt = null;
+        dataset.Columns = columns.ToList();
+        dataset.Rows = rows.ToList();
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return dataset;
     }
 
     private static void ApplyActiveVersion(Dataset? dataset, bool includeRows, int? rowLimit = null)

@@ -70,6 +70,14 @@ export class ForgeApiService {
     return this.http.post<DatasetResponse>(`${this.baseUrl}/api/projects/${projectId}/datasets/upload`, formData);
   }
 
+  replaceDataset(datasetId: number, formData: FormData): Observable<DatasetResponse> {
+    return this.http.post<DatasetResponse>(`${this.baseUrl}/api/datasets/${datasetId}/replace`, formData);
+  }
+
+  deleteDataset(datasetId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/api/datasets/${datasetId}`);
+  }
+
   getProjectDatasets(projectId: number): Observable<DatasetResponse[]> {
     return this.http.get<DatasetResponse[]>(`${this.baseUrl}/api/projects/${projectId}/datasets`);
   }

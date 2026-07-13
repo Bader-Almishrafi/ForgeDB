@@ -53,6 +53,44 @@ public class DatasetsController : ControllerBase
         }
     }
 
+    [HttpPost("datasets/{datasetId:int}/replace")]
+    public async Task<ActionResult<DatasetResponseDto>> Replace(int datasetId, [FromForm] DatasetUploadDto request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await EnsureDatasetOwnedAsync(datasetId, cancellationToken);
+            var dataset = await _datasetImportService.ReplaceDatasetAsync(datasetId, request, cancellationToken);
+            return dataset is null ? NotFound(new { message = "Dataset not found." }) : Ok(dataset);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
+        }
+    }
+
+    [HttpDelete("datasets/{datasetId:int}")]
+    public async Task<IActionResult> Delete(int datasetId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await EnsureDatasetOwnedAsync(datasetId, cancellationToken);
+            var deleted = await _datasetImportService.DeleteDatasetAsync(datasetId, cancellationToken);
+            return deleted ? NoContent() : NotFound(new { message = "Dataset not found." });
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
+        }
+    }
+
     [HttpGet("projects/{projectId:int}/datasets")]
     public async Task<ActionResult<IEnumerable<DatasetResponseDto>>> GetByProject(int projectId, CancellationToken cancellationToken)
     {

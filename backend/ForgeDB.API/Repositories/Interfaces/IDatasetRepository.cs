@@ -20,4 +20,15 @@ public interface IDatasetRepository
         int duplicateRowsCount,
         DateTime analyzedAt,
         CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(int datasetId, CancellationToken cancellationToken = default);
+    Task<Dataset?> ReplaceContentAsync(
+        int datasetId,
+        string sourceType,
+        string? sourceName,
+        string? sourceUrl,
+        IReadOnlyList<DatasetColumn> columns,
+        IReadOnlyList<DatasetRow> rows,
+        int missingValuesCount,
+        int duplicateRowsCount,
+        CancellationToken cancellationToken = default);
 }
