@@ -6,7 +6,7 @@ Teammate visual reference (read-only worktree): `E:/FORGEdb/ForgeDB-erdiagram-re
 
 This file is updated continuously. Do not trust anything below the "Latest update" timestamp line if the git log has moved past the commit SHA listed there — recheck `git log` first.
 
-## Completion percentage: ~20% (Phases 1-2 complete, Phase 3 in progress: auth/home/projects done)
+## Completion percentage: ~35% (Phases 1-2 complete; Phase 3 in progress: auth/home/projects/data-sources done with real Edit/Delete Project + Delete/Replace Dataset shipped end-to-end)
 
 ---
 
@@ -123,8 +123,14 @@ _(none currently — all builds/tests green as of this checkpoint)_
 
 ## Latest commit SHA
 
-`710b845` (session start — checkpoint commit about to be created)
+`7c1d423` — "feat: reskin data-sources and implement Delete/Replace Dataset end-to-end"
+
+Prior checkpoints: `1b58981` (design foundation + auth/home/projects + Edit/Delete Project), `7b1eaef` (project-overview + project-create reskin).
+
+## Verified end-to-end in real browser (Playwright, real backend + real Postgres, not mocked)
+
+Register → create project (wizard, real CSV upload) → project overview → data sources → **Replace Dataset** (new CSV with different columns swaps in correctly, cascade-cleans old versions/cleaning-ops/suggestions) → **Delete Dataset** (empty state shown) → **Delete Project** (cascades cleanly). Zero console errors, zero HTTP 4xx/5xx throughout. This is meaningful because InMemory EF tests don't enforce real FK RESTRICT/CASCADE behavior — this run against real Postgres is what actually proves the cascade-cleanup logic in `DatasetRepository`/`ProjectRepository` is correct.
 
 ## Exact next action
 
-Continue Phase 3: reskin `project-overview` and `project-create` pages (remaining "projects" bucket), then `data-sources` (bundled with building real Delete Dataset + Replace Dataset backend endpoints, matching the pattern just established for Project edit/delete).
+Continue Phase 3: reskin `analysis`/`analyze-data` and `data-cleaning` pages (visual only, no known missing backend functionality there), then `project-schema-designer`, then `project-relationships`+`project-er-diagram`, then dataset `dashboard`. After that: Deployment execution engine (Phase 6, largest remaining item), then Excel/API import as time allows, then full build/test pass, then Playwright workflow screenshots into `artifacts/final-ui-integration/`, then Stage 3 docs update.
