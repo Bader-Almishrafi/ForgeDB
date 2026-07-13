@@ -95,7 +95,7 @@
             @for (col of columns(); track col.id) {
               @let nameIssue = columnInvalidIdentifierIssue(col);
               @let errorIssues = columnErrorIssues(col);
-              <tr [class.bg-blue-50]="col.id === highlightedColumnId()">
+              <tr [class.bg-indigo-50]="col.id === highlightedColumnId()">
                 <td class="min-w-45">
                   <input
                     #colNameInput
@@ -138,7 +138,7 @@
                 <td>
                   <input
                     type="checkbox"
-                    class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-200"
+                    class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-200"
                     [checked]="col.isNullable"
                     (change)="onNullableChange(col, $event)"
                   />
@@ -151,7 +151,7 @@
                 <td>
                   <input
                     type="checkbox"
-                    class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-200"
+                    class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-200"
                     title="Single-column primary keys in this version — turning this on clears any other primary key on this table."
                     [checked]="col.isPrimaryKey"
                     (change)="onPrimaryKeyChange(col, $event)"
@@ -165,7 +165,7 @@
                 <td>
                   <input
                     type="checkbox"
-                    class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-200"
+                    class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-200"
                     [checked]="col.isUnique"
                     (change)="onUniqueChange(col, $event)"
                   />
@@ -232,7 +232,7 @@
         <label class="flex items-center gap-2 pb-2.5 text-sm text-slate-600">
           <input
             type="checkbox"
-            class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-200"
+            class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-200"
             name="newColumnNullable"
             [(ngModel)]="newColumnNullable"
             [disabled]="savingAddColumn()"

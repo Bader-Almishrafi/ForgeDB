@@ -7,8 +7,8 @@
     @for (table of sortedTables(); track table.id) {
       <button
         type="button"
-        class="flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-sm font-semibold transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-        [ngClass]="table.id === selectedTableId() ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-transparent text-slate-600'"
+        class="flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-sm font-semibold transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+        [ngClass]="table.id === selectedTableId() ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-transparent text-slate-600'"
         (click)="onSelect(table.id)"
       >
         <span class="min-w-0 flex-1">

@@ -30,7 +30,7 @@
             @for (issue of errorIssues(); track issueKey(issue)) {
               <div class="rounded-lg border border-rose-200 bg-rose-50/60 p-2">
                 <button type="button"
-                  class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-800 hover:bg-rose-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-800 hover:bg-rose-100 focus:outline-none focus:ring-4 focus:ring-indigo-100"
                   (click)="selectIssue(issue)">
                   {{ issue.message }}
                 </button>
@@ -78,7 +78,7 @@
             @for (issue of warningIssues(); track issueKey(issue)) {
               <div class="rounded-lg border border-amber-200 bg-amber-50/60 p-2">
                 <button type="button"
-                  class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-800 hover:bg-amber-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  class="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-800 hover:bg-amber-100 focus:outline-none focus:ring-4 focus:ring-indigo-100"
                   (click)="selectIssue(issue)">
                   {{ issue.message }}
                 </button>
