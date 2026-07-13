@@ -170,7 +170,7 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
       this.feedback.set({ kind: 'warning', title: 'Save or discard edits first', message: 'Schema generation cannot replace a draft with unsaved names.' });
       return;
     }
-    if (current && !window.confirm('Regenerate this schema from the currently confirmed cleaned CSV versions? Persisted relationships will need to be reviewed again.')) return;
+    if (current && !window.confirm('Regenerate this schema from the currently confirmed cleaned dataset versions? Persisted relationships will need to be reviewed again.')) return;
     this.generating.set(true);
     this.feedback.set(null);
     this.schemaApi.generateSchema(this.projectId, current?.revision)
@@ -178,7 +178,7 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
       .subscribe({
         next: design => {
           this.applyDesign(design);
-          this.feedback.set({ kind: 'success', title: 'Schema generated', message: `${design.tables.length} confirmed CSV dataset${design.tables.length === 1 ? '' : 's'} generated as database tables.` });
+          this.feedback.set({ kind: 'success', title: 'Schema generated', message: `${design.tables.length} confirmed dataset${design.tables.length === 1 ? '' : 's'} generated as database tables.` });
         },
         error: error => this.handleMutationError(error, 'Generation failed', 'Schema could not be generated.'),
       });

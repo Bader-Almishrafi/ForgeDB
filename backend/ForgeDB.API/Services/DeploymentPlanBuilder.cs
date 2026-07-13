@@ -2,6 +2,9 @@ using System.Globalization;
 using System.Text.Json;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Services.Generators;
+using ForgeDB.API.Services.Validation;
+using Npgsql;
+using NpgsqlTypes;
 
 namespace ForgeDB.API.Services;
 
@@ -127,6 +130,37 @@ public static class DeploymentPlanBuilder
         }
 
         return text;
+    }
+
+    /// <summary>Creates an explicitly typed PostgreSQL null parameter. Npgsql cannot infer a
+    /// store type from an untyped DBNull.Value, so nullable imported API/Excel cells must carry
+    /// the generated design column's validated SQL type into deployment.</summary>
+    public static NpgsqlParameter CreateDbNullParameter(string sqlType, int index)
+    {
+        if (!SchemaColumnRules.TryNormalizeSqlType(sqlType, out var normalized))
+        {
+            throw new ArgumentException($"Unsupported PostgreSQL type '{sqlType}'.", nameof(sqlType));
+        }
+
+        var npgsqlType = normalized switch
+        {
+            "SMALLINT" => NpgsqlDbType.Smallint,
+            "INTEGER" => NpgsqlDbType.Integer,
+            "BIGINT" => NpgsqlDbType.Bigint,
+            "NUMERIC" or "DECIMAL" => NpgsqlDbType.Numeric,
+            "REAL" => NpgsqlDbType.Real,
+            "DOUBLE PRECISION" => NpgsqlDbType.Double,
+            "BOOLEAN" => NpgsqlDbType.Boolean,
+            "TEXT" => NpgsqlDbType.Text,
+            "DATE" => NpgsqlDbType.Date,
+            "TIMESTAMP" => NpgsqlDbType.Timestamp,
+            "TIMESTAMPTZ" => NpgsqlDbType.TimestampTz,
+            "UUID" => NpgsqlDbType.Uuid,
+            _ when normalized.StartsWith("VARCHAR(", StringComparison.Ordinal) => NpgsqlDbType.Varchar,
+            _ => throw new ArgumentException($"Unsupported PostgreSQL type '{sqlType}'.", nameof(sqlType))
+        };
+
+        return new NpgsqlParameter($"p{index}", npgsqlType) { Value = DBNull.Value };
     }
 
     public static string QuoteSchemaQualified(string schemaName, string identifier) =>

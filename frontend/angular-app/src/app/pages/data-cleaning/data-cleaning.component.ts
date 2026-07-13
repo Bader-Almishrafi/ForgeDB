@@ -287,8 +287,8 @@ export class DataCleaningComponent implements OnInit {
     await this.previewOperationsRequest(suggestions.map((suggestion) => this.buildOperation(suggestion)));
   }
 
-  closePreview(): void {
-    if (this.applyLoading()) return;
+  closePreview(force = false): void {
+    if (this.applyLoading() && !force) return;
     this.previewDialog()?.nativeElement.close();
     this.preview.set(null);
     this.previewOperations.set([]);
@@ -305,7 +305,7 @@ export class DataCleaningComponent implements OnInit {
         confirmDestructive: this.destructiveConfirmed(),
         operations: this.previewOperations(),
       }));
-      this.closePreview();
+      this.closePreview(true);
       this.handleApplyResult(result);
       await this.reloadWorkspace();
       this.selectedIds.set(new Set());

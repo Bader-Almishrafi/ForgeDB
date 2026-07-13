@@ -709,14 +709,39 @@ public class DatasetImportService : IDatasetImportService
 
     private static IDictionary<string, object?> DeserializeRowData(string rowData)
     {
-        var values = JsonSerializer.Deserialize<Dictionary<string, string?>>(rowData)
-            ?? new Dictionary<string, string?>(StringComparer.Ordinal);
+        try
+        {
+            using var document = JsonDocument.Parse(rowData);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                throw new ArgumentException("Dataset row data must be a JSON object.");
+            }
 
-        return values.ToDictionary(
-            value => value.Key,
-            value => (object?)value.Value,
-            StringComparer.Ordinal);
+            var values = new Dictionary<string, object?>(StringComparer.Ordinal);
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                values[property.Name] = ConvertJsonElement(property.Value);
+            }
+
+            return values;
+        }
+        catch (JsonException exception)
+        {
+            throw new ArgumentException("Dataset row data contains invalid JSON.", exception);
+        }
     }
+
+    private static object? ConvertJsonElement(JsonElement element) => element.ValueKind switch
+    {
+        JsonValueKind.Null or JsonValueKind.Undefined => null,
+        JsonValueKind.String => element.GetString(),
+        JsonValueKind.Number when element.TryGetInt64(out var integer) => integer,
+        JsonValueKind.Number when element.TryGetDecimal(out var number) => number,
+        JsonValueKind.Number => element.GetDouble(),
+        JsonValueKind.True => true,
+        JsonValueKind.False => false,
+        _ => element.Clone()
+    };
 
     private static DatasetResponseDto MapToResponse(Dataset dataset)
     {

@@ -107,14 +107,14 @@ public class DeploymentService : IDeploymentService
         {
             if (table.SourceDatasetId is null || table.SourceDatasetVersionId is null)
             {
-                plans.Add(new TableInsertPlan(table.Name, Array.Empty<string>(), Array.Empty<object[]>()));
+                plans.Add(new TableInsertPlan(table.Name, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<object[]>()));
                 continue;
             }
 
             var version = await _cleaningRepository.GetVersionAsync(table.SourceDatasetId.Value, table.SourceDatasetVersionId.Value, cancellationToken);
             if (version is null)
             {
-                plans.Add(new TableInsertPlan(table.Name, Array.Empty<string>(), Array.Empty<object[]>()));
+                plans.Add(new TableInsertPlan(table.Name, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<object[]>()));
                 continue;
             }
 
@@ -125,6 +125,7 @@ public class DeploymentService : IDeploymentService
                 .ToList();
 
             var columnNames = insertableColumns.Select(column => column.Name).ToList();
+            var columnSqlTypes = insertableColumns.Select(column => column.SqlType).ToList();
             var rowValues = rows
                 .Select(row => insertableColumns
                     .Select(column => DeploymentPlanBuilder.ConvertValue(
@@ -133,7 +134,7 @@ public class DeploymentService : IDeploymentService
                     .ToArray())
                 .ToList();
 
-            plans.Add(new TableInsertPlan(table.Name, columnNames, rowValues));
+            plans.Add(new TableInsertPlan(table.Name, columnNames, columnSqlTypes, rowValues));
         }
 
         return plans;

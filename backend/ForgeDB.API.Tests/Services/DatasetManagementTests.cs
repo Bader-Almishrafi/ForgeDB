@@ -86,6 +86,31 @@ public class DatasetManagementTests
             suggestion.SourceDatasetId == seed.DatasetToDeleteId || suggestion.TargetDatasetId == seed.DatasetToDeleteId));
     }
 
+    [Fact]
+    public async Task GetDatasetPreviewAsync_ReturnsTypedValuesFromActiveCleaningVersion()
+    {
+        await using var context = NewContext();
+        var seed = await SeedProjectWithTwoDatasetsAndHistoryAsync(context);
+        var dataset = await context.Datasets.FirstAsync(item => item.Id == seed.DatasetToDeleteId);
+        var version = await context.DatasetVersions.FirstAsync(item => item.Id == dataset.ActiveVersionId);
+        version.ColumnsJson = """
+            [{"name":"score","dataType":"decimal"},{"name":"enabled","dataType":"boolean"},{"name":"note","dataType":"string"}]
+            """;
+        version.RowsJson = """
+            [{"score":42.5,"enabled":true,"note":null}]
+            """;
+        version.RowCount = 1;
+        version.ColumnCount = 3;
+        await context.SaveChangesAsync();
+
+        var preview = await BuildService(context).GetDatasetPreviewAsync(dataset.Id, CancellationToken.None);
+        var row = Assert.Single(preview.Rows);
+
+        Assert.Equal(42.5m, Assert.IsType<decimal>(row["score"]));
+        Assert.True(Assert.IsType<bool>(row["enabled"]));
+        Assert.Null(row["note"]);
+    }
+
     private static ForgeDbContext NewContext() => new(new DbContextOptionsBuilder<ForgeDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 

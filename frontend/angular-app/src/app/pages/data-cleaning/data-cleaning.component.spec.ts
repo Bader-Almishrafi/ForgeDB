@@ -120,6 +120,17 @@ describe('DataCleaningComponent', () => {
     expect(component.feedback()?.message).toContain('orders');
   });
 
+  it('closes and clears the preview dialog after a successful apply', async () => {
+    const dialog = component.previewDialog()?.nativeElement;
+    await component.previewSuggestion(suggestions[0]);
+
+    await component.applyPreview();
+
+    expect(dialog?.close).toHaveBeenCalled();
+    expect(component.preview()).toBeNull();
+    expect(component.previewOperations()).toEqual([]);
+  });
+
   it('loads history and exposes persisted undo and restore actions', async () => {
     component.confirmAction.set({ kind: 'undo' });
     await component.confirmUndoOrRestore();

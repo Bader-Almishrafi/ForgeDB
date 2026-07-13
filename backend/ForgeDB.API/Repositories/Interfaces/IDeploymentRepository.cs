@@ -2,7 +2,11 @@ using ForgeDB.API.Models.Entities;
 
 namespace ForgeDB.API.Repositories.Interfaces;
 
-public sealed record TableInsertPlan(string TableName, IReadOnlyList<string> ColumnNames, IReadOnlyList<object[]> Rows);
+public sealed record TableInsertPlan(
+    string TableName,
+    IReadOnlyList<string> ColumnNames,
+    IReadOnlyList<string> ColumnSqlTypes,
+    IReadOnlyList<object[]> Rows);
 
 public interface IDeploymentRepository
 {

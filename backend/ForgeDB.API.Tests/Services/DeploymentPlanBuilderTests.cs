@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Services;
+using NpgsqlTypes;
 
 namespace ForgeDB.API.Tests.Services;
 
@@ -101,6 +102,20 @@ public class DeploymentPlanBuilderTests
         Assert.Equal(2026, dateTime.Year);
         Assert.Equal(3, dateTime.Month);
         Assert.Equal(5, dateTime.Day);
+    }
+
+    [Theory]
+    [InlineData("INTEGER", NpgsqlDbType.Integer)]
+    [InlineData("NUMERIC", NpgsqlDbType.Numeric)]
+    [InlineData("VARCHAR(42)", NpgsqlDbType.Varchar)]
+    [InlineData("TIMESTAMPTZ", NpgsqlDbType.TimestampTz)]
+    public void CreateDbNullParameter_PreservesValidatedStoreType(string sqlType, NpgsqlDbType expected)
+    {
+        var parameter = DeploymentPlanBuilder.CreateDbNullParameter(sqlType, 2);
+
+        Assert.Equal("p2", parameter.ParameterName);
+        Assert.Equal(expected, parameter.NpgsqlDbType);
+        Assert.Equal(DBNull.Value, parameter.Value);
     }
 
     private static (DesignTable Customers, DesignTable Orders, (DesignColumn CustomersId, DesignColumn OrdersCustomerId) Columns) BuildCustomersOrders()

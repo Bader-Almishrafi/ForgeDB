@@ -98,7 +98,10 @@ public class DeploymentRepository : IDeploymentRepository
             {
                 foreach (var row in plan.Rows)
                 {
-                    await _context.Database.ExecuteSqlRawAsync(insertSql, row, cancellationToken);
+                    var parameters = row.Select((value, index) => value is DBNull
+                        ? (object)DeploymentPlanBuilder.CreateDbNullParameter(plan.ColumnSqlTypes[index], index)
+                        : value).ToArray();
+                    await _context.Database.ExecuteSqlRawAsync(insertSql, parameters, cancellationToken);
                     inserted++;
                 }
             }

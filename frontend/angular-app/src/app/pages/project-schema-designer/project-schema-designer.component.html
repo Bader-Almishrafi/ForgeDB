@@ -84,7 +84,7 @@
         @if (activeTab() === 'tables') {
           <div class="tables-workspace" role="tabpanel" aria-labelledby="schema-tab-tables">
             <aside class="table-list" aria-label="Generated tables">
-              <div class="panel-heading"><div><h2>Tables</h2><p>One per CSV dataset</p></div><span>{{ tableCount() }}</span></div>
+              <div class="panel-heading"><div><h2>Tables</h2><p>One per confirmed dataset</p></div><span>{{ tableCount() }}</span></div>
               <div class="table-buttons">
                 @for (table of draftTables(); track table.id) {
                   <button type="button" [class.active]="selectedTableId() === table.id" (click)="selectTable(table.id)">

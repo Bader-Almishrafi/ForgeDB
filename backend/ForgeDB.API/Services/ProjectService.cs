@@ -297,7 +297,7 @@ public class ProjectService : IProjectService
         var actions = new List<string>();
         if (project.Datasets.Count == 0)
         {
-            actions.Add("Upload one or more raw CSV datasets to begin profiling and relationship discovery.");
+            actions.Add("Import one or more CSV, Excel, or API datasets to begin profiling and relationship discovery.");
             return actions;
         }
 
