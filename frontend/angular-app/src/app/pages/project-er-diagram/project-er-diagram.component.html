@@ -14,9 +14,10 @@
     <div class="flex flex-wrap items-center gap-2">
       <div class="flex items-center gap-1 rounded-lg border border-slate-200/50 bg-white/80 px-1.5 py-1 shadow-sm backdrop-blur dark:border-[#30363d]/50 dark:bg-[#21262d]/80">
         <button type="button" class="icon-button h-8 w-8" (click)="zoomOut()" aria-label="Zoom out">−</button>
-        <button type="button" class="min-w-14 text-center text-xs font-semibold text-slate-600 dark:text-slate-300" (click)="resetZoom()">{{ zoom() }}%</button>
+        <button type="button" class="min-w-14 text-center text-xs font-semibold text-slate-600 dark:text-slate-300" (click)="resetView()" aria-label="Reset diagram view">{{ zoom() }}%</button>
         <button type="button" class="icon-button h-8 w-8" (click)="zoomIn()" aria-label="Zoom in">+</button>
       </div>
+      <button type="button" class="flex items-center gap-2 rounded-lg border border-slate-200/50 bg-white/80 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm backdrop-blur transition-colors hover:bg-slate-100 dark:border-[#30363d]/50 dark:bg-[#21262d]/80 dark:text-slate-300 dark:hover:bg-[#30363d]" (click)="resetView()" data-testid="reset-er-view">Reset View</button>
       <button type="button" class="flex items-center gap-2 rounded-lg border border-slate-200/50 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm backdrop-blur transition-colors duration-300 hover:bg-slate-100 dark:border-[#30363d]/50 dark:bg-[#21262d]/80 dark:text-slate-300 dark:hover:bg-[#30363d]" (click)="loadSchema()" [disabled]="loading()">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
         Refresh
@@ -52,11 +53,17 @@
     </div>
   } @else {
     <div class="relative z-10 flex flex-1 gap-5 overflow-hidden">
-      <div class="relative h-full flex-1 overflow-auto rounded-2xl border border-white/40 bg-white/50 shadow-inner backdrop-blur transition-colors duration-300 dark:border-white/10 dark:bg-[#0d1117]/80">
+      <div #diagramViewport class="relative h-full flex-1 touch-none select-none overflow-hidden rounded-2xl border border-white/40 bg-white/50 shadow-inner backdrop-blur transition-colors duration-300 dark:border-white/10 dark:bg-[#0d1117]/80"
+        [class.cursor-grabbing]="panning()" [class.cursor-grab]="!panning()"
+        (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)"
+        (pointerup)="onPointerUp($event)" (pointercancel)="onPointerCancel($event)"
+        data-testid="er-pan-viewport" [attr.data-pan-x]="panX()" [attr.data-pan-y]="panY()"
+        aria-label="ER diagram canvas. Drag with a mouse or touch to pan." aria-describedby="er-pan-help">
         @if (diagram(); as chart) {
+          <div class="absolute left-0 top-0 origin-top-left will-change-transform" [style.width.px]="chart.width" [style.height.px]="chart.height" [style.transform]="diagramTransform()" data-testid="er-pan-surface">
           <svg class="block text-slate-200 transition-colors duration-300 dark:text-[#21262d]"
-            [style.width.px]="chart.width * (zoom() / 100)" [style.height.px]="chart.height * (zoom() / 100)"
-            [attr.viewBox]="'0 0 ' + chart.width + ' ' + chart.height" (click)="selectNode(null)">
+            [style.width.px]="chart.width" [style.height.px]="chart.height"
+            [attr.viewBox]="'0 0 ' + chart.width + ' ' + chart.height" (click)="onCanvasClick()">
             <defs>
               <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
                 <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="1" />
@@ -92,7 +99,7 @@
             }
 
             @for (node of chart.nodes; track node.name) {
-              <foreignObject [attr.x]="node.x" [attr.y]="node.y" [attr.width]="node.width" [attr.height]="node.height" (click)="$event.stopPropagation(); selectNode(node)" class="cursor-pointer transition-transform hover:scale-[1.02]">
+              <foreignObject [attr.x]="node.x" [attr.y]="node.y" [attr.width]="node.width" [attr.height]="node.height" (click)="selectNodeFromPointer($event, node)" class="cursor-pointer transition-transform hover:scale-[1.02]">
                 <div xmlns="http://www.w3.org/1999/xhtml" class="relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-[#404854]/60 bg-slate-900/90 shadow-2xl backdrop-blur-md transition-shadow duration-300 dark:bg-[#161b22]/90"
                   [style.box-shadow]="selectedNode()?.name === node.name ? '0 0 0 2px white, 0 0 30px ' + node.theme.glow : '0 10px 25px -5px rgba(0,0,0,0.5)'">
                   <div class="flex items-center justify-between bg-gradient-to-r px-4 py-2.5 text-sm font-bold tracking-wide text-white shadow-sm" [ngClass]="node.theme.bodyGradient">
@@ -122,6 +129,7 @@
               </foreignObject>
             }
           </svg>
+          </div>
         }
       </div>
 
@@ -192,5 +200,6 @@
         }
       </aside>
     </div>
+    <p id="er-pan-help" class="relative z-10 mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">Drag the diagram with a mouse or touch to pan. Zoom and Reset View remain available above.</p>
   }
 </section>

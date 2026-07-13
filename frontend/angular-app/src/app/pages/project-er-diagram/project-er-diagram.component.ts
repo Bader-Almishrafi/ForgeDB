@@ -1,5 +1,5 @@
 import { NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, OnInit, ViewChild, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { ApiErrorBody, ProjectRelationshipSuggestion, ProjectSchema } from '../../services/api.models';
@@ -58,11 +58,21 @@ const NODE_THEMES: NodeTheme[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProjectErDiagramComponent implements OnInit {
+  @ViewChild('diagramViewport') private diagramViewport?: ElementRef<HTMLDivElement>;
+
   readonly schema = signal<ProjectSchema | null>(null);
   readonly diagram = signal<Diagram | null>(null);
   readonly loading = signal(false);
   readonly selectedNode = signal<DiagramNode | null>(null);
   readonly zoom = signal(100);
+  readonly panX = signal(0);
+  readonly panY = signal(0);
+  readonly panning = signal(false);
+
+  private activePointerId: number | null = null;
+  private pointerStart = { x: 0, y: 0, panX: 0, panY: 0 };
+  private pointerMoved = false;
+  private suppressNextClick = false;
 
   projectId = 0;
   errorMessage = '';
@@ -101,6 +111,7 @@ export class ProjectErDiagramComponent implements OnInit {
           this.schema.set(schema);
           this.selectedNode.set(null);
           this.diagram.set(schema ? this.createDiagram(schema) : null);
+          this.resetView();
         },
         error: (error: { error?: ApiErrorBody }) => {
           this.errorMessage = error.error?.message ?? 'Unable to load ER diagram.';
@@ -118,14 +129,97 @@ export class ProjectErDiagramComponent implements OnInit {
 
   zoomIn(): void {
     this.zoom.update((value) => Math.min(160, value + 10));
+    this.clampCurrentPan();
   }
 
   zoomOut(): void {
     this.zoom.update((value) => Math.max(40, value - 10));
+    this.clampCurrentPan();
   }
 
   resetZoom(): void {
+    this.resetView();
+  }
+
+  resetView(): void {
     this.zoom.set(100);
+    this.panX.set(0);
+    this.panY.set(0);
+  }
+
+  diagramTransform(): string {
+    return `translate3d(${this.panX()}px, ${this.panY()}px, 0) scale(${this.zoom() / 100})`;
+  }
+
+  onPointerDown(event: PointerEvent): void {
+    if (event.button !== 0 || this.activePointerId !== null) return;
+    this.activePointerId = event.pointerId;
+    this.pointerStart = { x: event.clientX, y: event.clientY, panX: this.panX(), panY: this.panY() };
+    this.pointerMoved = false;
+    this.panning.set(true);
+    try { (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); } catch { /* jsdom/legacy browser */ }
+    event.preventDefault();
+  }
+
+  onPointerMove(event: PointerEvent): void {
+    if (event.pointerId !== this.activePointerId) return;
+    const deltaX = event.clientX - this.pointerStart.x;
+    const deltaY = event.clientY - this.pointerStart.y;
+    if (Math.abs(deltaX) + Math.abs(deltaY) >= 3) this.pointerMoved = true;
+    this.setPan(this.pointerStart.panX + deltaX, this.pointerStart.panY + deltaY);
+    event.preventDefault();
+  }
+
+  onPointerUp(event: PointerEvent): void {
+    if (event.pointerId !== this.activePointerId) return;
+    this.suppressNextClick = this.pointerMoved;
+    try { (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId); } catch { /* jsdom/legacy browser */ }
+    this.activePointerId = null;
+    this.panning.set(false);
+  }
+
+  onPointerCancel(event: PointerEvent): void {
+    if (event.pointerId !== this.activePointerId) return;
+    this.activePointerId = null;
+    this.pointerMoved = false;
+    this.panning.set(false);
+  }
+
+  onCanvasClick(): void {
+    if (this.consumeSuppressedClick()) return;
+    this.selectNode(null);
+  }
+
+  selectNodeFromPointer(event: MouseEvent, node: DiagramNode): void {
+    event.stopPropagation();
+    if (this.consumeSuppressedClick()) return;
+    this.selectNode(node);
+  }
+
+  private consumeSuppressedClick(): boolean {
+    if (!this.suppressNextClick) return false;
+    this.suppressNextClick = false;
+    return true;
+  }
+
+  private clampCurrentPan(): void {
+    this.setPan(this.panX(), this.panY());
+  }
+
+  private setPan(x: number, y: number): void {
+    const chart = this.diagram();
+    const viewport = this.diagramViewport?.nativeElement;
+    if (!chart || !viewport) {
+      this.panX.set(Math.min(0, x));
+      this.panY.set(Math.min(0, y));
+      return;
+    }
+
+    const scale = this.zoom() / 100;
+    const minX = Math.min(0, viewport.clientWidth - chart.width * scale);
+    const minY = Math.min(0, viewport.clientHeight - chart.height * scale);
+    this.panX.set(Math.max(minX, Math.min(0, x)));
+    this.panY.set(Math.max(minY, Math.min(0, y)));
   }
 
   private createDiagram(schema: ProjectSchema): Diagram {
