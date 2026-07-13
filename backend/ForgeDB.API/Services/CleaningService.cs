@@ -36,7 +36,9 @@ public class CleaningService : ICleaningService
             && activeVersions.All(pair => confirmedVersions.GetValueOrDefault(pair.Key) == pair.Value);
         var hasBatches = history.Any(entry => entry.Status is "Succeeded" or "PartiallySucceeded");
         var requiresReanalysis = datasets.Any(item => !item.Version.IsRawOriginal && item.Version.AnalyzedAt is null);
-        var canConfirm = hasBatches && !requiresReanalysis && datasets.Count > 0;
+        // Data with zero detected issues has nothing to clean, so it can never produce a batch —
+        // requiring one here would permanently block schema design for genuinely clean datasets.
+        var canConfirm = !requiresReanalysis && datasets.Count > 0 && (hasBatches || suggestions.Count == 0);
 
         return new ProjectCleaningSummaryDto
         {
@@ -313,16 +315,25 @@ public class CleaningService : ICleaningService
     public async Task<QualityConfirmationDto> ConfirmQualityAsync(int projectId, int userId, CancellationToken cancellationToken = default)
     {
         await RequireProjectAsync(projectId, userId, cancellationToken);
-        var history = await _repository.GetHistoryAsync(projectId, cancellationToken);
-        if (!history.Any(batch => batch.Status is "Succeeded" or "PartiallySucceeded"))
-        {
-            throw new InvalidOperationException("Apply at least one cleaning batch before confirming data quality.");
-        }
         var active = await _repository.GetActiveProjectVersionsAsync(projectId, cancellationToken);
         if (active.Count == 0 || active.Any(item => item.Version.AnalyzedAt is null))
         {
             throw new InvalidOperationException("Re-run analysis for every active dataset version before confirming data quality.");
         }
+
+        var history = await _repository.GetHistoryAsync(projectId, cancellationToken);
+        var hasBatches = history.Any(batch => batch.Status is "Succeeded" or "PartiallySucceeded");
+        if (!hasBatches)
+        {
+            // Data with zero detected issues can never produce a batch (there is nothing to fix),
+            // so only require one when there are actual outstanding suggestions to address.
+            var suggestions = await BuildSuggestionsAsync(projectId, active, cancellationToken);
+            if (suggestions.Count > 0)
+            {
+                throw new InvalidOperationException("Apply at least one cleaning batch before confirming data quality.");
+            }
+        }
+
         var versions = active.ToDictionary(item => item.Dataset.Id, item => item.Version.Id);
         var state = await _repository.ConfirmQualityAsync(projectId, userId, versions, cancellationToken);
         return new QualityConfirmationDto

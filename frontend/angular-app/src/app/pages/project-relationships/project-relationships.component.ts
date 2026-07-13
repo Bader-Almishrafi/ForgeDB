@@ -27,6 +27,7 @@ interface RelationshipDraft {
 export class ProjectRelationshipsComponent implements OnInit {
   readonly suggestions = signal<ProjectRelationshipSuggestion[]>([]);
   readonly loading = signal(false);
+  readonly detecting = signal(false);
   readonly savingId = signal<string | null>(null);
   readonly editingId = signal<string | null>(null);
   readonly draft = signal<RelationshipDraft | null>(null);
@@ -64,6 +65,26 @@ export class ProjectRelationshipsComponent implements OnInit {
         next: (suggestions) => this.suggestions.set(suggestions.map(mapSuggestion)),
         error: (error: { error?: ApiErrorBody }) => {
           this.errorMessage = error.error?.message ?? 'Unable to load relationship suggestions.';
+        },
+      });
+  }
+
+  detectRelationships(): void {
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.detecting.set(true);
+
+    this.designApi.detectSuggestions(this.projectId)
+      .pipe(finalize(() => this.detecting.set(false)))
+      .subscribe({
+        next: (suggestions) => {
+          this.suggestions.set(suggestions.map(mapSuggestion));
+          this.successMessage = suggestions.length > 0
+            ? `Detected ${suggestions.length} relationship suggestion(s).`
+            : 'No new relationship suggestions were detected from the current datasets.';
+        },
+        error: (error: { error?: ApiErrorBody }) => {
+          this.errorMessage = error.error?.message ?? 'Unable to detect relationships.';
         },
       });
   }

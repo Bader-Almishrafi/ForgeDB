@@ -6,6 +6,7 @@ using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
 
 namespace ForgeDB.API.Repositories;
 
@@ -62,8 +63,25 @@ public class CleaningRepository : ICleaningRepository
                     CreatedAt = dataset.CreatedAt
                 };
                 _context.DatasetVersions.Add(version);
-                await _context.SaveChangesAsync(cancellationToken);
-                dataset.ActiveVersionId = version.Id;
+
+                try
+                {
+                    await _context.SaveChangesAsync(cancellationToken);
+                    dataset.ActiveVersionId = version.Id;
+                }
+                catch (DbUpdateException exception) when (IsDuplicateRawVersionConflict(exception))
+                {
+                    // A concurrent request (e.g. the frontend firing several cleaning endpoints in
+                    // parallel on first page load) already created this dataset's raw version 1
+                    // between our read and write. Drop our losing insert and adopt the winner's row
+                    // instead of surfacing a 500 — this call only needs the baseline to exist.
+                    _context.Entry(version).State = EntityState.Detached;
+                    var winningVersionId = await _context.DatasetVersions
+                        .Where(existing => existing.DatasetId == dataset.Id && existing.VersionNumber == 1)
+                        .Select(existing => (int?)existing.Id)
+                        .FirstOrDefaultAsync(cancellationToken);
+                    dataset.ActiveVersionId = winningVersionId ?? dataset.ActiveVersionId;
+                }
             }
             else if (dataset.ActiveVersionId is null)
             {
@@ -75,6 +93,11 @@ public class CleaningRepository : ICleaningRepository
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static bool IsDuplicateRawVersionConflict(DbUpdateException exception)
+    {
+        return exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
     }
 
     public async Task<IReadOnlyList<CleaningDatasetVersionData>> GetActiveProjectVersionsAsync(int projectId, CancellationToken cancellationToken = default)

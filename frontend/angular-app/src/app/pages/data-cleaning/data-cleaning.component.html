@@ -122,7 +122,7 @@
 
           <section class="workflow-card">
             <svg lucideShieldCheck [size]="22" [strokeWidth]="1.8"></svg><p>Next steps</p>
-            @if (!current.hasCleaningBatches) { <h2>Review and apply cleaning fixes</h2><span>Every change begins with a real preview.</span> }
+            @if (!current.hasCleaningBatches && current.totalIssues > 0) { <h2>Review and apply cleaning fixes</h2><span>Every change begins with a real preview.</span> }
             @else if (current.requiresReanalysis) { <h2>Re-run Analysis</h2><span>Cleaned versions must be analyzed before quality confirmation.</span><button type="button" class="btn-primary" (click)="rerunAnalysis()" [disabled]="reanalyzing()">Re-run Analysis</button> }
             @else if (!current.qualityConfirmed) { <h2>Confirm Data Quality</h2><span>Approve the currently analyzed version set for Schema.</span><button type="button" class="btn-primary" (click)="confirmQuality()" [disabled]="!current.canConfirmQuality || applyLoading()"><svg lucideCheck [size]="15" [strokeWidth]="1.8"></svg>Confirm Data Quality</button> }
             @else { <h2>Ready for Schema</h2><span>Quality was confirmed {{ current.qualityConfirmedAt | date:'medium' }}.</span><button type="button" class="btn-primary" (click)="continueToSchema()" [disabled]="!current.schemaReady">Continue to Schema</button> }

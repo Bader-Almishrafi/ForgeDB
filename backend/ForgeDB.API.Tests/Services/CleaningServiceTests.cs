@@ -125,6 +125,26 @@ public class CleaningServiceTests
     }
 
     [Fact]
+    public async Task GetSummary_AllowsQualityConfirmation_ForCleanDataWithNoIssuesAndNoBatches()
+    {
+        // A dataset with zero detected issues can never produce a cleaning batch (there is nothing
+        // to fix), so gating confirmation behind "a batch has run" would permanently block schema
+        // design for genuinely clean data. Confirmation must be reachable once analysis is current.
+        await using var fixture = await Fixture.CreateAsync(datasetHasIssues: false);
+
+        var summary = await fixture.Service.GetSummaryAsync(1, 1, CancellationToken.None);
+
+        Assert.Equal(0, summary.TotalIssues);
+        Assert.False(summary.HasCleaningBatches);
+        Assert.False(summary.RequiresReanalysis);
+        Assert.True(summary.CanConfirmQuality);
+
+        var confirmation = await fixture.Service.ConfirmQualityAsync(1, 1, CancellationToken.None);
+        Assert.True(confirmation.QualityConfirmed);
+        Assert.True(confirmation.SchemaReady);
+    }
+
+    [Fact]
     public void Controller_RequiresAuthorization()
     {
         Assert.NotNull(typeof(CleaningController).GetCustomAttribute<AuthorizeAttribute>());
@@ -152,7 +172,7 @@ public class CleaningServiceTests
         public ForgeDbContext Context { get; }
         public CleaningService Service { get; }
 
-        public static async Task<Fixture> CreateAsync(bool includeSecondDataset = false, int? failApplyDatasetId = null)
+        public static async Task<Fixture> CreateAsync(bool includeSecondDataset = false, int? failApplyDatasetId = null, bool datasetHasIssues = true)
         {
             var options = new DbContextOptionsBuilder<ForgeDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -162,15 +182,15 @@ public class CleaningServiceTests
                 new User { Id = 1, FirstName = "Owner", LastName = "User", Email = "owner@example.com", PasswordHash = "x", Role = "User", CreatedAt = DateTime.UtcNow },
                 new User { Id = 2, FirstName = "Other", LastName = "User", Email = "other@example.com", PasswordHash = "x", Role = "User", CreatedAt = DateTime.UtcNow });
             context.Projects.Add(new Project { Id = 1, UserId = 1, Name = "Cleaning project", CreatedAt = DateTime.UtcNow });
-            context.Datasets.Add(CreateDataset(1, "customers"));
-            if (includeSecondDataset) context.Datasets.Add(CreateDataset(2, "orders"));
+            context.Datasets.Add(CreateDataset(1, "customers", datasetHasIssues));
+            if (includeSecondDataset) context.Datasets.Add(CreateDataset(2, "orders", datasetHasIssues));
             await context.SaveChangesAsync();
             var repository = new CleaningRepository(context);
             var service = new CleaningService(repository, new FakePythonClient(failApplyDatasetId));
             return new Fixture(context, service);
         }
 
-        private static Dataset CreateDataset(int id, string name) => new()
+        private static Dataset CreateDataset(int id, string name, bool hasIssues = true) => new()
         {
             Id = id,
             ProjectId = 1,
@@ -178,21 +198,29 @@ public class CleaningServiceTests
             SourceType = "csv",
             RowCount = 2,
             ColumnCount = 2,
-            MissingValuesCount = 1,
+            MissingValuesCount = hasIssues ? 1 : 0,
             Status = "Analyzed",
             CreatedAt = DateTime.UtcNow,
             AnalyzedAt = DateTime.UtcNow,
-            AnalysisResultJson = "{\"rowCount\":2,\"columnCount\":2,\"missingValuesCount\":1,\"duplicateRowsCount\":0,\"columns\":[{\"columnName\":\"name\",\"detectedDataType\":\"string\",\"missingValuesCount\":1},{\"columnName\":\"amount\",\"detectedDataType\":\"integer\",\"missingValuesCount\":0}]}",
+            AnalysisResultJson = hasIssues
+                ? "{\"rowCount\":2,\"columnCount\":2,\"missingValuesCount\":1,\"duplicateRowsCount\":0,\"columns\":[{\"columnName\":\"name\",\"detectedDataType\":\"string\",\"missingValuesCount\":1},{\"columnName\":\"amount\",\"detectedDataType\":\"integer\",\"missingValuesCount\":0}]}"
+                : "{\"rowCount\":2,\"columnCount\":2,\"missingValuesCount\":0,\"duplicateRowsCount\":0,\"columns\":[{\"columnName\":\"name\",\"detectedDataType\":\"string\",\"missingValuesCount\":0},{\"columnName\":\"amount\",\"detectedDataType\":\"integer\",\"missingValuesCount\":0}]}",
             Columns = new List<DatasetColumn>
             {
-                new() { ColumnName = "name", DetectedDataType = "string", MissingValuesCount = 1, IsNullable = true },
+                new() { ColumnName = "name", DetectedDataType = "string", MissingValuesCount = hasIssues ? 1 : 0, IsNullable = hasIssues },
                 new() { ColumnName = "amount", DetectedDataType = "integer" }
             },
-            Rows = new List<DatasetRow>
-            {
-                new() { RowNumber = 1, RowData = "{\"name\":null,\"amount\":1}", CreatedAt = DateTime.UtcNow },
-                new() { RowNumber = 2, RowData = "{\"name\":\"Original\",\"amount\":2}", CreatedAt = DateTime.UtcNow }
-            }
+            Rows = hasIssues
+                ? new List<DatasetRow>
+                {
+                    new() { RowNumber = 1, RowData = "{\"name\":null,\"amount\":1}", CreatedAt = DateTime.UtcNow },
+                    new() { RowNumber = 2, RowData = "{\"name\":\"Original\",\"amount\":2}", CreatedAt = DateTime.UtcNow }
+                }
+                : new List<DatasetRow>
+                {
+                    new() { RowNumber = 1, RowData = "{\"name\":\"Alpha\",\"amount\":1}", CreatedAt = DateTime.UtcNow },
+                    new() { RowNumber = 2, RowData = "{\"name\":\"Beta\",\"amount\":2}", CreatedAt = DateTime.UtcNow }
+                }
         };
 
         public ValueTask DisposeAsync() => Context.DisposeAsync();
