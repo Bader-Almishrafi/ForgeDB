@@ -87,6 +87,28 @@ public class DatasetManagementTests
     }
 
     [Fact]
+    public async Task ReplaceDatasetAsync_PreservesRawCellWhitespace_ForVersionedCleaning()
+    {
+        await using var context = NewContext();
+        var seed = await SeedProjectWithTwoDatasetsAndHistoryAsync(context);
+        var service = BuildService(context);
+        var csv = "id,name\n1, Alpha \n2,Beta\n";
+
+        await service.ReplaceDatasetAsync(
+            seed.DatasetToDeleteId,
+            new DatasetUploadDto { File = BuildCsvFile(csv, "replacement.csv") },
+            CancellationToken.None);
+
+        var firstRowJson = await context.DatasetRows
+            .Where(row => row.DatasetId == seed.DatasetToDeleteId)
+            .OrderBy(row => row.RowNumber)
+            .Select(row => row.RowData)
+            .FirstAsync();
+        var firstRow = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string?>>(firstRowJson)!;
+        Assert.Equal(" Alpha ", firstRow["name"]);
+    }
+
+    [Fact]
     public async Task GetDatasetPreviewAsync_ReturnsTypedValuesFromActiveCleaningVersion()
     {
         await using var context = NewContext();

@@ -689,7 +689,10 @@ public class DatasetImportService : IDatasetImportService
 
             if (character == ',' && !inQuotes)
             {
-                values.Add(currentValue.ToString().Trim());
+                // Preserve the source cell exactly. Header normalization happens separately;
+                // data cleanup (trim/collapse/case) belongs to the versioned cleaning workflow
+                // so the raw imported version remains faithful to the uploaded file.
+                values.Add(currentValue.ToString());
                 currentValue.Clear();
                 continue;
             }
@@ -702,7 +705,7 @@ public class DatasetImportService : IDatasetImportService
             throw new ArgumentException("CSV contains an unterminated quoted value.");
         }
 
-        values.Add(currentValue.ToString().Trim());
+        values.Add(currentValue.ToString());
 
         return values;
     }

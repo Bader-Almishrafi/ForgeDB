@@ -145,6 +145,24 @@ public class CleaningServiceTests
     }
 
     [Fact]
+    public async Task Suggestions_ExposeImportedWhitespaceAsVersionedTrimOperation()
+    {
+        await using var fixture = await Fixture.CreateAsync(datasetHasIssues: false);
+        var firstRow = await fixture.Context.DatasetRows.OrderBy(row => row.RowNumber).FirstAsync();
+        firstRow.RowData = "{\"name\":\" Alpha \",\"amount\":1}";
+        await fixture.Context.SaveChangesAsync();
+
+        var suggestions = await fixture.Service.GetSuggestionsAsync(1, 1, null, null, null, null, CancellationToken.None);
+
+        var whitespace = Assert.Single(suggestions, suggestion =>
+            suggestion.DatasetName == "customers"
+            && suggestion.IssueType == "Extra Spaces"
+            && suggestion.Column == "name");
+        Assert.Equal("text_normalize", whitespace.RecommendedStrategy.OperationType);
+        Assert.Equal("trim-collapse", whitespace.RecommendedStrategy.Key);
+    }
+
+    [Fact]
     public void Controller_RequiresAuthorization()
     {
         Assert.NotNull(typeof(CleaningController).GetCustomAttribute<AuthorizeAttribute>());

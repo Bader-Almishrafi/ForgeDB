@@ -449,7 +449,10 @@ public class CleaningService : ICleaningService
     private static void AddDerivedColumnSuggestions(List<CleaningSuggestionDto> suggestions, int projectId, CleaningDatasetVersionData data, string column, string type)
     {
         var values = data.Rows.Select(row => row.GetValueOrDefault(column)).Where(value => value is not null).ToList();
-        var textValues = values.OfType<string>().ToList();
+        // Snapshot rows deserialize object-valued JSON cells as JsonElement. Reading only
+        // OfType<string>() silently discarded every persisted CSV text cell, so whitespace,
+        // case, and currency suggestions could never be generated from real active versions.
+        var textValues = values.Select(TryText).Where(value => value is not null).Select(value => value!).ToList();
         var extraSpaces = textValues.Count(value => value != value.Trim() || Regex.IsMatch(value, @"\s{2,}"));
         if (extraSpaces > 0)
         {
@@ -629,6 +632,13 @@ public class CleaningService : ICleaningService
         var text = value is JsonElement element ? element.ToString() : Convert.ToString(value, CultureInfo.InvariantCulture);
         return decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) ? number : null;
     }
+
+    private static string? TryText(object? value) => value switch
+    {
+        string text => text,
+        JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
+        _ => null
+    };
 
     private static decimal Percentile(IReadOnlyList<decimal> values, decimal percentile)
     {
