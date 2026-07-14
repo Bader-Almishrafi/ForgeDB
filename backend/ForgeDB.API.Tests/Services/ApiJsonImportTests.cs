@@ -72,6 +72,35 @@ public class ApiJsonImportTests
         Assert.Equal("blocked_address", error.Code);
     }
 
+    [Theory]
+    [InlineData("0.0.0.0")]
+    [InlineData("169.254.169.254")]
+    [InlineData("198.51.100.10")]
+    [InlineData("203.0.113.10")]
+    [InlineData("fe80::1")]
+    [InlineData("2001:db8::1")]
+    public void DevelopmentPrivateNetworkOverride_StillBlocksMetadataLinkLocalAndReservedAddresses(string address)
+    {
+        var error = Assert.Throws<ApiImportException>(() =>
+            ApiUrlSecurity.EnsureAddressesAllowed("fixture.example", [IPAddress.Parse(address)], allowPrivate: true));
+
+        Assert.Equal("blocked_address", error.Code);
+    }
+
+    [Theory]
+    [InlineData("127.0.0.1")]
+    [InlineData("10.0.0.5")]
+    [InlineData("172.16.0.5")]
+    [InlineData("192.168.1.5")]
+    [InlineData("fd00::1")]
+    public void DevelopmentPrivateNetworkOverride_AllowsOnlyLoopbackAndPrivateFixtureAddresses(string address)
+    {
+        var exception = Record.Exception(() =>
+            ApiUrlSecurity.EnsureAddressesAllowed("fixture.example", [IPAddress.Parse(address)], allowPrivate: true));
+
+        Assert.Null(exception);
+    }
+
     [Fact]
     public async Task Client_BlocksRedirectIntoPrivateAddress()
     {
