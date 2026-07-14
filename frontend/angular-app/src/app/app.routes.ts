@@ -1,27 +1,11 @@
 import { Routes } from '@angular/router';
-import { AppShellComponent } from './layout/app-shell.component';
-import { AnalysisComponent } from './pages/analysis/analysis.component';
-import { DashboardComponent } from './pages/dashboard/dashboard.component';
-import { DataSourcesComponent } from './pages/data-sources/data-sources.component';
-import { HomeComponent } from './pages/home/home.component';
-import { LandingComponent } from './pages/landing/landing.component';
-import { LoginComponent } from './pages/login/login.component';
-import { ProjectsComponent } from './pages/projects/projects.component';
-import { ProjectCreateComponent } from './pages/project-create/project-create.component';
-import { ProjectDeploymentComponent } from './pages/project-deployment/project-deployment.component';
-import { ProjectErDiagramComponent } from './pages/project-er-diagram/project-er-diagram.component';
-import { ProjectExportsComponent } from './pages/project-exports/project-exports.component';
-import { ProjectOverviewComponent } from './pages/project-overview/project-overview.component';
-import { ProjectRelationshipsComponent } from './pages/project-relationships/project-relationships.component';
-import { ProjectSchemaDesignerComponent } from './pages/project-schema-designer/project-schema-designer.component';
-import { SignupComponent } from './pages/signup/signup.component';
 import { authGuard } from './services/auth.guard';
 import { unsavedChangesGuard } from './services/unsaved-changes.guard';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', component: LandingComponent },
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: SignupComponent },
+  { path: '', pathMatch: 'full', loadComponent: () => import('./pages/landing/landing.component').then((module) => module.LandingComponent) },
+  { path: 'login', loadComponent: () => import('./pages/login/login.component').then((module) => module.LoginComponent) },
+  { path: 'register', loadComponent: () => import('./pages/signup/signup.component').then((module) => module.SignupComponent) },
   { path: 'signup', redirectTo: 'register', pathMatch: 'full' },
   { path: 'app', redirectTo: 'home', pathMatch: 'full' },
   { path: 'app/dashboard', redirectTo: 'home', pathMatch: 'full' },
@@ -30,27 +14,27 @@ export const routes: Routes = [
   { path: 'app/analysis', redirectTo: 'projects', pathMatch: 'full' },
   {
     path: '',
-    component: AppShellComponent,
+    loadComponent: () => import('./layout/app-shell.component').then((module) => module.AppShellComponent),
     canActivateChild: [authGuard],
     children: [
-      { path: 'home', component: HomeComponent },
-      { path: 'projects', component: ProjectsComponent },
-      { path: 'projects/new', component: ProjectCreateComponent, canDeactivate: [unsavedChangesGuard] },
-      { path: 'projects/:projectId/overview', component: ProjectOverviewComponent },
-      { path: 'projects/:projectId/datasets', component: DataSourcesComponent },
-      { path: 'projects/:projectId/upload', component: DataSourcesComponent },
+      { path: 'home', loadComponent: () => import('./pages/home/home.component').then((module) => module.HomeComponent) },
+      { path: 'projects', loadComponent: () => import('./pages/projects/projects.component').then((module) => module.ProjectsComponent) },
+      { path: 'projects/new', loadComponent: () => import('./pages/project-create/project-create.component').then((module) => module.ProjectCreateComponent), canDeactivate: [unsavedChangesGuard] },
+      { path: 'projects/:projectId/overview', loadComponent: () => import('./pages/project-overview/project-overview.component').then((module) => module.ProjectOverviewComponent) },
+      { path: 'projects/:projectId/datasets', loadComponent: () => import('./pages/data-sources/data-sources.component').then((module) => module.DataSourcesComponent) },
+      { path: 'projects/:projectId/upload', loadComponent: () => import('./pages/data-sources/data-sources.component').then((module) => module.DataSourcesComponent) },
       { path: 'projects/:projectId/analysis', loadComponent: () => import('./pages/analyze-data/analyze-data.component').then((module) => module.AnalyzeDataComponent) },
       { path: 'projects/:projectId/data-cleaning', loadComponent: () => import('./pages/data-cleaning/data-cleaning.component').then((module) => module.DataCleaningComponent) },
-      { path: 'projects/:projectId/relationships', component: ProjectRelationshipsComponent },
-      { path: 'projects/:projectId/schema-designer', component: ProjectSchemaDesignerComponent, canDeactivate: [unsavedChangesGuard] },
-      { path: 'projects/:projectId/er-diagram', component: ProjectErDiagramComponent },
-      { path: 'projects/:projectId/deployment', component: ProjectDeploymentComponent },
-      { path: 'projects/:projectId/exports', component: ProjectExportsComponent },
-      { path: 'datasets/:datasetId/preview', component: AnalysisComponent },
-      { path: 'datasets/:datasetId/explorer', component: AnalysisComponent },
+      { path: 'projects/:projectId/relationships', loadComponent: () => import('./pages/project-relationships/project-relationships.component').then((module) => module.ProjectRelationshipsComponent) },
+      { path: 'projects/:projectId/schema-designer', loadComponent: () => import('./pages/project-schema-designer/project-schema-designer.component').then((module) => module.ProjectSchemaDesignerComponent), canDeactivate: [unsavedChangesGuard] },
+      { path: 'projects/:projectId/er-diagram', loadComponent: () => import('./pages/project-er-diagram/project-er-diagram.component').then((module) => module.ProjectErDiagramComponent) },
+      { path: 'projects/:projectId/deployment', loadComponent: () => import('./pages/project-deployment/project-deployment.component').then((module) => module.ProjectDeploymentComponent) },
+      { path: 'projects/:projectId/exports', loadComponent: () => import('./pages/project-exports/project-exports.component').then((module) => module.ProjectExportsComponent) },
+      { path: 'datasets/:datasetId/preview', loadComponent: () => import('./pages/analysis/analysis.component').then((module) => module.AnalysisComponent) },
+      { path: 'datasets/:datasetId/explorer', loadComponent: () => import('./pages/analysis/analysis.component').then((module) => module.AnalysisComponent) },
       { path: 'datasets/:datasetId/analyze', loadComponent: () => import('./pages/analyze-data/analyze-data.component').then((module) => module.AnalyzeDataComponent) },
-      { path: 'datasets/:datasetId/dashboard', component: DashboardComponent },
-      { path: 'datasets/:datasetId/profile', component: DashboardComponent },
+      { path: 'datasets/:datasetId/dashboard', loadComponent: () => import('./pages/dashboard/dashboard.component').then((module) => module.DashboardComponent) },
+      { path: 'datasets/:datasetId/profile', loadComponent: () => import('./pages/dashboard/dashboard.component').then((module) => module.DashboardComponent) },
     ],
   },
   { path: '**', redirectTo: '' },
