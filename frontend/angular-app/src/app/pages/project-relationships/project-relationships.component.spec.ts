@@ -182,5 +182,7 @@ describe('ProjectRelationshipsComponent', () => {
     expect(form.querySelectorAll('select')).toHaveLength(6);
     expect(form.querySelector('[data-testid="create-manual-relationship"]')).toBeTruthy();
     expect(form.className).toContain('glass-card');
+    expect((fixture.nativeElement.querySelector('section') as HTMLElement).className).toContain('overflow-x-hidden');
+    expect((fixture.nativeElement.querySelector('[data-testid="relationship-layout"]') as HTMLElement).className).toContain('min-w-0');
   });
 });

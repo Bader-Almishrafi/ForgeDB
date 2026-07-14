@@ -1,13 +1,13 @@
-<section class="relative -m-4 flex min-h-[calc(100vh-80px)] flex-col p-4 transition-colors duration-300 md:-m-6 md:p-6 lg:-m-8 lg:p-8">
+<section class="relative -m-4 flex min-w-0 min-h-[calc(100vh-80px)] flex-col overflow-x-hidden p-4 transition-colors duration-300 md:-m-6 md:p-6 lg:-m-8 lg:p-8">
   <div class="pointer-events-none absolute left-0 top-0 h-96 w-full bg-gradient-to-br from-indigo-500/5 to-purple-500/5"></div>
 
   <div class="relative z-10 mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-    <div>
+    <div class="min-w-0">
       <p class="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad]">Projects / Relationships</p>
       <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Relationship Discovery</h1>
       <p class="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400">Review detected relationships across your project datasets. Accepted relationships feed directly into the ER Diagram, Schema Designer, and SQL exports.</p>
     </div>
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3">
       <button type="button" class="flex items-center gap-2 rounded-lg border border-slate-200/50 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm backdrop-blur transition-colors dark:border-[#30363d]/50 dark:bg-[#21262d]/80 dark:text-slate-300 dark:hover:bg-[#30363d]" (click)="loadSuggestions()" [disabled]="loading()">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
         Refresh
@@ -161,11 +161,11 @@
       </div>
     </article>
 
-    <div class="relative z-10 grid flex-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <article class="glass-card">
+    <div class="relative z-10 grid min-w-0 flex-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]" data-testid="relationship-layout">
+      <article class="glass-card min-w-0 overflow-hidden">
         <div class="mb-6 flex items-center justify-between border-b border-slate-200/50 pb-4 dark:border-[#30363d]/50">
           <div class="flex items-center gap-3">
-            <h2 class="text-xl font-bold text-slate-900 dark:text-white">Suggested Relationships</h2>
+            <h2 class="min-w-0 break-words text-xl font-bold text-slate-900 dark:text-white">Suggested Relationships</h2>
             <span class="rounded-full border border-indigo-200/50 bg-indigo-50/80 px-3 py-1 text-xs font-bold text-indigo-700 shadow-sm dark:border-indigo-500/30 dark:bg-indigo-500/20 dark:text-indigo-400">{{ pending().length }}</span>
           </div>
         </div>
@@ -176,7 +176,7 @@
               <div class="flex flex-col justify-between gap-6 lg:flex-row lg:items-start">
                 <div class="min-w-0 flex-1">
                   <div class="mb-4 flex flex-wrap items-center gap-3">
-                    <span class="rounded-lg border border-slate-200/50 bg-white/90 px-3 py-1.5 font-mono text-sm font-bold text-slate-800 shadow-sm dark:border-[#30363d]/50 dark:bg-[#21262d]/90 dark:text-white">{{ relationshipLabel(suggestion) }}</span>
+                    <span class="break-all rounded-lg border border-slate-200/50 bg-white/90 px-3 py-1.5 font-mono text-sm font-bold text-slate-800 shadow-sm dark:border-[#30363d]/50 dark:bg-[#21262d]/90 dark:text-white">{{ relationshipLabel(suggestion) }}</span>
                     <span class="rounded-full border border-indigo-100/50 bg-indigo-50/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-700 shadow-sm dark:border-indigo-500/30 dark:bg-indigo-500/20 dark:text-indigo-400">{{ suggestion.relationshipType }}</span>
                   </div>
 
@@ -269,7 +269,7 @@
         </div>
       </article>
 
-      <aside class="flex flex-col gap-6">
+      <aside class="flex min-w-0 flex-col gap-6">
         <article class="rounded-2xl border border-emerald-200/50 bg-emerald-50/40 p-5 shadow-lg backdrop-blur-xl transition-colors duration-300 dark:border-emerald-900/30 dark:bg-[#161b22]/70">
           <div class="mb-4 flex items-center justify-between border-b border-emerald-100 pb-3 dark:border-[#30363d]/50">
             <h2 class="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-300">
