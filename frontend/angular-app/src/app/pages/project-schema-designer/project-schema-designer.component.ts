@@ -263,7 +263,7 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
     this.sqlLoading.set(true);
     this.schemaApi.getSchemaSql(this.projectId).pipe(finalize(() => this.sqlLoading.set(false))).subscribe({
       next: preview => {
-        if (preview.sql !== this.liveSql()) {
+        if (this.normalizeSqlForComparison(preview.sql) !== this.normalizeSqlForComparison(this.liveSql())) {
           this.feedback.set({ kind: 'error', title: 'SQL preview mismatch', message: 'The local preview differs from the backend source of truth. Reload the schema before continuing.' });
         } else {
           this.feedback.set({ kind: 'success', title: 'SQL verified', message: 'The live preview matches the backend PostgreSQL generator.' });
@@ -271,6 +271,12 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
       },
       error: error => this.feedback.set({ kind: 'error', title: 'SQL unavailable', message: this.errorMessage(error, 'Backend SQL preview could not be loaded.') }),
     });
+  }
+
+  private normalizeSqlForComparison(sql: string): string {
+    // ASP.NET's StringBuilder.AppendLine emits the host OS newline, while the
+    // browser preview always uses LF. Line-ending differences are not SQL drift.
+    return sql.replace(/\r\n?/g, '\n').trimEnd();
   }
 
   updateTableName(tableId: number, value: string): void { this.tableNames.update(current => ({ ...current, [tableId]: value })); }

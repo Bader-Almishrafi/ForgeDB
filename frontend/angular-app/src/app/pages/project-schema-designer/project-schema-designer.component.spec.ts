@@ -112,6 +112,15 @@ describe('ProjectSchemaDesignerComponent', () => {
     expect(component.cleaning()?.schemaReady).toBe(false);
   });
 
+  it('verifies equivalent backend SQL across host line endings', () => {
+    const windowsSql = component.liveSql().replace(/\n/g, '\r\n');
+    designApi['getSchemaSql'].mockReturnValue(of({ designId: 8, revision: 2, sql: windowsSql }));
+
+    component.refreshBackendSql();
+
+    expect(component.feedback()?.title).toBe('SQL verified');
+  });
+
   it('selects generated tables', () => {
     component.selectTable(2);
     expect(component.selectedTable()?.name).toBe('orders');
