@@ -132,9 +132,12 @@ describe('DataCleaningComponent', () => {
   });
 
   it('loads history and exposes persisted undo and restore actions', async () => {
+    const dialog = component.confirmDialog()?.nativeElement;
     component.confirmAction.set({ kind: 'undo' });
     await component.confirmUndoOrRestore();
     expect(api['undoLatestCleaning']).toHaveBeenCalledWith(10);
+    expect(dialog?.close).toHaveBeenCalled();
+    expect(component.confirmAction()).toBeNull();
     const version = { id: 1, datasetId: 1, parentVersionId: null, versionNumber: 1, isRawOriginal: true, isActive: false, rowCount: 10, columnCount: 3, operationSummary: 'Raw', createdAt: '', analyzedAt: '', createdBy: 'Owner' };
     component.confirmAction.set({ kind: 'restore', datasetId: 1, version });
     await component.confirmUndoOrRestore();

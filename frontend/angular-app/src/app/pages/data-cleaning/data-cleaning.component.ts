@@ -334,6 +334,10 @@ export class DataCleaningComponent implements OnInit {
 
   closeConfirmDialog(): void {
     if (this.applyLoading()) return;
+    this.dismissConfirmDialog();
+  }
+
+  private dismissConfirmDialog(): void {
     this.confirmDialog()?.nativeElement.close();
     this.confirmAction.set(null);
   }
@@ -346,7 +350,9 @@ export class DataCleaningComponent implements OnInit {
       const result = action.kind === 'undo'
         ? await firstValueFrom(this.api.undoLatestCleaning(this.projectId))
         : await firstValueFrom(this.api.restoreDatasetVersion(this.projectId, action.datasetId, action.version.id));
-      this.closeConfirmDialog();
+      // The public close handler intentionally ignores input while a request is running.
+      // A successful request still has to dismiss its own modal before refreshing state.
+      this.dismissConfirmDialog();
       this.handleApplyResult(result);
       await this.reloadWorkspace();
     } catch (error: unknown) {
