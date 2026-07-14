@@ -28,26 +28,26 @@
   @if (loading()) {
     <article class="card p-6 text-sm text-slate-500">Loading export package...</article>
   } @else if (exportPackage(); as data) {
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <article class="metric-card">
+    <div class="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <article class="metric-card min-w-0">
         <p class="section-title">Status</p>
         <p class="mt-2 text-2xl font-semibold text-slate-950">{{ data.status }}</p>
       </article>
-      <article class="metric-card">
+      <article class="metric-card min-w-0">
         <p class="section-title">Generated</p>
         <p class="mt-2 text-lg font-semibold text-slate-950">{{ data.generatedAt | date:'medium' }}</p>
       </article>
-      <article class="metric-card">
+      <article class="metric-card min-w-0">
         <p class="section-title">Artifacts</p>
         <p class="mt-2 text-3xl font-semibold text-slate-950">{{ artifactCount(data) }}</p>
       </article>
-      <article class="metric-card">
+      <article class="metric-card min-w-0">
         <p class="section-title">Project</p>
         <p class="mt-2 truncate text-2xl font-semibold text-slate-950">{{ data.projectName }}</p>
       </article>
     </div>
 
-    <div class="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+    <div class="grid min-w-0 gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
       <aside class="space-y-5">
         <article class="workspace-panel p-5">
           <h2 class="text-lg font-semibold text-slate-950">Package Artifacts</h2>
@@ -107,7 +107,7 @@
         </article>
       </aside>
 
-      <article class="workspace-panel overflow-hidden">
+      <article class="workspace-panel min-w-0 overflow-hidden">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
             <h2 class="text-lg font-semibold text-slate-950">{{ previewFileName() }}</h2>
@@ -127,7 +127,7 @@
           <button type="button" class="px-3 py-2" [class.bg-slate-950]="activePreview() === 'relationships'" [class.text-white]="activePreview() === 'relationships'" (click)="activePreview.set('relationships')">Relations</button>
           <button type="button" class="px-3 py-2" [class.bg-slate-950]="activePreview() === 'quality'" [class.text-white]="activePreview() === 'quality'" (click)="activePreview.set('quality')">Quality</button>
         </div>
-        <pre class="code-preview min-h-[620px]"><code>{{ previewText(data) }}</code></pre>
+        <pre class="code-preview min-h-[620px] w-full max-w-full"><code>{{ previewText(data) }}</code></pre>
       </article>
     </div>
   } @else {
