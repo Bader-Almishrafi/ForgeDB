@@ -23,6 +23,7 @@ export class ProjectDeploymentComponent implements OnInit {
   readonly deploying = signal(false);
   readonly confirmingDeploy = signal(false);
   readonly copied = signal(false);
+  readonly downloadingFile = signal<string | null>(null);
 
   projectId = 0;
   errorMessage = '';
@@ -124,6 +125,22 @@ export class ProjectDeploymentComponent implements OnInit {
 
   downloadSql(): void {
     this.fileDownload.downloadText(`${this.design()?.projectId ?? 'project'}-deployment.sql`, this.sqlPreview(), 'text/plain');
+  }
+
+  downloadDeploymentFile(fileName: 'schema.sql' | 'seed.sql' | 'deploy.sql'): void {
+    const deployment = this.latestDeployment();
+    if (!deployment || this.downloadingFile()) return;
+
+    this.errorMessage = '';
+    this.downloadingFile.set(fileName);
+    this.designApi.downloadDeploymentSql(this.projectId, deployment.deploymentId, fileName)
+      .pipe(finalize(() => this.downloadingFile.set(null)))
+      .subscribe({
+        next: (content) => this.fileDownload.downloadText(fileName, content, 'application/sql;charset=utf-8'),
+        error: (error: unknown) => {
+          this.errorMessage = this.errorText(error, `Unable to download ${fileName}.`);
+        },
+      });
   }
 
   rowCountEntries(deployment: DeploymentResponse): Array<{ table: string; count: number }> {

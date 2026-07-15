@@ -206,6 +206,13 @@ export class DesignApiService {
     return this.http.get<DeploymentResponse>(`${this.baseUrl}/api/projects/${projectId}/deployments/latest`);
   }
 
+  downloadDeploymentSql(projectId: number, deploymentId: number, fileName: 'schema.sql' | 'seed.sql' | 'deploy.sql'): Observable<string> {
+    return this.http.get(
+      `${this.baseUrl}/api/projects/${projectId}/deployments/${deploymentId}/${fileName}`,
+      { responseType: 'text' },
+    );
+  }
+
   private ifMatch(revision: number): HttpHeaders {
     return new HttpHeaders({ 'If-Match': String(revision) });
   }

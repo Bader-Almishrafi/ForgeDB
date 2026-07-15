@@ -84,11 +84,13 @@ public class DeploymentPlanBuilderTests
     }
 
     [Fact]
-    public void ConvertValue_ReturnsDbNull_ForNullOrEmptyOrUnparseable()
+    public void ConvertValue_PreservesEmptyText_AndRejectsInvalidTypedValues()
     {
         Assert.Equal(DBNull.Value, DeploymentPlanBuilder.ConvertValue(null, "integer"));
         Assert.Equal(DBNull.Value, DeploymentPlanBuilder.ConvertValue(JsonSerializer.SerializeToElement(""), "integer"));
-        Assert.Equal(DBNull.Value, DeploymentPlanBuilder.ConvertValue(JsonSerializer.SerializeToElement("not-a-number"), "integer"));
+        Assert.Equal(string.Empty, DeploymentPlanBuilder.ConvertValue(JsonSerializer.SerializeToElement(""), "text"));
+        Assert.Throws<FormatException>(() =>
+            DeploymentPlanBuilder.ConvertValue(JsonSerializer.SerializeToElement("not-a-number"), "integer"));
     }
 
     [Fact]

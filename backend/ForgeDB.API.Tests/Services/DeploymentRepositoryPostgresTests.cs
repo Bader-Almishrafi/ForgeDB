@@ -56,7 +56,7 @@ public class DeploymentRepositoryPostgresTests
 
         try
         {
-            var counts = await repository.ExecuteDeploymentTransactionAsync(schema, ddl, successfulPlans);
+            var counts = await repository.ExecuteDeploymentTransactionAsync(schema, ddl, successfulPlans, string.Empty);
 
             Assert.Equal(2, counts["parent_rows"]);
             Assert.Equal(2, counts["child_rows"]);
@@ -81,7 +81,7 @@ public class DeploymentRepositoryPostgresTests
             };
 
             var failure = await Assert.ThrowsAsync<PostgresException>(() =>
-                repository.ExecuteDeploymentTransactionAsync(schema, ddl, failingPlans));
+                repository.ExecuteDeploymentTransactionAsync(schema, ddl, failingPlans, string.Empty));
             Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, failure.SqlState);
 
             // DROP/CREATE and all new inserts were in the failed transaction, so the committed

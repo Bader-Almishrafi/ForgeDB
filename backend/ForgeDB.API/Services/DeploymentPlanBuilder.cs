@@ -96,66 +96,82 @@ public static class DeploymentPlanBuilder
             _ => raw.ToString()
         };
 
-        if (string.IsNullOrWhiteSpace(text))
+        if (text is null)
         {
             return DBNull.Value;
         }
 
         var type = sqlType.ToLowerInvariant();
-        SchemaColumnRules.TryNormalizeSqlType(sqlType, out var normalizedType);
+        if (!SchemaColumnRules.TryNormalizeSqlType(sqlType, out var normalizedType)
+            && !TryNormalizeLegacyNumericType(sqlType, out normalizedType))
+        {
+            throw new FormatException($"Unsupported PostgreSQL type '{sqlType}'.");
+        }
+
+        // Empty text is data, not NULL. For typed non-text cells, a blank finalized value is the
+        // cleaning snapshot's representation of a missing value.
+        if (normalizedType == "TEXT" || normalizedType.StartsWith("VARCHAR(", StringComparison.Ordinal))
+        {
+            return text;
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return DBNull.Value;
+        }
 
         if (type.Contains("bool"))
         {
-            return bool.TryParse(text, out var boolValue) ? boolValue : DBNull.Value;
+            return bool.TryParse(text, out var boolValue) ? boolValue : InvalidValue(sqlType);
         }
 
         if (normalizedType == "SMALLINT")
         {
             return short.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var shortValue)
                 ? shortValue
-                : DBNull.Value;
+                : InvalidValue(sqlType);
         }
 
         if (normalizedType == "INTEGER")
         {
             return int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue)
                 ? intValue
-                : DBNull.Value;
+                : InvalidValue(sqlType);
         }
 
         if (normalizedType == "BIGINT" || type.Contains("int"))
         {
             return long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var longValue)
                 ? longValue
-                : DBNull.Value;
+                : InvalidValue(sqlType);
         }
 
         if (normalizedType == "REAL")
         {
             return float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var floatValue)
                 ? floatValue
-                : DBNull.Value;
+                : InvalidValue(sqlType);
         }
 
         if (normalizedType == "DOUBLE PRECISION" || type.Contains("double") || type.Contains("float"))
         {
             return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var doubleValue)
                 ? doubleValue
-                : DBNull.Value;
+                : InvalidValue(sqlType);
         }
 
         if (normalizedType is "NUMERIC" or "DECIMAL" || type.Contains("numeric") || type.Contains("decimal"))
         {
             return decimal.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var decimalValue)
                 ? decimalValue
-                : DBNull.Value;
+                : InvalidValue(sqlType);
         }
 
         if (normalizedType == "DATE")
         {
             return DateOnly.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateValue)
                 ? dateValue
-                : DBNull.Value;
+                : InvalidValue(sqlType);
         }
 
         if (normalizedType is "TIMESTAMP" or "TIMESTAMPTZ" || type.Contains("timestamp"))
@@ -165,7 +181,7 @@ public static class DeploymentPlanBuilder
                 : DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal;
             if (!DateTime.TryParse(text, CultureInfo.InvariantCulture, styles, out var timestampValue))
             {
-                return DBNull.Value;
+                return InvalidValue(sqlType);
             }
 
             return normalizedType == "TIMESTAMP"
@@ -175,10 +191,27 @@ public static class DeploymentPlanBuilder
 
         if (normalizedType == "UUID")
         {
-            return Guid.TryParse(text, out var guidValue) ? guidValue : DBNull.Value;
+            return Guid.TryParse(text, out var guidValue) ? guidValue : InvalidValue(sqlType);
         }
 
         return text;
+    }
+
+    private static object InvalidValue(string sqlType) =>
+        throw new FormatException($"A finalized value cannot be converted to PostgreSQL type '{sqlType}'.");
+
+    private static bool TryNormalizeLegacyNumericType(string sqlType, out string normalizedType)
+    {
+        var compact = sqlType.Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant();
+        if ((compact.StartsWith("NUMERIC(", StringComparison.Ordinal) || compact.StartsWith("DECIMAL(", StringComparison.Ordinal))
+            && compact.EndsWith(')'))
+        {
+            normalizedType = compact.StartsWith("NUMERIC", StringComparison.Ordinal) ? "NUMERIC" : "DECIMAL";
+            return true;
+        }
+
+        normalizedType = string.Empty;
+        return false;
     }
 
     /// <summary>Creates an explicitly typed PostgreSQL null parameter. Npgsql cannot infer a
@@ -213,7 +246,8 @@ public static class DeploymentPlanBuilder
 
     public static NpgsqlDbType ResolveNpgsqlDbType(string sqlType)
     {
-        if (!SchemaColumnRules.TryNormalizeSqlType(sqlType, out var normalized))
+        if (!SchemaColumnRules.TryNormalizeSqlType(sqlType, out var normalized)
+            && !TryNormalizeLegacyNumericType(sqlType, out normalized))
         {
             throw new ArgumentException($"Unsupported PostgreSQL type '{sqlType}'.", nameof(sqlType));
         }

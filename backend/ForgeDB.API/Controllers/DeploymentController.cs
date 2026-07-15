@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
 using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services.Exceptions;
@@ -70,6 +71,10 @@ public class DeploymentController : ControllerBase
             await EnsureProjectOwnedAsync(projectId, cancellationToken);
             return Ok(await _deploymentService.GetHistoryAsync(projectId, cancellationToken));
         }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
         catch (UnauthorizedAccessException exception)
         {
             return StatusCode(403, new { message = exception.Message });
@@ -84,6 +89,70 @@ public class DeploymentController : ControllerBase
             await EnsureProjectOwnedAsync(projectId, cancellationToken);
             var latest = await _deploymentService.GetLatestAsync(projectId, cancellationToken);
             return latest is null ? NotFound(new { message = "No deployment has been run for this project yet." }) : Ok(latest);
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
+        }
+    }
+
+    [HttpGet("{deploymentId:int}")]
+    public async Task<ActionResult<DeploymentResponseDto>> GetById(
+        int projectId,
+        int deploymentId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await EnsureProjectOwnedAsync(projectId, cancellationToken);
+            var deployment = await _deploymentService.GetAsync(projectId, deploymentId, cancellationToken);
+            return deployment is null
+                ? NotFound(new { message = "Deployment not found." })
+                : Ok(deployment);
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
+        }
+    }
+
+    [HttpGet("{deploymentId:int}/schema.sql")]
+    public Task<IActionResult> DownloadSchemaSql(int projectId, int deploymentId, CancellationToken cancellationToken) =>
+        DownloadSqlAsync(projectId, deploymentId, "schema.sql", cancellationToken);
+
+    [HttpGet("{deploymentId:int}/seed.sql")]
+    public Task<IActionResult> DownloadSeedSql(int projectId, int deploymentId, CancellationToken cancellationToken) =>
+        DownloadSqlAsync(projectId, deploymentId, "seed.sql", cancellationToken);
+
+    [HttpGet("{deploymentId:int}/deploy.sql")]
+    public Task<IActionResult> DownloadDeploySql(int projectId, int deploymentId, CancellationToken cancellationToken) =>
+        DownloadSqlAsync(projectId, deploymentId, "deploy.sql", cancellationToken);
+
+    private async Task<IActionResult> DownloadSqlAsync(
+        int projectId,
+        int deploymentId,
+        string fileName,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await EnsureProjectOwnedAsync(projectId, cancellationToken);
+            var artifact = await _deploymentService.GetSqlFileAsync(projectId, deploymentId, fileName, cancellationToken);
+            return artifact is null
+                ? NotFound(new { message = $"{fileName} is not available for this deployment." })
+                : File(Encoding.UTF8.GetBytes(artifact.Content), "application/sql; charset=utf-8", artifact.FileName);
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
         }
         catch (UnauthorizedAccessException exception)
         {
@@ -104,7 +173,12 @@ public class DeploymentController : ControllerBase
     {
         if (projectId <= 0) throw new ArgumentException("ProjectId must be greater than zero.");
         var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken);
-        if (project is not null && project.UserId != GetUserId())
+        if (project is null)
+        {
+            throw new KeyNotFoundException("Project not found.");
+        }
+
+        if (project.UserId != GetUserId())
         {
             throw new UnauthorizedAccessException("The project does not belong to the authenticated user.");
         }

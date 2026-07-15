@@ -26,18 +26,26 @@ public class DeploymentRepository : IDeploymentRepository
         return deployment;
     }
 
-    public async Task MarkSucceededAsync(int deploymentId, Dictionary<string, int> insertedRowCounts, List<string> createdTables, CancellationToken cancellationToken = default)
+    public async Task MarkSucceededAsync(
+        int deploymentId,
+        Dictionary<string, int> insertedRowCounts,
+        List<string> createdTables,
+        int relationshipsCreated,
+        CancellationToken cancellationToken = default)
     {
         var deployment = await _context.Deployments.FirstAsync(item => item.Id == deploymentId, cancellationToken);
-        deployment.Status = DeploymentStatus.Succeeded;
+        deployment.Status = DeploymentStatus.Completed;
         deployment.CompletedAt = DateTime.UtcNow;
         deployment.CreatedTablesJson = System.Text.Json.JsonSerializer.Serialize(createdTables);
         deployment.InsertedRowCountsJson = System.Text.Json.JsonSerializer.Serialize(insertedRowCounts);
+        deployment.TablesCreated = createdTables.Count;
         deployment.TotalRowsInserted = insertedRowCounts.Values.Sum();
+        deployment.RelationshipsCreated = relationshipsCreated;
+        deployment.FailedRows = 0;
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task MarkFailedAsync(int deploymentId, string errorMessage, CancellationToken cancellationToken = default)
+    public async Task MarkFailedAsync(int deploymentId, string errorMessage, int failedRows, CancellationToken cancellationToken = default)
     {
         // Runs after the deployment transaction has already been rolled back, and must succeed
         // independently of it so the failure is never silently lost.
@@ -45,6 +53,10 @@ public class DeploymentRepository : IDeploymentRepository
         deployment.Status = DeploymentStatus.Failed;
         deployment.CompletedAt = DateTime.UtcNow;
         deployment.ErrorMessage = errorMessage;
+        deployment.TablesCreated = 0;
+        deployment.TotalRowsInserted = 0;
+        deployment.RelationshipsCreated = 0;
+        deployment.FailedRows = failedRows;
         await _context.SaveChangesAsync(cancellationToken);
     }
 
@@ -60,10 +72,15 @@ public class DeploymentRepository : IDeploymentRepository
             .OrderByDescending(deployment => deployment.StartedAt)
             .FirstOrDefaultAsync(cancellationToken);
 
+    public Task<Deployment?> GetAsync(int projectId, int deploymentId, CancellationToken cancellationToken = default) =>
+        _context.Deployments.AsNoTracking()
+            .FirstOrDefaultAsync(deployment => deployment.ProjectId == projectId && deployment.Id == deploymentId, cancellationToken);
+
     public async Task<Dictionary<string, int>> ExecuteDeploymentTransactionAsync(
         string schemaName,
-        string ddlSql,
+        string preSeedDdlSql,
         IReadOnlyList<TableInsertPlan> insertPlans,
+        string postSeedDdlSql,
         CancellationToken cancellationToken = default)
     {
         var quotedSchema = SqlIdentifiers.Quote(schemaName);
@@ -76,12 +93,12 @@ public class DeploymentRepository : IDeploymentRepository
         // concatenation (not string interpolation) since ExecuteSqlRaw's analyzer cannot tell an
         // already-quoted identifier apart from an unsanitized value spliced into the command text.
         var createSchemaSql = "DROP SCHEMA IF EXISTS " + quotedSchema + " CASCADE; CREATE SCHEMA "
-            + quotedSchema + "; SET search_path TO " + quotedSchema + ", public;";
+            + quotedSchema + "; SET LOCAL search_path TO " + quotedSchema + ", public;";
         await _context.Database.ExecuteSqlRawAsync(createSchemaSql, cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(ddlSql))
+        if (!string.IsNullOrWhiteSpace(preSeedDdlSql))
         {
-            await _context.Database.ExecuteSqlRawAsync(ddlSql, cancellationToken);
+            await _context.Database.ExecuteSqlRawAsync(preSeedDdlSql, cancellationToken);
         }
 
         foreach (var (plan, tableIndex) in insertPlans.Select((value, index) => (value, index)))
@@ -106,6 +123,20 @@ public class DeploymentRepository : IDeploymentRepository
             }
 
             rowCounts[plan.TableName] = inserted;
+
+            foreach (var identityColumn in plan.IdentityColumnNames)
+            {
+                var resetSequenceSql = PostgreSqlDeploymentSqlGenerator.BuildIdentitySequenceSql(
+                    schemaName,
+                    plan.TableName,
+                    identityColumn);
+                await _context.Database.ExecuteSqlRawAsync(resetSequenceSql, cancellationToken);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(postSeedDdlSql))
+        {
+            await _context.Database.ExecuteSqlRawAsync(postSeedDdlSql, cancellationToken);
         }
 
         await transaction.CommitAsync(cancellationToken);

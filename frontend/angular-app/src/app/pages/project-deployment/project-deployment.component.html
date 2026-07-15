@@ -60,10 +60,16 @@
         </article>
 
         @if (latestDeployment(); as latest) {
-          @if (latest.status === 'Succeeded') {
+          @if (latest.status === 'Completed' || latest.status === 'Succeeded') {
             <article class="rounded-2xl border border-emerald-200/50 bg-emerald-50/80 p-5 shadow-sm backdrop-blur dark:border-emerald-900/30 dark:bg-emerald-900/10">
-              <h2 class="font-bold text-emerald-900 dark:text-emerald-400">Deployment Succeeded</h2>
-              <p class="mt-1 text-sm font-medium text-emerald-700 dark:text-emerald-500">Schema "{{ latest.schemaName }}" · {{ latest.totalRowsInserted | number }} rows inserted</p>
+              <h2 class="font-bold text-emerald-900 dark:text-emerald-400">Deployment Completed</h2>
+              <p class="mt-1 text-sm font-medium text-emerald-700 dark:text-emerald-500">Schema "{{ latest.schemaName }}" was created from the approved schema and finalized cleaned data.</p>
+              <dl class="mt-4 grid grid-cols-2 gap-2 text-xs">
+                <div class="rounded-lg bg-white/60 px-3 py-2 dark:bg-black/20"><dt class="text-emerald-700 dark:text-emerald-500">Tables created</dt><dd class="mt-1 text-lg font-bold text-emerald-950 dark:text-emerald-300">{{ latest.tablesCreated | number }}</dd></div>
+                <div class="rounded-lg bg-white/60 px-3 py-2 dark:bg-black/20"><dt class="text-emerald-700 dark:text-emerald-500">Rows seeded</dt><dd class="mt-1 text-lg font-bold text-emerald-950 dark:text-emerald-300">{{ latest.rowsSeeded | number }}</dd></div>
+                <div class="rounded-lg bg-white/60 px-3 py-2 dark:bg-black/20"><dt class="text-emerald-700 dark:text-emerald-500">Relationships</dt><dd class="mt-1 text-lg font-bold text-emerald-950 dark:text-emerald-300">{{ latest.relationshipsCreated | number }}</dd></div>
+                <div class="rounded-lg bg-white/60 px-3 py-2 dark:bg-black/20"><dt class="text-emerald-700 dark:text-emerald-500">Failed rows</dt><dd class="mt-1 text-lg font-bold text-emerald-950 dark:text-emerald-300">{{ latest.failedRows | number }}</dd></div>
+              </dl>
               <div class="mt-4 space-y-1.5">
                 @for (entry of rowCountEntries(latest); track entry.table) {
                   <div class="flex items-center justify-between rounded-lg bg-white/60 px-3 py-2 text-xs dark:bg-black/20">
@@ -72,6 +78,14 @@
                   </div>
                 }
               </div>
+              <div class="mt-4 grid gap-2 sm:grid-cols-3">
+                <button type="button" class="btn-secondary !px-3 !py-2 text-xs" (click)="downloadDeploymentFile('schema.sql')" [disabled]="!latest.schemaSqlAvailable || !!downloadingFile()">Schema SQL</button>
+                <button type="button" class="btn-secondary !px-3 !py-2 text-xs" (click)="downloadDeploymentFile('seed.sql')" [disabled]="!latest.seedSqlAvailable || !!downloadingFile()">Seed SQL</button>
+                <button type="button" class="btn-secondary !px-3 !py-2 text-xs" (click)="downloadDeploymentFile('deploy.sql')" [disabled]="!latest.deploySqlAvailable || !!downloadingFile()">Complete SQL</button>
+              </div>
+              @if (downloadingFile()) {
+                <p class="mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400">Downloading {{ downloadingFile() }}...</p>
+              }
               <p class="mt-3 text-xs text-emerald-700/80 dark:text-emerald-500/70">Completed {{ latest.completedAt | date:'medium' }}</p>
             </article>
           } @else if (latest.status === 'Failed') {
@@ -95,7 +109,7 @@
               @for (item of history(); track item.id) {
                 <div class="flex items-center justify-between rounded-lg border border-slate-200/50 bg-white/50 px-3 py-2 text-xs dark:border-[#30363d]/50 dark:bg-[#0d1117]/50">
                   <span class="font-semibold text-slate-700 dark:text-slate-300">{{ item.startedAt | date:'short' }}</span>
-                  <span [class]="item.status === 'Succeeded' ? 'badge-success' : item.status === 'Failed' ? 'badge-danger' : 'badge-neutral'">{{ item.status }}</span>
+                  <span [class]="item.status === 'Completed' || item.status === 'Succeeded' ? 'badge-success' : item.status === 'Failed' ? 'badge-danger' : 'badge-neutral'">{{ item.status }}</span>
                 </div>
               }
             </div>

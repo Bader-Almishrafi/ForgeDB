@@ -3,7 +3,8 @@ namespace ForgeDB.API.Models.Entities;
 public static class DeploymentStatus
 {
     public const string Running = "Running";
-    public const string Succeeded = "Succeeded";
+    public const string Completed = "Completed";
+    public const string Succeeded = Completed;
     public const string Failed = "Failed";
 }
 
@@ -15,10 +16,15 @@ public class Deployment
     public string SchemaName { get; set; } = string.Empty;
     public string Status { get; set; } = DeploymentStatus.Running;
     public string GeneratedSql { get; set; } = string.Empty;
+    public string SeedSql { get; set; } = string.Empty;
+    public string DeploySql { get; set; } = string.Empty;
     public string? ErrorMessage { get; set; }
     public string CreatedTablesJson { get; set; } = "[]";
     public string InsertedRowCountsJson { get; set; } = "{}";
+    public int TablesCreated { get; set; }
     public int TotalRowsInserted { get; set; }
+    public int RelationshipsCreated { get; set; }
+    public int FailedRows { get; set; }
     public int TriggeredByUserId { get; set; }
     public DateTime StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }

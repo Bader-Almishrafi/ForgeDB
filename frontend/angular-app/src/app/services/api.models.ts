@@ -611,16 +611,24 @@ export interface SchemaSqlPreview {
 }
 
 export interface DeploymentResponse {
+  deploymentId: number;
   id: number;
   projectId: number;
   designRevision: number;
   schemaName: string;
-  status: 'Running' | 'Succeeded' | 'Failed' | string;
+  status: 'Running' | 'Completed' | 'Succeeded' | 'Failed' | string;
   generatedSql: string;
   errorMessage?: string | null;
   createdTables: string[];
   insertedRowCounts: Record<string, number>;
+  tablesCreated: number;
+  rowsSeeded: number;
   totalRowsInserted: number;
+  relationshipsCreated: number;
+  failedRows: number;
+  schemaSqlAvailable: boolean;
+  seedSqlAvailable: boolean;
+  deploySqlAvailable: boolean;
   startedAt: string;
   completedAt?: string | null;
 }

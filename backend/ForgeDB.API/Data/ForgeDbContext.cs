@@ -263,12 +263,12 @@ public class ForgeDbContext : DbContext
             entity.HasKey(relationship => relationship.Id);
             entity.HasIndex(relationship => relationship.DesignModelId);
             entity.HasIndex(relationship => new
-                {
-                    relationship.DesignModelId,
-                    relationship.FromColumnId,
-                    relationship.ToColumnId,
-                    relationship.Cardinality
-                })
+            {
+                relationship.DesignModelId,
+                relationship.FromColumnId,
+                relationship.ToColumnId,
+                relationship.Cardinality
+            })
                 .HasDatabaseName(Services.Validation.DesignRelationshipRules.UniqueIndexName)
                 .IsUnique();
             entity.HasIndex(relationship => relationship.FromColumnId);
@@ -333,6 +333,9 @@ public class ForgeDbContext : DbContext
             entity.HasKey(deployment => deployment.Id);
             entity.Property(deployment => deployment.CreatedTablesJson).HasColumnType("jsonb");
             entity.Property(deployment => deployment.InsertedRowCountsJson).HasColumnType("jsonb");
+            entity.Property(deployment => deployment.GeneratedSql).HasColumnType("text");
+            entity.Property(deployment => deployment.SeedSql).HasColumnType("text");
+            entity.Property(deployment => deployment.DeploySql).HasColumnType("text");
             entity.HasIndex(deployment => new { deployment.ProjectId, deployment.StartedAt });
 
             entity.HasOne(deployment => deployment.Project)
