@@ -1,69 +1,159 @@
-<div class="min-h-screen bg-[#f7f9fc] text-slate-900 flex flex-col justify-between">
+﻿<div class="min-h-screen bg-[#f8fafc] text-[#1c2434] dark:bg-[#1a222c] dark:text-[#aeb7c0] flex flex-col font-sans transition-colors duration-500 overflow-x-hidden">
 
-	<header class="flex h-[72px] items-center justify-between border-b border-slate-200/80 bg-white px-6 lg:px-12">
-		<div class="flex items-center gap-3">
-			<div
-				class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg">
-				<svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-white" stroke-width="1.8">
-					<ellipse cx="12" cy="5.5" rx="7" ry="3"></ellipse>
-					<path d="M5 5.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6M5 11.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6"></path>
-				</svg>
-			</div>
-			<span class="text-xl font-bold tracking-tight text-[#0d213f]">ForgeDB</span>
-		</div>
+  <!-- Background Orbs -->
+  <div class="fixed top-[-15%] left-[-10%] w-[600px] h-[600px] rounded-full bg-[#3c50e0]/10 dark:bg-[#3c50e0]/5 blur-[120px] pointer-events-none transition-all duration-500"></div>
+  <div class="fixed top-[20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-purple-500/10 dark:bg-purple-500/5 blur-[150px] pointer-events-none transition-all duration-500"></div>
 
-		<div class="flex items-center gap-4">
-			<a routerLink="/login" class="text-sm font-medium text-slate-600 hover:text-[#4f46e5] transition">Sign
-				In</a>
-			<a routerLink="/register"
-				class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-700 transition">Get
-				Started</a>
-		</div>
-	</header>
+  <!-- HEADER -->
+  <header class="sticky top-0 w-full flex h-[80px] items-center justify-between border-b border-[#e2e8f0]/50 dark:border-[#2e3a47]/50 bg-white/80 dark:bg-[#1a222c]/80 backdrop-blur-xl px-6 lg:px-12 z-50 transition-colors duration-500">
+    <div class="flex items-center gap-3">
+      <div class="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#3c50e0] to-purple-600 shadow-lg shadow-indigo-500/25">
+        <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-white" stroke-width="2">
+          <ellipse cx="12" cy="5.5" rx="7" ry="3"></ellipse>
+          <path d="M5 5.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6M5 11.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6"></path>
+        </svg>
+      </div>
+      <span class="text-2xl font-black tracking-tight text-[#1c2434] dark:text-white transition-colors duration-500">ForgeDB</span>
+    </div>
 
-	<main class="flex-1 flex flex-col items-center justify-center text-center px-6 py-16 lg:py-24">
-		<div class="max-w-3xl mx-auto space-y-6">
-			<h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#0d213f] tracking-tight leading-none">
-				Forge and Optimize Your <span
-					class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">Databases</span>
-				Effortlessly
-			</h1>
-			<p class="text-lg sm:text-xl text-slate-500 max-w-2xl mx-auto">
-				Analyze schemas, manage relationships, and review your data structures in one comprehensive dashboard
-				designed for developers.
-			</p>
-			<div class="flex flex-wrap justify-center gap-4 pt-4">
-				<a routerLink="/register"
-					class="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3 text-base font-semibold text-white shadow-xl shadow-indigo-950/10 hover:opacity-95 transition">
-					Start for Free
-				</a>
+    <div class="flex items-center gap-6">
+      <a routerLink="/login" class="text-sm font-semibold text-[#64748b] dark:text-[#aeb7c0] hover:text-[#3c50e0] dark:hover:text-white transition-colors">Sign In</a>
+      
+      <!-- Dark Mode Toggle Button -->
+      <button type="button" (click)="toggleDarkMode()" class="text-[#64748b] dark:text-[#aeb7c0] hover:text-[#3c50e0] dark:hover:text-white transition-colors">
+        @if (darkMode()) {
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        } @else {
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        }
+      </button>
 
-			</div>
-		</div>
+      <a routerLink="/register" class="rounded-full bg-[#3c50e0] px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#3c50e0]/30 hover:bg-[#2d3da9] hover:shadow-[#3c50e0]/40 transition-all transform hover:-translate-y-0.5">
+        Get Started
+      </a>
+    </div>
+  </header>
 
-		<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-5xl mx-auto mt-16 lg:mt-24 w-full">
-			<div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm text-left">
-				<div class="text-indigo-600 font-bold text-lg mb-2">01. Analysis</div>
-				<h3 class="text-base font-bold text-[#0d213f] mb-1">Schema Review</h3>
-				<p class="text-sm text-slate-500">Inspect and evaluate database structures for maximum optimization.</p>
-			</div>
-			<div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm text-left">
-				<div class="text-indigo-600 font-bold text-lg mb-2">02. Relations</div>
-				<h3 class="text-base font-bold text-[#0d213f] mb-1">Relationship Mapping</h3>
-				<p class="text-sm text-slate-500">Visualize and structure foreign keys and table connections smoothly.
-				</p>
-			</div>
-			<div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm text-left">
-				<div class="text-indigo-600 font-bold text-lg mb-2">03. Deploy</div>
-				<h3 class="text-base font-bold text-[#0d213f] mb-1">Easy Deployment</h3>
-				<p class="text-sm text-slate-500">Generate optimized SQL scripts and push to production with confidence.
-				</p>
-			</div>
-		</div>
-	</main>
+  <!-- HERO SECTION -->
+  <main class="flex-1 flex flex-col items-center pt-24 pb-20 px-6 lg:px-12 relative z-10">
+    
+    <div class="max-w-4xl mx-auto text-center space-y-8">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-xs font-bold text-[#3c50e0] dark:text-indigo-400 uppercase tracking-widest mb-4 transition-colors duration-500">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3c50e0] opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-[#3c50e0]"></span>
+        </span>
+        Database Intelligence Platform
+      </div>
 
-	<footer class="border-t border-slate-200/60 bg-white py-6 text-center text-sm text-slate-400">
-		&copy; 2026 ForgeDB. All rights reserved.
-	</footer>
+      <h1 class="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-[#1c2434] dark:text-white tracking-tight leading-[1.15] transition-colors duration-500">
+        Forge Your
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#3c50e0] to-purple-500 drop-shadow-sm">Databases</span>
+        Instantly
+      </h1>
+      
+      <p class="text-lg sm:text-xl text-[#64748b] dark:text-[#8a99ad] max-w-2xl mx-auto leading-relaxed transition-colors duration-500">
+        Upload your raw datasets, and let ForgeDB automatically profile columns, discover foreign key relationships,
+        generate interactive ER diagrams, and export clean SQL schemas.
+      </p>
+      
+      <div class="flex flex-wrap justify-center gap-4 pt-6">
+        <a routerLink="/register" class="rounded-full bg-[#3c50e0] px-8 py-3.5 text-base font-semibold text-white shadow-xl shadow-[#3c50e0]/30 hover:bg-[#2d3da9] hover:shadow-[#3c50e0]/40 transition-all transform hover:-translate-y-1">
+          Start for Free
+        </a>
+      </div>
+    </div>
+
+    <!-- SHOWCASE MOCKUPS -->
+    <div class="w-full max-w-6xl mx-auto mt-24 relative perspective-1000">
+      
+      <!-- Primary Mockup (Dashboard) -->
+      <div class="relative z-20 w-[90%] md:w-[80%] mx-auto transform hover:scale-[1.02] transition-transform duration-700 ease-out">
+        <div class="rounded-2xl border border-[#e2e8f0]/80 dark:border-[#2e3a47]/80 bg-white/50 dark:bg-[#1c2434]/50 backdrop-blur-sm p-2 shadow-2xl shadow-indigo-900/10 dark:shadow-black/40">
+          <div class="rounded-xl overflow-hidden border border-[#e2e8f0] dark:border-[#2e3a47] bg-[#f8fafc] dark:bg-[#24303f]">
+            <div class="h-10 bg-[#f1f5f9] dark:bg-[#1a222c] border-b border-[#e2e8f0] dark:border-[#2e3a47] flex items-center px-4 gap-2 transition-colors duration-500">
+              <div class="w-3 h-3 rounded-full bg-rose-400"></div>
+              <div class="w-3 h-3 rounded-full bg-amber-400"></div>
+              <div class="w-3 h-3 rounded-full bg-emerald-400"></div>
+            </div>
+            <img src="/assets/images/dashboard_mockup.png" alt="ForgeDB Dashboard Mockup" class="w-full object-cover" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Secondary Mockup (ER Diagram) -->
+      <div class="absolute bottom-[-10%] right-[-5%] md:right-[5%] lg:right-[10%] w-[60%] md:w-[50%] z-30 transform hover:-translate-y-4 transition-transform duration-700 ease-out">
+        <div class="rounded-2xl border border-[#e2e8f0]/80 dark:border-[#2e3a47]/80 bg-white/50 dark:bg-[#1c2434]/50 backdrop-blur-sm p-2 shadow-2xl shadow-indigo-900/20 dark:shadow-black/50">
+          <div class="rounded-xl overflow-hidden border border-[#e2e8f0] dark:border-[#2e3a47] bg-[#f8fafc] dark:bg-[#24303f]">
+            <div class="h-8 bg-[#f1f5f9] dark:bg-[#1a222c] border-b border-[#e2e8f0] dark:border-[#2e3a47] flex items-center px-4 gap-2 transition-colors duration-500">
+              <div class="w-2.5 h-2.5 rounded-full bg-rose-400"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-amber-400"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
+            </div>
+            <img src="/assets/images/er_diagram_mockup.png" alt="ForgeDB ER Diagram Mockup" class="w-full object-cover" />
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FEATURES -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl mx-auto mt-40">
+      
+      <!-- Feature 1 -->
+      <div class="group p-8 rounded-3xl bg-white/60 dark:bg-[#1c2434]/60 backdrop-blur-lg border border-[#e2e8f0] dark:border-[#2e3a47] shadow-sm hover:shadow-xl dark:hover:shadow-indigo-500/5 transition-all duration-300">
+        <div class="h-14 w-14 rounded-2xl bg-indigo-50 dark:bg-[#3c50e0]/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+          <svg class="h-7 w-7 text-[#3c50e0] dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-[#1c2434] dark:text-white mb-3 transition-colors duration-500">Intelligent Profiling</h3>
+        <p class="text-[#64748b] dark:text-[#8a99ad] leading-relaxed transition-colors duration-500">
+          Automatically scan wide CSVs, detect data types, missing values, and anomalies before building your schema.
+        </p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="group p-8 rounded-3xl bg-white/60 dark:bg-[#1c2434]/60 backdrop-blur-lg border border-[#e2e8f0] dark:border-[#2e3a47] shadow-sm hover:shadow-xl dark:hover:shadow-purple-500/5 transition-all duration-300 transform md:-translate-y-4">
+        <div class="h-14 w-14 rounded-2xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+          <svg class="h-7 w-7 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-[#1c2434] dark:text-white mb-3 transition-colors duration-500">Relationship Discovery</h3>
+        <p class="text-[#64748b] dark:text-[#8a99ad] leading-relaxed transition-colors duration-500">
+          Our algorithms suggest foreign keys and mapping rules based on confidence scores to stitch datasets together.
+        </p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="group p-8 rounded-3xl bg-white/60 dark:bg-[#1c2434]/60 backdrop-blur-lg border border-[#e2e8f0] dark:border-[#2e3a47] shadow-sm hover:shadow-xl dark:hover:shadow-emerald-500/5 transition-all duration-300">
+        <div class="h-14 w-14 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+          <svg class="h-7 w-7 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.58 4 8 4s8-1.79 8-4M4 7c0-2.21 3.58-4 8-4s8 1.79 8 4m0 5c0 2.21-3.58 4-8 4s-8-1.79-8-4"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-[#1c2434] dark:text-white mb-3 transition-colors duration-500">Visual ER Diagrams</h3>
+        <p class="text-[#64748b] dark:text-[#8a99ad] leading-relaxed transition-colors duration-500">
+          Design and visualize your entire database architecture using our interactive and intuitive schema designer.
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-[#e2e8f0]/50 dark:border-[#2e3a47]/50 bg-white/50 dark:bg-[#1a222c]/50 backdrop-blur-sm py-8 px-6 lg:px-12 flex flex-col sm:flex-row items-center justify-between text-sm text-[#64748b] dark:text-[#8a99ad] z-10 transition-colors duration-500">
+    <div class="font-medium">&copy; 2026 ForgeDB. All rights reserved.</div>
+    <div class="flex gap-6 mt-4 sm:mt-0 font-medium">
+      <a href="#" class="hover:text-[#3c50e0] dark:hover:text-white transition-colors">Privacy Policy</a>
+      <a href="#" class="hover:text-[#3c50e0] dark:hover:text-white transition-colors">Terms of Service</a>
+      <a href="#" class="hover:text-[#3c50e0] dark:hover:text-white transition-colors">Contact Us</a>
+    </div>
+  </footer>
 
 </div>

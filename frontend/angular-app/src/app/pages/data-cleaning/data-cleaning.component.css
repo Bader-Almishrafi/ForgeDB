@@ -49,6 +49,10 @@
 :host-context(.dark) .issue-description { color: #cbd5e1; }
 :host-context(.dark) :is(.workspace-heading > span,.rail-item strong,.risk-label,.status-neutral) { background: #1e293b; color: #cbd5e1; }
 :host-context(.dark) .btn-secondary,:host-context(.dark) .input-field { border-color: #475569; background: #0f172a; color: #e2e8f0 !important; }
+:host-context(.dark) .progress-panel { border-color: #3730a3; background: rgb(49 46 129 / .45); color: #c7d2fe; }
+:host-context(.dark) .progress-panel span { color: #a5b4fc; }
+:host-context(.dark) .progress-track { background: #312e81; }
+:host-context(.dark) .progress-track span { background: #6366f1; }
 
 @media (min-width:640px) { .cleaning-header { padding: 1.5rem; }.metric-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }.filter-row { grid-template-columns: 2fr 1fr 1fr; }.strategy-row { grid-template-columns: repeat(2,minmax(0,1fr)); }.preview-summary { grid-template-columns: repeat(5,minmax(0,1fr)); }.before-after-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (min-width:768px) and (max-width:1279px) { .left-rail { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .25rem; }.rail-toggle,.rail-status { grid-column: 1/-1; }.right-rail { grid-template-columns: repeat(3,minmax(0,1fr)); } }
