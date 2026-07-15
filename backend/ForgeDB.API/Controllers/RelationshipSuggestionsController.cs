@@ -64,7 +64,10 @@ public class RelationshipSuggestionsController : ControllerBase
     }
 
     [HttpPost("relationship-suggestions/{id:int}/accept")]
-    public async Task<ActionResult<AcceptSuggestionResponseDto>> Accept(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<AcceptSuggestionResponseDto>> Accept(
+        int id,
+        [FromBody] AcceptSuggestionRequestDto? request,
+        CancellationToken cancellationToken)
     {
         // Accept mutates the project's DesignModel (new DesignRelationship + revision bump), so
         // it follows the same If-Match contract as every DesignController mutation: missing -> 428,
@@ -84,7 +87,7 @@ public class RelationshipSuggestionsController : ControllerBase
         try
         {
             await EnsureSuggestionOwnedAsync(id, cancellationToken);
-            return Ok(await _detectionService.AcceptAsync(id, revision, cancellationToken));
+            return Ok(await _detectionService.AcceptAsync(id, revision, request, cancellationToken));
         }
         catch (UnauthorizedAccessException exception)
         {

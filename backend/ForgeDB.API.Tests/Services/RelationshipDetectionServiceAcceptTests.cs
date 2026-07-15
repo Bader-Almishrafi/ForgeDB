@@ -1,4 +1,5 @@
 using ForgeDB.API.Data;
+using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories;
 using ForgeDB.API.Services;
@@ -153,7 +154,7 @@ public class RelationshipDetectionServiceAcceptTests
         using var context = NewContext(seed.DbName);
         var service = BuildService(context);
 
-        var response = await service.AcceptAsync(seed.Suggestion1Id, seed.Revision, CancellationToken.None);
+        var response = await service.AcceptAsync(seed.Suggestion1Id, seed.Revision, null, CancellationToken.None);
 
         Assert.Equal(seed.Revision + 1, response.DesignRevision);
         Assert.Equal(RelationshipSuggestionStatus.Accepted, response.Suggestion.Status);
@@ -168,7 +169,7 @@ public class RelationshipDetectionServiceAcceptTests
         var service = BuildService(context);
 
         var exception = await Assert.ThrowsAsync<DesignConcurrencyException>(() =>
-            service.AcceptAsync(seed.Suggestion1Id, seed.Revision + 99, CancellationToken.None));
+            service.AcceptAsync(seed.Suggestion1Id, seed.Revision + 99, null, CancellationToken.None));
 
         Assert.Equal(seed.Revision, exception.CurrentRevision);
 
@@ -190,14 +191,14 @@ public class RelationshipDetectionServiceAcceptTests
         var serviceA = BuildService(contextA);
         var serviceB = BuildService(contextB);
 
-        var responseA = await serviceA.AcceptAsync(seed.Suggestion1Id, seed.Revision, CancellationToken.None);
+        var responseA = await serviceA.AcceptAsync(seed.Suggestion1Id, seed.Revision, null, CancellationToken.None);
         Assert.Equal(seed.Revision + 1, responseA.DesignRevision);
 
         // B loaded its own copy of the design before A committed, so B's ifMatchRevision (1)
         // still matches what B believes the revision to be — the explicit If-Match check alone
         // would pass. The race is instead caught by EF's own concurrency token at SaveChanges time.
         var exception = await Assert.ThrowsAsync<DesignConcurrencyException>(() =>
-            serviceB.AcceptAsync(seed.Suggestion2Id, seed.Revision, CancellationToken.None));
+            serviceB.AcceptAsync(seed.Suggestion2Id, seed.Revision, null, CancellationToken.None));
 
         Assert.Equal(responseA.DesignRevision, exception.CurrentRevision);
 
@@ -225,7 +226,7 @@ public class RelationshipDetectionServiceAcceptTests
         using (var context = NewContext(seed.DbName))
         {
             var service = BuildService(context);
-            await service.AcceptAsync(seed.Suggestion1Id, seed.Revision, CancellationToken.None);
+            await service.AcceptAsync(seed.Suggestion1Id, seed.Revision, null, CancellationToken.None);
         }
 
         using var verifyContext = NewContext(seed.DbName);
@@ -253,7 +254,7 @@ public class RelationshipDetectionServiceAcceptTests
         {
             var service = BuildService(context);
             var exception = await Assert.ThrowsAsync<RelationshipSuggestionConflictException>(() =>
-                service.AcceptAsync(seed.Suggestion1Id, seed.Revision, CancellationToken.None));
+                service.AcceptAsync(seed.Suggestion1Id, seed.Revision, null, CancellationToken.None));
             Assert.Contains("neither a Primary Key nor Unique", exception.Message, StringComparison.Ordinal);
         }
 
@@ -279,14 +280,14 @@ public class RelationshipDetectionServiceAcceptTests
         }
 
         using var context = NewContext(seed.DbName);
-        var response = await BuildService(context).AcceptAsync(seed.Suggestion1Id, seed.Revision, CancellationToken.None);
+        var response = await BuildService(context).AcceptAsync(seed.Suggestion1Id, seed.Revision, null, CancellationToken.None);
 
         Assert.Equal(RelationshipSuggestionStatus.Accepted, response.Suggestion.Status);
         Assert.Equal(seed.Revision + 1, response.DesignRevision);
     }
 
     [Fact]
-    public async Task AcceptAsync_DuplicateRelationshipIsRejectedWithoutMutation()
+    public async Task AcceptAsync_ExistingIdenticalRelationshipIsLinkedIdempotentlyWithoutRevisionBump()
     {
         var seed = await SeedAsync();
         using (var setupContext = NewContext(seed.DbName))
@@ -307,15 +308,140 @@ public class RelationshipDetectionServiceAcceptTests
             await setupContext.SaveChangesAsync();
         }
 
-        using (var context = NewContext(seed.DbName))
-        {
-            await Assert.ThrowsAsync<RelationshipSuggestionConflictException>(() =>
-                BuildService(context).AcceptAsync(seed.Suggestion1Id, seed.Revision, CancellationToken.None));
-        }
+        using var context = NewContext(seed.DbName);
+        var response = await BuildService(context)
+            .AcceptAsync(seed.Suggestion1Id, seed.Revision, null, CancellationToken.None);
 
         using var verify = NewContext(seed.DbName);
+        var relationship = Assert.Single(await verify.DesignRelationships.ToListAsync());
+        Assert.Equal(relationship.Id, response.Relationship.Id);
+        Assert.Equal(seed.Suggestion1Id, relationship.SuggestionId);
+        Assert.Equal(RelationshipSuggestionStatus.Accepted, (await verify.RelationshipSuggestions.FindAsync(seed.Suggestion1Id))!.Status);
+        Assert.Equal(seed.Revision, (await verify.DesignModels.SingleAsync()).Revision);
+    }
+
+    [Fact]
+    public async Task AcceptAsync_RepeatedRequestReturnsSameRelationshipWithoutSecondRevisionBump()
+    {
+        var seed = await SeedAsync();
+
+        using var firstContext = NewContext(seed.DbName);
+        var first = await BuildService(firstContext)
+            .AcceptAsync(seed.Suggestion1Id, seed.Revision, null, CancellationToken.None);
+
+        using var repeatContext = NewContext(seed.DbName);
+        var repeated = await BuildService(repeatContext)
+            .AcceptAsync(seed.Suggestion1Id, seed.Revision, null, CancellationToken.None);
+
+        Assert.Equal(first.Relationship.Id, repeated.Relationship.Id);
+        Assert.Equal(first.DesignRevision, repeated.DesignRevision);
+        using var verify = NewContext(seed.DbName);
         Assert.Single(await verify.DesignRelationships.ToListAsync());
+        Assert.Equal(seed.Revision + 1, (await verify.DesignModels.SingleAsync()).Revision);
+    }
+
+    [Fact]
+    public async Task AcceptAsync_EditedRequestPersistsEndpointsCardinalityAndOnDeleteAtomically()
+    {
+        var seed = await SeedAsync();
+        int sourceColumnId;
+        int targetColumnId;
+        using (var setupContext = NewContext(seed.DbName))
+        {
+            sourceColumnId = (await setupContext.DesignColumns
+                .SingleAsync(column => column.Name == "backup_customer_id")).Id;
+            targetColumnId = (await setupContext.DesignColumns
+                .SingleAsync(column => column.Name == "id" && column.DesignTable!.Name == "customers")).Id;
+        }
+
+        var request = new AcceptSuggestionRequestDto
+        {
+            FromColumnId = sourceColumnId,
+            ToColumnId = targetColumnId,
+            Cardinality = DesignCardinality.OneToOne,
+            OnDelete = DesignOnDelete.Cascade
+        };
+        using var context = NewContext(seed.DbName);
+        var response = await BuildService(context)
+            .AcceptAsync(seed.Suggestion1Id, seed.Revision, request, CancellationToken.None);
+
+        Assert.Equal("backup_customer_id", response.Relationship.FromColumnName);
+        Assert.Equal(DesignCardinality.OneToOne, response.Relationship.Cardinality);
+        Assert.Equal(DesignOnDelete.Cascade, response.Relationship.OnDelete);
+        using var verify = NewContext(seed.DbName);
+        var persisted = Assert.Single(await verify.DesignRelationships.ToListAsync());
+        Assert.Equal(sourceColumnId, persisted.FromColumnId);
+        Assert.Equal(targetColumnId, persisted.ToColumnId);
+        Assert.Equal(DesignCardinality.OneToOne, persisted.Cardinality);
+        Assert.Equal(DesignOnDelete.Cascade, persisted.OnDelete);
+        Assert.Equal(RelationshipSuggestionStatus.Accepted, (await verify.RelationshipSuggestions.FindAsync(seed.Suggestion1Id))!.Status);
+    }
+
+    [Fact]
+    public async Task AcceptAsync_InvalidEditedEndpointLeavesSuggestionAndDesignUntouched()
+    {
+        var seed = await SeedAsync();
+        var request = new AcceptSuggestionRequestDto
+        {
+            FromColumnId = int.MaxValue,
+            ToColumnId = int.MaxValue - 1,
+            Cardinality = DesignCardinality.ManyToOne,
+            OnDelete = DesignOnDelete.NoAction
+        };
+
+        using var context = NewContext(seed.DbName);
+        await Assert.ThrowsAsync<RelationshipSuggestionConflictException>(() =>
+            BuildService(context).AcceptAsync(seed.Suggestion1Id, seed.Revision, request, CancellationToken.None));
+
+        using var verify = NewContext(seed.DbName);
+        Assert.Empty(await verify.DesignRelationships.ToListAsync());
         Assert.Equal(RelationshipSuggestionStatus.Suggested, (await verify.RelationshipSuggestions.FindAsync(seed.Suggestion1Id))!.Status);
         Assert.Equal(seed.Revision, (await verify.DesignModels.SingleAsync()).Revision);
+    }
+
+    [Fact]
+    public async Task RejectAsync_RepeatedRequestReturnsRejectedSuggestionWithoutFurtherMutation()
+    {
+        var seed = await SeedAsync();
+
+        using var firstContext = NewContext(seed.DbName);
+        var first = await BuildService(firstContext).RejectAsync(seed.Suggestion1Id, CancellationToken.None);
+        using var repeatContext = NewContext(seed.DbName);
+        var repeated = await BuildService(repeatContext).RejectAsync(seed.Suggestion1Id, CancellationToken.None);
+
+        Assert.Equal(RelationshipSuggestionStatus.Rejected, first.Status);
+        Assert.Equal(first.DecidedAt, repeated.DecidedAt);
+        using var verify = NewContext(seed.DbName);
+        Assert.Empty(await verify.DesignRelationships.ToListAsync());
+        Assert.Equal(seed.Revision, (await verify.DesignModels.SingleAsync()).Revision);
+    }
+
+    [Fact]
+    public async Task DetectAsync_WhenBothDirectionsScore_TargetsTheDesignKeyInsteadOfDatasetIdOrder()
+    {
+        var seed = await SeedAsync();
+        using (var setupContext = NewContext(seed.DbName))
+        {
+            setupContext.RelationshipSuggestions.RemoveRange(setupContext.RelationshipSuggestions);
+            var customers = await setupContext.Datasets.SingleAsync(dataset => dataset.TableName == "customers");
+            var orders = await setupContext.Datasets.SingleAsync(dataset => dataset.TableName == "orders");
+            customers.RowCount = 2;
+            orders.RowCount = 2;
+            customers.Rows.Add(new DatasetRow { RowNumber = 1, RowData = "{\"id\":1}", CreatedAt = DateTime.UtcNow });
+            customers.Rows.Add(new DatasetRow { RowNumber = 2, RowData = "{\"id\":2}", CreatedAt = DateTime.UtcNow });
+            orders.Rows.Add(new DatasetRow { RowNumber = 1, RowData = "{\"customer_id\":1}", CreatedAt = DateTime.UtcNow });
+            orders.Rows.Add(new DatasetRow { RowNumber = 2, RowData = "{\"customer_id\":2}", CreatedAt = DateTime.UtcNow });
+            await setupContext.SaveChangesAsync();
+        }
+
+        using var context = NewContext(seed.DbName);
+        var suggestions = await BuildService(context).DetectAsync(
+            (await context.Projects.SingleAsync()).Id,
+            CancellationToken.None);
+
+        var relationship = Assert.Single(suggestions.Where(item =>
+            item.SourceColumnName == "customer_id" && item.TargetColumnName == "id"));
+        Assert.Equal("orders", relationship.SourceTableName);
+        Assert.Equal("customers", relationship.TargetTableName);
     }
 }

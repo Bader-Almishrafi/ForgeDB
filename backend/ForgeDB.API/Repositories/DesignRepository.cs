@@ -63,6 +63,32 @@ public class DesignRepository : IDesignRepository
         return _context.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default)
+    {
+        // The InMemory provider used by focused unit tests has no transaction implementation.
+        // PostgreSQL uses an explicit transaction so suggestion state, relationship creation,
+        // and the design revision form one read/validate/write atomic boundary.
+        if (!_context.Database.IsRelational())
+        {
+            return await operation();
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var result = await operation();
+            await transaction.CommitAsync(cancellationToken);
+            return result;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public void ClearTracking() => _context.ChangeTracker.Clear();
+
     private IQueryable<DesignModel> Query(bool track)
     {
         IQueryable<DesignModel> query = _context.DesignModels

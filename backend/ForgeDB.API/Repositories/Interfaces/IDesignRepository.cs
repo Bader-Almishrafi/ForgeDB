@@ -11,4 +11,6 @@ public interface IDesignRepository
     Task<int?> FindDesignModelIdByRelationshipIdAsync(int relationshipId, CancellationToken cancellationToken = default);
     Task AddAsync(DesignModel design, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+    Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default);
+    void ClearTracking();
 }

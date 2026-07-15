@@ -47,6 +47,7 @@ public class RelationshipDetectionService : IRelationshipDetectionService
         }
 
         var datasets = await _datasetRepository.GetByProjectIdWithRowsAndColumnsAsync(projectId, cancellationToken);
+        var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: false, cancellationToken);
         var profiles = datasets
             .SelectMany(dataset => dataset.Columns.Select(column => BuildColumnProfile(dataset, column)))
             .ToList();
@@ -61,7 +62,10 @@ public class RelationshipDetectionService : IRelationshipDetectionService
                     continue;
                 }
 
-                var candidate = ScoreDirection(left, right) ?? ScoreDirection(right, left);
+                var candidate = ChooseCandidate(
+                    ScoreDirection(left, right),
+                    ScoreDirection(right, left),
+                    design);
                 if (candidate is not null)
                 {
                     candidates.Add(candidate);
@@ -109,72 +113,109 @@ public class RelationshipDetectionService : IRelationshipDetectionService
         return await GetSuggestionsAsync(projectId, status: null, cancellationToken);
     }
 
-    public async Task<AcceptSuggestionResponseDto> AcceptAsync(int suggestionId, int ifMatchRevision, CancellationToken cancellationToken = default)
+    public async Task<AcceptSuggestionResponseDto> AcceptAsync(
+        int suggestionId,
+        int ifMatchRevision,
+        AcceptSuggestionRequestDto? request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _designRepository.ExecuteInTransactionAsync(
+                () => AcceptCoreAsync(suggestionId, ifMatchRevision, request, cancellationToken),
+                cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _designRepository.ClearTracking();
+            var accepted = await FindAcceptedResponseAsync(suggestionId, cancellationToken);
+            if (accepted is not null)
+            {
+                return accepted;
+            }
+
+            var suggestion = await _suggestionRepository.GetByIdAsync(suggestionId, cancellationToken)
+                ?? throw new KeyNotFoundException("Relationship suggestion not found.");
+            var current = await _designRepository.GetFullByProjectIdAsync(suggestion.ProjectId, track: false, cancellationToken);
+            throw new DesignConcurrencyException(current?.Revision ?? ifMatchRevision);
+        }
+        catch (DbUpdateException exception) when (Validation.DesignRelationshipRules.IsUniqueConstraintViolation(exception))
+        {
+            _designRepository.ClearTracking();
+            var accepted = await FindAcceptedResponseAsync(suggestionId, cancellationToken);
+            if (accepted is not null)
+            {
+                return accepted;
+            }
+
+            throw new RelationshipSuggestionConflictException(
+                "An identical relationship was created concurrently. Refresh the relationship queue and try again.");
+        }
+    }
+
+    private async Task<AcceptSuggestionResponseDto> AcceptCoreAsync(
+        int suggestionId,
+        int ifMatchRevision,
+        AcceptSuggestionRequestDto? request,
+        CancellationToken cancellationToken)
     {
         var suggestion = await _suggestionRepository.GetByIdAsync(suggestionId, cancellationToken)
             ?? throw new KeyNotFoundException("Relationship suggestion not found.");
 
-        if (suggestion.Status != RelationshipSuggestionStatus.Suggested)
-        {
-            throw new RelationshipSuggestionConflictException("This suggestion has already been decided.");
-        }
-
         var design = await _designRepository.GetFullByProjectIdAsync(suggestion.ProjectId, track: true, cancellationToken)
             ?? throw new RelationshipSuggestionConflictException("Accepting a suggestion requires a generated design. Call design/generate first.");
+
+        var acceptedRelationship = design.Relationships.FirstOrDefault(relationship => relationship.SuggestionId == suggestion.Id);
+        if (acceptedRelationship is not null)
+        {
+            if (suggestion.Status != RelationshipSuggestionStatus.Accepted)
+            {
+                suggestion.Status = RelationshipSuggestionStatus.Accepted;
+                suggestion.DecidedAt ??= DateTime.UtcNow;
+                await _designRepository.SaveChangesAsync(cancellationToken);
+            }
+
+            return BuildAcceptResponse(suggestion, acceptedRelationship, design.Revision);
+        }
+
+        if (suggestion.Status == RelationshipSuggestionStatus.Rejected)
+        {
+            throw new RelationshipSuggestionConflictException("This suggestion has already been rejected.");
+        }
 
         if (design.Revision != ifMatchRevision)
         {
             throw new DesignConcurrencyException(design.Revision);
         }
 
-        var sourceColumn = FindDesignColumn(design, suggestion.SourceDatasetId, suggestion.SourceColumnName);
-        var targetColumn = FindDesignColumn(design, suggestion.TargetDatasetId, suggestion.TargetColumnName);
+        var (sourceColumn, targetColumn, cardinality, onDelete) = ResolveAcceptedRelationship(design, suggestion, request);
+        ValidateAcceptedRelationship(sourceColumn, targetColumn, cardinality, onDelete);
 
-        if (sourceColumn is null || targetColumn is null)
-        {
-            throw new RelationshipSuggestionConflictException("The suggested columns could not be resolved to design columns.");
-        }
-
-        if (sourceColumn.Id == targetColumn.Id)
-        {
-            throw new RelationshipSuggestionConflictException("The suggested source and target resolve to the same design column.");
-        }
-
-        if (!Validation.DesignRelationshipRules.IsValidTarget(targetColumn))
-        {
-            var target = $"{targetColumn.DesignTable?.Name ?? suggestion.TargetDataset?.TableName ?? "unknown"}.{targetColumn.Name}";
-            throw new RelationshipSuggestionConflictException(
-                $"Relationship target '{target}' is unavailable because it is neither a Primary Key nor Unique column.");
-        }
-
-        if (!Validation.DesignRelationshipRules.HaveCompatibleTypes(sourceColumn, targetColumn))
-        {
-            throw new RelationshipSuggestionConflictException(
-                $"Suggested relationship columns have incompatible PostgreSQL types '{sourceColumn.SqlType}' and '{targetColumn.SqlType}'.");
-        }
-
-        if (Validation.DesignRelationshipRules.IsDuplicate(
-            design.Relationships,
-            sourceColumn.Id,
-            targetColumn.Id,
-            DesignCardinality.ManyToOne))
-        {
-            throw new RelationshipSuggestionConflictException("An identical relationship already exists in this design.");
-        }
+        var relationship = design.Relationships.FirstOrDefault(existing =>
+            existing.FromColumnId == sourceColumn.Id
+            && existing.ToColumnId == targetColumn.Id
+            && string.Equals(existing.Cardinality, cardinality, StringComparison.Ordinal));
 
         var now = DateTime.UtcNow;
         suggestion.Status = RelationshipSuggestionStatus.Accepted;
-        suggestion.DecidedAt = now;
+        suggestion.DecidedAt ??= now;
 
-        var relationship = new DesignRelationship
+        if (relationship is not null)
+        {
+            relationship.SuggestionId ??= suggestion.Id;
+            await _designRepository.SaveChangesAsync(cancellationToken);
+            return BuildAcceptResponse(suggestion, relationship, design.Revision);
+        }
+
+        relationship = new DesignRelationship
         {
             DesignModelId = design.Id,
             FromColumnId = sourceColumn.Id,
             FromColumn = sourceColumn,
             ToColumnId = targetColumn.Id,
             ToColumn = targetColumn,
-            Cardinality = DesignCardinality.ManyToOne,
-            OnDelete = DesignOnDelete.NoAction,
+            Cardinality = cardinality,
+            OnDelete = onDelete,
             Origin = DesignOrigin.AcceptedSuggestion,
             SuggestionId = suggestion.Id
         };
@@ -188,31 +229,12 @@ public class RelationshipDetectionService : IRelationshipDetectionService
         design.Status = DesignStatus.Draft;
         design.ValidatedAt = null;
 
-        try
-        {
-            // Single SaveChanges call: the suggestion's Status/DecidedAt and the new
-            // DesignRelationship + DesignModel.Revision bump are tracked by this same DbContext
-            // (both repositories are resolved from the same request-scoped instance), so they
+        // Single SaveChanges call: the suggestion's Status/DecidedAt and the new
+        // DesignRelationship + DesignModel.Revision bump are tracked by this same DbContext
+        // (both repositories are resolved from the same request-scoped instance), so they
             // commit together in one transaction — either both land or neither does.
-            await _designRepository.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            var current = await _designRepository.GetFullByProjectIdAsync(suggestion.ProjectId, track: false, cancellationToken);
-            throw new DesignConcurrencyException(current?.Revision ?? design.Revision);
-        }
-        catch (DbUpdateException exception) when (Validation.DesignRelationshipRules.IsUniqueConstraintViolation(exception))
-        {
-            throw new RelationshipSuggestionConflictException(
-                "An identical relationship was created concurrently. Refresh the relationship queue and try again.");
-        }
-
-        return new AcceptSuggestionResponseDto
-        {
-            Suggestion = MapSuggestion(suggestion),
-            Relationship = MapRelationship(relationship),
-            DesignRevision = design.Revision
-        };
+        await _designRepository.SaveChangesAsync(cancellationToken);
+        return BuildAcceptResponse(suggestion, relationship, design.Revision);
     }
 
     /// <summary>Deliberately has no If-Match/revision check, unlike Accept: reject only flips this
@@ -223,9 +245,14 @@ public class RelationshipDetectionService : IRelationshipDetectionService
         var suggestion = await _suggestionRepository.GetByIdAsync(suggestionId, cancellationToken)
             ?? throw new KeyNotFoundException("Relationship suggestion not found.");
 
-        if (suggestion.Status != RelationshipSuggestionStatus.Suggested)
+        if (suggestion.Status == RelationshipSuggestionStatus.Rejected)
         {
-            throw new RelationshipSuggestionConflictException("This suggestion has already been decided.");
+            return MapSuggestion(suggestion);
+        }
+
+        if (suggestion.Status == RelationshipSuggestionStatus.Accepted)
+        {
+            throw new RelationshipSuggestionConflictException("This suggestion has already been accepted.");
         }
 
         suggestion.Status = RelationshipSuggestionStatus.Rejected;
@@ -234,6 +261,100 @@ public class RelationshipDetectionService : IRelationshipDetectionService
         await _suggestionRepository.SaveChangesAsync(cancellationToken);
 
         return MapSuggestion(suggestion);
+    }
+
+    private async Task<AcceptSuggestionResponseDto?> FindAcceptedResponseAsync(
+        int suggestionId,
+        CancellationToken cancellationToken)
+    {
+        var suggestion = await _suggestionRepository.GetByIdAsync(suggestionId, cancellationToken);
+        if (suggestion?.Status != RelationshipSuggestionStatus.Accepted)
+        {
+            return null;
+        }
+
+        var design = await _designRepository.GetFullByProjectIdAsync(suggestion.ProjectId, track: false, cancellationToken);
+        var relationship = design?.Relationships.FirstOrDefault(existing => existing.SuggestionId == suggestionId);
+        return design is null || relationship is null
+            ? null
+            : BuildAcceptResponse(suggestion, relationship, design.Revision);
+    }
+
+    private static (DesignColumn Source, DesignColumn Target, string Cardinality, string OnDelete) ResolveAcceptedRelationship(
+        DesignModel design,
+        RelationshipSuggestion suggestion,
+        AcceptSuggestionRequestDto? request)
+    {
+        var columns = design.Tables.SelectMany(table => table.Columns).ToList();
+        var sourceColumn = request?.FromColumnId is int sourceColumnId
+            ? columns.FirstOrDefault(column => column.Id == sourceColumnId)
+            : FindDesignColumn(design, suggestion.SourceDatasetId, suggestion.SourceColumnName);
+        var targetColumn = request?.ToColumnId is int targetColumnId
+            ? columns.FirstOrDefault(column => column.Id == targetColumnId)
+            : FindDesignColumn(design, suggestion.TargetDatasetId, suggestion.TargetColumnName);
+
+        if (sourceColumn is null || targetColumn is null)
+        {
+            throw new RelationshipSuggestionConflictException(
+                "The accepted relationship must reference source and target columns in the current project design.");
+        }
+
+        var cardinality = string.IsNullOrWhiteSpace(request?.Cardinality)
+            ? DesignCardinality.ManyToOne
+            : request.Cardinality.Trim().ToLowerInvariant();
+        var onDelete = string.IsNullOrWhiteSpace(request?.OnDelete)
+            ? DesignOnDelete.NoAction
+            : request.OnDelete.Trim().ToLowerInvariant();
+
+        return (sourceColumn, targetColumn, cardinality, onDelete);
+    }
+
+    private static void ValidateAcceptedRelationship(
+        DesignColumn sourceColumn,
+        DesignColumn targetColumn,
+        string cardinality,
+        string onDelete)
+    {
+        if (sourceColumn.Id == targetColumn.Id)
+        {
+            throw new RelationshipSuggestionConflictException("The relationship source and target must be different columns.");
+        }
+
+        if (!Validation.DesignRelationshipRules.IsValidTarget(targetColumn))
+        {
+            var target = $"{targetColumn.DesignTable?.Name ?? "unknown"}.{targetColumn.Name}";
+            throw new RelationshipSuggestionConflictException(
+                $"Relationship target '{target}' is unavailable because it is neither a Primary Key nor Unique column.");
+        }
+
+        if (!Validation.DesignRelationshipRules.HaveCompatibleTypes(sourceColumn, targetColumn))
+        {
+            throw new RelationshipSuggestionConflictException(
+                $"Relationship columns have incompatible PostgreSQL types '{sourceColumn.SqlType}' and '{targetColumn.SqlType}'.");
+        }
+
+        if (cardinality is not (DesignCardinality.ManyToOne or DesignCardinality.OneToOne))
+        {
+            throw new RelationshipSuggestionConflictException("Cardinality must be 'many-to-one' or 'one-to-one'.");
+        }
+
+        if (onDelete is not (DesignOnDelete.NoAction or DesignOnDelete.Cascade or DesignOnDelete.SetNull))
+        {
+            throw new RelationshipSuggestionConflictException("On Delete must be 'no-action', 'cascade', or 'set-null'.");
+        }
+    }
+
+    private static AcceptSuggestionResponseDto BuildAcceptResponse(
+        RelationshipSuggestion suggestion,
+        DesignRelationship relationship,
+        int designRevision)
+    {
+        return new AcceptSuggestionResponseDto
+        {
+            Suggestion = MapSuggestion(suggestion),
+            Relationship = MapRelationship(relationship),
+            DesignRevision = designRevision
+        };
     }
 
     private static DesignColumn? FindDesignColumn(DesignModel design, int sourceDatasetId, string columnName)
@@ -261,6 +382,39 @@ public class RelationshipDetectionService : IRelationshipDetectionService
         string TargetColumnName,
         double Score,
         string EvidenceJson);
+
+    private static Candidate? ChooseCandidate(Candidate? forward, Candidate? reverse, DesignModel? design)
+    {
+        if (forward is null)
+        {
+            return reverse;
+        }
+
+        if (reverse is null)
+        {
+            return forward;
+        }
+
+        var forwardTargetsDesignKey = CandidateTargetsDesignKey(forward, design);
+        var reverseTargetsDesignKey = CandidateTargetsDesignKey(reverse, design);
+        if (forwardTargetsDesignKey != reverseTargetsDesignKey)
+        {
+            return forwardTargetsDesignKey ? forward : reverse;
+        }
+
+        return reverse.Score > forward.Score ? reverse : forward;
+    }
+
+    private static bool CandidateTargetsDesignKey(Candidate candidate, DesignModel? design)
+    {
+        if (design is null)
+        {
+            return false;
+        }
+
+        var target = FindDesignColumn(design, candidate.TargetDatasetId, candidate.TargetColumnName);
+        return target is not null && Validation.DesignRelationshipRules.IsValidTarget(target);
+    }
 
     private static DatasetColumnProfile BuildColumnProfile(Dataset dataset, DatasetColumn column)
     {

@@ -23,3 +23,11 @@ public class AcceptSuggestionResponseDto
     public DesignRelationshipResponseDto Relationship { get; set; } = new();
     public int DesignRevision { get; set; }
 }
+
+public class AcceptSuggestionRequestDto
+{
+    public int? FromColumnId { get; set; }
+    public int? ToColumnId { get; set; }
+    public string? Cardinality { get; set; }
+    public string? OnDelete { get; set; }
+}
