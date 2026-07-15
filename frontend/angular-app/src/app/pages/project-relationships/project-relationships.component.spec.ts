@@ -3,58 +3,112 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DesignModelResponse, RelationshipSuggestion } from '../../services/api.models';
+import { DesignModelResponse, DesignRelationship, RelationshipSuggestion } from '../../services/api.models';
 import { DesignApiService } from '../../services/design-api.service';
-import { DesignStateService } from '../../services/design-state.service';
 import { WorkflowStateService } from '../../services/workflow-state.service';
 import { ProjectRelationshipsComponent } from './project-relationships.component';
 
-const schema: DesignModelResponse = {
+const baseDesign: DesignModelResponse = {
   id: 9, projectId: 10, revision: 5, status: 'Valid', isStale: false, canContinue: true,
-  generatedAt: '', validatedAt: '', layout: null, createdAt: '', updatedAt: '', validationIssues: [],
+  generatedAt: '', validatedAt: '2026-07-15T00:00:00Z', layout: null, createdAt: '', updatedAt: '', validationIssues: [],
   tables: [
     { id: 1, name: 'customers', sourceDatasetId: 101, origin: 'generated', columns: [
-      { id: 11, name: 'id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: true, isUnique: false, ordinal: 0, sourceColumnName: 'id', origin: 'generated' },
-      { id: 12, name: 'external_id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: false, isUnique: true, ordinal: 1, sourceColumnName: 'external_id', origin: 'generated' },
-      { id: 13, name: 'name', sqlType: 'TEXT', isNullable: true, isPrimaryKey: false, isUnique: false, ordinal: 2, sourceColumnName: 'name', origin: 'generated' },
-      { id: 14, name: 'uuid_key', sqlType: 'UUID', isNullable: false, isPrimaryKey: false, isUnique: true, ordinal: 3, sourceColumnName: 'uuid_key', origin: 'generated' },
+      { id: 11, name: 'customer_id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: true, isUnique: false, ordinal: 0, sourceColumnName: 'customer_id', origin: 'generated' },
+      { id: 12, name: 'name', sqlType: 'VARCHAR(120)', isNullable: false, isPrimaryKey: false, isUnique: false, ordinal: 1, sourceColumnName: 'name', origin: 'generated' },
     ] },
     { id: 2, name: 'orders', sourceDatasetId: 102, origin: 'generated', columns: [
-      { id: 21, name: 'id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: true, isUnique: false, ordinal: 0, sourceColumnName: 'id', origin: 'generated' },
+      { id: 21, name: 'order_id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: true, isUnique: false, ordinal: 0, sourceColumnName: 'order_id', origin: 'generated' },
       { id: 22, name: 'customer_id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: false, isUnique: false, ordinal: 1, sourceColumnName: 'customer_id', origin: 'generated' },
+    ] },
+    { id: 3, name: 'shipments', sourceDatasetId: 103, origin: 'generated', columns: [
+      { id: 31, name: 'shipment_id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: true, isUnique: false, ordinal: 0, sourceColumnName: 'shipment_id', origin: 'generated' },
+      { id: 32, name: 'order_id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: false, isUnique: false, ordinal: 1, sourceColumnName: 'order_id', origin: 'generated' },
     ] },
   ],
   relationships: [],
 };
 
-const invalidSuggestion: RelationshipSuggestion = {
-  id: 77, projectId: 10, sourceDatasetId: 102, sourceTableName: 'orders', sourceColumnName: 'customer_id',
-  targetDatasetId: 101, targetTableName: 'customers', targetColumnName: 'name', score: 0.88,
-  evidenceJson: '{"reasons":["matching values"]}', status: 'suggested', createdAt: '',
-};
+const suggestions: RelationshipSuggestion[] = [
+  {
+    id: 71, projectId: 10, sourceDatasetId: 101, sourceTableName: 'customers', sourceColumnName: 'customer_id',
+    targetDatasetId: 102, targetTableName: 'orders', targetColumnName: 'customer_id', score: 0.86,
+    evidenceJson: '{"reasons":["Names match","Values overlap"]}', status: 'suggested', createdAt: '',
+  },
+  {
+    id: 72, projectId: 10, sourceDatasetId: 103, sourceTableName: 'shipments', sourceColumnName: 'order_id',
+    targetDatasetId: 102, targetTableName: 'orders', targetColumnName: 'order_id', score: 0.78,
+    evidenceJson: '{"reasons":["Source references orders"]}', status: 'suggested', createdAt: '',
+  },
+];
+
+function orderCustomerRelationship(id = 41): DesignRelationship {
+  return {
+    id, fromColumnId: 22, fromTableId: 2, fromTableName: 'orders', fromColumnName: 'customer_id',
+    toColumnId: 11, toTableId: 1, toTableName: 'customers', toColumnName: 'customer_id',
+    cardinality: 'many-to-one', onDelete: 'no-action', origin: 'accepted-suggestion', suggestionId: 71,
+  };
+}
 
 describe('ProjectRelationshipsComponent', () => {
   let fixture: ComponentFixture<ProjectRelationshipsComponent>;
   let component: ProjectRelationshipsComponent;
   let api: Record<string, ReturnType<typeof vi.fn>>;
+  let currentDesign: DesignModelResponse;
+  let currentSuggestions: RelationshipSuggestion[];
 
   beforeEach(async () => {
+    currentDesign = structuredClone(baseDesign);
+    currentSuggestions = structuredClone(suggestions);
     api = {
-      getSuggestions: vi.fn(() => of([])),
-      getDesign: vi.fn(() => of(structuredClone(schema))),
-      detectSuggestions: vi.fn(() => of([])),
-      acceptSuggestion: vi.fn(),
-      rejectSuggestion: vi.fn(),
-      createRelationship: vi.fn(),
-      updateRelationship: vi.fn(),
-      deleteRelationship: vi.fn(),
+      getSuggestions: vi.fn(() => of(structuredClone(currentSuggestions))),
+      getDesign: vi.fn(() => of(structuredClone(currentDesign))),
+      detectSuggestions: vi.fn(() => of(structuredClone(currentSuggestions))),
+      acceptSuggestion: vi.fn((id: number, _revision: number, request: { fromColumnId: number; toColumnId: number; cardinality: string; onDelete: string }) => {
+        const relationship: DesignRelationship = {
+          ...orderCustomerRelationship(),
+          fromColumnId: request.fromColumnId,
+          toColumnId: request.toColumnId,
+          cardinality: request.cardinality,
+          onDelete: request.onDelete,
+        };
+        currentSuggestions = currentSuggestions.map(item => item.id === id ? { ...item, status: 'accepted' } : item);
+        currentDesign = { ...currentDesign, revision: currentDesign.revision + 1, status: 'Draft', validatedAt: null, relationships: [relationship] };
+        return of({ suggestion: currentSuggestions.find(item => item.id === id)!, relationship, designRevision: currentDesign.revision });
+      }),
+      rejectSuggestion: vi.fn((id: number) => {
+        currentSuggestions = currentSuggestions.map(item => item.id === id ? { ...item, status: 'rejected' } : item);
+        return of(currentSuggestions.find(item => item.id === id)!);
+      }),
+      createRelationship: vi.fn((_designId: number, _revision: number, request: { fromColumnId: number; toColumnId: number; cardinality: string; onDelete: string }) => {
+        currentDesign = {
+          ...currentDesign, revision: currentDesign.revision + 1, status: 'Draft', validatedAt: null,
+          relationships: [...currentDesign.relationships, {
+            id: 42, fromColumnId: request.fromColumnId, fromTableId: 3, fromTableName: 'shipments', fromColumnName: 'order_id',
+            toColumnId: request.toColumnId, toTableId: 2, toTableName: 'orders', toColumnName: 'order_id',
+            cardinality: request.cardinality, onDelete: request.onDelete, origin: 'user',
+          }],
+        };
+        return of(structuredClone(currentDesign));
+      }),
+      updateRelationship: vi.fn((relationshipId: number, _revision: number, request: { cardinality: string; onDelete: string }) => {
+        currentDesign = { ...currentDesign, revision: currentDesign.revision + 1, status: 'Draft', relationships: currentDesign.relationships.map(item => item.id === relationshipId ? { ...item, ...request } : item) };
+        return of(structuredClone(currentDesign));
+      }),
+      deleteRelationship: vi.fn((relationshipId: number) => {
+        currentDesign = { ...currentDesign, revision: currentDesign.revision + 1, status: 'Draft', relationships: currentDesign.relationships.filter(item => item.id !== relationshipId) };
+        return of(structuredClone(currentDesign));
+      }),
+      validateSchema: vi.fn(() => {
+        currentDesign = { ...currentDesign, revision: currentDesign.revision + 1, status: 'Valid', validatedAt: '2026-07-15T00:00:00Z' };
+        return of(structuredClone(currentDesign));
+      }),
     };
+
     await TestBed.configureTestingModule({
       imports: [ProjectRelationshipsComponent],
       providers: [
         provideRouter([]),
         { provide: DesignApiService, useValue: api },
-        { provide: DesignStateService, useValue: { design: vi.fn(() => null), loadForProject: vi.fn(() => of(structuredClone(schema))), reload: vi.fn(() => of(structuredClone(schema))) } },
         { provide: WorkflowStateService, useValue: { setProjectId: vi.fn() } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ projectId: '10' }) } } },
       ],
@@ -64,125 +118,152 @@ describe('ProjectRelationshipsComponent', () => {
     fixture.detectChanges();
   });
 
-  function selectByText(testId: string, text: string): HTMLSelectElement {
-    const select = fixture.nativeElement.querySelector(`[data-testid="${testId}"]`) as HTMLSelectElement;
-    const option = Array.from(select.options).find(item => item.textContent?.includes(text));
-    expect(option, `${text} option`).toBeTruthy();
-    select.value = option!.value;
-    select.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-    return select;
-  }
-
-  function selectValidEndpoints(target = 'id · INTEGER'): void {
-    selectByText('manual-source-table', 'orders');
-    selectByText('manual-source-column', 'customer_id');
-    selectByText('manual-target-table', 'customers');
-    selectByText('manual-target-column', target);
-  }
-
-  it('renders the complete manual relationship form on the existing page', () => {
+  it('restores the complete workspace on direct route load with one design and suggestion request', () => {
+    expect(component.projectId).toBe(10);
+    expect(api['getDesign']).toHaveBeenCalledTimes(1);
+    expect(api['getSuggestions']).toHaveBeenCalledTimes(1);
+    expect(component.pendingSuggestions()).toHaveLength(2);
+    expect(fixture.nativeElement.querySelector('[data-testid="suggested-relationships"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="persisted-relationships"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="manual-relationship-form"]')).toBeTruthy();
-    for (const id of ['manual-source-table', 'manual-source-column', 'manual-target-table', 'manual-target-column', 'manual-cardinality', 'manual-on-delete', 'create-manual-relationship', 'reset-manual-relationship']) {
-      expect(fixture.nativeElement.querySelector(`[data-testid="${id}"]`), id).toBeTruthy();
-    }
+    expect((fixture.nativeElement.querySelector('[data-testid="continue-to-er"]') as HTMLAnchorElement).getAttribute('href')).toBe('/projects/10/er-diagram');
   });
 
-  it('filters source and target columns when their persisted table selection changes', () => {
-    selectByText('manual-source-table', 'orders');
-    expect(component.sourceColumns().map(column => column.name)).toEqual(['id', 'customer_id']);
-    selectByText('manual-target-table', 'customers');
-    expect(component.targetColumns().map(column => column.name)).toEqual(['id', 'external_id', 'name', 'uuid_key']);
+  it('reloads suggestions and the design after detection and clears the busy state', () => {
+    component.detectRelationships();
+    fixture.detectChanges();
+
+    expect(api['detectSuggestions']).toHaveBeenCalledWith(10);
+    expect(api['getDesign']).toHaveBeenCalledTimes(2);
+    expect(api['getSuggestions']).toHaveBeenCalledTimes(2);
+    expect(component.busyAction()).toBeNull();
+    expect(component.feedback()?.title).toBe('Detection complete');
   });
 
-  it('labels PK and Unique targets and disables non-key and incompatible options', () => {
-    selectByText('manual-source-table', 'orders');
-    selectByText('manual-source-column', 'customer_id');
-    const target = selectByText('manual-target-table', 'customers').parentElement?.parentElement
-      ?.querySelector('[data-testid="manual-target-column"]') as HTMLSelectElement;
-    const options = Array.from(target.options);
-    expect(options.find(item => item.textContent?.includes('id · INTEGER · PK'))?.disabled).toBe(false);
-    expect(options.find(item => item.textContent?.includes('external_id · INTEGER · Unique'))?.disabled).toBe(false);
-    expect(options.find(item => item.textContent?.includes('name · TEXT · not a PK or Unique'))?.disabled).toBe(true);
-    expect(options.find(item => item.textContent?.includes('uuid_key · UUID · type mismatch'))?.disabled).toBe(true);
+  it('accepts edited source, target, cardinality, and On Delete atomically then refreshes the workspace', () => {
+    const suggestion = component.pendingSuggestions()[0];
+    component.startSuggestionEdit(suggestion);
+    component.updateSuggestionDraft({ fromTableId: 2 });
+    component.updateSuggestionDraft({ fromColumnId: 22 });
+    component.updateSuggestionDraft({ toTableId: 1 });
+    component.updateSuggestionDraft({ toColumnId: 11, cardinality: 'one-to-one', onDelete: 'cascade' });
+
+    component.acceptEditedSuggestion(suggestion);
+    fixture.detectChanges();
+
+    expect(api['acceptSuggestion']).toHaveBeenCalledWith(71, 5, {
+      fromColumnId: 22, toColumnId: 11, cardinality: 'one-to-one', onDelete: 'cascade',
+    });
+    expect(component.pendingSuggestions().map(item => item.id)).toEqual([72]);
+    expect(component.persistedRelationships()).toHaveLength(1);
+    expect(component.persistedRelationships()[0].onDelete).toBe('cascade');
+    expect(component.editingSuggestionId()).toBeNull();
+    expect(component.busyAction()).toBeNull();
   });
 
-  it('prevents incomplete, same-endpoint, non-key, type-mismatched, and duplicate submissions', () => {
-    expect(component.canCreateManual()).toBe(false);
-    component.manualFromTableId = 1;
-    component.manualFromColumnId = 11;
-    component.manualToTableId = 1;
-    component.manualToColumnId = 11;
-    expect(component.manualValidationMessage()).toContain('same endpoint');
-    component.manualFromTableId = 2;
-    component.manualFromColumnId = 22;
-    component.manualToColumnId = 13;
+  it('rejects a suggestion, removes it from pending, and does not create a relationship', () => {
+    component.rejectSuggestion(component.pendingSuggestions()[1]);
+    fixture.detectChanges();
+
+    expect(component.pendingSuggestions().map(item => item.id)).toEqual([71]);
+    expect(component.rejectedSuggestionCount()).toBe(1);
+    expect(component.persistedRelationships()).toHaveLength(0);
+    expect(component.busyAction()).toBeNull();
+  });
+
+  it('validates manual project endpoints, key targets, types, and duplicates', () => {
+    expect(component.manualValidationMessage()).toContain('Select source and target');
+    component.updateManualDraft({ fromTableId: 1 });
+    component.updateManualDraft({ fromColumnId: 11 });
+    component.updateManualDraft({ toTableId: 1 });
+    component.updateManualDraft({ toColumnId: 11 });
+    expect(component.manualValidationMessage()).toContain('exact same endpoint');
+    component.updateManualDraft({ fromTableId: 2 });
+    component.updateManualDraft({ fromColumnId: 22 });
+    component.updateManualDraft({ toTableId: 1 });
+    component.updateManualDraft({ toColumnId: 12 });
     expect(component.manualValidationMessage()).toContain('Primary Key or Unique');
-    component.manualToColumnId = 14;
-    expect(component.manualValidationMessage()).toContain('must match');
-    component.design.set({ ...structuredClone(schema), relationships: [{
-      id: 31, fromColumnId: 22, fromTableId: 2, fromTableName: 'orders', fromColumnName: 'customer_id',
-      toColumnId: 11, toTableId: 1, toTableName: 'customers', toColumnName: 'id',
-      cardinality: 'many-to-one', onDelete: 'no-action', origin: 'user',
-    }] });
-    component.manualToColumnId = 11;
+    currentDesign.relationships = [orderCustomerRelationship()];
+    component.design.set(structuredClone(currentDesign));
+    component.updateManualDraft({ toColumnId: 11 });
     expect(component.manualValidationMessage()).toContain('already exists');
   });
 
-  it('creates a persisted relationship and refreshes the displayed relationship list', () => {
-    const updated = structuredClone(schema);
-    updated.revision = 6;
-    updated.status = 'Draft';
-    updated.relationships = [{
-      id: 41, fromColumnId: 22, fromTableId: 2, fromTableName: 'orders', fromColumnName: 'customer_id',
-      toColumnId: 11, toTableId: 1, toTableName: 'customers', toColumnName: 'id',
-      cardinality: 'many-to-one', onDelete: 'no-action', origin: 'user',
-    }];
-    api['createRelationship'].mockReturnValue(of(updated));
-    selectValidEndpoints();
-
-    (fixture.nativeElement.querySelector('[data-testid="create-manual-relationship"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    expect(api['createRelationship']).toHaveBeenCalledWith(9, 5, { fromColumnId: 22, toColumnId: 11, cardinality: 'many-to-one', onDelete: 'no-action' });
-    expect(component.persistedRelationships()).toHaveLength(1);
-    expect(component.design()?.status).toBe('Draft');
-    expect(fixture.nativeElement.querySelector('[data-testid="persisted-relationships"]').textContent).toContain('orders.customer_id');
-  });
-
-  it('shows a structured duplicate conflict from the backend', () => {
-    api['createRelationship'].mockReturnValue(throwError(() => new HttpErrorResponse({
-      status: 409, error: { message: 'An identical relationship already exists in this design.' },
-    })));
-    selectValidEndpoints();
+  it('creates a manual relationship and reloads the persisted list without stale local state', () => {
+    component.updateManualDraft({ fromTableId: 3 });
+    component.updateManualDraft({ fromColumnId: 32 });
+    component.updateManualDraft({ toTableId: 2 });
+    component.updateManualDraft({ toColumnId: 21 });
     component.createManualRelationship();
     fixture.detectChanges();
 
-    expect(component.errorMessage).toContain('identical relationship');
+    expect(api['createRelationship']).toHaveBeenCalledWith(9, 5, { fromColumnId: 32, toColumnId: 21, cardinality: 'many-to-one', onDelete: 'no-action' });
+    expect(component.persistedRelationships()).toHaveLength(1);
+    expect(component.manualDraft().fromTableId).toBeNull();
+    expect(component.feedback()?.title).toBe('Relationship created');
   });
 
-  it('marks a detected non-key suggestion unavailable and disables Accept', () => {
-    api['getSuggestions'].mockReturnValue(of([invalidSuggestion]));
-    component.loadSuggestions();
+  it('edits a persisted relationship and displays the refreshed revision immediately', () => {
+    currentDesign.relationships = [orderCustomerRelationship()];
+    component.reloadWorkspace();
+    const relationship = component.persistedRelationships()[0];
+    component.startRelationshipEdit(relationship);
+    component.updateRelationshipDraft({ onDelete: 'cascade' });
+    component.saveRelationshipEdit(relationship);
     fixture.detectChanges();
-    const buttons = fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
-    const accept = Array.from(buttons)
-      .find(button => button.textContent?.trim() === 'Accept') as HTMLButtonElement;
 
-    expect(component.suggestionUnavailableReason(component.pending()[0])).toContain('neither Primary Key nor Unique');
-    expect(accept.disabled).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Unavailable');
+    expect(api['updateRelationship']).toHaveBeenCalledWith(41, 5, { cardinality: 'many-to-one', onDelete: 'cascade' });
+    expect(component.persistedRelationships()[0].onDelete).toBe('cascade');
+    expect(component.design()?.revision).toBe(6);
+    expect(component.editingRelationshipId()).toBeNull();
   });
 
-  it('keeps all manual controls in the DOM for the mobile responsive layout', () => {
+  it('requires confirmation before delete and removes the relationship after a refreshed response', () => {
+    currentDesign.relationships = [orderCustomerRelationship()];
+    component.reloadWorkspace();
+    const relationship = component.persistedRelationships()[0];
+    component.requestDelete(relationship);
+    fixture.detectChanges();
+    expect(api['deleteRelationship']).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeTruthy();
+
+    component.confirmDelete();
+    fixture.detectChanges();
+    expect(api['deleteRelationship']).toHaveBeenCalledWith(41, 5);
+    expect(component.persistedRelationships()).toHaveLength(0);
+    expect(component.deleteTarget()).toBeNull();
+  });
+
+  it('reloads current server state after a failed mutation and always clears loading state', () => {
+    api['rejectSuggestion'].mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'Suggestion changed elsewhere.' } })));
+    component.rejectSuggestion(component.pendingSuggestions()[0]);
+    fixture.detectChanges();
+
+    expect(api['getDesign']).toHaveBeenCalledTimes(2);
+    expect(api['getSuggestions']).toHaveBeenCalledTimes(2);
+    expect(component.busyAction()).toBeNull();
+    expect(component.feedback()?.kind).toBe('error');
+    expect(component.feedback()?.message).toContain('changed elsewhere');
+  });
+
+  it('revalidates Draft relationship changes without trapping the ER workflow', () => {
+    component.design.set({ ...currentDesign, status: 'Draft', validatedAt: null });
+    component.validateDesign();
+    fixture.detectChanges();
+
+    expect(api['validateSchema']).toHaveBeenCalledWith(10, 5);
+    expect(component.design()?.status).toBe('Valid');
+    expect(fixture.nativeElement.querySelectorAll('[data-testid^="continue-to-er"]').length).toBeGreaterThan(0);
+  });
+
+  it('keeps every workflow section contained at the 390px responsive layout', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
     window.dispatchEvent(new Event('resize'));
     fixture.detectChanges();
-    const form = fixture.nativeElement.querySelector('[data-testid="manual-relationship-form"]') as HTMLElement;
-    expect(form.querySelectorAll('select')).toHaveLength(6);
-    expect(form.querySelector('[data-testid="create-manual-relationship"]')).toBeTruthy();
-    expect(form.className).toContain('glass-card');
-    expect((fixture.nativeElement.querySelector('section') as HTMLElement).className).toContain('overflow-x-hidden');
-    expect((fixture.nativeElement.querySelector('[data-testid="relationship-layout"]') as HTMLElement).className).toContain('min-w-0');
+
+    const page = fixture.nativeElement.querySelector('[data-testid="relationships-page"]') as HTMLElement;
+    expect(page.classList.contains('overflow-x-hidden')).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-testid="manual-source-table"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="continue-to-er-bottom"]')).toBeTruthy();
   });
 });

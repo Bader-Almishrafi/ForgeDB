@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   AcceptSuggestionResponse,
+  AcceptSuggestionRequest,
   CreateDesignColumnRequest,
   CreateDesignRelationshipRequest,
   CreateDesignTableRequest,
@@ -169,10 +170,10 @@ export class DesignApiService {
 
   /** Accept mutates the project's DesignModel, so — unlike reject — it requires If-Match with
    * the caller's last-known design revision (missing -> 428, stale -> 409 with currentRevision). */
-  acceptSuggestion(suggestionId: number, revision: number): Observable<AcceptSuggestionResponse> {
+  acceptSuggestion(suggestionId: number, revision: number, request: AcceptSuggestionRequest): Observable<AcceptSuggestionResponse> {
     return this.http.post<AcceptSuggestionResponse>(
       `${this.baseUrl}/api/relationship-suggestions/${suggestionId}/accept`,
-      {},
+      request,
       { headers: this.ifMatch(revision) },
     );
   }

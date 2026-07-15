@@ -665,6 +665,8 @@ export interface CreateDesignRelationshipRequest {
   onDelete: string;
 }
 
+export type AcceptSuggestionRequest = CreateDesignRelationshipRequest;
+
 export interface UpdateDesignRelationshipRequest {
   cardinality: string;
   onDelete: string;
