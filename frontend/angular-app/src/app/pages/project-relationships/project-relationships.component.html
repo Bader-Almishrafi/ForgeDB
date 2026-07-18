@@ -4,7 +4,7 @@
       <div class="min-w-0">
         <p class="eyebrow">Schema & Design / Relationships</p>
         <h1 class="page-title mt-2">Relationships</h1>
-        <p class="page-subtitle max-w-3xl">Review detected links, persist the relationships your database needs, and continue to the ER Diagram without clearing every suggestion.</p>
+        <p class="page-subtitle max-w-3xl">Review detected links, persist the relationships your database needs, and continue to exports without clearing every suggestion.</p>
       </div>
       <div class="flex flex-wrap gap-2">
         <button data-testid="refresh-relationships" type="button" class="btn-secondary" (click)="reloadWorkspace(true)" [disabled]="loading() || isBusy()">Refresh</button>
@@ -12,7 +12,7 @@
           {{ isBusy('detect') ? 'Detecting…' : 'Detect Relationships' }}
         </button>
         <a class="btn-secondary" [routerLink]="['/projects', projectId, 'schema-designer']">Schema Designer</a>
-        <a data-testid="continue-to-er" class="btn-primary" [routerLink]="['/projects', projectId, 'er-diagram']">Continue to ER Diagram</a>
+        <a data-testid="continue-to-exports" class="btn-primary" [routerLink]="['/projects', projectId, 'exports']">Continue to Exports</a>
       </div>
     </div>
   </header>
@@ -52,7 +52,7 @@
             <span [class]="currentDesign.status === 'Valid' ? 'badge-success' : 'badge-warning'">{{ currentDesign.status }}</span>
           </div>
           @if (needsValidation()) {
-            <p class="mt-2 text-sm text-amber-700">Relationship changes return the schema to Draft. Validate it before deployment; ER Diagram remains available now.</p>
+            <p class="mt-2 text-sm text-amber-700">Relationship changes return the schema to Draft. Validate it before exporting or deploying the database.</p>
           } @else {
             <p class="mt-2 text-sm text-emerald-700">This design is validated. Relationship changes will require revalidation.</p>
           }
@@ -169,7 +169,7 @@
         } @empty {
           <div class="rounded-xl border border-dashed border-slate-300 p-8 text-center xl:col-span-2">
             <p class="font-semibold text-slate-800">No pending suggestions</p>
-            <p class="mt-1 text-sm text-slate-500">Run detection, create a relationship manually, or continue to the ER Diagram.</p>
+            <p class="mt-1 text-sm text-slate-500">Run detection, create a relationship manually, or continue to exports.</p>
           </div>
         }
       </div>
@@ -178,7 +178,7 @@
     <article data-testid="persisted-relationships" class="workspace-panel p-5 sm:p-6">
       <div class="border-b border-slate-200 pb-4">
         <h2 class="text-xl font-semibold text-slate-950">Persisted Relationships</h2>
-        <p class="mt-1 text-sm text-slate-600">These links are stored in the current design and feed the ER Diagram, SQL, exports, and deployment.</p>
+        <p class="mt-1 text-sm text-slate-600">These links are stored in the current design and feed SQL generation, exports, and deployment.</p>
       </div>
       <div class="mt-5 grid min-w-0 gap-4 lg:grid-cols-2">
         @for (relationship of persistedRelationships(); track relationship.id) {
@@ -222,7 +222,7 @@
     </article>
 
     <article class="workspace-panel p-5 sm:p-6">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 class="text-lg font-semibold text-slate-950">Continue the workflow</h2><p class="mt-1 text-sm text-slate-600">You do not need to accept every suggestion. ER Diagram always uses the relationships currently persisted above.</p></div><div class="flex flex-wrap gap-2">@if (needsValidation()) { <button type="button" class="btn-secondary" (click)="validateDesign()" [disabled]="isBusy()">Validate Current Design</button> }<a data-testid="continue-to-er-bottom" class="btn-primary" [routerLink]="['/projects', projectId, 'er-diagram']">Continue to ER Diagram</a></div></div>
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><h2 class="text-lg font-semibold text-slate-950">Continue the workflow</h2><p class="mt-1 text-sm text-slate-600">You do not need to accept every suggestion. Exports and deployment use the relationships currently persisted above.</p></div><div class="flex flex-wrap gap-2">@if (needsValidation()) { <button type="button" class="btn-secondary" (click)="validateDesign()" [disabled]="isBusy()">Validate Current Design</button> }<a data-testid="continue-to-exports-bottom" class="btn-primary" [routerLink]="['/projects', projectId, 'exports']">Continue to Exports</a></div></div>
     </article>
   }
 </section>
@@ -233,7 +233,7 @@
       <p class="eyebrow text-rose-600">Persisted relationship</p>
       <h2 id="delete-relationship-title" class="mt-2 text-xl font-semibold text-slate-950">Delete this relationship?</h2>
       <p class="mt-3 break-words font-mono text-sm text-slate-700">{{ relationshipLabel(relationship) }}</p>
-      <p class="mt-3 text-sm text-slate-600">It will disappear from the design and ER Diagram. The schema will require validation again.</p>
+      <p class="mt-3 text-sm text-slate-600">It will be removed from the design, SQL exports, and future deployments. The schema will require validation again.</p>
       <div class="mt-5 flex flex-wrap justify-end gap-2"><button type="button" class="btn-secondary" (click)="cancelDelete()" [disabled]="isBusy()">Cancel</button><button data-testid="confirm-delete-relationship" type="button" class="btn-danger" (click)="confirmDelete()" [disabled]="isBusy()">{{ isBusy('delete:' + relationship.id) ? 'Deleting…' : 'Delete Relationship' }}</button></div>
     </div>
   </div>

@@ -69,7 +69,6 @@ export class AppShellComponent {
     { label: 'Dashboard', group: 'Analysis', route: () => this.datasetId() ? `/datasets/${this.datasetId()}/dashboard` : null, exact: true, unavailableReason: 'Select a dataset first', icon: 'M4 19V5m0 14h16M8 16v-5m4 5V8m4 8V6' },
     { label: 'Schema', group: 'Schema & Design', route: () => this.projectId() ? `/projects/${this.projectId()}/schema-designer` : null, exact: false, icon: 'M4 5h6v6H4V5Zm10 0h6v6h-6V5ZM4 15h6v4H4v-4Zm10 0h6v4h-6v-4Z' },
     { label: 'Relationships', group: 'Schema & Design', route: () => this.projectId() ? `/projects/${this.projectId()}/relationships` : null, exact: false, icon: 'M5 5h5v5H5V5Zm9 9h5v5h-5v-5Zm-4-6h3a4 4 0 0 1 4 4v2' },
-    { label: 'ER Diagram', group: 'Schema & Design', route: () => this.projectId() ? `/projects/${this.projectId()}/er-diagram` : null, exact: false, icon: 'M6 7h5v4H6zM13 13h5v4h-5zM11 9h2a3 3 0 0 1 3 3v1' },
     { label: 'Deployment', group: 'Schema & Design', route: () => this.projectId() ? `/projects/${this.projectId()}/deployment` : null, exact: false, unavailableReason: 'Select a project first', icon: 'M12 3v12m0 0 4-4m-4 4-4-4M5 17v4h14v-4' },
     { label: 'Exports', group: 'Schema & Design', route: () => this.projectId() ? `/projects/${this.projectId()}/exports` : null, exact: false, icon: 'M12 3v10m0 0 4-4m-4 4-4-4M5 17h14v4H5z' },
   ];
@@ -190,7 +189,7 @@ export class AppShellComponent {
       const section = projectMatch[2];
       const labels: Record<string, string> = {
         overview: 'Overview', datasets: 'Data Sources', upload: 'Upload Data', analysis: 'Analysis', 'data-cleaning': 'Data Cleaning', relationships: 'Relationships',
-        'schema-designer': 'Schema', 'er-diagram': 'ER Diagram', exports: 'Exports',
+        'schema-designer': 'Schema', exports: 'Exports',
       };
       return [
         { label: 'Home', route: '/home' },

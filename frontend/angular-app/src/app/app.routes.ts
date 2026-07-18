@@ -28,7 +28,7 @@ export const routes: Routes = [
       { path: 'projects/:projectId/data-cleaning', loadComponent: () => import('./pages/data-cleaning/data-cleaning.component').then((module) => module.DataCleaningComponent) },
       { path: 'projects/:projectId/relationships', loadComponent: () => import('./pages/project-relationships/project-relationships.component').then((module) => module.ProjectRelationshipsComponent) },
       { path: 'projects/:projectId/schema-designer', loadComponent: () => import('./pages/project-schema-designer/project-schema-designer.component').then((module) => module.ProjectSchemaDesignerComponent), canDeactivate: [unsavedChangesGuard] },
-      { path: 'projects/:projectId/er-diagram', loadComponent: () => import('./pages/project-er-diagram/project-er-diagram.component').then((module) => module.ProjectErDiagramComponent) },
+      { path: 'projects/:projectId/er-diagram', redirectTo: 'projects/:projectId/relationships', pathMatch: 'full' },
       { path: 'projects/:projectId/deployment', loadComponent: () => import('./pages/project-deployment/project-deployment.component').then((module) => module.ProjectDeploymentComponent) },
       { path: 'projects/:projectId/exports', loadComponent: () => import('./pages/project-exports/project-exports.component').then((module) => module.ProjectExportsComponent) },
       { path: 'datasets/:datasetId/preview', loadComponent: () => import('./pages/analysis/analysis.component').then((module) => module.AnalysisComponent) },
