@@ -170,6 +170,12 @@ export class AppShellComponent {
     if (path === '/projects') {
       return [{ label: 'Projects' }];
     }
+    if (path === '/change-password') {
+      return [
+        { label: 'Home', route: '/home' },
+        { label: 'Change Password' },
+      ];
+    }
     if (path === '/projects/new') {
       return [
         { label: 'Home', route: '/home' },

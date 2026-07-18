@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ForgeDB.API.Repositories;
 
+// Owns EF Core access for users while authentication rules stay in AuthService.
 public class UserRepository : IUserRepository
 {
     private readonly ForgeDbContext _context;
@@ -32,5 +33,20 @@ public class UserRepository : IUserRepository
     {
         await _context.Users.AddAsync(user, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<bool> UpdatePasswordHashAsync(
+        int userId,
+        string passwordHash,
+        CancellationToken cancellationToken = default)
+    {
+        // ExecuteUpdate emits a single-column UPDATE and leaves names, email, role, and timestamps untouched.
+        var updatedRows = await _context.Users
+            .Where(user => user.Id == userId)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(user => user.PasswordHash, passwordHash),
+                cancellationToken);
+
+        return updatedRows == 1;
     }
 }

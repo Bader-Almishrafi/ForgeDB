@@ -213,6 +213,7 @@
                   <p class="mt-0.5 truncate text-xs text-slate-500 dark:text-[#8a99ad]">{{ user()?.email }}</p>
                 </div>
                 <a routerLink="/projects" role="menuitem" (click)="profileOpen.set(false)" class="mt-1 block rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-[#21262d]">Projects</a>
+                <a routerLink="/change-password" role="menuitem" (click)="profileOpen.set(false)" class="block rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-[#21262d]">Change Password</a>
                 <button type="button" role="menuitem" (click)="logout()" class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">Log out</button>
               </div>
             }

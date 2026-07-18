@@ -31,6 +31,10 @@ import {
   ProjectCleaningSummary,
   QualityConfirmation,
   RegisterRequest,
+  ChangePasswordRequest,
+  RequestPasswordResetRequest,
+  RequestPasswordResetResponse,
+  ResetPasswordRequest,
 } from './api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -44,6 +48,22 @@ export class ForgeApiService {
 
   login(request: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.baseUrl}/api/auth/login`, request);
+  }
+
+  // ForgeApiService owns the exact backend URL and HTTP method for each authentication operation.
+  changePassword(request: ChangePasswordRequest): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/api/auth/change-password`, request);
+  }
+
+  requestPasswordReset(request: RequestPasswordResetRequest): Observable<RequestPasswordResetResponse> {
+    return this.http.post<RequestPasswordResetResponse>(
+      `${this.baseUrl}/api/auth/request-password-reset`,
+      request,
+    );
+  }
+
+  resetPassword(request: ResetPasswordRequest): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/api/auth/reset-password`, request);
   }
 
   createProject(request: ProjectCreateRequest): Observable<ProjectResponse> {

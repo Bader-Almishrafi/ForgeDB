@@ -9,6 +9,7 @@ export const authTokenInterceptor: HttpInterceptorFn = (request, next) => {
     return next(request);
   }
 
+  // Protected API calls receive the current JWT here, so components never build Authorization headers.
   return next(request.clone({
     setHeaders: {
       Authorization: `Bearer ${token}`,

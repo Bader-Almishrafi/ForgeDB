@@ -73,6 +73,7 @@ builder.Services.AddHttpClient<IPythonAnalysisClient, PythonAnalysisClient>(clie
 });
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IDatasetRepository, DatasetRepository>();
 builder.Services.AddScoped<ICleaningRepository, CleaningRepository>();
@@ -80,6 +81,7 @@ builder.Services.AddScoped<IDesignRepository, DesignRepository>();
 builder.Services.AddScoped<IRelationshipSuggestionRepository, RelationshipSuggestionRepository>();
 builder.Services.AddScoped<IDeploymentRepository, DeploymentRepository>();
 builder.Services.AddScoped<IPasswordHasher<ForgeDB.API.Models.Entities.User>, PasswordHasher<ForgeDB.API.Models.Entities.User>>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 var jwtKey = builder.Configuration["Jwt:Key"];
 if (string.IsNullOrWhiteSpace(jwtKey))
@@ -116,6 +118,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 			ValidIssuer = jwtIssuer,
 			ValidAudience = jwtAudience,
 			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+		};
+		options.Events = new JwtBearerEvents
+		{
+			OnChallenge = async context =>
+			{
+				// Authentication failures are returned as the same JSON shape used by controller errors.
+				context.HandleResponse();
+				context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+				context.Response.ContentType = "application/json";
+				await context.Response.WriteAsJsonAsync(new
+				{
+					message = "A valid authentication token is required."
+				});
+			}
 		};
 	});
 

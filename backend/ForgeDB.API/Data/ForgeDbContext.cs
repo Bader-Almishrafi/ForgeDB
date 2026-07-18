@@ -11,6 +11,7 @@ public class ForgeDbContext : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Dataset> Datasets => Set<Dataset>();
     public DbSet<DatasetColumn> DatasetColumns => Set<DatasetColumn>();
@@ -39,6 +40,20 @@ public class ForgeDbContext : DbContext
             entity.HasMany(user => user.Projects)
                 .WithOne(project => project.User)
                 .HasForeignKey(project => project.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.ToTable("password_reset_tokens");
+            entity.HasKey(token => token.Id);
+            entity.Property(token => token.TokenHash).HasMaxLength(64).IsRequired();
+            entity.HasIndex(token => token.TokenHash).IsUnique();
+            entity.HasIndex(token => new { token.UserId, token.ExpiresAt });
+
+            entity.HasOne(token => token.User)
+                .WithMany(user => user.PasswordResetTokens)
+                .HasForeignKey(token => token.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

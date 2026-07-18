@@ -1,6 +1,14 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { tap } from 'rxjs';
-import { AuthResponse, AuthUser, LoginRequest, RegisterRequest } from './api.models';
+import {
+  AuthResponse,
+  AuthUser,
+  ChangePasswordRequest,
+  LoginRequest,
+  RegisterRequest,
+  RequestPasswordResetRequest,
+  ResetPasswordRequest,
+} from './api.models';
 import { ForgeApiService } from './forge-api.service';
 import { WorkflowStateService } from './workflow-state.service';
 
@@ -14,6 +22,7 @@ export class AuthService {
   private readonly userSignal = signal<AuthUser | null>(this.readStoredUser());
   private readonly tokenSignal = signal<string | null>(this.readStoredToken());
 
+  // AuthService owns browser session state; ForgeApiService only sends HTTP requests.
   readonly user = this.userSignal.asReadonly();
   readonly token = this.tokenSignal.asReadonly();
   readonly isLoggedIn = computed(() => Boolean(this.tokenSignal() && this.userSignal()));
@@ -24,6 +33,18 @@ export class AuthService {
 
   login(request: LoginRequest) {
     return this.api.login(request).pipe(tap((response) => this.storeSession(response)));
+  }
+
+  changePassword(request: ChangePasswordRequest) {
+    return this.api.changePassword(request);
+  }
+
+  requestPasswordReset(request: RequestPasswordResetRequest) {
+    return this.api.requestPasswordReset(request);
+  }
+
+  resetPassword(request: ResetPasswordRequest) {
+    return this.api.resetPassword(request);
   }
 
   logout(): void {

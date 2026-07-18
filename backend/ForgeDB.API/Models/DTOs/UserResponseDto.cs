@@ -1,5 +1,6 @@
 namespace ForgeDB.API.Models.DTOs;
 
+// Exposes user profile fields while deliberately excluding PasswordHash and reset-token data.
 public class UserResponseDto
 {
     public int Id { get; set; }

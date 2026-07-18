@@ -7,6 +7,7 @@ export interface AuthUser {
   createdAt: string;
 }
 
+// Auth responses contain safe profile data plus the JWT used by the interceptor on later requests.
 export interface AuthResponse {
   user: AuthUser;
   token: string;
@@ -22,6 +23,28 @@ export interface RegisterRequest {
 export interface LoginRequest {
   email: string;
   password: string;
+}
+
+// No user ID is sent: the backend identifies the account from the signed JWT.
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+// Password reset is intentionally token-based because this caller has no authenticated session.
+export interface RequestPasswordResetRequest {
+  email: string;
+}
+
+export interface RequestPasswordResetResponse {
+  message: string;
+  developmentToken?: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  token: string;
+  newPassword: string;
 }
 
 export interface ProjectResponse {

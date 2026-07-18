@@ -10,4 +10,5 @@ public class User
     public string Role { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public ICollection<Project> Projects { get; set; } = new List<Project>();
+    public ICollection<PasswordResetToken> PasswordResetTokens { get; set; } = new List<PasswordResetToken>();
 }

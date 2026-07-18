@@ -18,6 +18,7 @@ export const routes: Routes = [
     canActivateChild: [authGuard],
     children: [
       { path: 'home', loadComponent: () => import('./pages/home/home.component').then((module) => module.HomeComponent) },
+      { path: 'change-password', loadComponent: () => import('./pages/change-password/change-password.component').then((module) => module.ChangePasswordComponent) },
       { path: 'projects', loadComponent: () => import('./pages/projects/projects.component').then((module) => module.ProjectsComponent) },
       { path: 'projects/new', loadComponent: () => import('./pages/project-create/project-create.component').then((module) => module.ProjectCreateComponent), canDeactivate: [unsavedChangesGuard] },
       { path: 'projects/:projectId/overview', loadComponent: () => import('./pages/project-overview/project-overview.component').then((module) => module.ProjectOverviewComponent) },
