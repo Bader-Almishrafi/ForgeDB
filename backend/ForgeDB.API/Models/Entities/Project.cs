@@ -1,5 +1,7 @@
 namespace ForgeDB.API.Models.Entities;
 
+// EF Core entity representing the projects PostgreSQL row and its relationships. DTOs map this
+// persistence model into explicit API contracts instead of serializing the navigation graph.
 public class Project
 {
     public int Id { get; set; }

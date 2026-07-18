@@ -13,6 +13,8 @@ import { ForgeApiService } from '../../services/forge-api.service';
   templateUrl: './project-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+// Presents one project and owns its edit/delete overlays. Successful mutations are emitted to
+// ProjectsComponent, which remains responsible for the parent collection and page navigation.
 export class ProjectCardComponent {
   private readonly api = inject(ForgeApiService);
 
@@ -32,6 +34,7 @@ export class ProjectCardComponent {
   editName = '';
   editDescription = '';
 
+  // Copies the current input into editable fields so canceling does not mutate parent data.
   startEdit(): void {
     this.editName = this.project().name;
     this.editDescription = this.project().description ?? '';
@@ -39,11 +42,14 @@ export class ProjectCardComponent {
     this.editing.set(true);
   }
 
+  // Closes the editor and discards its transient error state.
   cancelEdit(): void {
     this.editing.set(false);
     this.errorMessage.set('');
   }
 
+  // Sends editable fields through the API and emits the returned ProjectResponse so the parent
+  // can replace its local card. saving prevents duplicate update requests.
   saveEdit(): void {
     const name = this.editName.trim();
     if (!name || this.saving()) {
@@ -63,15 +69,19 @@ export class ProjectCardComponent {
       });
   }
 
+  // Opens a destructive-action confirmation instead of deleting immediately.
   confirmDelete(): void {
     this.errorMessage.set('');
     this.confirmingDelete.set(true);
   }
 
+  // Closes the delete confirmation without changing the project.
   cancelDelete(): void {
     this.confirmingDelete.set(false);
   }
 
+  // Deletes through the API, emits the removed ID on success, and keeps failure feedback local
+  // to the card. deleting prevents duplicate DELETE requests.
   deleteProject(): void {
     if (this.deleting()) {
       return;
@@ -91,6 +101,7 @@ export class ProjectCardComponent {
       });
   }
 
+  // Prefers the backend's structured JSON error while retaining a stable fallback for other failures.
   private errorText(error: unknown, fallback: string): string {
     if (error instanceof HttpErrorResponse && error.error && typeof error.error === 'object' && 'message' in error.error) {
       const message = (error.error as { message?: unknown }).message;

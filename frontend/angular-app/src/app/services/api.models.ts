@@ -47,6 +47,7 @@ export interface ResetPasswordRequest {
   newPassword: string;
 }
 
+// ProjectResponse is the persisted API representation returned after create, read, or update.
 export interface ProjectResponse {
   id: number;
   userId: number;
@@ -57,12 +58,14 @@ export interface ProjectResponse {
   updatedAt?: string | null;
 }
 
+// ProjectCreateRequest contains initial input; the server replaces userId with the JWT owner.
 export interface ProjectCreateRequest {
   userId: number;
   name: string;
   description?: string | null;
 }
 
+// ProjectUpdateRequest contains only fields that an existing project allows the user to edit.
 export interface ProjectUpdateRequest {
   name: string;
   description?: string | null;
@@ -481,6 +484,8 @@ export interface ApiErrorBody {
   message?: string;
 }
 
+// ProjectOverview is calculated from project data and related workflow state rather than mapping
+// one database row directly.
 export interface ProjectOverview {
   projectId: number;
   projectName: string;
@@ -734,6 +739,7 @@ export interface DesignConflictError {
   message: string;
 }
 
+// ProjectExportPackage carries generated SQL, DBML, JSON Schema, and supporting reports.
 export interface ProjectExportPackage {
   projectId: number;
   projectName: string;

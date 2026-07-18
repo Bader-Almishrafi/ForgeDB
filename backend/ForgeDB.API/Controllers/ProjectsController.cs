@@ -9,6 +9,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ForgeDB.API.Controllers;
 
+// Exposes authenticated Project HTTP endpoints. [Authorize] protects every action in this
+// controller; the controller handles routing/status codes, ProjectService owns business rules,
+// and repositories own EF Core/PostgreSQL access.
 [ApiController]
 [Authorize]
 [Route("api/projects")]
@@ -23,6 +26,10 @@ public class ProjectsController : ControllerBase
         _projectRepository = projectRepository;
     }
 
+    // Creates a project for the JWT owner. The client-provided UserId is overwritten because owner
+    // identity must come from the signed token. CreatedAtAction returns 201 Created plus the GET
+    // route for the new resource; validation failures return 400 Bad Request. CancellationToken
+    // flows from the disconnected HTTP request through service and repository calls.
     [HttpPost]
     public async Task<ActionResult<ProjectResponseDto>> Create([FromBody] ProjectCreateDto request, CancellationToken cancellationToken)
     {
@@ -38,6 +45,8 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    // Returns 200 OK for an owned project, 404 when absent, 403 when it belongs to another user,
+    // or 400 for an invalid identifier. Ownership is checked before project data leaves the API.
     [HttpGet("{projectId:int}")]
     public async Task<ActionResult<ProjectResponseDto>> GetById(int projectId, CancellationToken cancellationToken)
     {
@@ -55,6 +64,8 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    // Lists projects only when the route user matches the JWT user. This prevents a caller from
+    // enumerating another account's projects by changing the URL; a missing user maps to 404.
     [HttpGet("user/{userId:int}")]
     public async Task<ActionResult<IEnumerable<ProjectResponseDto>>> GetByUserId(int userId, CancellationToken cancellationToken)
     {
@@ -75,6 +86,9 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    // Verifies ownership before delegating editable fields to the service. A successful update
+    // returns 200 with the new representation; invalid input, forbidden access, and absence map
+    // to 400, 403, and 404 respectively.
     [HttpPut("{projectId:int}")]
     public async Task<ActionResult<ProjectResponseDto>> Update(int projectId, [FromBody] ProjectUpdateDto request, CancellationToken cancellationToken)
     {
@@ -94,6 +108,8 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    // Checks ownership before deletion and returns 204 No Content when the repository removes the
+    // project. Returning no body communicates that the resource no longer has a representation.
     [HttpDelete("{projectId:int}")]
     public async Task<IActionResult> Delete(int projectId, CancellationToken cancellationToken)
     {
@@ -113,6 +129,8 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    // Returns the owned project's aggregated overview as 200 OK. The action translates invalid,
+    // forbidden, and missing cases into 400, 403, and 404 HTTP responses.
     [HttpGet("{projectId:int}/overview")]
     public async Task<ActionResult<ProjectOverviewDto>> GetOverview(int projectId, CancellationToken cancellationToken)
     {
@@ -135,6 +153,8 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    // Builds generated exports only for the owner. Invalid design state returns 422 Unprocessable
+    // Entity because the request is understood but current project data cannot produce artifacts.
     [HttpGet("{projectId:int}/exports/package")]
     public async Task<ActionResult<ProjectExportPackageDto>> GetExportPackage(int projectId, CancellationToken cancellationToken)
     {
@@ -161,6 +181,8 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    // Reads the authenticated user ID from signed JWT claims rather than trusting route or body
+    // ownership fields supplied by a client.
     private int GetUserId()
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -170,6 +192,9 @@ public class ProjectsController : ControllerBase
             : throw new UnauthorizedAccessException("The authentication token does not contain a valid user identifier.");
     }
 
+    // Performs the common authorization lookup before update, delete, overview, or export work.
+    // A missing project is left for the requested operation to report as 404; a different owner
+    // fails immediately with 403 through UnauthorizedAccessException.
     private async Task EnsureOwnedProjectAsync(int projectId, CancellationToken cancellationToken)
     {
         if (projectId <= 0) throw new ArgumentException("ProjectId must be greater than zero.");

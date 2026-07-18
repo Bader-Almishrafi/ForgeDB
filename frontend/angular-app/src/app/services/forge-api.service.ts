@@ -38,6 +38,8 @@ import {
 } from './api.models';
 
 @Injectable({ providedIn: 'root' })
+// Centralizes typed HTTP communication and backend URLs. Components and feature services own
+// workflow decisions; this service only translates calls into API requests and responses.
 export class ForgeApiService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.apiBaseUrl.replace(/\/$/, '');
@@ -66,46 +68,67 @@ export class ForgeApiService {
     return this.http.post<void>(`${this.baseUrl}/api/auth/reset-password`, request);
   }
 
+  // ---------------------------------------------------------------------------
+  // Project and project-creation data-source endpoints
+  // ---------------------------------------------------------------------------
+
+  // POST /api/projects sends project creation fields and returns the persisted project,
+  // including its database-generated ID for subsequent dataset imports.
   createProject(request: ProjectCreateRequest): Observable<ProjectResponse> {
     return this.http.post<ProjectResponse>(`${this.baseUrl}/api/projects`, request);
   }
 
+  // GET /api/projects/{projectId} returns one authenticated, owned project.
   getProject(projectId: number): Observable<ProjectResponse> {
     return this.http.get<ProjectResponse>(`${this.baseUrl}/api/projects/${projectId}`);
   }
 
+  // PUT /api/projects/{projectId} sends editable name/description fields and returns the update.
   updateProject(projectId: number, request: ProjectUpdateRequest): Observable<ProjectResponse> {
     return this.http.put<ProjectResponse>(`${this.baseUrl}/api/projects/${projectId}`, request);
   }
 
+  // DELETE /api/projects/{projectId} removes the owned project and expects 204 No Content.
   deleteProject(projectId: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/api/projects/${projectId}`);
   }
 
+  // GET /api/projects/{projectId}/overview returns aggregated project, dataset, cleaning,
+  // relationship, design, and recommendation information.
   getProjectOverview(projectId: number): Observable<ProjectOverview> {
     return this.http.get<ProjectOverview>(`${this.baseUrl}/api/projects/${projectId}/overview`);
   }
 
+  // GET /api/projects/user/{userId} returns the authenticated user's project list.
   getUserProjects(userId: number): Observable<ProjectResponse[]> {
     return this.http.get<ProjectResponse[]>(`${this.baseUrl}/api/projects/user/${userId}`);
   }
 
+  // POST /api/projects/{projectId}/datasets/upload sends CSV/Excel multipart data and returns
+  // the DatasetResponse created inside the project.
   uploadDataset(projectId: number, formData: FormData): Observable<DatasetResponse> {
     return this.http.post<DatasetResponse>(`${this.baseUrl}/api/projects/${projectId}/datasets/upload`, formData);
   }
 
+  // POST /api/datasets/excel/preview sends a workbook without persisting it and returns sheets,
+  // selected worksheet metadata, and sampled rows for the wizard.
   previewExcel(formData: FormData): Observable<ExcelWorkbookPreview> {
     return this.http.post<ExcelWorkbookPreview>(`${this.baseUrl}/api/datasets/excel/preview`, formData);
   }
 
+  // POST /api/datasets/api/test sends URL/path settings and returns connectivity diagnostics.
   testApiConnection(request: ApiJsonImportRequest): Observable<ApiConnectionTest> {
     return this.http.post<ApiConnectionTest>(`${this.baseUrl}/api/datasets/api/test`, request);
   }
 
+  // POST /api/datasets/api/preview sends URL/path settings and returns a sampled JSON array
+  // without creating a dataset.
   previewApi(request: ApiJsonImportRequest): Observable<ApiJsonPreview> {
     return this.http.post<ApiJsonPreview>(`${this.baseUrl}/api/datasets/api/preview`, request);
   }
 
+  // POST /api/projects/{projectId}/datasets/api imports the previewed remote array and returns
+  // the persisted DatasetResponse linked to the new project.
   importApi(projectId: number, request: ApiJsonImportRequest): Observable<DatasetResponse> {
     return this.http.post<DatasetResponse>(`${this.baseUrl}/api/projects/${projectId}/datasets/api`, request);
   }
@@ -142,6 +165,7 @@ export class ForgeApiService {
     return this.http.get<DashboardResponse>(`${this.baseUrl}/api/datasets/${datasetId}/dashboard`);
   }
 
+  // GET /api/projects/{projectId}/exports/package returns generated schema artifacts and reports.
   getProjectExportPackage(projectId: number): Observable<ProjectExportPackage> {
     return this.http.get<ProjectExportPackage>(`${this.baseUrl}/api/projects/${projectId}/exports/package`);
   }

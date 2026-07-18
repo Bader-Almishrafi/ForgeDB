@@ -7,6 +7,9 @@ using ForgeDB.API.Services.Interfaces;
 
 namespace ForgeDB.API.Services;
 
+// Contains Project business logic and coordinates project persistence, cleaning state,
+// relationship discovery, and design generation. Project entities represent database state;
+// create/update DTOs are input contracts, while response/overview/export DTOs are safe API output.
 public class ProjectService : IProjectService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -31,6 +34,13 @@ public class ProjectService : IProjectService
         _cleaningRepository = cleaningRepository;
     }
 
+    // -------------------------------------------------------------------------
+    // Project CRUD operations
+    // -------------------------------------------------------------------------
+
+    // Flow: validate request -> normalize text -> verify User -> create Project entity -> save via
+    // repository -> map to ProjectResponseDto. Backend validation remains mandatory even when
+    // Angular validates first because API callers can bypass the browser UI.
     public async Task<ProjectResponseDto> CreateProjectAsync(ProjectCreateDto request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -64,6 +74,8 @@ public class ProjectService : IProjectService
         return MapToResponse(project);
     }
 
+    // Validates the identifier, loads the entity, and maps it to an API DTO; null lets the
+    // controller represent an absent resource as 404 Not Found.
     public async Task<ProjectResponseDto?> GetProjectByIdAsync(int projectId, CancellationToken cancellationToken = default)
     {
         if (projectId <= 0)
@@ -76,6 +88,8 @@ public class ProjectService : IProjectService
         return project is null ? null : MapToResponse(project);
     }
 
+    // Distinguishes a missing user from a user with an empty project list, then maps every entity
+    // so EF Core navigation properties are not serialized as part of the API contract.
     public async Task<IReadOnlyList<ProjectResponseDto>?> GetProjectsByUserIdAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (userId <= 0)
@@ -93,6 +107,8 @@ public class ProjectService : IProjectService
         return projects.Select(MapToResponse).ToList();
     }
 
+    // Normalizes editable fields, delegates the tracked update to the repository, and maps the
+    // result; null means the project disappeared or never existed.
     public async Task<ProjectResponseDto?> UpdateProjectAsync(int projectId, ProjectUpdateDto request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -114,6 +130,8 @@ public class ProjectService : IProjectService
         return project is null ? null : MapToResponse(project);
     }
 
+    // Validates the ID and forwards the repository's boolean so the controller can choose between
+    // 204 No Content and 404 Not Found.
     public Task<bool> DeleteProjectAsync(int projectId, CancellationToken cancellationToken = default)
     {
         if (projectId <= 0)
@@ -124,6 +142,12 @@ public class ProjectService : IProjectService
         return _projectRepository.DeleteAsync(projectId, cancellationToken);
     }
 
+    // -------------------------------------------------------------------------
+    // Overview generation
+    // -------------------------------------------------------------------------
+
+    // Combines the project and datasets with cleaning history/status, relationship suggestions,
+    // generated design state, export readiness, and recommended next actions into one dashboard DTO.
     public async Task<ProjectOverviewDto> GetProjectOverviewAsync(int projectId, CancellationToken cancellationToken = default)
     {
         var project = await GetWorkspaceProjectAsync(projectId, cancellationToken);
@@ -159,6 +183,12 @@ public class ProjectService : IProjectService
         };
     }
 
+    // -------------------------------------------------------------------------
+    // Export package generation
+    // -------------------------------------------------------------------------
+
+    // Combines generated SQL, DBML, and JSON Schema with relationship and data-quality reports.
+    // Design validation errors stop export so the package never presents invalid artifacts as ready.
     public async Task<ProjectExportPackageDto> GetProjectExportPackageAsync(int projectId, CancellationToken cancellationToken = default)
     {
         var project = await GetWorkspaceProjectAsync(projectId, cancellationToken);
@@ -204,6 +234,12 @@ public class ProjectService : IProjectService
         };
     }
 
+    // -------------------------------------------------------------------------
+    // Private workspace, report, recommendation, and mapping helpers
+    // -------------------------------------------------------------------------
+
+    // Loads the dataset-rich workspace graph needed by overview/export calculations and converts
+    // the repository's null into the service-level missing-project exception.
     private async Task<Project> GetWorkspaceProjectAsync(int projectId, CancellationToken cancellationToken)
     {
         if (projectId <= 0)
@@ -215,6 +251,8 @@ public class ProjectService : IProjectService
         return project ?? throw new KeyNotFoundException("Project not found.");
     }
 
+    // Joins relationship suggestions to accepted design relationships and shapes a serializable
+    // report without exposing internal EF Core entities.
     private static List<object> BuildRelationshipReport(
         IReadOnlyList<RelationshipSuggestionResponseDto> suggestions,
         IReadOnlyList<DesignRelationshipResponseDto> relationships)
@@ -250,6 +288,8 @@ public class ProjectService : IProjectService
         }).ToList();
     }
 
+    // Parses stored evidence JSON when valid and tolerates legacy or malformed evidence by
+    // returning null instead of failing the entire export package.
     private static JsonElement? ParseEvidence(string? evidenceJson)
     {
         if (string.IsNullOrWhiteSpace(evidenceJson))
@@ -268,6 +308,8 @@ public class ProjectService : IProjectService
         }
     }
 
+    // Summarizes dataset size, quality counters, and analysis state as the data-quality artifact
+    // bundled with project exports.
     private static string BuildDataQualityReportJson(Project project)
     {
         var dataQuality = project.Datasets
@@ -288,6 +330,7 @@ public class ProjectService : IProjectService
         return JsonSerializer.Serialize(dataQuality, JsonOptions);
     }
 
+    // Derives the next useful workflow actions from imported, analyzed, related, and designed state.
     private static IReadOnlyList<string> BuildNextRecommendedActions(
         Project project,
         IReadOnlyList<RelationshipSuggestionResponseDto> suggestions,
@@ -325,6 +368,7 @@ public class ProjectService : IProjectService
         return actions;
     }
 
+    // Reduces current project progress to the export-readiness label shown in the overview.
     private static string ResolveExportReadiness(Project project, int acceptedRelationshipsCount, int generatedSchemasCount)
     {
         if (project.Datasets.Count == 0)
@@ -345,6 +389,7 @@ public class ProjectService : IProjectService
         return acceptedRelationshipsCount > 0 ? "Ready" : "Ready without accepted relationships";
     }
 
+    // Maps a Dataset entity to the public dataset contract used inside ProjectOverviewDto.
     private static DatasetResponseDto MapDatasetToResponse(Dataset dataset)
     {
         return new DatasetResponseDto
@@ -363,6 +408,8 @@ public class ProjectService : IProjectService
         };
     }
 
+    // Maps persistence state to an explicit response DTO so navigation properties and future
+    // database-only fields cannot leak through API serialization.
     private static ProjectResponseDto MapToResponse(Project project)
     {
         return new ProjectResponseDto

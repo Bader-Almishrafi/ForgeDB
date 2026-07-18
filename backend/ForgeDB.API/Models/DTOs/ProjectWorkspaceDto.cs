@@ -1,5 +1,7 @@
 namespace ForgeDB.API.Models.DTOs;
 
+// Aggregated API contract for the overview page, combining project/dataset totals with cleaning,
+// relationship, design, export-readiness, and recommended-action calculations.
 public class ProjectOverviewDto
 {
     public int ProjectId { get; set; }
@@ -19,6 +21,8 @@ public class ProjectOverviewDto
     public IEnumerable<string> NextRecommendedActions { get; set; } = new List<string>();
 }
 
+// Export API contract containing generated SQL, DBML, JSON Schema, relationship evidence, and
+// data-quality reporting rather than a direct database record.
 public class ProjectExportPackageDto
 {
     public int ProjectId { get; set; }
