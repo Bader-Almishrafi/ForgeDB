@@ -180,10 +180,26 @@ internal static class DatasetAnalysisBuilder
             ChartRecommendations = enrichedChartRecommendations
         };
 
+        var storedAnalysis = new
+        {
+            analysisResponse.DatasetId,
+            analysisResponse.DatasetVersionId,
+            analysisResponse.DatasetVersionNumber,
+            analysisResponse.AnalyzedAt,
+            analysisResponse.IsCleanedVersion,
+            analysisResult.RowCount,
+            analysisResult.ColumnCount,
+            analysisResult.MissingValuesCount,
+            analysisResult.DuplicateRowsCount,
+            analysisResult.DuplicateRowRule,
+            analysisResult.Columns,
+            analysisResult.ColumnTypeDistribution
+        };
+
         return new DatasetAnalysisComputation(
             analysisResponse,
             dashboard,
-            JsonSerializer.Serialize(analysisResult, JsonOptions));
+            JsonSerializer.Serialize(storedAnalysis, JsonOptions));
     }
 
     private static ColumnAnalysisDto MapPythonColumn(

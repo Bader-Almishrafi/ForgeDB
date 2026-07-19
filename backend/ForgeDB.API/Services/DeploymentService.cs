@@ -183,6 +183,8 @@ public class DeploymentService : IDeploymentService
             ? new Dictionary<int, int>()
             : JsonSerializer.Deserialize<Dictionary<int, int>>(state.ConfirmedVersionsJson)
                 ?? new Dictionary<int, int>();
+        var activeVersions = (await _cleaningRepository.GetActiveProjectVersionsAsync(projectId, cancellationToken))
+            .ToDictionary(item => item.Dataset.Id, item => item.Version.Id);
 
         var sourcedTables = orderedTables.Where(table => table.SourceDatasetId.HasValue).ToList();
         if (sourcedTables.GroupBy(table => table.SourceDatasetId!.Value).Any(group => group.Count() != 1)
@@ -214,6 +216,11 @@ public class DeploymentService : IDeploymentService
             {
                 throw new InvalidOperationException($"Table '{table.Name}' is not mapped to the approved finalized dataset version.");
             }
+            if (!activeVersions.TryGetValue(table.SourceDatasetId.Value, out var activeVersionId)
+                || activeVersionId != table.SourceDatasetVersionId.Value)
+            {
+                throw new InvalidOperationException($"Table '{table.Name}' is mapped to a stale dataset version. Regenerate the schema from the active version.");
+            }
 
             var version = await _cleaningRepository.GetVersionAsync(table.SourceDatasetId.Value, table.SourceDatasetVersionId.Value, cancellationToken);
             if (version is null || version.IsRawOriginal)
@@ -221,9 +228,9 @@ public class DeploymentService : IDeploymentService
                 throw new InvalidOperationException($"Table '{table.Name}' has no finalized cleaned dataset. Raw uploaded data cannot be deployed.");
             }
 
-            if (!version.IsActive || version.AnalyzedAt is null)
+            if (version.AnalyzedAt is null)
             {
-                throw new InvalidOperationException($"The finalized cleaned dataset for table '{table.Name}' is no longer active and analyzed.");
+                throw new InvalidOperationException($"The active cleaned dataset for table '{table.Name}' must be re-analyzed before deployment.");
             }
 
             var rows = CleaningSnapshotSerializer.DeserializeRows(version.RowsJson);

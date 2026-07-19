@@ -244,9 +244,19 @@ public class ApiJsonImportTests
         Assert.Equal("api", response.SourceType);
         Assert.Equal(2, response.RowCount);
         Assert.Equal(2, response.ColumnCount);
-        var dataset = await context.Datasets.Include(item => item.Columns).Include(item => item.Rows).SingleAsync();
+        var dataset = await context.Datasets
+            .Include(item => item.Columns)
+            .Include(item => item.Rows)
+            .Include(item => item.Versions)
+            .Include(item => item.ActiveVersion)
+            .SingleAsync();
         Assert.Equal("api", dataset.SourceType);
         Assert.Equal("https://example.com/customers", dataset.SourceUrl);
+        var version = Assert.Single(dataset.Versions);
+        Assert.Equal(1, version.VersionNumber);
+        Assert.True(version.IsActive);
+        Assert.True(version.IsRawOriginal);
+        Assert.Equal(version.Id, dataset.ActiveVersionId);
         var second = JsonSerializer.Deserialize<Dictionary<string, string?>>(dataset.Rows.OrderBy(row => row.RowNumber).Last().RowData)!;
         Assert.Null(second["name"]);
     }

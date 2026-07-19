@@ -1,10 +1,13 @@
 using System.Text.Json;
+using System.Reflection;
 using ForgeDB.API.Data;
 using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories;
 using ForgeDB.API.Services;
+using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Generators;
+using ForgeDB.API.Services.Interfaces;
 using ForgeDB.API.Services.Validation;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -34,6 +37,48 @@ public class SchemaWorkspaceServiceTests
         });
         Assert.Equal(DesignStatus.Draft, result.Status);
         Assert.Equal(3, result.SourceVersions.Count);
+    }
+
+    [Fact]
+    public async Task GenerateSchema_UsesConfirmedActiveVersionTwo()
+    {
+        await using var context = NewContext();
+        var seed = await SeedConfirmedProjectAsync(context);
+        var dataset = await context.Datasets
+            .Include(item => item.ActiveVersion)
+            .SingleAsync(item => item.ProjectId == seed.ProjectId && item.SourceType == "api");
+        var versionOne = dataset.ActiveVersion!;
+        versionOne.IsActive = false;
+        await context.SaveChangesAsync();
+        var versionTwo = new DatasetVersion
+        {
+            DatasetId = dataset.Id,
+            ParentVersionId = versionOne.Id,
+            CreatedByUserId = seed.UserId,
+            VersionNumber = 2,
+            IsActive = true,
+            ColumnsJson = versionOne.ColumnsJson,
+            RowsJson = versionOne.RowsJson,
+            RowCount = versionOne.RowCount,
+            ColumnCount = versionOne.ColumnCount,
+            AnalysisResultJson = versionOne.AnalysisResultJson,
+            AnalyzedAt = DateTime.UtcNow,
+            OperationSummary = "cleaned",
+            CreatedAt = DateTime.UtcNow
+        };
+        context.DatasetVersions.Add(versionTwo);
+        await context.SaveChangesAsync();
+        dataset.ActiveVersionId = versionTwo.Id;
+        var state = await context.ProjectCleaningStates.SingleAsync(item => item.ProjectId == seed.ProjectId);
+        var confirmed = JsonSerializer.Deserialize<Dictionary<int, int>>(state.ConfirmedVersionsJson!)!;
+        confirmed[dataset.Id] = versionTwo.Id;
+        state.ConfirmedVersionsJson = JsonSerializer.Serialize(confirmed);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        var generated = await BuildService(context).GenerateSchemaAsync(seed.ProjectId, seed.UserId, null);
+
+        Assert.Equal(versionTwo.Id, generated.Tables.Single(table => table.SourceDatasetId == dataset.Id).SourceDatasetVersionId);
     }
 
     [Fact]
@@ -280,6 +325,15 @@ public class SchemaWorkspaceServiceTests
         Assert.True(validated.IsStale);
         Assert.False(validated.CanContinue);
         Assert.Contains(validated.ValidationIssues, issue => issue.Code == "stale-cleaned-versions" && issue.Severity == ValidationSeverity.Error);
+        var export = await service.PrepareExportArtifactsAsync(seed.ProjectId);
+        Assert.Contains(export!.ValidationIssues, issue => issue.Code == "stale-cleaned-versions" && issue.Severity == "error");
+        var relationshipService = DispatchProxy.Create<IRelationshipDetectionService, TestInterfaceProxy<IRelationshipDetectionService>>();
+        var projectService = new ProjectService(
+            new ProjectRepository(context),
+            service,
+            relationshipService,
+            new CleaningRepository(context));
+        await Assert.ThrowsAsync<DesignValidationFailedException>(() => projectService.GetProjectExportPackageAsync(seed.ProjectId));
     }
 
     private static ForgeDbContext NewContext() => new(new DbContextOptionsBuilder<ForgeDbContext>()

@@ -105,10 +105,20 @@ public class ExcelImportTests
         Assert.Equal(3, response.ColumnCount);
         Assert.Contains("Customers", response.SourceName);
 
-        var persisted = await context.Datasets.Include(item => item.Columns).Include(item => item.Rows).SingleAsync();
+        var persisted = await context.Datasets
+            .Include(item => item.Columns)
+            .Include(item => item.Rows)
+            .Include(item => item.Versions)
+            .Include(item => item.ActiveVersion)
+            .SingleAsync();
         Assert.Equal("excel", persisted.SourceType);
         Assert.Equal(2, persisted.Rows.Count);
         Assert.Equal(3, persisted.Columns.Count);
+        var version = Assert.Single(persisted.Versions);
+        Assert.Equal(1, version.VersionNumber);
+        Assert.True(version.IsActive);
+        Assert.True(version.IsRawOriginal);
+        Assert.Equal(version.Id, persisted.ActiveVersionId);
         var first = JsonSerializer.Deserialize<Dictionary<string, string?>>(persisted.Rows.OrderBy(row => row.RowNumber).First().RowData)!;
         Assert.Null(first["email"]);
     }

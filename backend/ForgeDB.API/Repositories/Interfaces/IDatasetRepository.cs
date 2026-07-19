@@ -13,8 +13,9 @@ public interface IDatasetRepository
     Task<IReadOnlyList<Dataset>> GetByProjectIdWithColumnsAsync(int projectId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Dataset>> GetByProjectIdWithRowsAndColumnsAsync(int projectId, CancellationToken cancellationToken = default);
     Task AddAsync(Dataset dataset, CancellationToken cancellationToken = default);
-    Task SaveAnalysisResultAsync(
+    Task<bool> SaveAnalysisResultAsync(
         int datasetId,
+        int expectedActiveVersionId,
         string analysisResultJson,
         int missingValuesCount,
         int duplicateRowsCount,

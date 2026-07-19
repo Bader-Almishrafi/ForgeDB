@@ -83,12 +83,19 @@ public class CleaningRepository : ICleaningRepository
                     dataset.ActiveVersionId = winningVersionId ?? dataset.ActiveVersionId;
                 }
             }
-            else if (dataset.ActiveVersionId is null)
+            else if (dataset.ActiveVersionId is null
+                || dataset.Versions.All(version => version.Id != dataset.ActiveVersionId.Value))
             {
-                var active = dataset.Versions.FirstOrDefault(version => version.IsActive)
-                    ?? dataset.Versions.OrderBy(version => version.VersionNumber).First();
-                active.IsActive = true;
+                var active = dataset.Versions
+                    .OrderByDescending(version => version.IsActive)
+                    .ThenByDescending(version => version.VersionNumber)
+                    .First();
                 dataset.ActiveVersionId = active.Id;
+            }
+
+            foreach (var version in dataset.Versions)
+            {
+                version.IsActive = version.Id == dataset.ActiveVersionId;
             }
         }
 
@@ -186,6 +193,15 @@ public class CleaningRepository : ICleaningRepository
         if (_context.Database.IsRelational())
         {
             transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+            var locked = await _context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE datasets SET \"ActiveVersionId\" = \"ActiveVersionId\" WHERE \"Id\" = {datasetId} AND \"ActiveVersionId\" = {sourceVersionId}",
+                cancellationToken);
+            if (locked != 1)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                await transaction.DisposeAsync();
+                throw new InvalidOperationException("The active dataset version changed. Refresh the cleaning workspace and preview again.");
+            }
         }
         var dataset = await _context.Datasets.Include(item => item.Versions)
             .FirstOrDefaultAsync(item => item.Id == datasetId, cancellationToken)
@@ -199,6 +215,7 @@ public class CleaningRepository : ICleaningRepository
         {
             activeVersion.IsActive = false;
         }
+        await _context.SaveChangesAsync(cancellationToken);
 
         var versionNumber = dataset.Versions.Select(version => version.VersionNumber).DefaultIfEmpty(0).Max() + 1;
         var missingValues = result.ResultRows.Sum(row => result.Columns.Count(column =>
@@ -258,6 +275,10 @@ public class CleaningRepository : ICleaningRepository
         dataset.AnalysisResultJson = null;
         dataset.AnalyzedAt = null;
         await InvalidateStateTrackedAsync(dataset.ProjectId, batch.Id, cancellationToken);
+        if (!version.IsActive || dataset.ActiveVersionId != version.Id)
+        {
+            throw new InvalidOperationException("Dataset active-version state is inconsistent.");
+        }
         await _context.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
         {
@@ -350,6 +371,10 @@ public class CleaningRepository : ICleaningRepository
     private static CleaningDatasetVersionData MapActiveVersion(Dataset dataset)
     {
         var version = dataset.ActiveVersion ?? throw new InvalidOperationException("Dataset has no active version.");
+        if (dataset.ActiveVersionId != version.Id || !version.IsActive)
+        {
+            throw new InvalidOperationException("Dataset active-version state is inconsistent.");
+        }
         return new CleaningDatasetVersionData(
             dataset,
             version,

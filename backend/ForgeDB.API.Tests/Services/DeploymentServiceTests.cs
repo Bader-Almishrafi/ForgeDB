@@ -39,6 +39,17 @@ public class DeploymentServiceTests
     }
 
     [Fact]
+    public async Task DeployAsync_RejectsSchemaMappedToStaleVersionOne()
+    {
+        var fixture = CreateFixture("stale-value", activeVersionId: 3);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Service.DeployAsync(8, 3, 6));
+
+        Assert.Contains("stale dataset version", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(fixture.StoredDeployment);
+    }
+
+    [Fact]
     public async Task DeployAsync_DoesNotCreateCompletedRecord_WhenSeedGenerationCannotConvertFinalizedValue()
     {
         var fixture = CreateFixture(cleanedValue: "not-an-integer", sqlType: "INTEGER");
@@ -96,11 +107,12 @@ public class DeploymentServiceTests
         bool isRawOriginal = false,
         string sqlType = "TEXT",
         bool isAutoIncrement = false,
-        Exception? executionFailure = null)
+        Exception? executionFailure = null,
+        int? activeVersionId = null)
     {
         const int projectId = 8;
         const int datasetId = 12;
-        const int versionId = 2;
+        var versionId = activeVersionId.HasValue ? 1 : 2;
 
         var table = new DesignTable
         {
@@ -137,7 +149,7 @@ public class DeploymentServiceTests
         {
             Id = versionId,
             DatasetId = datasetId,
-            VersionNumber = 2,
+            VersionNumber = versionId,
             IsRawOriginal = isRawOriginal,
             IsActive = true,
             AnalyzedAt = DateTime.UtcNow,
@@ -145,6 +157,19 @@ public class DeploymentServiceTests
             RowsJson = JsonSerializer.Serialize(new[] { new Dictionary<string, object?> { ["name"] = cleanedValue } }),
             RowCount = 1,
         };
+        var currentActiveVersion = activeVersionId is null || activeVersionId == versionId
+            ? version
+            : new DatasetVersion
+            {
+                Id = activeVersionId.Value,
+                DatasetId = datasetId,
+                VersionNumber = 3,
+                IsActive = true,
+                AnalyzedAt = DateTime.UtcNow,
+                ColumnsJson = version.ColumnsJson,
+                RowsJson = version.RowsJson,
+                RowCount = version.RowCount
+            };
 
         Deployment? storedDeployment = null;
         IReadOnlyList<TableInsertPlan>? capturedPlans = null;
@@ -200,6 +225,14 @@ public class DeploymentServiceTests
         var cleaningRepository = Proxy<ICleaningRepository>(new()
         {
             [nameof(ICleaningRepository.IsSchemaReadyAsync)] = _ => Task.FromResult(true),
+            [nameof(ICleaningRepository.GetActiveProjectVersionsAsync)] = _ => Task.FromResult<IReadOnlyList<CleaningDatasetVersionData>>(
+            [
+                new CleaningDatasetVersionData(
+                    new Dataset { Id = datasetId, ProjectId = projectId, ActiveVersionId = currentActiveVersion.Id, ActiveVersion = currentActiveVersion },
+                    currentActiveVersion,
+                    [new CleaningColumnSnapshotDto { Name = "name", DataType = "string" }],
+                    [new Dictionary<string, object?> { ["name"] = cleanedValue }])
+            ]),
             [nameof(ICleaningRepository.GetStateAsync)] = _ => Task.FromResult<ProjectCleaningState?>(new ProjectCleaningState
             {
                 ProjectId = projectId,

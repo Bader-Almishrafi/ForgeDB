@@ -6,6 +6,7 @@ using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services.Importing;
+using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 
@@ -236,17 +237,29 @@ public class DatasetImportService : IDatasetImportService
             throw new KeyNotFoundException("Dataset not found.");
         }
 
+        var analyzedVersionId = dataset.ActiveVersionId
+            ?? throw new InvalidOperationException("Dataset has no active version.");
+        if (dataset.ActiveVersion?.Id != analyzedVersionId || !dataset.ActiveVersion.IsActive)
+        {
+            throw new InvalidOperationException("Dataset active-version state is inconsistent.");
+        }
+
         var analyzedAt = DateTime.UtcNow;
         var analysis = await TryAnalyzeWithPythonAsync(dataset, analyzedAt, cancellationToken)
             ?? DatasetAnalysisBuilder.Build(dataset, analyzedAt);
 
-        await _datasetRepository.SaveAnalysisResultAsync(
+        var saved = await _datasetRepository.SaveAnalysisResultAsync(
             datasetId,
+            analyzedVersionId,
             analysis.AnalysisResultJson,
             analysis.Analysis.AnalysisResult.MissingValuesCount,
             analysis.Analysis.AnalysisResult.DuplicateRowsCount,
             analyzedAt,
             cancellationToken);
+        if (!saved)
+        {
+            throw new ActiveDatasetVersionChangedException();
+        }
 
         return analysis.Analysis;
     }

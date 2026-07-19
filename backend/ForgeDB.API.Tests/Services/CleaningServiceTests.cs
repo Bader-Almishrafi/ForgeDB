@@ -41,7 +41,13 @@ public class CleaningServiceTests
         Assert.True(versions[0].IsRawOriginal);
         Assert.False(versions[0].IsActive);
         Assert.True(versions[1].IsActive);
+        Assert.Equal(2, versions[1].VersionNumber);
+        Assert.Null(versions[1].AnalyzedAt);
         Assert.Contains("cleaned", versions[1].RowsJson);
+        var dataset = await fixture.Context.Datasets.SingleAsync();
+        Assert.Equal(versions[1].Id, dataset.ActiveVersionId);
+        Assert.Null(dataset.AnalyzedAt);
+        Assert.Null(dataset.AnalysisResultJson);
         Assert.Equal(original, await fixture.Context.DatasetRows.OrderBy(row => row.RowNumber).Select(row => row.RowData).ToListAsync());
         Assert.Single(await fixture.Context.CleaningBatches.ToListAsync());
         Assert.Single(await fixture.Context.CleaningOperations.ToListAsync());

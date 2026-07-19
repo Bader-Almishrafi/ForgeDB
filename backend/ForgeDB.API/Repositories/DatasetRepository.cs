@@ -118,42 +118,97 @@ public class DatasetRepository : IDatasetRepository
 
     public async Task AddAsync(Dataset dataset, CancellationToken cancellationToken = default)
     {
+        var ownerUserId = await _context.Projects
+            .Where(project => project.Id == dataset.ProjectId)
+            .Select(project => (int?)project.UserId)
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The dataset project does not exist.");
+
+        await using var transaction = _context.Database.IsRelational()
+            ? await _context.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+
         await _context.Datasets.AddAsync(dataset, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+
+        var initialVersion = CreateVersionSnapshot(
+            dataset,
+            ownerUserId,
+            versionNumber: 1,
+            parentVersionId: null,
+            isRawOriginal: true,
+            operationSummary: "Original imported dataset");
+        _context.DatasetVersions.Add(initialVersion);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        dataset.ActiveVersionId = initialVersion.Id;
+        dataset.ActiveVersion = initialVersion;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
     }
 
-    public async Task SaveAnalysisResultAsync(
+    public async Task<bool> SaveAnalysisResultAsync(
         int datasetId,
+        int expectedActiveVersionId,
         string analysisResultJson,
         int missingValuesCount,
         int duplicateRowsCount,
         DateTime analyzedAt,
         CancellationToken cancellationToken = default)
     {
-        var dataset = await _context.Datasets
-            .Include(item => item.ActiveVersion)
-            .FirstOrDefaultAsync(dataset => dataset.Id == datasetId, cancellationToken);
-
-        if (dataset is null)
+        if (!_context.Database.IsRelational())
         {
-            return;
+            var dataset = await _context.Datasets
+                .Include(item => item.ActiveVersion)
+                .FirstOrDefaultAsync(item => item.Id == datasetId, cancellationToken);
+            if (dataset?.ActiveVersionId != expectedActiveVersionId
+                || dataset.ActiveVersion?.Id != expectedActiveVersionId
+                || !dataset.ActiveVersion.IsActive)
+            {
+                return false;
+            }
+
+            ApplyAnalysis(dataset, dataset.ActiveVersion, analysisResultJson, missingValuesCount, duplicateRowsCount, analyzedAt);
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
         }
 
-        dataset.AnalysisResultJson = analysisResultJson;
-        dataset.MissingValuesCount = missingValuesCount;
-        dataset.DuplicateRowsCount = duplicateRowsCount;
-        dataset.AnalyzedAt = analyzedAt;
-        dataset.Status = "Analyzed";
-
-        if (dataset.ActiveVersion is not null)
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        var datasetUpdated = await _context.Datasets
+            .Where(dataset => dataset.Id == datasetId && dataset.ActiveVersionId == expectedActiveVersionId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(dataset => dataset.AnalysisResultJson, analysisResultJson)
+                .SetProperty(dataset => dataset.MissingValuesCount, missingValuesCount)
+                .SetProperty(dataset => dataset.DuplicateRowsCount, duplicateRowsCount)
+                .SetProperty(dataset => dataset.AnalyzedAt, analyzedAt)
+                .SetProperty(dataset => dataset.Status, "Analyzed"), cancellationToken);
+        if (datasetUpdated != 1)
         {
-            dataset.ActiveVersion.AnalysisResultJson = analysisResultJson;
-            dataset.ActiveVersion.MissingValuesCount = missingValuesCount;
-            dataset.ActiveVersion.DuplicateRowsCount = duplicateRowsCount;
-            dataset.ActiveVersion.AnalyzedAt = analyzedAt;
+            await transaction.RollbackAsync(cancellationToken);
+            return false;
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        var versionUpdated = await _context.DatasetVersions
+            .Where(version => version.Id == expectedActiveVersionId
+                && version.DatasetId == datasetId
+                && version.IsActive)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(version => version.AnalysisResultJson, analysisResultJson)
+                .SetProperty(version => version.MissingValuesCount, missingValuesCount)
+                .SetProperty(version => version.DuplicateRowsCount, duplicateRowsCount)
+                .SetProperty(version => version.AnalyzedAt, analyzedAt), cancellationToken);
+        if (versionUpdated != 1)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return false;
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return true;
     }
 
     public async Task<bool> DeleteAsync(int datasetId, CancellationToken cancellationToken = default)
@@ -232,11 +287,13 @@ public class DatasetRepository : IDatasetRepository
 
         _context.RelationshipSuggestions.RemoveRange(suggestions);
         _context.CleaningOperations.RemoveRange(operations);
-        _context.DatasetVersions.RemoveRange(dataset.Versions);
         _context.DatasetColumns.RemoveRange(dataset.Columns);
         _context.DatasetRows.RemoveRange(dataset.Rows);
 
-        dataset.ActiveVersionId = null;
+        foreach (var version in dataset.Versions.Where(version => version.IsActive))
+        {
+            version.IsActive = false;
+        }
         dataset.SourceType = sourceType;
         dataset.SourceName = sourceName;
         dataset.SourceUrl = sourceUrl;
@@ -252,6 +309,24 @@ public class DatasetRepository : IDatasetRepository
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        var ownerUserId = await _context.Projects
+            .Where(project => project.Id == dataset.ProjectId)
+            .Select(project => project.UserId)
+            .SingleAsync(cancellationToken);
+        var replacementVersion = CreateVersionSnapshot(
+            dataset,
+            ownerUserId,
+            dataset.Versions.Select(version => version.VersionNumber).DefaultIfEmpty(0).Max() + 1,
+            dataset.ActiveVersionId,
+            isRawOriginal: true,
+            operationSummary: "Dataset content replaced");
+        _context.DatasetVersions.Add(replacementVersion);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        dataset.ActiveVersionId = replacementVersion.Id;
+        dataset.ActiveVersion = replacementVersion;
+        await _context.SaveChangesAsync(cancellationToken);
+
         if (transaction is not null)
         {
             await transaction.CommitAsync(cancellationToken);
@@ -264,6 +339,10 @@ public class DatasetRepository : IDatasetRepository
     {
         if (dataset?.ActiveVersion is null) return;
         var version = dataset.ActiveVersion;
+        if (dataset.ActiveVersionId != version.Id || !version.IsActive)
+        {
+            throw new InvalidOperationException("Dataset active-version state is inconsistent.");
+        }
         var columns = CleaningSnapshotSerializer.DeserializeColumns(version.ColumnsJson);
         var analysisColumns = ParseAnalysisColumns(version.AnalysisResultJson);
         dataset.Columns = columns.Select((column, index) => new DatasetColumn
@@ -295,6 +374,51 @@ public class DatasetRepository : IDatasetRepository
         dataset.AnalysisResultJson = version.AnalysisResultJson;
         dataset.AnalyzedAt = version.AnalyzedAt;
         dataset.Status = version.AnalyzedAt.HasValue ? "Analyzed" : "Cleaned - Analysis Required";
+    }
+
+    private static DatasetVersion CreateVersionSnapshot(
+        Dataset dataset,
+        int createdByUserId,
+        int versionNumber,
+        int? parentVersionId,
+        bool isRawOriginal,
+        string operationSummary) => new()
+    {
+        DatasetId = dataset.Id,
+        ParentVersionId = parentVersionId,
+        CreatedByUserId = createdByUserId,
+        VersionNumber = versionNumber,
+        IsRawOriginal = isRawOriginal,
+        IsActive = true,
+        RowsJson = CleaningSnapshotSerializer.SerializeRows(CleaningSnapshotSerializer.FromDatasetRows(dataset.Rows)),
+        ColumnsJson = CleaningSnapshotSerializer.SerializeColumns(CleaningSnapshotSerializer.FromDatasetColumns(dataset.Columns)),
+        RowCount = dataset.RowCount,
+        ColumnCount = dataset.ColumnCount,
+        MissingValuesCount = dataset.MissingValuesCount,
+        DuplicateRowsCount = dataset.DuplicateRowsCount,
+        OperationSummary = operationSummary,
+        AnalysisResultJson = dataset.AnalysisResultJson,
+        AnalyzedAt = dataset.AnalyzedAt,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    private static void ApplyAnalysis(
+        Dataset dataset,
+        DatasetVersion version,
+        string analysisResultJson,
+        int missingValuesCount,
+        int duplicateRowsCount,
+        DateTime analyzedAt)
+    {
+        dataset.AnalysisResultJson = analysisResultJson;
+        dataset.MissingValuesCount = missingValuesCount;
+        dataset.DuplicateRowsCount = duplicateRowsCount;
+        dataset.AnalyzedAt = analyzedAt;
+        dataset.Status = "Analyzed";
+        version.AnalysisResultJson = analysisResultJson;
+        version.MissingValuesCount = missingValuesCount;
+        version.DuplicateRowsCount = duplicateRowsCount;
+        version.AnalyzedAt = analyzedAt;
     }
 
     private static Dictionary<string, ActiveColumnAnalysis> ParseAnalysisColumns(string? analysisJson)

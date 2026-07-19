@@ -65,6 +65,12 @@ public class DesignService : IDesignService
         {
             throw new InvalidOperationException("No confirmed datasets are available for schema generation.");
         }
+        if (datasets.Count != sourceVersions.Count
+            || datasets.Any(dataset => dataset.ActiveVersionId is null
+                || sourceVersions.GetValueOrDefault(dataset.Id) != dataset.ActiveVersionId.Value))
+        {
+            throw new InvalidOperationException("Active dataset versions changed before schema generation. Confirm data quality and try again.");
+        }
 
         var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: true, cancellationToken);
         var now = DateTime.UtcNow;
@@ -288,7 +294,8 @@ public class DesignService : IDesignService
         }
 
         var snapshot = BuildSnapshot(design);
-        var issues = _validationService.Validate(snapshot).Select(MapIssue).ToList();
+        var stale = await IsStaleAsync(design, cancellationToken);
+        var issues = BuildValidationIssues(design, stale).Select(MapIssue).ToList();
 
         return new DesignExportArtifacts
         {

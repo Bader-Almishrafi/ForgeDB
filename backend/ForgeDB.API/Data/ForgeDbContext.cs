@@ -118,7 +118,10 @@ public class ForgeDbContext : DbContext
             entity.Property(version => version.ColumnsJson).HasColumnType("jsonb");
             entity.Property(version => version.AnalysisResultJson).HasColumnType("jsonb");
             entity.HasIndex(version => new { version.DatasetId, version.VersionNumber }).IsUnique();
-            entity.HasIndex(version => new { version.DatasetId, version.IsActive });
+            entity.HasIndex(version => version.DatasetId)
+                .HasDatabaseName("IX_dataset_versions_DatasetId_Active")
+                .IsUnique()
+                .HasFilter("\"IsActive\" = TRUE");
 
             entity.HasOne(version => version.ParentVersion)
                 .WithMany(version => version.ChildVersions)

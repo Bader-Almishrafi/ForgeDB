@@ -189,7 +189,7 @@ public class DesignServiceReorderColumnsTests
         public Task<IReadOnlyList<Dataset>> GetByProjectIdWithColumnsAsync(int projectId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<IReadOnlyList<Dataset>> GetByProjectIdWithRowsAndColumnsAsync(int projectId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task AddAsync(Dataset dataset, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task SaveAnalysisResultAsync(int datasetId, string analysisResultJson, int missingValuesCount, int duplicateRowsCount, DateTime analyzedAt, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<bool> SaveAnalysisResultAsync(int datasetId, int expectedActiveVersionId, string analysisResultJson, int missingValuesCount, int duplicateRowsCount, DateTime analyzedAt, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<bool> DeleteAsync(int datasetId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<Dataset?> ReplaceContentAsync(int datasetId, string sourceType, string? sourceName, string? sourceUrl, IReadOnlyList<DatasetColumn> columns, IReadOnlyList<DatasetRow> rows, int missingValuesCount, int duplicateRowsCount, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     }

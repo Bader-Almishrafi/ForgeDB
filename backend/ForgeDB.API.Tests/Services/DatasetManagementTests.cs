@@ -75,8 +75,11 @@ public class DatasetManagementTests
 
         Assert.Equal(3, reloaded.Rows.Count);
         Assert.Equal(2, reloaded.Columns.Count);
-        Assert.Empty(reloaded.Versions);
-        Assert.Null(reloaded.ActiveVersionId);
+        Assert.Equal(2, reloaded.Versions.Count);
+        var replacementVersion = reloaded.Versions.Single(version => version.VersionNumber == 2);
+        Assert.Equal(replacementVersion.Id, reloaded.ActiveVersionId);
+        Assert.True(replacementVersion.IsActive);
+        Assert.False(reloaded.Versions.Single(version => version.VersionNumber == 1).IsActive);
         Assert.Null(reloaded.AnalyzedAt);
         Assert.Null(reloaded.AnalysisResultJson);
 

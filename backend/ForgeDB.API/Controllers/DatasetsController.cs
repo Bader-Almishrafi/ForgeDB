@@ -235,6 +235,10 @@ public class DatasetsController : ControllerBase
         {
             return NotFound(new { message = exception.Message });
         }
+        catch (ForgeDB.API.Services.Exceptions.ActiveDatasetVersionChangedException exception)
+        {
+            return Conflict(new { message = exception.Message });
+        }
     }
 
     [HttpGet("datasets/{datasetId:int}/analysis")]
