@@ -249,7 +249,7 @@ export interface CleaningOperationRequest {
   operationId?: string | null;
   suggestionId?: string | null;
   datasetId: number;
-  expectedSourceVersionId?: number | null;
+  expectedSourceVersionId: number;
   operationType: string;
   column?: string | null;
   parameters: Record<string, unknown>;

@@ -19,13 +19,15 @@ namespace ForgeDB.API.Tests.Services;
 public class CleaningServiceTests
 {
     [Fact]
-    public async Task Preview_DoesNotPersistAnyVersionOrModifyOriginalRows()
+    public async Task Preview_AcceptsCurrentActiveVersion_WithoutPersistingOrModifyingRows()
     {
         await using var fixture = await Fixture.CreateAsync();
+        var activeVersionId = await ActiveVersionIdAsync(fixture);
         var before = await fixture.Context.DatasetRows.Select(row => row.RowData).ToListAsync();
-        var response = await fixture.Service.PreviewAsync(1, 1, PreviewRequest(1), CancellationToken.None);
+        var response = await fixture.Service.PreviewAsync(1, 1, PreviewRequest(1, activeVersionId), CancellationToken.None);
 
         Assert.Single(response.Datasets);
+        Assert.Equal(1, fixture.Python.PreviewRequestCount);
         Assert.Single(await fixture.Context.DatasetVersions.ToListAsync());
         Assert.Equal(before, await fixture.Context.DatasetRows.Select(row => row.RowData).ToListAsync());
         Assert.Empty(await fixture.Context.CleaningBatches.ToListAsync());
@@ -36,8 +38,7 @@ public class CleaningServiceTests
     {
         await using var fixture = await Fixture.CreateAsync();
         var summary = await fixture.Service.GetSummaryAsync(1, 1, CancellationToken.None);
-        var request = PreviewRequest(1);
-        request.Operations[0].ExpectedSourceVersionId = summary.Datasets.Single().ActiveVersionId + 1;
+        var request = PreviewRequest(1, summary.Datasets.Single().ActiveVersionId + 1);
 
         await Assert.ThrowsAsync<ActiveCleaningVersionChangedException>(() =>
             fixture.Service.PreviewAsync(1, 1, request, CancellationToken.None));
@@ -50,19 +51,8 @@ public class CleaningServiceTests
     {
         await using var fixture = await Fixture.CreateAsync();
         var summary = await fixture.Service.GetSummaryAsync(1, 1, CancellationToken.None);
-        var request = PreviewRequest(1);
-        request.Operations[0].ExpectedSourceVersionId = summary.Datasets.Single().ActiveVersionId + 1;
-        var controller = new CleaningController(fixture.Service)
-        {
-            ControllerContext = new ControllerContext
-            {
-                HttpContext = new DefaultHttpContext
-                {
-                    User = new ClaimsPrincipal(new ClaimsIdentity(
-                        new[] { new Claim(ClaimTypes.NameIdentifier, "1") }, "Test"))
-                }
-            }
-        };
+        var request = PreviewRequest(1, summary.Datasets.Single().ActiveVersionId + 1);
+        var controller = CreateController(fixture);
 
         var response = await controller.Preview(1, request, CancellationToken.None);
 
@@ -72,14 +62,55 @@ public class CleaningServiceTests
     }
 
     [Fact]
-    public async Task Apply_CreatesNewActiveVersion_AndPreservesRawDatasetRows()
+    public async Task Controller_ReturnsBadRequest_AndDoesNotCallPython_ForPreviewWithMissingOrZeroExpectedSourceVersion()
     {
         await using var fixture = await Fixture.CreateAsync();
+        var controller = CreateController(fixture);
+
+        var missingResponse = await controller.Preview(1, PreviewRequestWithoutExpectedVersion(1), CancellationToken.None);
+        var zeroResponse = await controller.Preview(1, PreviewRequest(1, 0), CancellationToken.None);
+
+        var missingBadRequest = Assert.IsType<BadRequestObjectResult>(missingResponse.Result);
+        var zeroBadRequest = Assert.IsType<BadRequestObjectResult>(zeroResponse.Result);
+        Assert.Equal(400, missingBadRequest.StatusCode);
+        Assert.Equal(400, zeroBadRequest.StatusCode);
+        Assert.Contains("positive expected source version ID", JsonSerializer.Serialize(missingBadRequest.Value));
+        Assert.Contains("positive expected source version ID", JsonSerializer.Serialize(zeroBadRequest.Value));
+        Assert.Equal(0, fixture.Python.PreviewRequestCount);
+        Assert.Equal(0, fixture.Python.ApplyRequestCount);
+    }
+
+    [Fact]
+    public async Task Controller_ReturnsBadRequest_AndDoesNotCallPython_ForApplyWithMissingOrZeroExpectedSourceVersion()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var controller = CreateController(fixture);
+
+        var missingResponse = await controller.Apply(1, ApplyRequestWithoutExpectedVersion(1), CancellationToken.None);
+        var zeroResponse = await controller.Apply(1, ApplyRequest(1, 0), CancellationToken.None);
+
+        var missingBadRequest = Assert.IsType<BadRequestObjectResult>(missingResponse.Result);
+        var zeroBadRequest = Assert.IsType<BadRequestObjectResult>(zeroResponse.Result);
+        Assert.Equal(400, missingBadRequest.StatusCode);
+        Assert.Equal(400, zeroBadRequest.StatusCode);
+        Assert.Contains("positive expected source version ID", JsonSerializer.Serialize(missingBadRequest.Value));
+        Assert.Contains("positive expected source version ID", JsonSerializer.Serialize(zeroBadRequest.Value));
+        Assert.Equal(0, fixture.Python.PreviewRequestCount);
+        Assert.Equal(0, fixture.Python.ApplyRequestCount);
+    }
+
+    [Fact]
+    public async Task Apply_AcceptsCurrentActiveVersion_AndCreatesNewActiveVersion()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var activeVersionId = await ActiveVersionIdAsync(fixture);
         var original = await fixture.Context.DatasetRows.OrderBy(row => row.RowNumber).Select(row => row.RowData).ToListAsync();
 
-        var response = await fixture.Service.ApplyAsync(1, 1, ApplyRequest(1), CancellationToken.None);
+        var response = await fixture.Service.ApplyAsync(1, 1, ApplyRequest(1, activeVersionId), CancellationToken.None);
 
         Assert.Equal("Succeeded", response.Status);
+        Assert.Equal(1, fixture.Python.PreviewRequestCount);
+        Assert.Equal(1, fixture.Python.ApplyRequestCount);
         var versions = await fixture.Context.DatasetVersions.OrderBy(version => version.VersionNumber).ToListAsync();
         Assert.Equal(2, versions.Count);
         Assert.True(versions[0].IsRawOriginal);
@@ -102,14 +133,29 @@ public class CleaningServiceTests
     {
         await using var fixture = await Fixture.CreateAsync();
         var summary = await fixture.Service.GetSummaryAsync(1, 1, CancellationToken.None);
-        var request = ApplyRequest(1);
-        request.Operations[0].ExpectedSourceVersionId = summary.Datasets.Single().ActiveVersionId + 1;
+        var request = ApplyRequest(1, summary.Datasets.Single().ActiveVersionId + 1);
 
         await Assert.ThrowsAsync<ActiveCleaningVersionChangedException>(() =>
             fixture.Service.ApplyAsync(1, 1, request, CancellationToken.None));
 
         Assert.Empty(await fixture.Context.CleaningBatches.ToListAsync());
         Assert.Single(await fixture.Context.DatasetVersions.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Controller_ReturnsActiveVersionConflictCode_ForAStaleApply()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var activeVersionId = await ActiveVersionIdAsync(fixture);
+        var controller = CreateController(fixture);
+
+        var response = await controller.Apply(1, ApplyRequest(1, activeVersionId + 1), CancellationToken.None);
+
+        var conflict = Assert.IsType<ConflictObjectResult>(response.Result);
+        Assert.Equal(409, conflict.StatusCode);
+        Assert.Contains("active_version_changed", JsonSerializer.Serialize(conflict.Value));
+        Assert.Equal(0, fixture.Python.PreviewRequestCount);
+        Assert.Equal(0, fixture.Python.ApplyRequestCount);
     }
 
     [Fact]
@@ -124,9 +170,10 @@ public class CleaningServiceTests
     public async Task Apply_RejectsProjectWithUnanalyzedActiveDataset()
     {
         await using var fixture = await Fixture.CreateAsync(datasetAnalyzed: false);
+        var activeVersionId = await ActiveVersionIdAsync(fixture);
 
         var exception = await Assert.ThrowsAsync<ProjectWorkflowBlockedException>(() =>
-            fixture.Service.ApplyAsync(1, 1, ApplyRequest(1), CancellationToken.None));
+            fixture.Service.ApplyAsync(1, 1, ApplyRequest(1, activeVersionId), CancellationToken.None));
 
         Assert.Contains("analysis_required", exception.BlockerCodes);
         Assert.Empty(await fixture.Context.CleaningBatches.ToListAsync());
@@ -136,10 +183,12 @@ public class CleaningServiceTests
     public async Task Apply_ReportsPartialDatasetFailureWithoutRollingBackSuccess()
     {
         await using var fixture = await Fixture.CreateAsync(includeSecondDataset: true, failApplyDatasetId: 2);
+        var activeVersions = (await fixture.Service.GetSummaryAsync(1, 1, CancellationToken.None)).Datasets
+            .ToDictionary(dataset => dataset.DatasetId, dataset => dataset.ActiveVersionId);
         var request = new CleaningApplyRequestDto
         {
             BatchName = "Project fixes",
-            Operations = new() { Operation(1), Operation(2) }
+            Operations = new() { Operation(1, activeVersions[1]), Operation(2, activeVersions[2]) }
         };
 
         var response = await fixture.Service.ApplyAsync(1, 1, request, CancellationToken.None);
@@ -156,7 +205,8 @@ public class CleaningServiceTests
     public async Task Undo_CreatesRestorationVersionWithoutRecalculatingInverse()
     {
         await using var fixture = await Fixture.CreateAsync();
-        await fixture.Service.ApplyAsync(1, 1, ApplyRequest(1), CancellationToken.None);
+        var activeVersionId = await ActiveVersionIdAsync(fixture);
+        await fixture.Service.ApplyAsync(1, 1, ApplyRequest(1, activeVersionId), CancellationToken.None);
 
         var undo = await fixture.Service.UndoLatestAsync(1, 1, CancellationToken.None);
 
@@ -172,7 +222,8 @@ public class CleaningServiceTests
     public async Task Restore_CreatesNewVersionAndPreservesVersionHistory()
     {
         await using var fixture = await Fixture.CreateAsync();
-        await fixture.Service.ApplyAsync(1, 1, ApplyRequest(1), CancellationToken.None);
+        var activeVersionId = await ActiveVersionIdAsync(fixture);
+        await fixture.Service.ApplyAsync(1, 1, ApplyRequest(1, activeVersionId), CancellationToken.None);
         var raw = await fixture.Context.DatasetVersions.SingleAsync(version => version.IsRawOriginal);
 
         var restore = await fixture.Service.RestoreVersionAsync(1, 1, 1, new CleaningRestoreRequestDto { VersionId = raw.Id }, CancellationToken.None);
@@ -186,7 +237,8 @@ public class CleaningServiceTests
     public async Task QualityConfirmation_RequiresReanalysisAndPersistsConfirmedVersions()
     {
         await using var fixture = await Fixture.CreateAsync();
-        await fixture.Service.ApplyAsync(1, 1, ApplyRequest(1), CancellationToken.None);
+        var activeVersionId = await ActiveVersionIdAsync(fixture);
+        await fixture.Service.ApplyAsync(1, 1, ApplyRequest(1, activeVersionId), CancellationToken.None);
         await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Service.ConfirmQualityAsync(1, 1, CancellationToken.None));
         var active = await fixture.Context.DatasetVersions.SingleAsync(version => version.IsActive);
         active.AnalyzedAt = DateTime.UtcNow;
@@ -245,9 +297,46 @@ public class CleaningServiceTests
         Assert.NotNull(typeof(CleaningController).GetCustomAttribute<AuthorizeAttribute>());
     }
 
-    private static CleaningPreviewRequestDto PreviewRequest(int datasetId) => new() { Operations = new() { Operation(datasetId) } };
-    private static CleaningApplyRequestDto ApplyRequest(int datasetId) => new() { BatchName = "Fill missing", Operations = new() { Operation(datasetId) } };
-    private static CleaningOperationRequestDto Operation(int datasetId) => new()
+    private static async Task<int> ActiveVersionIdAsync(Fixture fixture, int datasetId = 1) =>
+        (await fixture.Service.GetSummaryAsync(1, 1, CancellationToken.None)).Datasets
+            .Single(dataset => dataset.DatasetId == datasetId)
+            .ActiveVersionId;
+
+    private static CleaningController CreateController(Fixture fixture) => new(fixture.Service)
+    {
+        ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    new[] { new Claim(ClaimTypes.NameIdentifier, "1") }, "Test"))
+            }
+        }
+    };
+
+    private static CleaningPreviewRequestDto PreviewRequest(int datasetId, int expectedSourceVersionId) =>
+        new() { Operations = new() { Operation(datasetId, expectedSourceVersionId) } };
+
+    private static CleaningPreviewRequestDto PreviewRequestWithoutExpectedVersion(int datasetId) =>
+        new() { Operations = new() { OperationWithoutExpectedVersion(datasetId) } };
+
+    private static CleaningApplyRequestDto ApplyRequest(int datasetId, int expectedSourceVersionId) =>
+        new() { BatchName = "Fill missing", Operations = new() { Operation(datasetId, expectedSourceVersionId) } };
+
+    private static CleaningApplyRequestDto ApplyRequestWithoutExpectedVersion(int datasetId) =>
+        new() { BatchName = "Fill missing", Operations = new() { OperationWithoutExpectedVersion(datasetId) } };
+
+    private static CleaningOperationRequestDto Operation(int datasetId, int expectedSourceVersionId) => new()
+    {
+        OperationId = $"missing-{datasetId}",
+        DatasetId = datasetId,
+        ExpectedSourceVersionId = expectedSourceVersionId,
+        OperationType = "fill_missing",
+        Column = "name",
+        Parameters = JsonSerializer.SerializeToElement(new { strategy = "custom", value = "cleaned" })
+    };
+
+    private static CleaningOperationRequestDto OperationWithoutExpectedVersion(int datasetId) => new()
     {
         OperationId = $"missing-{datasetId}",
         DatasetId = datasetId,
@@ -258,14 +347,16 @@ public class CleaningServiceTests
 
     private sealed class Fixture : IAsyncDisposable
     {
-        private Fixture(ForgeDbContext context, CleaningService service)
+        private Fixture(ForgeDbContext context, CleaningService service, FakePythonClient python)
         {
             Context = context;
             Service = service;
+            Python = python;
         }
 
         public ForgeDbContext Context { get; }
         public CleaningService Service { get; }
+        public FakePythonClient Python { get; }
 
         public static async Task<Fixture> CreateAsync(
             bool includeSecondDataset = false,
@@ -285,8 +376,9 @@ public class CleaningServiceTests
             if (includeSecondDataset) context.Datasets.Add(CreateDataset(2, "orders", datasetHasIssues, datasetAnalyzed));
             await context.SaveChangesAsync();
             var repository = new CleaningRepository(context);
-            var service = new CleaningService(repository, new FakePythonClient(failApplyDatasetId), new ProjectWorkflowService(context));
-            return new Fixture(context, service);
+            var python = new FakePythonClient(failApplyDatasetId);
+            var service = new CleaningService(repository, python, new ProjectWorkflowService(context));
+            return new Fixture(context, service, python);
         }
 
         private static Dataset CreateDataset(int id, string name, bool hasIssues = true, bool analyzed = true) => new()
@@ -331,10 +423,18 @@ public class CleaningServiceTests
     {
         private readonly int? _failApplyDatasetId;
         public FakePythonClient(int? failApplyDatasetId) => _failApplyDatasetId = failApplyDatasetId;
+        public int PreviewRequestCount { get; private set; }
+        public int ApplyRequestCount { get; private set; }
         public Task<PythonAnalysisResponseDto> AnalyzeDatasetAsync(PythonAnalysisRequestDto request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<PythonCleaningResponseDto> PreviewCleaningAsync(PythonCleaningRequestDto request, CancellationToken cancellationToken = default) => Task.FromResult(Transform(request));
+        public Task<PythonCleaningResponseDto> PreviewCleaningAsync(PythonCleaningRequestDto request, CancellationToken cancellationToken = default)
+        {
+            PreviewRequestCount++;
+            return Task.FromResult(Transform(request));
+        }
+
         public Task<PythonCleaningResponseDto> ApplyCleaningAsync(PythonCleaningRequestDto request, CancellationToken cancellationToken = default)
         {
+            ApplyRequestCount++;
             if (request.DatasetId == _failApplyDatasetId) throw new HttpRequestException("simulated failure");
             return Task.FromResult(Transform(request));
         }

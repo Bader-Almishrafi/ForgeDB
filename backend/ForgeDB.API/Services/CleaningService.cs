@@ -376,6 +376,7 @@ public class CleaningService : ICleaningService
             {
                 OperationId = "operation-1",
                 DatasetId = copy.Active.Dataset.Id,
+                ExpectedSourceVersionId = copy.Active.Version.Id,
                 OperationType = copy.OperationType,
                 Parameters = JsonSerializer.SerializeToElement(new { targetVersionId = target.Id }, JsonOptions)
             };
@@ -628,14 +629,13 @@ public class CleaningService : ICleaningService
         if (operations.Count > 100) throw new ArgumentException("A cleaning request may contain at most 100 operations.");
         if (operations.Any(operation => operation.DatasetId <= 0 || string.IsNullOrWhiteSpace(operation.OperationType)))
             throw new ArgumentException("Every cleaning operation requires a dataset and operation type.");
-        if (operations.Any(operation => operation.ExpectedSourceVersionId is <= 0))
-            throw new ArgumentException("Expected source version IDs must be positive when provided.");
+        if (operations.Any(operation => operation.ExpectedSourceVersionId <= 0))
+            throw new ArgumentException("Every cleaning operation requires a positive expected source version ID.");
     }
 
     private static void EnsureExpectedSourceVersion(IReadOnlyList<CleaningOperationRequestDto> operations, int activeVersionId)
     {
-        if (operations.Any(operation => operation.ExpectedSourceVersionId.HasValue
-            && operation.ExpectedSourceVersionId.Value != activeVersionId))
+        if (operations.Any(operation => operation.ExpectedSourceVersionId != activeVersionId))
         {
             throw new ActiveCleaningVersionChangedException();
         }
