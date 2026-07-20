@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-landing',
@@ -9,5 +10,10 @@ import { RouterLink } from '@angular/router';
   styleUrl: './landing.css',
 })
 export class LandingComponent {
+  private readonly themeService = inject(ThemeService);
+  readonly darkMode = this.themeService.isDark;
 
+  toggleDarkMode(): void {
+    this.themeService.toggle();
+  }
 }
