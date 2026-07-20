@@ -1,10 +1,6 @@
 namespace ForgeDB.API.Models.DTOs;
 
-// API input contract for initial project details. ProjectsController replaces UserId with the
-// authenticated JWT owner before the service validates and persists the request.
-public class ProjectCreateDto
+[Obsolete("Use ProjectCreateRequestDto. Project ownership now comes only from the authenticated JWT.")]
+public class ProjectCreateDto : ProjectCreateRequestDto
 {
-    public int UserId { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
 }

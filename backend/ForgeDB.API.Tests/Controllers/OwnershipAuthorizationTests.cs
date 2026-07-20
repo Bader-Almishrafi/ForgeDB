@@ -46,7 +46,7 @@ public class OwnershipAuthorizationTests
         var result = await controller.GetById(ownerProject.Id, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var project = Assert.IsType<ProjectResponseDto>(ok.Value);
+        var project = Assert.IsType<ProjectDetailsDto>(ok.Value);
         Assert.Equal(ownerProject.Id, project.Id);
     }
 
@@ -57,25 +57,27 @@ public class OwnershipAuthorizationTests
         var (_, ownerUserId) = await SeedTwoUsersOneProjectAsync(context, otherUserId: 99);
         var controller = BuildProjectsController(context, callingUserId: 99);
 
+#pragma warning disable CS0618
         var result = await controller.GetByUserId(ownerUserId, CancellationToken.None);
+#pragma warning restore CS0618
 
         var status = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(403, status.StatusCode);
     }
 
     [Fact]
-    public async Task ProjectsController_Create_IgnoresClientSuppliedUserId_UsesAuthenticatedUser()
+    public async Task ProjectsController_Create_UsesAuthenticatedUser_WithoutUserIdInRequest()
     {
         await using var context = NewContext();
         await SeedUserAsync(context, 1);
         await SeedUserAsync(context, 2);
         var controller = BuildProjectsController(context, callingUserId: 1);
 
-        var result = await controller.Create(new ProjectCreateDto { UserId = 2, Name = "Spoofed owner" }, CancellationToken.None);
+        var result = await controller.Create(new ProjectCreateRequestDto { Name = "JWT owner" }, CancellationToken.None);
 
         var created = Assert.IsType<CreatedAtActionResult>(result.Result);
-        var project = Assert.IsType<ProjectResponseDto>(created.Value);
-        Assert.Equal(1, project.UserId);
+        var project = Assert.IsType<ProjectDetailsDto>(created.Value);
+        Assert.Equal(1, (await context.Projects.SingleAsync(item => item.Id == project.Id)).UserId);
     }
 
     [Fact]
@@ -85,7 +87,7 @@ public class OwnershipAuthorizationTests
         var (ownerProject, _) = await SeedTwoUsersOneProjectAsync(context, otherUserId: 99);
         var controller = BuildProjectsController(context, callingUserId: 99);
 
-        var result = await controller.Update(ownerProject.Id, new ProjectUpdateDto { Name = "Hijacked" }, CancellationToken.None);
+        var result = await controller.Update(ownerProject.Id, new ProjectUpdateRequestDto { Name = "Hijacked" }, CancellationToken.None);
 
         var status = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(403, status.StatusCode);
@@ -98,10 +100,10 @@ public class OwnershipAuthorizationTests
         var (ownerProject, ownerUserId) = await SeedTwoUsersOneProjectAsync(context, otherUserId: 99);
         var controller = BuildProjectsController(context, callingUserId: ownerUserId);
 
-        var result = await controller.Update(ownerProject.Id, new ProjectUpdateDto { Name = "Renamed", Description = "New description" }, CancellationToken.None);
+        var result = await controller.Update(ownerProject.Id, new ProjectUpdateRequestDto { Name = "Renamed", Description = "New description" }, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var updated = Assert.IsType<ProjectResponseDto>(ok.Value);
+        var updated = Assert.IsType<ProjectDetailsDto>(ok.Value);
         Assert.Equal("Renamed", updated.Name);
         Assert.Equal("New description", updated.Description);
     }
@@ -281,7 +283,8 @@ public class OwnershipAuthorizationTests
                 new DesignSchemaGeneratorResolver([new SqlSchemaGenerator(), new DbmlGenerator(), new JsonSchemaGenerator()]),
                 new DesignValidationService(), new CleaningRepository(context)),
             new RelationshipDetectionService(new DatasetRepository(context), new RelationshipSuggestionRepository(context), new DesignRepository(context)),
-            new CleaningRepository(context));
+            new CleaningRepository(context),
+            new ProjectWorkflowService(context));
         return new ProjectsController(projectService, projectRepository) { ControllerContext = BuildControllerContext(callingUserId) };
     }
 

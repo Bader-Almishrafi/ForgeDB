@@ -2,6 +2,7 @@ using ForgeDB.API.Data;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ForgeDB.API.Repositories;
 
@@ -105,8 +106,9 @@ public class ProjectRepository : IProjectRepository
         return project;
     }
 
-    // Returns false when no row exists; otherwise Remove marks it Deleted and SaveChangesAsync
-    // executes the SQL DELETE (including configured relational cascade behavior).
+    // Restrict relationships from cleaning operations, version ancestry, suggestions, and design
+    // relationships make a blind project delete unsafe. Remove those edges explicitly and keep
+    // all phases atomic on relational providers.
     public async Task<bool> DeleteAsync(int projectId, CancellationToken cancellationToken = default)
     {
         var project = await _context.Projects
@@ -117,8 +119,104 @@ public class ProjectRepository : IProjectRepository
             return false;
         }
 
-        _context.Projects.Remove(project);
-        await _context.SaveChangesAsync(cancellationToken);
-        return true;
+        IDbContextTransaction? transaction = _context.Database.IsRelational()
+            ? await _context.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+
+        try
+        {
+            var datasets = await _context.Datasets
+                .Where(dataset => dataset.ProjectId == projectId)
+                .ToListAsync(cancellationToken);
+            var datasetIds = datasets.Select(dataset => dataset.Id).ToList();
+            var versions = await _context.DatasetVersions
+                .Where(version => datasetIds.Contains(version.DatasetId))
+                .ToListAsync(cancellationToken);
+            var batches = await _context.CleaningBatches
+                .Where(batch => batch.ProjectId == projectId)
+                .ToListAsync(cancellationToken);
+            var batchIds = batches.Select(batch => batch.Id).ToList();
+            var designModels = await _context.DesignModels
+                .Where(design => design.ProjectId == projectId)
+                .ToListAsync(cancellationToken);
+            var designIds = designModels.Select(design => design.Id).ToList();
+            var designTables = await _context.DesignTables
+                .Where(table => designIds.Contains(table.DesignModelId))
+                .ToListAsync(cancellationToken);
+            var designTableIds = designTables.Select(table => table.Id).ToList();
+            var designColumns = await _context.DesignColumns
+                .Where(column => designTableIds.Contains(column.DesignTableId))
+                .ToListAsync(cancellationToken);
+
+            var designRelationships = await _context.DesignRelationships
+                .Where(relationship => designIds.Contains(relationship.DesignModelId))
+                .ToListAsync(cancellationToken);
+            var suggestions = await _context.RelationshipSuggestions
+                .Where(suggestion => suggestion.ProjectId == projectId)
+                .ToListAsync(cancellationToken);
+            var operations = await _context.CleaningOperations
+                .Where(operation => batchIds.Contains(operation.CleaningBatchId)
+                    || datasetIds.Contains(operation.DatasetId))
+                .ToListAsync(cancellationToken);
+            var cleaningState = await _context.ProjectCleaningStates
+                .FirstOrDefaultAsync(state => state.ProjectId == projectId, cancellationToken);
+            var deployments = await _context.Deployments
+                .Where(deployment => deployment.ProjectId == projectId)
+                .ToListAsync(cancellationToken);
+
+            _context.DesignRelationships.RemoveRange(designRelationships);
+            _context.RelationshipSuggestions.RemoveRange(suggestions);
+            _context.CleaningOperations.RemoveRange(operations);
+            if (cleaningState is not null) _context.ProjectCleaningStates.Remove(cleaningState);
+            _context.Deployments.RemoveRange(deployments);
+
+            foreach (var dataset in datasets)
+            {
+                dataset.ActiveVersionId = null;
+                dataset.ActiveVersion = null;
+            }
+
+            foreach (var version in versions)
+            {
+                version.ParentVersionId = null;
+                version.ParentVersion = null;
+                version.CleaningBatchId = null;
+                version.CleaningBatch = null;
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _context.DesignColumns.RemoveRange(designColumns);
+            _context.DesignTables.RemoveRange(designTables);
+            _context.DesignModels.RemoveRange(designModels);
+            _context.CleaningBatches.RemoveRange(batches);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            var rows = await _context.DatasetRows
+                .Where(row => datasetIds.Contains(row.DatasetId))
+                .ToListAsync(cancellationToken);
+            var columns = await _context.DatasetColumns
+                .Where(column => datasetIds.Contains(column.DatasetId))
+                .ToListAsync(cancellationToken);
+            _context.DatasetRows.RemoveRange(rows);
+            _context.DatasetColumns.RemoveRange(columns);
+            _context.DatasetVersions.RemoveRange(versions);
+            _context.Datasets.RemoveRange(datasets);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _context.Projects.Remove(project);
+            await _context.SaveChangesAsync(cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+        catch
+        {
+            if (transaction is not null) await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+        finally
+        {
+            if (transaction is not null) await transaction.DisposeAsync();
+        }
     }
 }

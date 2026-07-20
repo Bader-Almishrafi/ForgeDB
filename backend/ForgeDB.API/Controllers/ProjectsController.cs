@@ -26,47 +26,57 @@ public class ProjectsController : ControllerBase
         _projectRepository = projectRepository;
     }
 
-    // Creates a project for the JWT owner. The client-provided UserId is overwritten because owner
-    // identity must come from the signed token. CreatedAtAction returns 201 Created plus the GET
-    // route for the new resource; validation failures return 400 Bad Request. CancellationToken
-    // flows from the disconnected HTTP request through service and repository calls.
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<ProjectSummaryDto>>> GetAll(CancellationToken cancellationToken)
+    {
+        return Ok(await _projectService.GetProjectsAsync(GetUserId(), cancellationToken));
+    }
+
     [HttpPost]
-    public async Task<ActionResult<ProjectResponseDto>> Create([FromBody] ProjectCreateDto request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ProjectDetailsDto>> Create(
+        [FromBody] ProjectCreateRequestDto request,
+        CancellationToken cancellationToken)
     {
         try
         {
-            request.UserId = GetUserId();
-            var project = await _projectService.CreateProjectAsync(request, cancellationToken);
+            var project = await _projectService.CreateProjectAsync(GetUserId(), request, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { projectId = project.Id }, project);
         }
         catch (ArgumentException exception)
         {
             return BadRequest(new { message = exception.Message });
         }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
+        }
     }
 
-    // Returns 200 OK for an owned project, 404 when absent, 403 when it belongs to another user,
-    // or 400 for an invalid identifier. Ownership is checked before project data leaves the API.
     [HttpGet("{projectId:int}")]
-    public async Task<ActionResult<ProjectResponseDto>> GetById(int projectId, CancellationToken cancellationToken)
+    public async Task<ActionResult<ProjectDetailsDto>> GetById(int projectId, CancellationToken cancellationToken)
     {
         try
         {
-            var project = await _projectService.GetProjectByIdAsync(projectId, cancellationToken);
-            if (project is null) return NotFound(new { message = "Project not found." });
-            if (project.UserId != GetUserId()) return StatusCode(403, new { message = "The project does not belong to the authenticated user." });
-
-            return Ok(project);
+            return Ok(await _projectService.GetProjectAsync(projectId, GetUserId(), cancellationToken));
         }
         catch (ArgumentException exception)
         {
             return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
         }
     }
 
     // Lists projects only when the route user matches the JWT user. This prevents a caller from
     // enumerating another account's projects by changing the URL; a missing user maps to 404.
     [HttpGet("user/{userId:int}")]
+    [Obsolete("Compatibility endpoint. Use GET /api/projects; removal is planned with the frontend rebuild.")]
     public async Task<ActionResult<IEnumerable<ProjectResponseDto>>> GetByUserId(int userId, CancellationToken cancellationToken)
     {
         if (userId != GetUserId())
@@ -76,9 +86,14 @@ public class ProjectsController : ControllerBase
 
         try
         {
-            var projects = await _projectService.GetProjectsByUserIdAsync(userId, cancellationToken);
+            Response.Headers["Deprecation"] = "true";
+            if (!await _projectRepository.UserExistsAsync(userId, cancellationToken))
+            {
+                return NotFound(new { message = "User not found." });
+            }
 
-            return projects is null ? NotFound(new { message = "User not found." }) : Ok(projects);
+            var projects = await _projectRepository.GetByUserIdAsync(userId, cancellationToken);
+            return Ok(projects.Select(MapCompatibilityResponse).ToList());
         }
         catch (ArgumentException exception)
         {
@@ -86,17 +101,15 @@ public class ProjectsController : ControllerBase
         }
     }
 
-    // Verifies ownership before delegating editable fields to the service. A successful update
-    // returns 200 with the new representation; invalid input, forbidden access, and absence map
-    // to 400, 403, and 404 respectively.
     [HttpPut("{projectId:int}")]
-    public async Task<ActionResult<ProjectResponseDto>> Update(int projectId, [FromBody] ProjectUpdateDto request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ProjectDetailsDto>> Update(
+        int projectId,
+        [FromBody] ProjectUpdateRequestDto request,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await EnsureOwnedProjectAsync(projectId, cancellationToken);
-            var project = await _projectService.UpdateProjectAsync(projectId, request, cancellationToken);
-            return project is null ? NotFound(new { message = "Project not found." }) : Ok(project);
+            return Ok(await _projectService.UpdateProjectAsync(projectId, GetUserId(), request, cancellationToken));
         }
         catch (ArgumentException exception)
         {
@@ -105,6 +118,10 @@ public class ProjectsController : ControllerBase
         catch (UnauthorizedAccessException exception)
         {
             return StatusCode(403, new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
         }
     }
 
@@ -115,8 +132,7 @@ public class ProjectsController : ControllerBase
     {
         try
         {
-            await EnsureOwnedProjectAsync(projectId, cancellationToken);
-            var deleted = await _projectService.DeleteProjectAsync(projectId, cancellationToken);
+            var deleted = await _projectService.DeleteProjectAsync(projectId, GetUserId(), cancellationToken);
             return deleted ? NoContent() : NotFound(new { message = "Project not found." });
         }
         catch (ArgumentException exception)
@@ -126,6 +142,10 @@ public class ProjectsController : ControllerBase
         catch (UnauthorizedAccessException exception)
         {
             return StatusCode(403, new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
         }
     }
 
@@ -207,5 +227,19 @@ public class ProjectsController : ControllerBase
         {
             throw new UnauthorizedAccessException("The project does not belong to the authenticated user.");
         }
+    }
+
+    private static ProjectResponseDto MapCompatibilityResponse(ForgeDB.API.Models.Entities.Project project)
+    {
+        return new ProjectResponseDto
+        {
+            Id = project.Id,
+            UserId = project.UserId,
+            Name = project.Name,
+            Description = project.Description,
+            DashboardConfig = project.DashboardConfig,
+            CreatedAt = project.CreatedAt,
+            UpdatedAt = project.UpdatedAt
+        };
     }
 }

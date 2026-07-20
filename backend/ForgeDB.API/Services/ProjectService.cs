@@ -21,125 +21,114 @@ public class ProjectService : IProjectService
     private readonly IDesignService _designService;
     private readonly IRelationshipDetectionService _relationshipDetectionService;
     private readonly ICleaningRepository _cleaningRepository;
+    private readonly IProjectWorkflowService _projectWorkflowService;
 
     public ProjectService(
         IProjectRepository projectRepository,
         IDesignService designService,
         IRelationshipDetectionService relationshipDetectionService,
-        ICleaningRepository cleaningRepository)
+        ICleaningRepository cleaningRepository,
+        IProjectWorkflowService projectWorkflowService)
     {
         _projectRepository = projectRepository;
         _designService = designService;
         _relationshipDetectionService = relationshipDetectionService;
         _cleaningRepository = cleaningRepository;
+        _projectWorkflowService = projectWorkflowService;
     }
 
     // -------------------------------------------------------------------------
     // Project CRUD operations
     // -------------------------------------------------------------------------
 
-    // Flow: validate request -> normalize text -> verify User -> create Project entity -> save via
-    // repository -> map to ProjectResponseDto. Backend validation remains mandatory even when
-    // Angular validates first because API callers can bypass the browser UI.
-    public async Task<ProjectResponseDto> CreateProjectAsync(ProjectCreateDto request, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ProjectSummaryDto>> GetProjectsAsync(
+        int userId,
+        CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        ValidateUserId(userId);
+        var projects = await _projectRepository.GetByUserIdAsync(userId, cancellationToken);
+        var summaries = new List<ProjectSummaryDto>(projects.Count);
 
-        var projectName = request.Name?.Trim();
-        if (request.UserId <= 0)
+        // Project counts are expected to remain modest. Reusing the centralized workflow service
+        // keeps one source of truth while avoiding the row/column workspace graph entirely.
+        foreach (var project in projects)
         {
-            throw new ArgumentException("UserId is required.", nameof(request));
+            var workflow = await _projectWorkflowService.EvaluateAsync(project.Id, cancellationToken);
+            summaries.Add(MapToSummary(project, workflow));
         }
 
+        return summaries;
+    }
+
+    public async Task<ProjectDetailsDto> CreateProjectAsync(
+        int userId,
+        ProjectCreateRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateUserId(userId);
+        ArgumentNullException.ThrowIfNull(request);
+        var projectName = request.Name?.Trim();
         if (string.IsNullOrWhiteSpace(projectName))
         {
             throw new ArgumentException("Project name is required.", nameof(request));
         }
 
-        if (!await _projectRepository.UserExistsAsync(request.UserId, cancellationToken))
+        if (!await _projectRepository.UserExistsAsync(userId, cancellationToken))
         {
-            throw new ArgumentException("UserId does not reference an existing user.", nameof(request));
+            throw new UnauthorizedAccessException("The authenticated user no longer exists.");
         }
 
         var project = new Project
         {
-            UserId = request.UserId,
+            UserId = userId,
             Name = projectName,
-            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            Description = NormalizeDescription(request.Description),
             CreatedAt = DateTime.UtcNow
         };
 
         await _projectRepository.AddAsync(project, cancellationToken);
-
-        return MapToResponse(project);
+        return MapToDetails(project, await _projectWorkflowService.EvaluateAsync(project.Id, cancellationToken));
     }
 
-    // Validates the identifier, loads the entity, and maps it to an API DTO; null lets the
-    // controller represent an absent resource as 404 Not Found.
-    public async Task<ProjectResponseDto?> GetProjectByIdAsync(int projectId, CancellationToken cancellationToken = default)
+    public async Task<ProjectDetailsDto> GetProjectAsync(
+        int projectId,
+        int userId,
+        CancellationToken cancellationToken = default)
     {
-        if (projectId <= 0)
-        {
-            throw new ArgumentException("ProjectId must be greater than zero.", nameof(projectId));
-        }
-
-        var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken);
-
-        return project is null ? null : MapToResponse(project);
+        var project = await RequireOwnedProjectAsync(projectId, userId, cancellationToken);
+        return MapToDetails(project, await _projectWorkflowService.EvaluateAsync(project.Id, cancellationToken));
     }
 
-    // Distinguishes a missing user from a user with an empty project list, then maps every entity
-    // so EF Core navigation properties are not serialized as part of the API contract.
-    public async Task<IReadOnlyList<ProjectResponseDto>?> GetProjectsByUserIdAsync(int userId, CancellationToken cancellationToken = default)
-    {
-        if (userId <= 0)
-        {
-            throw new ArgumentException("UserId must be greater than zero.", nameof(userId));
-        }
-
-        if (!await _projectRepository.UserExistsAsync(userId, cancellationToken))
-        {
-            return null;
-        }
-
-        var projects = await _projectRepository.GetByUserIdAsync(userId, cancellationToken);
-
-        return projects.Select(MapToResponse).ToList();
-    }
-
-    // Normalizes editable fields, delegates the tracked update to the repository, and maps the
-    // result; null means the project disappeared or never existed.
-    public async Task<ProjectResponseDto?> UpdateProjectAsync(int projectId, ProjectUpdateDto request, CancellationToken cancellationToken = default)
+    public async Task<ProjectDetailsDto> UpdateProjectAsync(
+        int projectId,
+        int userId,
+        ProjectUpdateRequestDto request,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-
-        if (projectId <= 0)
-        {
-            throw new ArgumentException("ProjectId must be greater than zero.", nameof(projectId));
-        }
-
+        await RequireOwnedProjectAsync(projectId, userId, cancellationToken);
         var name = request.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
             throw new ArgumentException("Project name is required.", nameof(request));
         }
 
-        var description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
-        var project = await _projectRepository.UpdateDetailsAsync(projectId, name, description, DateTime.UtcNow, cancellationToken);
-
-        return project is null ? null : MapToResponse(project);
+        var project = await _projectRepository.UpdateDetailsAsync(
+            projectId,
+            name,
+            NormalizeDescription(request.Description),
+            DateTime.UtcNow,
+            cancellationToken) ?? throw new KeyNotFoundException("Project not found.");
+        return MapToDetails(project, await _projectWorkflowService.EvaluateAsync(project.Id, cancellationToken));
     }
 
-    // Validates the ID and forwards the repository's boolean so the controller can choose between
-    // 204 No Content and 404 Not Found.
-    public Task<bool> DeleteProjectAsync(int projectId, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteProjectAsync(
+        int projectId,
+        int userId,
+        CancellationToken cancellationToken = default)
     {
-        if (projectId <= 0)
-        {
-            throw new ArgumentException("ProjectId must be greater than zero.", nameof(projectId));
-        }
-
-        return _projectRepository.DeleteAsync(projectId, cancellationToken);
+        await RequireOwnedProjectAsync(projectId, userId, cancellationToken);
+        return await _projectRepository.DeleteAsync(projectId, cancellationToken);
     }
 
     // -------------------------------------------------------------------------
@@ -408,19 +397,68 @@ public class ProjectService : IProjectService
         };
     }
 
-    // Maps persistence state to an explicit response DTO so navigation properties and future
-    // database-only fields cannot leak through API serialization.
-    private static ProjectResponseDto MapToResponse(Project project)
+    private async Task<Project> RequireOwnedProjectAsync(
+        int projectId,
+        int userId,
+        CancellationToken cancellationToken)
     {
-        return new ProjectResponseDto
+        if (projectId <= 0)
+        {
+            throw new ArgumentException("ProjectId must be greater than zero.", nameof(projectId));
+        }
+
+        ValidateUserId(userId);
+        var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken)
+            ?? throw new KeyNotFoundException("Project not found.");
+        if (project.UserId != userId)
+        {
+            throw new UnauthorizedAccessException("The project does not belong to the authenticated user.");
+        }
+
+        return project;
+    }
+
+    private static void ValidateUserId(int userId)
+    {
+        if (userId <= 0)
+        {
+            throw new UnauthorizedAccessException("The authentication token does not contain a valid user identifier.");
+        }
+    }
+
+    private static string? NormalizeDescription(string? description) =>
+        string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+
+    private static ProjectSummaryDto MapToSummary(Project project, ProjectWorkflowResponseDto workflow)
+    {
+        return new ProjectSummaryDto
         {
             Id = project.Id,
-            UserId = project.UserId,
             Name = project.Name,
             Description = project.Description,
-            DashboardConfig = project.DashboardConfig,
             CreatedAt = project.CreatedAt,
-            UpdatedAt = project.UpdatedAt
+            UpdatedAt = project.UpdatedAt,
+            WorkflowState = workflow.WorkflowState,
+            CurrentStep = workflow.CurrentStep,
+            RecommendedRoute = workflow.RecommendedRoute,
+            DatasetsCount = workflow.Datasets.Count
         };
     }
+
+    private static ProjectDetailsDto MapToDetails(Project project, ProjectWorkflowResponseDto workflow)
+    {
+        return new ProjectDetailsDto
+        {
+            Id = project.Id,
+            Name = project.Name,
+            Description = project.Description,
+            CreatedAt = project.CreatedAt,
+            UpdatedAt = project.UpdatedAt,
+            WorkflowState = workflow.WorkflowState,
+            CurrentStep = workflow.CurrentStep,
+            RecommendedRoute = workflow.RecommendedRoute,
+            DatasetsCount = workflow.Datasets.Count
+        };
+    }
+
 }

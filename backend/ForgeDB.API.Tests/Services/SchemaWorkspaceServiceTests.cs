@@ -333,7 +333,8 @@ public class SchemaWorkspaceServiceTests
             new ProjectRepository(context),
             service,
             relationshipService,
-            new CleaningRepository(context));
+            new CleaningRepository(context),
+            new ProjectWorkflowService(context));
         await Assert.ThrowsAsync<ProjectWorkflowBlockedException>(() => projectService.GetProjectExportPackageAsync(seed.ProjectId));
     }
 
