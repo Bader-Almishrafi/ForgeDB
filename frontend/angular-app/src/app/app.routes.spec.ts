@@ -1,4 +1,4 @@
-import { Route, Routes } from '@angular/router';
+import { ActivatedRouteSnapshot, RedirectFunction, Route, Routes } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 import { routes } from './app.routes';
 
@@ -51,6 +51,20 @@ describe('simplified application routes', () => {
       deployment: 'export-deploy',
     });
     expect(allRoutes.find((item) => item.fullPath === 'home')?.route.redirectTo).toBe('projects');
+  });
+
+  it('redirects standalone Explorer, Dashboard, and Profile URLs to canonical Analyze', () => {
+    for (const path of ['datasets/:datasetId/explorer', 'datasets/:datasetId/dashboard', 'datasets/:datasetId/profile']) {
+      const redirect = allRoutes.find((item) => item.fullPath === path)?.route.redirectTo as RedirectFunction;
+      expect(redirect({ params: { datasetId: '7' }, queryParams: { returnProject: '10' } } as unknown as ActivatedRouteSnapshot))
+        .toBe('/projects/10/analyze?datasetId=7');
+    }
+  });
+
+  it('does not lazy-load duplicate Analysis or Dashboard page components', () => {
+    const loaders = allRoutes.map((item) => item.route.loadComponent?.toString() ?? '').join('\n');
+    expect(loaders).not.toContain("pages/analysis");
+    expect(loaders).not.toContain("pages/dashboard");
   });
 
   it('lazy-loads page and shell components', () => {

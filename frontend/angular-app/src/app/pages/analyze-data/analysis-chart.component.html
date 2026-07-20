@@ -1,35 +1,22 @@
-<article class="chart-card">
-  <header class="chart-card__header">
-    <div class="min-w-0">
-      <h3 class="chart-card__title">{{ title() }}</h3>
-      @if (description()) {
-        <p class="chart-card__description">{{ description() }}</p>
-      }
-    </div>
-    @if (scope()) {
-      <span class="chart-card__scope">{{ scope() }}</span>
-    }
+<article class="chart-card" data-analysis-chart>
+  <header>
+    <h3 class="chart-title">{{ title() }}</h3>
+    @if (description()) { <p class="chart-description">{{ description() }}</p> }
   </header>
 
-  @if (option(); as chartOption) {
-    <div
-      echarts
-      [options]="chartOption"
-      [autoResize]="true"
-      [loading]="loading()"
-      [class]="chartClass()"
-      data-analysis-chart
-      [attr.data-chart-title]="title()"
-      role="img"
-      [attr.aria-label]="accessibleSummary() || title()"
-    ></div>
-    @if (accessibleSummary()) {
-      <p class="sr-only">{{ accessibleSummary() }}</p>
-    }
+  @if (points().length) {
+    <dl class="chart-list" role="img" [attr.aria-label]="title()">
+      @for (point of points(); track point.label) {
+        <div class="chart-row">
+          <dt class="chart-label" [title]="point.label">{{ point.label }}</dt>
+          <dd class="chart-value">{{ point.value }}</dd>
+          <dd class="chart-track" aria-hidden="true">
+            <span class="chart-bar" [style.width.%]="barWidth(point.value)"></span>
+          </dd>
+        </div>
+      }
+    </dl>
   } @else {
-    <div class="chart-card__empty">
-      <span class="chart-card__empty-mark" aria-hidden="true"></span>
-      <p>{{ emptyMessage() }}</p>
-    </div>
+    <p class="chart-empty">{{ emptyMessage() }}</p>
   }
 </article>

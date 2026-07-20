@@ -24,7 +24,7 @@ export const routes: Routes = [
   { path: 'app/data-sources', redirectTo: 'projects', pathMatch: 'full' },
   { path: 'app/analysis', redirectTo: 'projects', pathMatch: 'full' },
   { path: 'datasets/:datasetId/preview', redirectTo: legacyDatasetRedirect('data') },
-  { path: 'datasets/:datasetId/explorer', redirectTo: legacyDatasetRedirect('data') },
+  { path: 'datasets/:datasetId/explorer', redirectTo: legacyDatasetRedirect('analyze') },
   { path: 'datasets/:datasetId/analyze', redirectTo: legacyDatasetRedirect('analyze') },
   { path: 'datasets/:datasetId/dashboard', redirectTo: legacyDatasetRedirect('analyze') },
   { path: 'datasets/:datasetId/profile', redirectTo: legacyDatasetRedirect('analyze') },

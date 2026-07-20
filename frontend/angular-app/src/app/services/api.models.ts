@@ -178,6 +178,7 @@ export interface DatasetAnalysisResponse {
   datasetVersionId?: number | null;
   datasetVersionNumber?: number | null;
   isCleanedVersion: boolean;
+  analysisEngine?: string | null;
 }
 
 export interface CleaningColumnSnapshot {
@@ -485,32 +486,6 @@ export interface DateRange {
 export interface RelationshipCandidateHint {
   columnName: string;
   hint: string;
-}
-
-export interface DashboardResponse {
-  datasetId: number;
-  tableName: string;
-  rowCount: number;
-  columnCount: number;
-  missingValuesCount: number;
-  duplicateRowsCount: number;
-  metrics: DashboardMetric[];
-  columnTypeDistribution: ColumnTypeDistribution[];
-  numericSummaries: NumericColumnStats[];
-  topValueSummaries: DashboardTopValues[];
-  chartRecommendations: ChartRecommendation[];
-}
-
-export interface DashboardMetric {
-  key: string;
-  label: string;
-  value: number;
-  unit?: string | null;
-}
-
-export interface DashboardTopValues {
-  columnName: string;
-  values: ValueFrequency[];
 }
 
 export interface ApiErrorBody {

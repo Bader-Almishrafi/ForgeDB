@@ -15,7 +15,6 @@ import {
   CleaningPreviewRequest,
   CleaningPreviewResponse,
   CleaningSuggestion,
-  DashboardResponse,
   DatasetAnalysisRequest,
   DatasetAnalysisResponse,
   DatasetPreview,
@@ -163,16 +162,8 @@ export class ForgeApiService {
     return this.http.get<DatasetAnalysisResponse>(`${this.baseUrl}/api/datasets/${datasetId}/analysis`);
   }
 
-  getDatasetProfile(datasetId: number): Observable<DatasetAnalysisResponse> {
-    return this.http.get<DatasetAnalysisResponse>(`${this.baseUrl}/api/datasets/${datasetId}/profile`);
-  }
-
   analyzeDataset(datasetId: number, request: DatasetAnalysisRequest): Observable<DatasetAnalysisResponse> {
     return this.http.post<DatasetAnalysisResponse>(`${this.baseUrl}/api/datasets/${datasetId}/analyze`, request);
-  }
-
-  getDatasetDashboard(datasetId: number): Observable<DashboardResponse> {
-    return this.http.get<DashboardResponse>(`${this.baseUrl}/api/datasets/${datasetId}/dashboard`);
   }
 
   // GET /api/projects/{projectId}/exports/package returns generated schema artifacts and reports.
