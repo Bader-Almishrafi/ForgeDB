@@ -35,6 +35,11 @@ public sealed class DeploymentHistoryData
 public interface IDeploymentRepository
 {
     Task<Project?> GetOwnedProjectAsync(int projectId, int userId, CancellationToken cancellationToken = default);
+    Task<int> FailAbandonedRunningAsync(
+        int projectId,
+        DateTime startedBeforeUtc,
+        string errorMessage,
+        CancellationToken cancellationToken = default);
     Task<bool> HasRunningAsync(int projectId, CancellationToken cancellationToken = default);
     Task<Deployment> AddRunningAsync(Deployment deployment, CancellationToken cancellationToken = default);
     Task MarkSucceededAsync(int deploymentId, Dictionary<string, int> insertedRowCounts, List<string> createdTables, int relationshipsCreated, CancellationToken cancellationToken = default);

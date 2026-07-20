@@ -2,6 +2,8 @@ using System.Text.Json;
 using ForgeDB.API.Data;
 using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Models.Entities;
+using ForgeDB.API.Repositories;
+using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +14,12 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly ForgeDbContext _context;
+    private readonly IDeploymentRepository _deploymentRepository;
 
-    public ProjectWorkflowService(ForgeDbContext context)
+    public ProjectWorkflowService(ForgeDbContext context, IDeploymentRepository? deploymentRepository = null)
     {
         _context = context;
+        _deploymentRepository = deploymentRepository ?? new DeploymentRepository(context);
     }
 
     public async Task<ProjectWorkflowResponseDto> GetWorkflowAsync(
@@ -50,6 +54,12 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
 
     private async Task<ProjectWorkflowResponseDto> EvaluateAsync(Project project, CancellationToken cancellationToken)
     {
+        await _deploymentRepository.FailAbandonedRunningAsync(
+            project.Id,
+            DateTime.UtcNow - DeploymentRecoveryPolicy.AbandonedRunningTimeout,
+            DeploymentRecoveryPolicy.AbandonedFailureMessage,
+            cancellationToken);
+
         var datasets = await _context.Datasets
             .AsNoTracking()
             .AsSplitQuery()

@@ -95,6 +95,7 @@ public class DeploymentServiceTests
         var deploymentRepository = Proxy<IDeploymentRepository>(new()
         {
             [nameof(IDeploymentRepository.GetOwnedProjectAsync)] = _ => Task.FromResult<Project?>(new Project { Id = 8, UserId = 3 }),
+            [nameof(IDeploymentRepository.FailAbandonedRunningAsync)] = _ => Task.FromResult(0),
             [nameof(IDeploymentRepository.HasRunningAsync)] = _ => Task.FromResult(false)
         });
         var workflow = Proxy<IProjectWorkflowService>(new()
@@ -160,6 +161,7 @@ public class DeploymentServiceTests
         var repository = Proxy<IDeploymentRepository>(new()
         {
             [nameof(IDeploymentRepository.GetOwnedProjectAsync)] = _ => Task.FromResult<Project?>(new Project { Id = 8, UserId = 3 }),
+            [nameof(IDeploymentRepository.FailAbandonedRunningAsync)] = _ => Task.FromResult(0),
             [nameof(IDeploymentRepository.HasRunningAsync)] = _ => Task.FromResult(true),
             [nameof(IDeploymentRepository.AddRunningAsync)] = _ =>
             {
@@ -177,6 +179,49 @@ public class DeploymentServiceTests
 
         Assert.Equal("deployment_in_progress", DeploymentInProgressException.ErrorCode);
         Assert.False(addCalled);
+    }
+
+    [Fact]
+    public async Task DeployAsync_RecoversAbandonedRunBeforeCheckingForCurrentRun()
+    {
+        var recoveryCalled = false;
+        var repository = Proxy<IDeploymentRepository>(new()
+        {
+            [nameof(IDeploymentRepository.GetOwnedProjectAsync)] = _ => Task.FromResult<Project?>(new Project { Id = 8, UserId = 3 }),
+            [nameof(IDeploymentRepository.FailAbandonedRunningAsync)] = args =>
+            {
+                recoveryCalled = true;
+                var cutoff = (DateTime)args![1]!;
+                Assert.InRange(cutoff, DateTime.UtcNow.AddMinutes(-31), DateTime.UtcNow.AddMinutes(-29));
+                return Task.FromResult(1);
+            },
+            [nameof(IDeploymentRepository.HasRunningAsync)] = _ =>
+            {
+                Assert.True(recoveryCalled);
+                return Task.FromResult(false);
+            }
+        });
+        var workflow = Proxy<IProjectWorkflowService>(new()
+        {
+            [nameof(IProjectWorkflowService.EnsureCanDeployAsync)] = _ => throw new ProjectWorkflowBlockedException(
+                "deploy",
+                new ProjectWorkflowResponseDto
+                {
+                    BlockerCodes = ["schema_required"],
+                    BlockingReasons = ["Generate a schema before deploying."]
+                })
+        });
+        var service = new DeploymentService(
+            repository,
+            Proxy<IDesignRepository>(new()),
+            Proxy<IDesignService>(new()),
+            Proxy<ICleaningRepository>(new()),
+            logger: null,
+            workflowService: workflow);
+
+        await Assert.ThrowsAsync<ProjectWorkflowBlockedException>(() => service.DeployAsync(8, 3, 6));
+
+        Assert.True(recoveryCalled);
     }
 
     [Fact]
@@ -306,6 +351,7 @@ public class DeploymentServiceTests
         var deploymentRepository = Proxy<IDeploymentRepository>(new()
         {
             [nameof(IDeploymentRepository.GetOwnedProjectAsync)] = _ => Task.FromResult<Project?>(new Project { Id = projectId, UserId = 3 }),
+            [nameof(IDeploymentRepository.FailAbandonedRunningAsync)] = _ => Task.FromResult(0),
             [nameof(IDeploymentRepository.HasRunningAsync)] = _ => Task.FromResult(false),
             [nameof(IDeploymentRepository.AddRunningAsync)] = args =>
             {

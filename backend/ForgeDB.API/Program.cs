@@ -64,7 +64,7 @@ builder.Services.AddHttpClient<IPythonAnalysisClient, PythonAnalysisClient>(clie
 	var baseUrl = builder.Configuration["PythonAnalysis:BaseUrl"];
 	if (string.IsNullOrWhiteSpace(baseUrl))
 	{
-		baseUrl = "http://localhost:8001";
+		baseUrl = "http://localhost:8002";
 	}
 
 	var timeoutSeconds = builder.Configuration.GetValue<int?>("PythonAnalysis:TimeoutSeconds") ?? 10;

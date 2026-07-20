@@ -8,19 +8,19 @@ Standalone FastAPI service for profiling CSV-like dataset rows and returning For
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8001
+uvicorn app.main:app --reload --port 8002
 ```
 
 Health check:
 
 ```text
-GET http://localhost:8001/health
+GET http://localhost:8002/health
 ```
 
 Analyze dataset:
 
 ```text
-POST http://localhost:8001/analyze
+POST http://localhost:8002/analyze
 Content-Type: application/json
 ```
 

@@ -10,7 +10,6 @@ import {
   ResetPasswordRequest,
 } from './api.models';
 import { ForgeApiService } from './forge-api.service';
-import { WorkflowStateService } from './workflow-state.service';
 
 const tokenKey = 'forgedb.token';
 const userKey = 'forgedb.user';
@@ -18,7 +17,6 @@ const userKey = 'forgedb.user';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly api = inject(ForgeApiService);
-  private readonly workflow = inject(WorkflowStateService);
   private readonly userSignal = signal<AuthUser | null>(this.readStoredUser());
   private readonly tokenSignal = signal<string | null>(this.readStoredToken());
 
@@ -59,7 +57,6 @@ export class AuthService {
   }
 
   private storeSession(response: AuthResponse): void {
-    this.workflow.clearAll();
     localStorage.setItem(tokenKey, response.token);
     localStorage.setItem(userKey, JSON.stringify(response.user));
     this.tokenSignal.set(response.token);

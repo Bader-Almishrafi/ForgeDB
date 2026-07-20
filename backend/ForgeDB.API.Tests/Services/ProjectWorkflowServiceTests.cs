@@ -197,6 +197,36 @@ public class ProjectWorkflowServiceTests
     }
 
     [Fact]
+    public async Task AbandonedRunningDeployment_IsRecoveredDuringWorkflowEvaluation()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        await fixture.AddDatasetAsync("customers", analyzed: true, cleaned: true);
+        await fixture.ConfirmCurrentVersionsAsync();
+        var design = await fixture.AddSchemaAsync(DesignStatus.Valid);
+        var abandoned = new Deployment
+        {
+            ProjectId = fixture.ProjectId,
+            DesignRevision = design.Revision,
+            SchemaName = $"forgedb_project_{fixture.ProjectId}",
+            Status = DeploymentStatus.Running,
+            StartedAt = DateTime.UtcNow.AddMinutes(-31)
+        };
+        fixture.Context.Deployments.Add(abandoned);
+        await fixture.Context.SaveChangesAsync();
+
+        var workflow = await fixture.Service.EvaluateAsync(fixture.ProjectId);
+
+        Assert.True(workflow.CanDeploy);
+        Assert.Equal(DeploymentStatus.Failed, workflow.LatestDeploymentStatus);
+        Assert.DoesNotContain("deployment_in_progress", workflow.BlockerCodes);
+        Assert.Equal(DeploymentStatus.Failed, abandoned.Status);
+        Assert.Equal(
+            "Deployment was abandoned before completion and is no longer considered running.",
+            abandoned.ErrorMessage);
+        Assert.NotNull(abandoned.CompletedAt);
+    }
+
+    [Fact]
     public async Task SuccessfulCurrentRevisionDeployment_IsDeployed()
     {
         await using var fixture = await Fixture.CreateAsync();

@@ -21,6 +21,43 @@ public class DeploymentRepository : IDeploymentRepository
     public Task<Project?> GetOwnedProjectAsync(int projectId, int userId, CancellationToken cancellationToken = default) =>
         _context.Projects.AsNoTracking().FirstOrDefaultAsync(project => project.Id == projectId && project.UserId == userId, cancellationToken);
 
+    public async Task<int> FailAbandonedRunningAsync(
+        int projectId,
+        DateTime startedBeforeUtc,
+        string errorMessage,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Deployments
+            .Where(deployment =>
+                deployment.ProjectId == projectId
+                && deployment.Status == DeploymentStatus.Running
+                && deployment.StartedAt <= startedBeforeUtc);
+
+        if (!_context.Database.IsRelational())
+        {
+            var abandoned = await query.ToListAsync(cancellationToken);
+            foreach (var deployment in abandoned)
+            {
+                deployment.Status = DeploymentStatus.Failed;
+                deployment.CompletedAt = DateTime.UtcNow;
+                deployment.ErrorMessage = errorMessage;
+                deployment.TablesCreated = 0;
+                deployment.TotalRowsInserted = 0;
+                deployment.RelationshipsCreated = 0;
+            }
+            await _context.SaveChangesAsync(cancellationToken);
+            return abandoned.Count;
+        }
+
+        return await query.ExecuteUpdateAsync(setters => setters
+                .SetProperty(deployment => deployment.Status, DeploymentStatus.Failed)
+                .SetProperty(deployment => deployment.CompletedAt, DateTime.UtcNow)
+                .SetProperty(deployment => deployment.ErrorMessage, errorMessage)
+                .SetProperty(deployment => deployment.TablesCreated, 0)
+                .SetProperty(deployment => deployment.TotalRowsInserted, 0)
+                .SetProperty(deployment => deployment.RelationshipsCreated, 0), cancellationToken);
+    }
+
     public Task<bool> HasRunningAsync(int projectId, CancellationToken cancellationToken = default) =>
         _context.Deployments.AsNoTracking()
             .AnyAsync(deployment => deployment.ProjectId == projectId && deployment.Status == DeploymentStatus.Running, cancellationToken);

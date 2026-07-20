@@ -177,6 +177,19 @@ public class DeploymentService : IDeploymentService
 
     private async Task EnsureNoRunningDeploymentAsync(int projectId, CancellationToken cancellationToken)
     {
+        var recovered = await _deploymentRepository.FailAbandonedRunningAsync(
+            projectId,
+            DateTime.UtcNow - DeploymentRecoveryPolicy.AbandonedRunningTimeout,
+            DeploymentRecoveryPolicy.AbandonedFailureMessage,
+            cancellationToken);
+        if (recovered > 0)
+        {
+            _logger.LogWarning(
+                "Marked {RecoveredDeploymentCount} abandoned deployment record(s) as failed for project {ProjectId}.",
+                recovered,
+                projectId);
+        }
+
         if (await _deploymentRepository.HasRunningAsync(projectId, cancellationToken))
         {
             throw new DeploymentInProgressException();
