@@ -66,6 +66,8 @@ describe('simplified application routes', () => {
     expect(loaders).not.toContain("pages/analysis");
     expect(loaders).not.toContain("pages/dashboard");
     expect(loaders).not.toContain("pages/project-relationships");
+    expect(loaders).not.toContain("pages/project-exports");
+    expect(loaders).not.toContain("pages/project-deployment");
   });
 
   it('lazy-loads page and shell components', () => {

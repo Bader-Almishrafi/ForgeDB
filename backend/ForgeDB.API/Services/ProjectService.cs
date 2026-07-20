@@ -180,25 +180,13 @@ public class ProjectService : IProjectService
     // Design validation errors stop export so the package never presents invalid artifacts as ready.
     public async Task<ProjectExportPackageDto> GetProjectExportPackageAsync(int projectId, CancellationToken cancellationToken = default)
     {
-        var project = await GetWorkspaceProjectAsync(projectId, cancellationToken);
-        var dataQualityReportJson = BuildDataQualityReportJson(project);
-
-        var artifacts = await _designService.PrepareExportArtifactsAsync(projectId, cancellationToken);
-        if (artifacts is null)
-        {
-            return new ProjectExportPackageDto
-            {
-                ProjectId = project.Id,
-                ProjectName = project.Name,
-                Status = "Upload datasets and generate a design to build a package",
-                GeneratedAt = DateTime.UtcNow,
-                Sql = string.Empty,
-                Dbml = string.Empty,
-                JsonSchema = string.Empty,
-                RelationshipReportJson = "[]",
-                DataQualityReportJson = dataQualityReportJson
-            };
-        }
+        await _projectWorkflowService.EnsureCanExportAsync(projectId, cancellationToken);
+        var project = await _projectRepository.GetByIdAsync(projectId, cancellationToken)
+            ?? throw new KeyNotFoundException("Project not found.");
+        var artifacts = await _designService.PrepareExportArtifactsAsync(projectId, cancellationToken)
+            ?? throw new InvalidOperationException("A persisted validated schema is required before export.");
+        var design = await _designService.GetByProjectIdAsync(projectId, cancellationToken)
+            ?? throw new InvalidOperationException("A persisted validated schema is required before export.");
 
         var errorIssues = artifacts.ValidationIssues.Where(issue => issue.Severity == "error").ToList();
         if (errorIssues.Count > 0)
@@ -206,20 +194,51 @@ public class ProjectService : IProjectService
             throw new DesignValidationFailedException(artifacts.ValidationIssues);
         }
 
+        var activeVersions = await _cleaningRepository.GetActiveProjectVersionsAsync(projectId, cancellationToken);
+        var cleaningState = await _cleaningRepository.GetStateAsync(projectId, cancellationToken);
+        var confirmedVersions = ParseVersionMap(cleaningState?.ConfirmedVersionsJson);
+        var exactVersions = activeVersions.Count == design.SourceVersions.Count
+            && confirmedVersions.Count == design.SourceVersions.Count
+            && design.SourceVersions.All(pair => confirmedVersions.GetValueOrDefault(pair.Key) == pair.Value
+                && activeVersions.Any(item => item.Dataset.Id == pair.Key
+                    && item.Dataset.ActiveVersionId == pair.Value
+                    && item.Version.Id == pair.Value
+                    && item.Version.AnalyzedAt.HasValue
+                    && !string.IsNullOrWhiteSpace(item.Version.AnalysisResultJson)));
+        if (!exactVersions)
+        {
+            throw new ProjectWorkflowBlockedException("export", await _projectWorkflowService.EvaluateAsync(projectId, cancellationToken));
+        }
+
         var suggestions = await _relationshipDetectionService.GetSuggestionsAsync(projectId, status: null, cancellationToken);
         var relationshipReport = BuildRelationshipReport(suggestions, artifacts.Relationships);
+        var sourceVersions = activeVersions
+            .OrderBy(item => item.Dataset.Id)
+            .Select(item => new ProjectExportSourceVersionDto
+            {
+                DatasetId = item.Dataset.Id,
+                DatasetName = item.Dataset.TableName,
+                VersionId = item.Version.Id,
+                VersionNumber = item.Version.VersionNumber,
+                VersionKind = ResolveVersionKind(item.Version)
+            })
+            .ToList();
 
         return new ProjectExportPackageDto
         {
             ProjectId = project.Id,
             ProjectName = project.Name,
+            DesignRevision = design.Revision,
+            SchemaStatus = design.Status,
             Status = "Database Package Ready",
             GeneratedAt = DateTime.UtcNow,
+            SourceDatasetVersions = sourceVersions,
+            AvailableArtifactNames = ["schema.sql", "schema.json", "relationship-report.json", "data-quality-report.json"],
             Sql = artifacts.Sql,
             Dbml = artifacts.Dbml,
             JsonSchema = artifacts.Json,
             RelationshipReportJson = JsonSerializer.Serialize(relationshipReport, JsonOptions),
-            DataQualityReportJson = dataQualityReportJson
+            DataQualityReportJson = BuildDataQualityReportJson(activeVersions, confirmedVersions)
         };
     }
 
@@ -242,15 +261,21 @@ public class ProjectService : IProjectService
 
     // Joins relationship suggestions to accepted design relationships and shapes a serializable
     // report without exposing internal EF Core entities.
-    private static List<object> BuildRelationshipReport(
+    private static object BuildRelationshipReport(
         IReadOnlyList<RelationshipSuggestionResponseDto> suggestions,
         IReadOnlyList<DesignRelationshipResponseDto> relationships)
     {
-        var relationshipBySuggestionId = relationships
-            .Where(relationship => relationship.SuggestionId.HasValue)
-            .ToDictionary(relationship => relationship.SuggestionId!.Value);
-
-        return suggestions.Select(suggestion => (object)new
+        var persistedRelationships = relationships.Select(relationship => new
+        {
+            sourceTable = relationship.FromTableName,
+            sourceColumn = relationship.FromColumnName,
+            targetTable = relationship.ToTableName,
+            targetColumn = relationship.ToColumnName,
+            cardinality = relationship.Cardinality,
+            onDelete = relationship.OnDelete,
+            acceptedSuggestionId = relationship.SuggestionId
+        }).ToList();
+        var suggestionAudit = suggestions.Select(suggestion => new
         {
             suggestionId = suggestion.Id,
             sourceTable = suggestion.SourceTableName,
@@ -261,20 +286,9 @@ public class ProjectService : IProjectService
             status = suggestion.Status,
             decidedAt = suggestion.DecidedAt,
             createdAt = suggestion.CreatedAt,
-            evidence = ParseEvidence(suggestion.EvidenceJson),
-            relationship = relationshipBySuggestionId.TryGetValue(suggestion.Id, out var relationship)
-                ? new
-                {
-                    relationship.Id,
-                    relationship.FromTableName,
-                    relationship.FromColumnName,
-                    relationship.ToTableName,
-                    relationship.ToColumnName,
-                    relationship.Cardinality,
-                    relationship.OnDelete
-                }
-                : null
+            evidence = ParseEvidence(suggestion.EvidenceJson)
         }).ToList();
+        return new { persistedRelationships, suggestionAudit };
     }
 
     // Parses stored evidence JSON when valid and tolerates legacy or malformed evidence by
@@ -299,24 +313,50 @@ public class ProjectService : IProjectService
 
     // Summarizes dataset size, quality counters, and analysis state as the data-quality artifact
     // bundled with project exports.
-    private static string BuildDataQualityReportJson(Project project)
+    private static string BuildDataQualityReportJson(
+        IReadOnlyList<CleaningDatasetVersionData> activeVersions,
+        IReadOnlyDictionary<int, int> confirmedVersions)
     {
-        var dataQuality = project.Datasets
-            .OrderBy(dataset => dataset.TableName, StringComparer.OrdinalIgnoreCase)
-            .Select(dataset => new
+        var dataQuality = activeVersions
+            .OrderBy(item => item.Dataset.TableName, StringComparer.OrdinalIgnoreCase)
+            .Select(item => new
             {
-                datasetId = dataset.Id,
-                tableName = dataset.TableName,
-                rowCount = dataset.RowCount,
-                columnCount = dataset.ColumnCount,
-                missingValuesCount = dataset.MissingValuesCount,
-                duplicateRowsCount = dataset.DuplicateRowsCount,
-                status = dataset.Status,
-                analyzedAt = dataset.AnalyzedAt
+                datasetId = item.Dataset.Id,
+                datasetName = item.Dataset.TableName,
+                activeVersionId = item.Version.Id,
+                activeVersionNumber = item.Version.VersionNumber,
+                versionKind = ResolveVersionKind(item.Version),
+                rowCount = item.Version.RowCount,
+                columnCount = item.Version.ColumnCount,
+                missingValuesCount = item.Version.MissingValuesCount,
+                duplicateRowsCount = item.Version.DuplicateRowsCount,
+                analyzedAt = item.Version.AnalyzedAt,
+                qualityConfirmed = confirmedVersions.GetValueOrDefault(item.Dataset.Id) == item.Version.Id
             })
             .ToList();
 
-        return JsonSerializer.Serialize(dataQuality, JsonOptions);
+        return JsonSerializer.Serialize(new { datasets = dataQuality }, JsonOptions);
+    }
+
+    private static string ResolveVersionKind(DatasetVersion version)
+    {
+        if (version.IsRawOriginal) return "Imported";
+        return version.OperationSummary.Contains("restore", StringComparison.OrdinalIgnoreCase)
+            ? "Restored"
+            : "Cleaned";
+    }
+
+    private static Dictionary<int, int> ParseVersionMap(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new();
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<int, int>>(json) ?? new();
+        }
+        catch (JsonException)
+        {
+            return new();
+        }
     }
 
     // Derives the next useful workflow actions from imported, analyzed, related, and designed state.

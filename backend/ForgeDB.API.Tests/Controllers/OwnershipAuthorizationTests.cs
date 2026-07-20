@@ -94,6 +94,19 @@ public class OwnershipAuthorizationTests
     }
 
     [Fact]
+    public async Task ProjectsController_ExportPackage_Returns403_ForNonOwningUser()
+    {
+        await using var context = NewContext();
+        var (ownerProject, _) = await SeedTwoUsersOneProjectAsync(context, otherUserId: 99);
+        var controller = BuildProjectsController(context, callingUserId: 99);
+
+        var result = await controller.GetExportPackage(ownerProject.Id, CancellationToken.None);
+
+        var status = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(403, status.StatusCode);
+    }
+
+    [Fact]
     public async Task ProjectsController_Update_Succeeds_ForOwningUser_AndPersistsChanges()
     {
         await using var context = NewContext();

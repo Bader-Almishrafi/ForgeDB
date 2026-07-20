@@ -94,7 +94,8 @@ public class DeploymentServiceTests
     {
         var deploymentRepository = Proxy<IDeploymentRepository>(new()
         {
-            [nameof(IDeploymentRepository.GetOwnedProjectAsync)] = _ => Task.FromResult<Project?>(new Project { Id = 8, UserId = 3 })
+            [nameof(IDeploymentRepository.GetOwnedProjectAsync)] = _ => Task.FromResult<Project?>(new Project { Id = 8, UserId = 3 }),
+            [nameof(IDeploymentRepository.HasRunningAsync)] = _ => Task.FromResult(false)
         });
         var workflow = Proxy<IProjectWorkflowService>(new()
         {
@@ -130,7 +131,86 @@ public class DeploymentServiceTests
         Assert.Equal(0, response.TablesCreated);
         Assert.Equal(0, response.RowsSeeded);
         Assert.Equal(1, response.FailedRows);
-        Assert.Contains("constraint failure", response.ErrorMessage);
+        Assert.Equal("Deployment failed while applying the validated design. The transaction rolled back.", response.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GetPreviewAsync_ReturnsBackendDerivedPlanAndRedeploymentState()
+    {
+        var fixture = CreateFixture(cleanedValue: "cleaned");
+
+        var firstPreview = await fixture.Service.GetPreviewAsync(8, 3);
+        await fixture.Service.DeployAsync(8, 3, 6);
+        var redeployPreview = await fixture.Service.GetPreviewAsync(8, 3);
+
+        Assert.Equal("forgedb_project_8", firstPreview.SchemaName);
+        Assert.Equal(6, firstPreview.DesignRevision);
+        Assert.Equal(1, firstPreview.TablesCount);
+        Assert.Equal(0, firstPreview.RelationshipsCount);
+        Assert.Equal(1, firstPreview.TotalRowsPlanned);
+        Assert.Equal(1, firstPreview.SourceVersionCount);
+        Assert.False(firstPreview.IsRedeployment);
+        Assert.True(redeployPreview.IsRedeployment);
+    }
+
+    [Fact]
+    public async Task DeployAsync_RejectsPersistedRunningDeploymentBeforeCreatingAnotherRecord()
+    {
+        var addCalled = false;
+        var repository = Proxy<IDeploymentRepository>(new()
+        {
+            [nameof(IDeploymentRepository.GetOwnedProjectAsync)] = _ => Task.FromResult<Project?>(new Project { Id = 8, UserId = 3 }),
+            [nameof(IDeploymentRepository.HasRunningAsync)] = _ => Task.FromResult(true),
+            [nameof(IDeploymentRepository.AddRunningAsync)] = _ =>
+            {
+                addCalled = true;
+                throw new InvalidOperationException("must not be called");
+            }
+        });
+        var service = new DeploymentService(
+            repository,
+            Proxy<IDesignRepository>(new()),
+            Proxy<IDesignService>(new()),
+            Proxy<ICleaningRepository>(new()));
+
+        var exception = await Assert.ThrowsAsync<DeploymentInProgressException>(() => service.DeployAsync(8, 3, 6));
+
+        Assert.Equal("deployment_in_progress", DeploymentInProgressException.ErrorCode);
+        Assert.False(addCalled);
+    }
+
+    [Fact]
+    public async Task DeployAsync_RejectsActiveVersionChangeBeforeRunningRecordIsCreated()
+    {
+        var fixture = CreateFixture(cleanedValue: "cleaned", changeActiveDuringPreparation: true);
+
+        await Assert.ThrowsAsync<DeploymentSourceChangedException>(() => fixture.Service.DeployAsync(8, 3, 6));
+
+        Assert.Null(fixture.StoredDeployment);
+    }
+
+    [Fact]
+    public async Task DeployAsync_MapsDatabaseUniqueRaceToDeploymentInProgress()
+    {
+        var fixture = CreateFixture(
+            cleanedValue: "cleaned",
+            addRunningFailure: new DeploymentInProgressException());
+
+        await Assert.ThrowsAsync<DeploymentInProgressException>(() => fixture.Service.DeployAsync(8, 3, 6));
+
+        Assert.Null(fixture.StoredDeployment);
+    }
+
+    [Fact]
+    public async Task GetSqlFileAsync_RejectsUnsupportedFileName()
+    {
+        var fixture = CreateFixture(cleanedValue: "cleaned");
+        var deployed = await fixture.Service.DeployAsync(8, 3, 6);
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            fixture.Service.GetSqlFileAsync(8, deployed.DeploymentId, "../../secrets.txt"));
+
+        Assert.Contains("schema.sql, seed.sql, or deploy.sql", exception.Message);
     }
 
     private static DeploymentServiceFixture CreateFixture(
@@ -139,7 +219,9 @@ public class DeploymentServiceTests
         string sqlType = "TEXT",
         bool isAutoIncrement = false,
         Exception? executionFailure = null,
-        int? activeVersionId = null)
+        int? activeVersionId = null,
+        bool changeActiveDuringPreparation = false,
+        Exception? addRunningFailure = null)
     {
         const int projectId = 8;
         const int datasetId = 12;
@@ -184,6 +266,7 @@ public class DeploymentServiceTests
             IsRawOriginal = isRawOriginal,
             IsActive = true,
             AnalyzedAt = DateTime.UtcNow,
+            AnalysisResultJson = "{}",
             ColumnsJson = JsonSerializer.Serialize(new[] { new { name = "name", dataType = "string" } }),
             RowsJson = JsonSerializer.Serialize(new[] { new Dictionary<string, object?> { ["name"] = cleanedValue } }),
             RowCount = 1,
@@ -197,19 +280,36 @@ public class DeploymentServiceTests
                 VersionNumber = 3,
                 IsActive = true,
                 AnalyzedAt = DateTime.UtcNow,
+                AnalysisResultJson = "{}",
                 ColumnsJson = version.ColumnsJson,
                 RowsJson = version.RowsJson,
                 RowCount = version.RowCount
             };
+        var changedActiveVersion = new DatasetVersion
+        {
+            Id = 99,
+            DatasetId = datasetId,
+            VersionNumber = 99,
+            IsActive = true,
+            AnalyzedAt = DateTime.UtcNow,
+            AnalysisResultJson = "{}",
+            ColumnsJson = version.ColumnsJson,
+            RowsJson = version.RowsJson,
+            RowCount = version.RowCount,
+            ColumnCount = version.ColumnCount
+        };
 
         Deployment? storedDeployment = null;
         IReadOnlyList<TableInsertPlan>? capturedPlans = null;
         var requestedVersionId = 0;
+        var activeVersionReads = 0;
         var deploymentRepository = Proxy<IDeploymentRepository>(new()
         {
             [nameof(IDeploymentRepository.GetOwnedProjectAsync)] = _ => Task.FromResult<Project?>(new Project { Id = projectId, UserId = 3 }),
+            [nameof(IDeploymentRepository.HasRunningAsync)] = _ => Task.FromResult(false),
             [nameof(IDeploymentRepository.AddRunningAsync)] = args =>
             {
+                if (addRunningFailure is not null) throw addRunningFailure;
                 storedDeployment = (Deployment)args![0]!;
                 storedDeployment.Id = 90;
                 return Task.FromResult(storedDeployment);
@@ -239,6 +339,7 @@ public class DeploymentServiceTests
                 return Task.CompletedTask;
             },
             [nameof(IDeploymentRepository.GetAsync)] = _ => Task.FromResult(storedDeployment),
+            [nameof(IDeploymentRepository.GetLatestAsync)] = _ => Task.FromResult(storedDeployment),
         });
         var designRepository = Proxy<IDesignRepository>(new()
         {
@@ -256,14 +357,21 @@ public class DeploymentServiceTests
         var cleaningRepository = Proxy<ICleaningRepository>(new()
         {
             [nameof(ICleaningRepository.IsSchemaReadyAsync)] = _ => Task.FromResult(true),
-            [nameof(ICleaningRepository.GetActiveProjectVersionsAsync)] = _ => Task.FromResult<IReadOnlyList<CleaningDatasetVersionData>>(
-            [
-                new CleaningDatasetVersionData(
-                    new Dataset { Id = datasetId, ProjectId = projectId, ActiveVersionId = currentActiveVersion.Id, ActiveVersion = currentActiveVersion },
-                    currentActiveVersion,
-                    [new CleaningColumnSnapshotDto { Name = "name", DataType = "string" }],
-                    [new Dictionary<string, object?> { ["name"] = cleanedValue }])
-            ]),
+            [nameof(ICleaningRepository.GetActiveProjectVersionsAsync)] = _ =>
+            {
+                activeVersionReads++;
+                var selectedVersion = changeActiveDuringPreparation && activeVersionReads > 1
+                    ? changedActiveVersion
+                    : currentActiveVersion;
+                return Task.FromResult<IReadOnlyList<CleaningDatasetVersionData>>(
+                [
+                    new CleaningDatasetVersionData(
+                        new Dataset { Id = datasetId, ProjectId = projectId, ActiveVersionId = selectedVersion.Id, ActiveVersion = selectedVersion },
+                        selectedVersion,
+                        [new CleaningColumnSnapshotDto { Name = "name", DataType = "string" }],
+                        [new Dictionary<string, object?> { ["name"] = cleanedValue }])
+                ]);
+            },
             [nameof(ICleaningRepository.GetStateAsync)] = _ => Task.FromResult<ProjectCleaningState?>(new ProjectCleaningState
             {
                 ProjectId = projectId,

@@ -2,8 +2,10 @@ using ForgeDB.API.Data;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services;
+using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Generators;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace ForgeDB.API.Repositories;
 
@@ -19,12 +21,31 @@ public class DeploymentRepository : IDeploymentRepository
     public Task<Project?> GetOwnedProjectAsync(int projectId, int userId, CancellationToken cancellationToken = default) =>
         _context.Projects.AsNoTracking().FirstOrDefaultAsync(project => project.Id == projectId && project.UserId == userId, cancellationToken);
 
+    public Task<bool> HasRunningAsync(int projectId, CancellationToken cancellationToken = default) =>
+        _context.Deployments.AsNoTracking()
+            .AnyAsync(deployment => deployment.ProjectId == projectId && deployment.Status == DeploymentStatus.Running, cancellationToken);
+
     public async Task<Deployment> AddRunningAsync(Deployment deployment, CancellationToken cancellationToken = default)
     {
         _context.Deployments.Add(deployment);
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsRunningDeploymentConflict(exception))
+        {
+            _context.Entry(deployment).State = EntityState.Detached;
+            throw new DeploymentInProgressException();
+        }
         return deployment;
     }
+
+    private static bool IsRunningDeploymentConflict(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "UX_deployments_ProjectId_Running"
+        };
 
     public async Task MarkSucceededAsync(
         int deploymentId,
@@ -60,10 +81,31 @@ public class DeploymentRepository : IDeploymentRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Deployment>> GetHistoryAsync(int projectId, CancellationToken cancellationToken = default) =>
+    public async Task<IReadOnlyList<DeploymentHistoryData>> GetHistoryAsync(int projectId, CancellationToken cancellationToken = default) =>
         await _context.Deployments.AsNoTracking()
             .Where(deployment => deployment.ProjectId == projectId)
             .OrderByDescending(deployment => deployment.StartedAt)
+            .ThenByDescending(deployment => deployment.Id)
+            .Select(deployment => new DeploymentHistoryData
+            {
+                Id = deployment.Id,
+                ProjectId = deployment.ProjectId,
+                DesignRevision = deployment.DesignRevision,
+                SchemaName = deployment.SchemaName,
+                Status = deployment.Status,
+                ErrorMessage = deployment.ErrorMessage,
+                CreatedTablesJson = deployment.CreatedTablesJson,
+                InsertedRowCountsJson = deployment.InsertedRowCountsJson,
+                TablesCreated = deployment.TablesCreated,
+                TotalRowsInserted = deployment.TotalRowsInserted,
+                RelationshipsCreated = deployment.RelationshipsCreated,
+                FailedRows = deployment.FailedRows,
+                SchemaSqlAvailable = deployment.GeneratedSql != string.Empty,
+                SeedSqlAvailable = deployment.SeedSql != string.Empty,
+                DeploySqlAvailable = deployment.DeploySql != string.Empty,
+                StartedAt = deployment.StartedAt,
+                CompletedAt = deployment.CompletedAt
+            })
             .ToListAsync(cancellationToken);
 
     public Task<Deployment?> GetLatestAsync(int projectId, CancellationToken cancellationToken = default) =>

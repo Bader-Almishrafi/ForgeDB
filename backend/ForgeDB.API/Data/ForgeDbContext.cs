@@ -355,6 +355,10 @@ public class ForgeDbContext : DbContext
             entity.Property(deployment => deployment.SeedSql).HasColumnType("text");
             entity.Property(deployment => deployment.DeploySql).HasColumnType("text");
             entity.HasIndex(deployment => new { deployment.ProjectId, deployment.StartedAt });
+            entity.HasIndex(deployment => deployment.ProjectId)
+                .IsUnique()
+                .HasDatabaseName("UX_deployments_ProjectId_Running")
+                .HasFilter("\"Status\" = 'Running'");
 
             entity.HasOne(deployment => deployment.Project)
                 .WithMany()

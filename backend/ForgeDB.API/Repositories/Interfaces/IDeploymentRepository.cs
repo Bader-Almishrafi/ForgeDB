@@ -11,13 +11,35 @@ public sealed record TableInsertPlan(
     public IReadOnlyList<string> IdentityColumnNames { get; init; } = Array.Empty<string>();
 }
 
+public sealed class DeploymentHistoryData
+{
+    public int Id { get; init; }
+    public int ProjectId { get; init; }
+    public int DesignRevision { get; init; }
+    public string SchemaName { get; init; } = string.Empty;
+    public string Status { get; init; } = string.Empty;
+    public string? ErrorMessage { get; init; }
+    public string CreatedTablesJson { get; init; } = "[]";
+    public string InsertedRowCountsJson { get; init; } = "{}";
+    public int TablesCreated { get; init; }
+    public int TotalRowsInserted { get; init; }
+    public int RelationshipsCreated { get; init; }
+    public int FailedRows { get; init; }
+    public bool SchemaSqlAvailable { get; init; }
+    public bool SeedSqlAvailable { get; init; }
+    public bool DeploySqlAvailable { get; init; }
+    public DateTime StartedAt { get; init; }
+    public DateTime? CompletedAt { get; init; }
+}
+
 public interface IDeploymentRepository
 {
     Task<Project?> GetOwnedProjectAsync(int projectId, int userId, CancellationToken cancellationToken = default);
+    Task<bool> HasRunningAsync(int projectId, CancellationToken cancellationToken = default);
     Task<Deployment> AddRunningAsync(Deployment deployment, CancellationToken cancellationToken = default);
     Task MarkSucceededAsync(int deploymentId, Dictionary<string, int> insertedRowCounts, List<string> createdTables, int relationshipsCreated, CancellationToken cancellationToken = default);
     Task MarkFailedAsync(int deploymentId, string errorMessage, int failedRows, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<Deployment>> GetHistoryAsync(int projectId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DeploymentHistoryData>> GetHistoryAsync(int projectId, CancellationToken cancellationToken = default);
     Task<Deployment?> GetLatestAsync(int projectId, CancellationToken cancellationToken = default);
     Task<Deployment?> GetAsync(int projectId, int deploymentId, CancellationToken cancellationToken = default);
 

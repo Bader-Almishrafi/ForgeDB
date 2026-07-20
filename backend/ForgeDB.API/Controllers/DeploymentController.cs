@@ -24,6 +24,44 @@ public class DeploymentController : ControllerBase
         _projectRepository = projectRepository;
     }
 
+    [HttpGet("preview")]
+    public async Task<ActionResult<DeploymentPreviewDto>> GetPreview(int projectId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await EnsureProjectOwnedAsync(projectId, cancellationToken);
+            return Ok(await _deploymentService.GetPreviewAsync(projectId, GetUserId(), cancellationToken));
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            return StatusCode(403, new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
+        catch (DeploymentInProgressException exception)
+        {
+            return Conflict(new { code = DeploymentInProgressException.ErrorCode, message = exception.Message });
+        }
+        catch (ProjectWorkflowBlockedException exception)
+        {
+            return UnprocessableEntity(new { message = exception.Message, blockerCodes = exception.BlockerCodes });
+        }
+        catch (DesignValidationFailedException exception)
+        {
+            return UnprocessableEntity(new { message = exception.Message, issues = exception.Issues });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return UnprocessableEntity(new { message = exception.Message });
+        }
+    }
+
     [HttpPost]
     public async Task<ActionResult<DeploymentResponseDto>> Deploy(int projectId, CancellationToken cancellationToken)
     {
@@ -45,13 +83,25 @@ public class DeploymentController : ControllerBase
         {
             return NotFound(new { message = exception.Message });
         }
-        catch (InvalidOperationException exception)
-        {
-            return UnprocessableEntity(new { message = exception.Message });
-        }
         catch (DesignValidationFailedException exception)
         {
             return UnprocessableEntity(new { message = exception.Message, issues = exception.Issues });
+        }
+        catch (DeploymentInProgressException exception)
+        {
+            return Conflict(new { code = DeploymentInProgressException.ErrorCode, message = exception.Message });
+        }
+        catch (DeploymentSourceChangedException exception)
+        {
+            return Conflict(new { code = DeploymentSourceChangedException.ErrorCode, message = exception.Message });
+        }
+        catch (ProjectWorkflowBlockedException exception)
+        {
+            return UnprocessableEntity(new { message = exception.Message, blockerCodes = exception.BlockerCodes });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return UnprocessableEntity(new { message = exception.Message });
         }
         catch (DesignConcurrencyException exception)
         {

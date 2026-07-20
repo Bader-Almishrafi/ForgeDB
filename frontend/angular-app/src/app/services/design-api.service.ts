@@ -9,6 +9,7 @@ import {
   CreateDesignRelationshipRequest,
   CreateDesignTableRequest,
   DeploymentResponse,
+  DeploymentPreview,
   DesignModelResponse,
   RelationshipSuggestion,
   UpdateDesignColumnRequest,
@@ -196,6 +197,10 @@ export class DesignApiService {
       {},
       { headers: this.ifMatch(revision) },
     );
+  }
+
+  getDeploymentPreview(projectId: number): Observable<DeploymentPreview> {
+    return this.http.get<DeploymentPreview>(`${this.baseUrl}/api/projects/${projectId}/deployments/preview`);
   }
 
   getDeploymentHistory(projectId: number): Observable<DeploymentResponse[]> {

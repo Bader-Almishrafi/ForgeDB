@@ -10,7 +10,7 @@ namespace ForgeDB.API.Services;
 
 public class DeploymentService : IDeploymentService
 {
-    private const int MaxErrorMessageLength = 2000;
+    private const string SafeFailureMessage = "Deployment failed while applying the validated design. The transaction rolled back.";
 
     private readonly IDeploymentRepository _deploymentRepository;
     private readonly IDesignRepository _designRepository;
@@ -35,16 +35,48 @@ public class DeploymentService : IDeploymentService
         _workflowService = workflowService;
     }
 
+    public async Task<DeploymentPreviewDto> GetPreviewAsync(
+        int projectId,
+        int userId,
+        CancellationToken cancellationToken = default)
+    {
+        if (await _deploymentRepository.GetOwnedProjectAsync(projectId, userId, cancellationToken) is null)
+        {
+            throw new UnauthorizedAccessException("The project does not exist or does not belong to the authenticated user.");
+        }
+        await EnsureNoRunningDeploymentAsync(projectId, cancellationToken);
+        await EnsureWorkflowAllowsDeploymentAsync(projectId, cancellationToken);
+
+        var design = await LoadDeployableDesignAsync(projectId, expectedRevision: null, cancellationToken);
+        _ = await LoadValidArtifactsAsync(projectId, cancellationToken);
+        var orderedTables = DeploymentPlanBuilder.OrderTablesForInsertion(design.Tables.ToList(), design.Relationships.ToList());
+        var insertPlans = await BuildInsertPlansAsync(projectId, orderedTables, cancellationToken);
+        var latest = await _deploymentRepository.GetLatestAsync(projectId, cancellationToken);
+
+        return new DeploymentPreviewDto
+        {
+            SchemaName = DeploymentPlanBuilder.BuildSchemaName(projectId),
+            DesignRevision = design.Revision,
+            TablesCount = orderedTables.Count,
+            RelationshipsCount = design.Relationships.Count,
+            TotalRowsPlanned = insertPlans.Sum(plan => plan.Rows.Count),
+            SourceVersionCount = design.Tables
+                .Where(table => table.SourceDatasetVersionId.HasValue)
+                .Select(table => table.SourceDatasetVersionId!.Value)
+                .Distinct()
+                .Count(),
+            IsRedeployment = latest is not null
+        };
+    }
+
     public async Task<DeploymentResponseDto> DeployAsync(int projectId, int userId, int ifMatchRevision, CancellationToken cancellationToken = default)
     {
         if (await _deploymentRepository.GetOwnedProjectAsync(projectId, userId, cancellationToken) is null)
         {
             throw new UnauthorizedAccessException("The project does not exist or does not belong to the authenticated user.");
         }
-        if (_workflowService is not null)
-        {
-            await _workflowService.EnsureCanDeployAsync(projectId, cancellationToken);
-        }
+        await EnsureNoRunningDeploymentAsync(projectId, cancellationToken);
+        await EnsureWorkflowAllowsDeploymentAsync(projectId, cancellationToken);
 
         var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: false, cancellationToken)
             ?? throw new KeyNotFoundException("Generate a schema design before deploying.");
@@ -81,8 +113,12 @@ public class DeploymentService : IDeploymentService
         var schemaName = DeploymentPlanBuilder.BuildSchemaName(projectId);
         var orderedTables = DeploymentPlanBuilder.OrderTablesForInsertion(design.Tables.ToList(), design.Relationships.ToList());
         var insertPlans = await BuildInsertPlansAsync(projectId, orderedTables, cancellationToken);
+        var sourceVersions = design.Tables
+            .Where(table => table.SourceDatasetId.HasValue && table.SourceDatasetVersionId.HasValue)
+            .ToDictionary(table => table.SourceDatasetId!.Value, table => table.SourceDatasetVersionId!.Value);
         var sqlArtifacts = PostgreSqlDeploymentSqlGenerator.Generate(schemaName, artifacts.Sql, insertPlans, design.Relationships.ToList());
         var plannedRows = insertPlans.Sum(plan => plan.Rows.Count);
+        await VerifyStillCurrentAsync(projectId, design.Revision, sourceVersions, cancellationToken);
         var deployment = await _deploymentRepository.AddRunningAsync(new Deployment
         {
             ProjectId = projectId,
@@ -123,7 +159,7 @@ public class DeploymentService : IDeploymentService
             // one), so this failure is a real, displayable outcome rather than an HTTP error —
             // persist it and let the caller render a failed deployment card with details.
             _logger.LogError(exception, "Deployment {DeploymentId} failed for project {ProjectId}; the database transaction was rolled back.", deployment.Id, projectId);
-            await _deploymentRepository.MarkFailedAsync(deployment.Id, Truncate(exception.Message), plannedRows, cancellationToken);
+            await _deploymentRepository.MarkFailedAsync(deployment.Id, SafeFailureMessage, plannedRows, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -139,10 +175,116 @@ public class DeploymentService : IDeploymentService
             ?? throw new InvalidOperationException("Deployment record could not be reloaded.");
     }
 
+    private async Task EnsureNoRunningDeploymentAsync(int projectId, CancellationToken cancellationToken)
+    {
+        if (await _deploymentRepository.HasRunningAsync(projectId, cancellationToken))
+        {
+            throw new DeploymentInProgressException();
+        }
+    }
+
+    private async Task EnsureWorkflowAllowsDeploymentAsync(int projectId, CancellationToken cancellationToken)
+    {
+        if (_workflowService is null) return;
+
+        try
+        {
+            await _workflowService.EnsureCanDeployAsync(projectId, cancellationToken);
+        }
+        catch (ProjectWorkflowBlockedException exception)
+            when (exception.BlockerCodes.Contains(DeploymentInProgressException.ErrorCode, StringComparer.Ordinal))
+        {
+            throw new DeploymentInProgressException();
+        }
+    }
+
+    private async Task<DesignModel> LoadDeployableDesignAsync(
+        int projectId,
+        int? expectedRevision,
+        CancellationToken cancellationToken)
+    {
+        var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: false, cancellationToken)
+            ?? throw new KeyNotFoundException("Generate a schema design before deploying.");
+        if (expectedRevision.HasValue && design.Revision != expectedRevision.Value)
+        {
+            throw new DesignConcurrencyException(design.Revision);
+        }
+        if (design.Tables.Count == 0)
+        {
+            throw new InvalidOperationException("The design has no tables to deploy.");
+        }
+        if (design.Status != DesignStatus.Valid || design.ValidatedAt is null)
+        {
+            throw new InvalidOperationException("Validate and approve the final schema before deploying.");
+        }
+        if (!await _cleaningRepository.IsSchemaReadyAsync(projectId, cancellationToken))
+        {
+            throw new InvalidOperationException("No finalized cleaned dataset is approved for this schema. Confirm data quality again before deploying.");
+        }
+        return design;
+    }
+
+    private async Task<DesignExportArtifacts> LoadValidArtifactsAsync(int projectId, CancellationToken cancellationToken)
+    {
+        var artifacts = await _designService.PrepareExportArtifactsAsync(projectId, cancellationToken)
+            ?? throw new KeyNotFoundException("Generate a schema design before deploying.");
+        if (artifacts.ValidationIssues.Any(issue => issue.Severity == "error"))
+        {
+            throw new DesignValidationFailedException(artifacts.ValidationIssues);
+        }
+        return artifacts;
+    }
+
+    private async Task VerifyStillCurrentAsync(
+        int projectId,
+        int expectedRevision,
+        IReadOnlyDictionary<int, int> expectedSourceVersions,
+        CancellationToken cancellationToken)
+    {
+        var currentDesign = await _designRepository.GetFullByProjectIdAsync(projectId, track: false, cancellationToken)
+            ?? throw new KeyNotFoundException("Generate a schema design before deploying.");
+        if (currentDesign.Revision != expectedRevision)
+        {
+            throw new DesignConcurrencyException(currentDesign.Revision);
+        }
+        if (currentDesign.Status != DesignStatus.Valid || currentDesign.ValidatedAt is null)
+        {
+            throw new InvalidOperationException("The schema is no longer valid. Validate it again before deploying.");
+        }
+        if (!await _cleaningRepository.IsSchemaReadyAsync(projectId, cancellationToken))
+        {
+            throw new DeploymentSourceChangedException();
+        }
+
+        var active = (await _cleaningRepository.GetActiveProjectVersionsAsync(projectId, cancellationToken))
+            .ToDictionary(item => item.Dataset.Id);
+        if (active.Count != expectedSourceVersions.Count
+            || expectedSourceVersions.Any(pair => !active.TryGetValue(pair.Key, out var item) || item.Version.Id != pair.Value))
+        {
+            throw new DeploymentSourceChangedException();
+        }
+        if (active.Values.Any(item => item.Version.AnalyzedAt is null || string.IsNullOrWhiteSpace(item.Version.AnalysisResultJson)))
+        {
+            throw new DeploymentSourceChangedException();
+        }
+
+        var state = await _cleaningRepository.GetStateAsync(projectId, cancellationToken);
+        var confirmed = string.IsNullOrWhiteSpace(state?.ConfirmedVersionsJson)
+            ? new Dictionary<int, int>()
+            : JsonSerializer.Deserialize<Dictionary<int, int>>(state.ConfirmedVersionsJson) ?? new();
+        if (confirmed.Count != expectedSourceVersions.Count
+            || expectedSourceVersions.Any(pair => confirmed.GetValueOrDefault(pair.Key) != pair.Value))
+        {
+            throw new DeploymentSourceChangedException();
+        }
+
+        await EnsureNoRunningDeploymentAsync(projectId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<DeploymentResponseDto>> GetHistoryAsync(int projectId, CancellationToken cancellationToken = default)
     {
         var deployments = await _deploymentRepository.GetHistoryAsync(projectId, cancellationToken);
-        return deployments.Select(MapToResponse).ToList();
+        return deployments.Select(MapHistoryToResponse).ToList();
     }
 
     public async Task<DeploymentResponseDto?> GetLatestAsync(int projectId, CancellationToken cancellationToken = default)
@@ -235,7 +377,7 @@ public class DeploymentService : IDeploymentService
                 throw new InvalidOperationException($"Table '{table.Name}' has no finalized cleaned dataset. Raw uploaded data cannot be deployed.");
             }
 
-            if (version.AnalyzedAt is null)
+            if (version.AnalyzedAt is null || string.IsNullOrWhiteSpace(version.AnalysisResultJson))
             {
                 throw new InvalidOperationException($"The active cleaned dataset for table '{table.Name}' must be re-analyzed before deployment.");
             }
@@ -301,9 +443,6 @@ public class DeploymentService : IDeploymentService
         }
     }
 
-    private static string Truncate(string value) =>
-        value.Length <= MaxErrorMessageLength ? value : value[..MaxErrorMessageLength] + "...";
-
     private static DeploymentResponseDto MapToResponse(Deployment deployment) => new()
     {
         DeploymentId = deployment.Id,
@@ -324,6 +463,29 @@ public class DeploymentService : IDeploymentService
         SchemaSqlAvailable = !string.IsNullOrWhiteSpace(deployment.GeneratedSql),
         SeedSqlAvailable = !string.IsNullOrWhiteSpace(deployment.SeedSql),
         DeploySqlAvailable = !string.IsNullOrWhiteSpace(deployment.DeploySql),
+        StartedAt = deployment.StartedAt,
+        CompletedAt = deployment.CompletedAt,
+    };
+
+    private static DeploymentResponseDto MapHistoryToResponse(DeploymentHistoryData deployment) => new()
+    {
+        DeploymentId = deployment.Id,
+        Id = deployment.Id,
+        ProjectId = deployment.ProjectId,
+        DesignRevision = deployment.DesignRevision,
+        SchemaName = deployment.SchemaName,
+        Status = deployment.Status,
+        ErrorMessage = deployment.ErrorMessage,
+        CreatedTables = JsonSerializer.Deserialize<List<string>>(deployment.CreatedTablesJson) ?? new(),
+        InsertedRowCounts = JsonSerializer.Deserialize<Dictionary<string, int>>(deployment.InsertedRowCountsJson) ?? new(),
+        TablesCreated = deployment.TablesCreated,
+        RowsSeeded = deployment.TotalRowsInserted,
+        TotalRowsInserted = deployment.TotalRowsInserted,
+        RelationshipsCreated = deployment.RelationshipsCreated,
+        FailedRows = deployment.FailedRows,
+        SchemaSqlAvailable = deployment.SchemaSqlAvailable,
+        SeedSqlAvailable = deployment.SeedSqlAvailable,
+        DeploySqlAvailable = deployment.DeploySqlAvailable,
         StartedAt = deployment.StartedAt,
         CompletedAt = deployment.CompletedAt,
     };

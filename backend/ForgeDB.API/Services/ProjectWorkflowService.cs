@@ -317,7 +317,7 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
                 : allVersionsDeployable
                     ? "Deployment requirements are not yet satisfied."
                     : "Deployment requires analyzed active cleaned versions rather than raw imports.";
-            Add("deployment_not_ready", reason);
+            Add(deploymentInProgress ? "deployment_in_progress" : "deployment_not_ready", reason);
         }
         return (codes, reasons);
     }

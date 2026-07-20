@@ -24,4 +24,15 @@ public class DeploymentResponseDto
     public DateTime? CompletedAt { get; set; }
 }
 
+public sealed class DeploymentPreviewDto
+{
+    public string SchemaName { get; set; } = string.Empty;
+    public int DesignRevision { get; set; }
+    public int TablesCount { get; set; }
+    public int RelationshipsCount { get; set; }
+    public int TotalRowsPlanned { get; set; }
+    public int SourceVersionCount { get; set; }
+    public bool IsRedeployment { get; set; }
+}
+
 public sealed record DeploymentSqlFileDto(string FileName, string Content);

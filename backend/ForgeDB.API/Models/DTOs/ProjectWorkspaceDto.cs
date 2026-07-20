@@ -27,13 +27,26 @@ public class ProjectExportPackageDto
 {
     public int ProjectId { get; set; }
     public string ProjectName { get; set; } = string.Empty;
+    public int DesignRevision { get; set; }
+    public string SchemaStatus { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTime GeneratedAt { get; set; }
+    public List<ProjectExportSourceVersionDto> SourceDatasetVersions { get; set; } = new();
+    public List<string> AvailableArtifactNames { get; set; } = new();
     public string Sql { get; set; } = string.Empty;
     public string Dbml { get; set; } = string.Empty;
     public string JsonSchema { get; set; } = string.Empty;
     public string RelationshipReportJson { get; set; } = string.Empty;
     public string DataQualityReportJson { get; set; } = string.Empty;
+}
+
+public sealed class ProjectExportSourceVersionDto
+{
+    public int DatasetId { get; set; }
+    public string DatasetName { get; set; } = string.Empty;
+    public int VersionId { get; set; }
+    public int VersionNumber { get; set; }
+    public string VersionKind { get; set; } = string.Empty;
 }
 
 public class KeyCandidateDto

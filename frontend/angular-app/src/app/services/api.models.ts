@@ -471,6 +471,9 @@ export interface RelationshipCandidateHint {
 
 export interface ApiErrorBody {
   message?: string;
+  code?: string;
+  blockerCodes?: string[];
+  currentRevision?: number;
 }
 
 // ProjectOverview is calculated from project data and related workflow state rather than mapping
@@ -650,6 +653,16 @@ export interface DeploymentResponse {
   completedAt?: string | null;
 }
 
+export interface DeploymentPreview {
+  schemaName: string;
+  designRevision: number;
+  tablesCount: number;
+  relationshipsCount: number;
+  totalRowsPlanned: number;
+  sourceVersionCount: number;
+  isRedeployment: boolean;
+}
+
 export interface GenerateDesignRequest {
   mode: 'merge' | 'replace';
 }
@@ -732,11 +745,23 @@ export interface DesignConflictError {
 export interface ProjectExportPackage {
   projectId: number;
   projectName: string;
+  designRevision: number;
+  schemaStatus: string;
   status: string;
   generatedAt: string;
+  sourceDatasetVersions: ProjectExportSourceVersion[];
+  availableArtifactNames: string[];
   sql: string;
   dbml: string;
   jsonSchema: string;
   relationshipReportJson: string;
   dataQualityReportJson: string;
+}
+
+export interface ProjectExportSourceVersion {
+  datasetId: number;
+  datasetName: string;
+  versionId: number;
+  versionNumber: number;
+  versionKind: string;
 }

@@ -299,6 +299,95 @@ public class SchemaWorkspaceServiceTests
     }
 
     [Fact]
+    public async Task ExportPackage_UsesExactActiveVersionsAndSeparatesPersistedRelationshipsFromSuggestionAudit()
+    {
+        await using var context = NewContext();
+        var seed = await SeedConfirmedProjectAsync(context);
+        var designService = BuildService(context);
+        var generated = await designService.GenerateSchemaAsync(seed.ProjectId, seed.UserId, null);
+        var customers = generated.Tables.Single(table => table.Name == "customers");
+        var orders = generated.Tables.Single(table => table.Name == "orders");
+        var customerId = customers.Columns.Single(column => column.Name == "id");
+        var withPrimaryKey = await designService.UpdateColumnAsync(
+            customerId.Id,
+            generated.Revision,
+            new UpdateDesignColumnRequestDto
+            {
+                Name = customerId.Name,
+                SqlType = customerId.SqlType,
+                IsNullable = false,
+                IsPrimaryKey = true,
+                IsUnique = false,
+                Ordinal = customerId.Ordinal
+            });
+        var withRelationship = await designService.CreateRelationshipAsync(
+            generated.Id,
+            withPrimaryKey.Revision,
+            new CreateDesignRelationshipRequestDto
+            {
+                FromColumnId = orders.Columns.Single(column => column.Name == "customer_id").Id,
+                ToColumnId = customers.Columns.Single(column => column.Name == "id").Id,
+                Cardinality = "many-to-one",
+                OnDelete = "cascade"
+            });
+        var validated = await designService.ValidateSchemaAsync(seed.ProjectId, seed.UserId, withRelationship.Revision);
+
+        var activeVersions = await context.DatasetVersions.Include(version => version.Dataset).ToListAsync();
+        foreach (var version in activeVersions)
+        {
+            version.MissingValuesCount = version.Dataset!.TableName == "customers" ? 7 : 2;
+            version.DuplicateRowsCount = 1;
+            version.Dataset.MissingValuesCount = 999;
+            version.Dataset.DuplicateRowsCount = 999;
+        }
+        await context.SaveChangesAsync();
+
+        var relationshipService = DispatchProxy.Create<IRelationshipDetectionService, TestInterfaceProxy<IRelationshipDetectionService>>();
+        ((TestInterfaceProxy<IRelationshipDetectionService>)(object)relationshipService).Handlers = new()
+        {
+            [nameof(IRelationshipDetectionService.GetSuggestionsAsync)] = _ => Task.FromResult(new List<RelationshipSuggestionResponseDto>
+            {
+                new()
+                {
+                    Id = 44,
+                    ProjectId = seed.ProjectId,
+                    SourceTableName = "orders",
+                    SourceColumnName = "customer_id",
+                    TargetTableName = "customers",
+                    TargetColumnName = "id",
+                    Status = "suggested",
+                    CreatedAt = DateTime.UtcNow
+                }
+            })
+        };
+        var projectService = new ProjectService(
+            new ProjectRepository(context),
+            designService,
+            relationshipService,
+            new CleaningRepository(context),
+            new ProjectWorkflowService(context));
+
+        var package = await projectService.GetProjectExportPackageAsync(seed.ProjectId);
+
+        Assert.Equal(validated.Revision, package.DesignRevision);
+        Assert.Equal(DesignStatus.Valid, package.SchemaStatus);
+        Assert.Equal(3, package.SourceDatasetVersions.Count);
+        Assert.Equal(
+            ["schema.sql", "schema.json", "relationship-report.json", "data-quality-report.json"],
+            package.AvailableArtifactNames);
+        using var quality = JsonDocument.Parse(package.DataQualityReportJson);
+        var customersQuality = quality.RootElement.GetProperty("datasets").EnumerateArray()
+            .Single(item => item.GetProperty("datasetName").GetString() == "customers");
+        Assert.Equal(7, customersQuality.GetProperty("missingValuesCount").GetInt32());
+        Assert.True(customersQuality.GetProperty("qualityConfirmed").GetBoolean());
+        Assert.Equal("Imported", customersQuality.GetProperty("versionKind").GetString());
+        using var relationships = JsonDocument.Parse(package.RelationshipReportJson);
+        Assert.Single(relationships.RootElement.GetProperty("persistedRelationships").EnumerateArray());
+        Assert.Single(relationships.RootElement.GetProperty("suggestionAudit").EnumerateArray());
+        Assert.Equal("suggested", relationships.RootElement.GetProperty("suggestionAudit")[0].GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task ValidateSchema_ActiveVersionChangeMarksSchemaStaleAndInvalid()
     {
         await using var context = NewContext();

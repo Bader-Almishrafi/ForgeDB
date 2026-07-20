@@ -172,6 +172,31 @@ public class ProjectWorkflowServiceTests
     }
 
     [Fact]
+    public async Task RunningDeployment_UsesStableDeploymentInProgressBlocker()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        await fixture.AddDatasetAsync("customers", analyzed: true, cleaned: true);
+        await fixture.ConfirmCurrentVersionsAsync();
+        var design = await fixture.AddSchemaAsync(DesignStatus.Valid);
+        fixture.Context.Deployments.Add(new Deployment
+        {
+            ProjectId = fixture.ProjectId,
+            DesignRevision = design.Revision,
+            SchemaName = $"forgedb_project_{fixture.ProjectId}",
+            Status = DeploymentStatus.Running,
+            StartedAt = DateTime.UtcNow
+        });
+        await fixture.Context.SaveChangesAsync();
+
+        var workflow = await fixture.Service.EvaluateAsync(fixture.ProjectId);
+
+        Assert.True(workflow.CanExport);
+        Assert.False(workflow.CanDeploy);
+        Assert.Contains("deployment_in_progress", workflow.BlockerCodes);
+        Assert.Contains(workflow.BlockingReasons, reason => reason.Contains("already running", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task SuccessfulCurrentRevisionDeployment_IsDeployed()
     {
         await using var fixture = await Fixture.CreateAsync();
@@ -195,6 +220,34 @@ public class ProjectWorkflowServiceTests
         Assert.Equal(ProjectWorkflowStates.Deployed, workflow.WorkflowState);
         Assert.Equal(ProjectWorkflowSteps.ExportAndDeploy, workflow.CurrentStep);
         Assert.Equal(DeploymentStatus.Completed, workflow.LatestDeploymentStatus);
+        Assert.True(workflow.CanExport && workflow.CanDeploy);
+    }
+
+    [Fact]
+    public async Task FailedDeployment_DoesNotMarkWorkflowAsDeployed()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        await fixture.AddDatasetAsync("customers", analyzed: true, cleaned: true);
+        await fixture.ConfirmCurrentVersionsAsync();
+        var design = await fixture.AddSchemaAsync(DesignStatus.Valid);
+        fixture.Context.Deployments.Add(new Deployment
+        {
+            ProjectId = fixture.ProjectId,
+            DesignRevision = design.Revision,
+            SchemaName = "workflow",
+            Status = DeploymentStatus.Failed,
+            ErrorMessage = "Deployment failed safely. The transaction rolled back.",
+            TriggeredByUserId = fixture.UserId,
+            StartedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow
+        });
+        await fixture.Context.SaveChangesAsync();
+
+        var workflow = await fixture.Service.EvaluateAsync(fixture.ProjectId);
+
+        Assert.NotEqual(ProjectWorkflowStates.Deployed, workflow.WorkflowState);
+        Assert.Equal(ProjectWorkflowStates.ReadyToDeploy, workflow.WorkflowState);
+        Assert.Equal(DeploymentStatus.Failed, workflow.LatestDeploymentStatus);
         Assert.True(workflow.CanExport && workflow.CanDeploy);
     }
 
