@@ -77,6 +77,24 @@ describe('ProjectWorkflowContextService', () => {
     expect(getProjectWorkflow).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps the current workflow visible without entering initial loading during a same-project refresh', () => {
+    const refreshed = new Subject<ProjectWorkflow>();
+    const getProjectWorkflow = vi.fn()
+      .mockReturnValueOnce(of(workflow(1, 'Before refresh')))
+      .mockReturnValueOnce(refreshed);
+    const service = new ProjectWorkflowContextService({ getProjectWorkflow } as unknown as ForgeApiService);
+    service.load(1).subscribe();
+
+    service.load(1, true).subscribe();
+    expect(service.loading()).toBe(false);
+    expect(service.workflow()?.projectName).toBe('Before refresh');
+
+    refreshed.next(workflow(1, 'After refresh'));
+    refreshed.complete();
+    expect(service.loading()).toBe(false);
+    expect(service.workflow()?.projectName).toBe('After refresh');
+  });
+
   it('reads project context from an ancestor route and dataset selection from the query string', () => {
     const route = {
       snapshot: {

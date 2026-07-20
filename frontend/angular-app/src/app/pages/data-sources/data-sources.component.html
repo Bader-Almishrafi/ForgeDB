@@ -1,406 +1,291 @@
-<div class="mx-auto max-w-[1600px] space-y-6 overflow-x-hidden">
-  @if (projectLoading()) {
-    <section class="animate-pulse space-y-5" aria-label="Loading Data Sources" aria-busy="true">
-      <div class="h-64 rounded-3xl border border-slate-200 bg-white p-8 dark:border-slate-700 dark:bg-slate-900">
-        <div class="h-4 w-36 rounded bg-slate-200 dark:bg-slate-800"></div>
-        <div class="mt-8 h-12 w-12 rounded-xl bg-slate-200 dark:bg-slate-800"></div>
-        <div class="mt-4 h-8 w-72 max-w-full rounded bg-slate-200 dark:bg-slate-800"></div>
-        <div class="mt-3 h-4 w-[34rem] max-w-full rounded bg-slate-100 dark:bg-slate-800"></div>
-      </div>
-      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        @for (item of [1, 2, 3, 4]; track item) {
-          <div class="h-28 rounded-2xl bg-slate-200/80 dark:bg-slate-800"></div>
-        }
-      </div>
-    </section>
-  } @else if (projectError()) {
-    <section class="rounded-3xl border border-rose-200 bg-rose-50 px-6 py-14 text-center dark:border-rose-900 dark:bg-rose-950/30" role="alert">
-      <h1 class="text-xl font-semibold text-rose-900 dark:text-rose-200">{{ projectError() }}</h1>
-      <p class="mt-2 text-sm text-rose-700 dark:text-rose-400">The project could not be opened for dataset management.</p>
-      <div class="mt-5 flex flex-wrap justify-center gap-3">
-        <a routerLink="/projects" class="btn-secondary">Back to Projects</a>
-        <button type="button" class="btn-primary" (click)="loadProject()">Try Again</button>
-      </div>
-    </section>
-  } @else if (project(); as projectData) {
-    @if (selectionNotice()) {
-      <div class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300" role="status" aria-live="polite">
-        <svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 4.7 2.8 18a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.7a2 2 0 0 0-3.4 0Z"></path></svg>
-        <p class="min-w-0 flex-1 font-semibold">{{ selectionNotice() }}</p>
-      </div>
-    }
+<section class="space-y-6" data-testid="data-page">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="eyebrow">{{ projectName() }}</p>
+      <h1 class="mt-1 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">Data</h1>
+      <p class="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400">Import and preview the datasets that belong to this project.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      @if (project()) {
+        <button type="button" class="btn-secondary" (click)="openProjectEdit()">Edit Project</button>
+      }
+      <button type="button" class="btn-primary" data-testid="open-import-button" (click)="openImport()">Import Data</button>
+    </div>
+  </header>
 
-    @if (uploadSuccess()) {
-      <div class="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300" role="status" aria-live="polite">
-        <svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>
-        <p class="min-w-0 flex-1 font-semibold">{{ uploadSuccess() }}</p>
-      </div>
-    }
+  @if (projectError()) {
+    <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300" role="alert">
+      {{ projectError() }}
+    </div>
+  }
+  @if (datasetsError()) {
+    <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300" role="alert">
+      {{ datasetsError() }} <button type="button" class="font-semibold underline" (click)="loadDatasets()">Try again</button>
+    </div>
+  }
+  @if (selectionNotice()) {
+    <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300" role="status">
+      {{ selectionNotice() }}
+    </div>
+  }
+  @if (successMessage()) {
+    <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300" role="status">
+      {{ successMessage() }}
+    </div>
+  }
 
-    <header class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white px-5 py-6 shadow-sm shadow-slate-200/50 sm:px-7 sm:py-8 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/20">
-      <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-[38%] bg-gradient-to-l from-indigo-50/90 via-teal-50/30 to-transparent lg:block dark:from-indigo-950/30 dark:via-teal-950/10" aria-hidden="true"></div>
-      <div class="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border border-indigo-100 dark:border-indigo-900/50" aria-hidden="true"></div>
-      <div class="relative flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-        <div class="min-w-0">
-          <a routerLink="/projects" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:text-indigo-300">
-            <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m15 19-7-7 7-7"></path></svg>
-            Back to Overview
-          </a>
-          <div class="mt-6 flex items-start gap-4 sm:gap-5">
-            <span class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-100 sm:h-14 sm:w-14 dark:bg-indigo-950/60 dark:text-indigo-300 dark:ring-indigo-900">
-              <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current sm:h-7 sm:w-7" stroke-width="1.8" aria-hidden="true"><ellipse cx="12" cy="6" rx="6.5" ry="2.75"></ellipse><path d="M5.5 6v6c0 1.52 2.91 2.75 6.5 2.75s6.5-1.23 6.5-2.75V6M5.5 12v6c0 1.52 2.91 2.75 6.5 2.75s6.5-1.23 6.5-2.75v-6"></path></svg>
-            </span>
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2.5">
-                <h1 class="break-words text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl dark:text-slate-100">{{ projectData.name }}</h1>
-                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">{{ datasets().length }} data source{{ datasets().length === 1 ? '' : 's' }}</span>
-              </div>
-              <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base dark:text-slate-400">{{ projectData.description || 'No description provided.' }}</p>
-              <div class="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
-                @if (projectData.createdAt) { <span>Created {{ projectData.createdAt | date:'mediumDate' }}</span> }
-                <span>Project #{{ projectData.id }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="relative flex flex-col gap-2 sm:flex-row xl:justify-end">
-          <button type="button" class="btn-primary min-h-11" (click)="openUpload()" [attr.aria-expanded]="uploadOpen()">
-            <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
-            Add Data Source
-          </button>
-          <button type="button" class="btn-secondary min-h-11" (click)="loadDatasets()" [disabled]="datasetsLoading()" aria-label="Refresh project datasets">
-            <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"></path></svg>
-            {{ datasetsLoading() ? 'Refreshing' : 'Refresh' }}
-          </button>
-        </div>
+  @if (datasetsLoading()) {
+    <div class="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-[#161b22]" aria-busy="true">
+      Loading datasets…
+    </div>
+  } @else if (!datasetsError() && datasets().length === 0) {
+    <div class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center dark:border-slate-700 dark:bg-[#161b22]" data-testid="data-empty-state">
+      <h2 class="text-xl font-bold text-slate-950 dark:text-white">Import your first dataset</h2>
+      <p class="mx-auto mt-2 max-w-xl text-sm text-slate-600 dark:text-slate-400">This project is empty. Add one CSV file, an Excel worksheet, or records from an API.</p>
+      <div class="mt-6 flex flex-wrap justify-center gap-3">
+        <button type="button" class="btn-secondary" data-testid="empty-import-csv" (click)="openImport('csv')">Import CSV</button>
+        <button type="button" class="btn-secondary" data-testid="empty-import-excel" (click)="openImport('excel')">Import Excel</button>
+        <button type="button" class="btn-secondary" data-testid="empty-import-api" (click)="openImport('api')">Import API</button>
       </div>
-    </header>
+    </div>
+  } @else if (selectedDataset(); as dataset) {
+    <div class="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <aside class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#161b22]" aria-label="Dataset selection">
+        <label for="dataset-selector" class="text-sm font-semibold text-slate-800 dark:text-slate-200">Dataset</label>
+        <select id="dataset-selector" data-testid="dataset-selector" class="input-field mt-2" [ngModel]="selectedDatasetId()" (ngModelChange)="selectDatasetById($event)">
+          @for (item of datasets(); track item.id) {
+            <option [ngValue]="item.id">{{ item.tableName }}</option>
+          }
+        </select>
 
-    @if (datasets().length > 0) {
-      <section aria-labelledby="project-summary-heading">
-        <div class="flex items-end justify-between gap-4">
-          <div><p class="eyebrow">Project summary</p><h2 id="project-summary-heading" class="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Data at a glance</h2></div>
-        </div>
-        <dl class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
-            <div class="flex items-center justify-between gap-4"><dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Data Sources</dt><span class="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16v5H4V6Zm0 7h16v5H4v-5Zm3-4h.01M7 16h.01"></path></svg></span></div>
-            <dd class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ datasets().length | number }}</dd>
+        <dl class="mt-5 divide-y divide-slate-100 text-sm dark:divide-slate-800">
+          <div class="flex items-center justify-between gap-3 py-3">
+            <dt class="text-slate-500">Source</dt>
+            <dd class="truncate font-medium" [title]="displayName(dataset)">{{ dataset.sourceType }}</dd>
           </div>
-          <div class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
-            <div class="flex items-center justify-between gap-4"><dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Rows</dt><span class="grid h-10 w-10 place-items-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16v14H4V5Zm0 5h16M9 5v14"></path></svg></span></div>
-            <dd class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ totalRows() | number }}</dd>
+          <div class="flex items-center justify-between gap-3 py-3">
+            <dt class="text-slate-500">Active version</dt>
+            <dd class="font-medium" data-testid="active-version-number">
+              @if (selectedWorkflowDataset()?.activeVersionNumber; as version) { v{{ version }} } @else { — }
+            </dd>
           </div>
-          <div class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
-            <div class="flex items-center justify-between gap-4"><dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Columns</dt><span class="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M5 4h14v16H5V4Zm5 0v16m4-16v16"></path></svg></span></div>
-            <dd class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ totalColumns() | number }}</dd>
+          <div class="flex items-center justify-between gap-3 py-3">
+            <dt class="text-slate-500">Rows</dt>
+            <dd class="font-medium">{{ dataset.rowCount | number }}</dd>
           </div>
-          <div class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
-            <div class="flex items-center justify-between gap-4"><dt class="text-sm font-medium text-slate-500 dark:text-slate-400">Analyzed Datasets</dt><span class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="m5 12 4 4L19 6M4 20h16"></path></svg></span></div>
-            <dd class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{{ analyzedCount() | number }}<span class="ml-1 text-base font-medium text-slate-400">/ {{ datasets().length }}</span></dd>
+          <div class="flex items-center justify-between gap-3 py-3">
+            <dt class="text-slate-500">Columns</dt>
+            <dd class="font-medium">{{ dataset.columnCount | number }}</dd>
+          </div>
+          <div class="flex items-center justify-between gap-3 py-3">
+            <dt class="text-slate-500">Status</dt>
+            <dd class="font-semibold" data-testid="dataset-analysis-status"
+              [class.text-amber-700]="analysisStatus(dataset.id) === 'Analysis required'"
+              [class.text-emerald-700]="analysisStatus(dataset.id) === 'Analyzed'">
+              {{ analysisStatus(dataset.id) }}
+            </dd>
           </div>
         </dl>
-      </section>
-    }
 
-    @if (uploadOpen()) {
-      <section class="overflow-hidden rounded-3xl border border-indigo-200 bg-white shadow-md shadow-indigo-100/40 dark:border-indigo-900 dark:bg-slate-900 dark:shadow-black/20" aria-labelledby="upload-heading">
-        <div class="border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-teal-50/40 px-5 py-4 dark:border-slate-700 dark:from-indigo-950/35 dark:to-teal-950/15 sm:px-6">
-          <p class="eyebrow">Dataset import</p>
-          <h2 id="upload-heading" class="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">Add a new data source</h2>
-          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Choose an existing import path without leaving this project.</p>
+        <div class="mt-5 grid gap-2">
+          <button type="button" class="btn-secondary justify-center" data-testid="replace-dataset-button" (click)="openReplace()">Replace source</button>
+          <button type="button" class="btn-danger justify-center" data-testid="delete-dataset-button" (click)="requestDelete()">Delete dataset</button>
         </div>
-        <div class="p-5 sm:p-6">
-          <div class="grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Import source">
-            <button type="button" role="radio" data-testid="csv-source-option" class="rounded-2xl border-2 p-4 text-left transition" [attr.aria-checked]="uploadSource() === 'csv'" [class.border-indigo-500]="uploadSource() === 'csv'" [class.bg-indigo-50]="uploadSource() === 'csv'" [class.dark:bg-indigo-950]="uploadSource() === 'csv'" [class.border-slate-200]="uploadSource() !== 'csv'" [class.dark:border-slate-700]="uploadSource() !== 'csv'" (click)="selectUploadSource('csv')">
-              <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">CSV file</span><span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">Import a .csv file</span>
-            </button>
-            <button type="button" role="radio" data-testid="excel-source-option" class="rounded-2xl border-2 p-4 text-left transition" [attr.aria-checked]="uploadSource() === 'excel'" [class.border-indigo-500]="uploadSource() === 'excel'" [class.bg-indigo-50]="uploadSource() === 'excel'" [class.dark:bg-indigo-950]="uploadSource() === 'excel'" [class.border-slate-200]="uploadSource() !== 'excel'" [class.dark:border-slate-700]="uploadSource() !== 'excel'" (click)="selectUploadSource('excel')">
-              <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">Excel workbook</span><span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">Select a real worksheet</span>
-            </button>
-            <button type="button" role="radio" data-testid="api-source-option" class="rounded-2xl border-2 p-4 text-left transition" [attr.aria-checked]="uploadSource() === 'api'" [class.border-indigo-500]="uploadSource() === 'api'" [class.bg-indigo-50]="uploadSource() === 'api'" [class.dark:bg-indigo-950]="uploadSource() === 'api'" [class.border-slate-200]="uploadSource() !== 'api'" [class.dark:border-slate-700]="uploadSource() !== 'api'" (click)="selectUploadSource('api')">
-              <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">API / JSON</span><span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">Import an HTTP JSON array</span>
-            </button>
+      </aside>
+
+      <article class="min-w-0 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#161b22]" data-testid="dataset-preview">
+        <div class="flex flex-col gap-3 border-b border-slate-200 p-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+          <div class="min-w-0">
+            <h2 class="truncate text-xl font-bold text-slate-950 dark:text-white">{{ dataset.tableName }}</h2>
+            <p class="mt-1 truncate text-sm text-slate-500" [title]="displayName(dataset)">{{ displayName(dataset) }}</p>
+          </div>
+          <button type="button" class="btn-secondary shrink-0" (click)="refreshPreview()" [disabled]="previewLoading()">Refresh preview</button>
+        </div>
+
+        @if (previewLoading()) {
+          <div class="p-10 text-center text-sm text-slate-500" aria-busy="true">Loading active-version preview…</div>
+        } @else if (previewError()) {
+          <div class="p-8 text-center" role="alert">
+            <p class="text-sm text-rose-600">{{ previewError() }}</p>
+            <button type="button" class="btn-secondary mt-4" (click)="refreshPreview()">Try again</button>
+          </div>
+        } @else if (preview(); as dataPreview) {
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-800">
+              <thead class="bg-slate-50 dark:bg-slate-900/50">
+                <tr>
+                  @for (column of previewColumns(); track column) {
+                    <th class="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">{{ column }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                @for (row of previewRows(); track $index) {
+                  <tr>
+                    @for (column of previewColumns(); track column) {
+                      <td class="max-w-72 truncate px-4 py-3 text-slate-600 dark:text-slate-300" [title]="previewValue(row, column)">{{ previewValue(row, column) }}</td>
+                    }
+                  </tr>
+                } @empty {
+                  <tr><td [attr.colspan]="previewColumns().length || 1" class="px-4 py-10 text-center text-slate-500">No preview rows are available.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </article>
+    </div>
+  }
+
+  <footer class="flex justify-end border-t border-slate-200 pt-6 dark:border-slate-800">
+    <button type="button" class="btn-primary" data-testid="continue-to-analyze" (click)="continueToAnalyze()" [disabled]="!canContinueToAnalyze()">
+      Continue to Analyze
+    </button>
+  </footer>
+</section>
+
+@if (importOpen()) {
+  <div class="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" aria-labelledby="import-title">
+    <section class="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-[#161b22]" data-testid="import-data-dialog">
+      <header class="flex items-start justify-between gap-4 border-b border-slate-200 p-5 dark:border-slate-800">
+        <div>
+          <h2 id="import-title" class="text-xl font-bold text-slate-950 dark:text-white">Import Data</h2>
+          <p class="mt-1 text-sm text-slate-500">Add one dataset to {{ projectName() }}.</p>
+        </div>
+        <button type="button" class="icon-button" aria-label="Close import" (click)="closeImport()" [disabled]="importing()">×</button>
+      </header>
+
+      <div class="p-5">
+        <div class="grid grid-cols-3 gap-2" aria-label="Import source">
+          <button type="button" class="btn-secondary justify-center" data-testid="csv-source-option" [class.border-indigo-500]="importSource() === 'csv'" (click)="selectImportSource('csv')">CSV</button>
+          <button type="button" class="btn-secondary justify-center" data-testid="excel-source-option" [class.border-indigo-500]="importSource() === 'excel'" (click)="selectImportSource('excel')">Excel</button>
+          <button type="button" class="btn-secondary justify-center" data-testid="api-source-option" [class.border-indigo-500]="importSource() === 'api'" (click)="selectImportSource('api')">API</button>
+        </div>
+
+        @if (importSource() === 'csv' || importSource() === 'excel') {
+          <div class="mt-6 rounded-xl border border-dashed border-slate-300 p-6 dark:border-slate-700">
+            <label class="block text-sm font-semibold text-slate-800 dark:text-slate-200" for="dataset-file-input">
+              {{ importSource() === 'csv' ? 'CSV file' : 'Excel workbook' }}
+            </label>
+            <input id="dataset-file-input" data-testid="dataset-file-input" type="file" class="mt-3 block w-full text-sm"
+              [accept]="importSource() === 'csv' ? '.csv,text/csv' : '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
+              (change)="onImportFileSelected($event)">
+            @if (importFile(); as file) {
+              <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">{{ file.name }} · {{ formatSize(file.size) }}</p>
+            }
           </div>
 
-          <div class="mt-5 min-w-0">
-            @if (uploadSource() === 'api') {
-              <section class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-800/40 sm:p-5" data-testid="api-import-form">
-                <div class="grid gap-4 sm:grid-cols-2">
-                  <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="api-url-input">API URL
-                    <input id="api-url-input" data-testid="api-url-input" type="url" class="input-field mt-2" placeholder="https://api.example.com/items" autocomplete="url" [ngModel]="apiUrl()" (ngModelChange)="updateApiUrl($event)" [disabled]="uploading() || apiTesting() || apiPreviewLoading()" />
-                  </label>
-                  <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="api-array-path-input">JSON array path <span class="font-normal text-slate-400">(optional)</span>
-                    <input id="api-array-path-input" data-testid="api-array-path-input" type="text" class="input-field mt-2" placeholder="result.items" autocomplete="off" [ngModel]="apiArrayPath()" (ngModelChange)="updateApiArrayPath($event)" [disabled]="uploading() || apiTesting() || apiPreviewLoading()" />
-                  </label>
-                </div>
-                <p class="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">ForgeDB performs a read-only HTTP GET. Direct arrays are detected automatically; use a dot path such as <code>data</code> or <code>result.items</code> for nested arrays.</p>
-                <div class="mt-4 flex flex-col gap-2 sm:flex-row">
-                  <button type="button" data-testid="test-api-connection-button" class="btn-secondary" (click)="testApiConnection()" [disabled]="!apiUrl().trim() || apiTesting() || apiPreviewLoading() || uploading()">{{ apiTesting() ? 'Testing Connection…' : 'Test Connection' }}</button>
-                  <button type="button" data-testid="preview-api-button" class="btn-secondary" (click)="previewApiData()" [disabled]="!apiUrl().trim() || apiPreviewLoading() || apiTesting() || uploading()">{{ apiPreviewLoading() ? 'Loading Preview…' : 'Preview Data' }}</button>
-                </div>
-                @if (apiConnection(); as connection) {
-                  <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300" role="status" data-testid="api-connection-success">
-                    <p class="font-semibold">Connection successful</p><p class="mt-1 text-xs">HTTP {{ connection.statusCode }} · {{ connection.recordCount | number }} records · {{ connection.responseBytes | number }} bytes</p>
-                  </div>
-                }
-                @if (apiPreview(); as result) {
-                  <section class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900" data-testid="api-preview">
-                    <dl class="grid grid-cols-2 gap-3 border-b border-slate-200 p-4 text-sm sm:grid-cols-3 dark:border-slate-700"><div><dt class="text-xs text-slate-500">Rows</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ result.rowCount | number }}</dd></div><div><dt class="text-xs text-slate-500">Columns</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ result.columnCount | number }}</dd></div><div class="col-span-2 min-w-0 sm:col-span-1"><dt class="text-xs text-slate-500">Array path</dt><dd class="mt-1 truncate font-semibold text-slate-900 dark:text-slate-100">{{ result.arrayPath || 'Direct array' }}</dd></div></dl>
-                    <div class="max-w-full overflow-x-auto"><table class="w-max min-w-full text-left text-xs"><thead class="bg-slate-50 uppercase text-slate-500 dark:bg-slate-800"><tr>@for (column of result.columns; track column) { <th class="whitespace-nowrap px-3 py-2 font-semibold">{{ column }}</th> }</tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">@for (row of result.rows; track $index) { <tr>@for (column of result.columns; track column) { <td class="whitespace-nowrap px-3 py-2 text-slate-700 dark:text-slate-300">{{ previewValue(row, column) }}</td> }</tr> }</tbody></table></div>
-                  </section>
-                }
-              </section>
-            } @else {
-            <label for="dataset-file-input" class="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-7 text-center transition focus-within:ring-4 focus-within:ring-indigo-100 dark:focus-within:ring-indigo-950" [ngClass]="dragActive() ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40' : 'border-slate-300 bg-slate-50/70 hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-slate-600 dark:bg-slate-800/50 dark:hover:border-indigo-600'" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
-              <span class="grid h-12 w-12 place-items-center rounded-xl bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-indigo-300 dark:ring-slate-700"><svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M12 16V4m0 0 4 4m-4-4-4 4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"></path></svg></span>
-              <span class="mt-4 text-sm font-semibold text-slate-800 dark:text-slate-200">Choose a {{ uploadSource() === 'excel' ? '.xlsx workbook' : '.csv file' }} or drop it here</span>
-              <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">One non-empty file per import · 10 MB maximum</span>
-              <input id="dataset-file-input" data-testid="dataset-file-input" type="file" class="sr-only" [accept]="uploadSource() === 'excel' ? '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : '.csv,text/csv'" (change)="onFileSelected($event)" [disabled]="uploading() || excelPreviewLoading()" />
-            </label>
-            @if (uploadFile(); as file) {
-              <div class="mt-3 flex min-w-0 items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/25">
-                <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-emerald-700 dark:stroke-emerald-300" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5"></path></svg>
-                <div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-slate-800 dark:text-slate-200" [title]="file.name">{{ file.name }}</p><p class="text-xs text-slate-500 dark:text-slate-400">{{ formatSize(file.size) }}</p></div>
+          @if (importSource() === 'excel' && excelPreviewLoading()) {
+            <p class="mt-5 text-sm text-slate-500">Reading workbook…</p>
+          } @else if (importSource() === 'excel' && excelPreview(); as workbook) {
+            <label class="mt-5 block text-sm font-semibold" for="worksheet-selector">Worksheet</label>
+            <select id="worksheet-selector" data-testid="worksheet-selector" class="input-field mt-2" [value]="workbook.selectedWorksheet ?? ''" (change)="onWorksheetSelected($event)">
+              <option value="">Select a worksheet</option>
+              @for (worksheet of workbook.worksheets; track worksheet) { <option [value]="worksheet">{{ worksheet }}</option> }
+            </select>
+            @if (workbook.selectedWorksheet) {
+              <div class="mt-5 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800" data-testid="excel-preview">
+                <table class="min-w-full text-left text-xs">
+                  <thead class="bg-slate-50 dark:bg-slate-900/50"><tr>@for (column of workbook.columns; track column) { <th class="px-3 py-2">{{ column }}</th> }</tr></thead>
+                  <tbody>@for (row of excelPreviewRows(); track $index) { <tr>@for (column of workbook.columns; track column) { <td class="border-t border-slate-100 px-3 py-2 dark:border-slate-800">{{ previewValue(row, column) }}</td> }</tr> }</tbody>
+                </table>
               </div>
             }
-            @if (excelPreviewLoading()) {
-              <div class="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm font-semibold text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-300" role="status">Reading workbook and detecting non-empty worksheets…</div>
-            }
-            @if (uploadSource() === 'excel' && excelPreview(); as workbook) {
-              <section class="mt-4 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700" data-testid="excel-preview">
-                <div class="grid gap-4 border-b border-slate-200 bg-slate-50 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.6fr)] sm:items-end dark:border-slate-700 dark:bg-slate-800/60">
-                  <div><p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Workbook</p><p class="mt-1 truncate text-sm font-semibold text-slate-900 dark:text-slate-100" [title]="workbook.fileName">{{ workbook.fileName }}</p></div>
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Worksheet
-                    <select data-testid="worksheet-selector" class="input-field mt-1" [value]="workbook.selectedWorksheet || ''" (change)="onWorksheetSelected($event)" [disabled]="excelPreviewLoading()">
-                      @if (!workbook.selectedWorksheet) { <option value="">Select a worksheet</option> }
-                      @for (worksheet of workbook.worksheets; track worksheet) { <option [value]="worksheet">{{ worksheet }}</option> }
-                    </select>
-                  </label>
-                </div>
-                @if (workbook.selectedWorksheet) {
-                  <dl class="grid grid-cols-3 gap-3 p-4 text-sm"><div><dt class="text-xs text-slate-500">Worksheet</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ workbook.selectedWorksheet }}</dd></div><div><dt class="text-xs text-slate-500">Rows</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ workbook.rowCount | number }}</dd></div><div><dt class="text-xs text-slate-500">Columns</dt><dd class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ workbook.columnCount | number }}</dd></div></dl>
-                  <div class="max-w-full overflow-x-auto"><table class="w-max min-w-full text-left text-xs"><thead class="border-y border-slate-200 bg-slate-50 uppercase text-slate-500 dark:border-slate-700 dark:bg-slate-800"><tr>@for (column of workbook.columns; track column) { <th class="whitespace-nowrap px-3 py-2 font-semibold">{{ column }}</th> }</tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">@for (row of workbook.rows; track $index) { <tr>@for (column of workbook.columns; track column) { <td class="whitespace-nowrap px-3 py-2 text-slate-700 dark:text-slate-300">{{ previewValue(row, column) }}</td> }</tr> }</tbody></table></div>
-                } @else {
-                  <p class="p-4 text-sm text-slate-600 dark:text-slate-400">This workbook has {{ workbook.worksheets.length }} non-empty worksheets. Select the one to import.</p>
-                }
-              </section>
-            }
-            }
-            @if (uploadError()) { <p class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300" role="alert" aria-live="assertive">{{ uploadError() }}</p> }
-            <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
-              <button type="button" class="btn-secondary sm:min-w-24" (click)="clearUpload()" [disabled]="uploading()">Cancel</button>
-              <button type="button" data-testid="import-dataset-button" class="btn-primary sm:min-w-32" (click)="importUpload()" [disabled]="!canImportUpload()">{{ uploading() ? 'Importing…' : uploadSource() === 'api' ? 'Import Dataset' : uploadSource() === 'excel' ? 'Import Excel' : 'Import CSV' }}</button>
-            </div>
+          }
+        } @else {
+          <div class="mt-6 grid gap-4 sm:grid-cols-2">
+            <label class="sm:col-span-2">
+              <span class="text-sm font-semibold">API URL</span>
+              <input data-testid="api-url-input" type="url" class="input-field mt-2" [ngModel]="apiUrl()" (ngModelChange)="updateApiUrl($event)" placeholder="https://api.example.com/items">
+            </label>
+            <label class="sm:col-span-2">
+              <span class="text-sm font-semibold">Array path <span class="font-normal text-slate-400">(optional)</span></span>
+              <input data-testid="api-array-path-input" type="text" class="input-field mt-2" [ngModel]="apiArrayPath()" (ngModelChange)="updateApiArrayPath($event)" placeholder="result.items">
+            </label>
+            <button type="button" class="btn-secondary justify-center" data-testid="test-api-connection-button" (click)="testApiConnection()" [disabled]="!apiUrl().trim() || apiTesting()">
+              {{ apiTesting() ? 'Testing…' : 'Test Connection' }}
+            </button>
+            <button type="button" class="btn-secondary justify-center" data-testid="preview-api-button" (click)="previewApiData()" [disabled]="!apiUrl().trim() || apiPreviewLoading()">
+              {{ apiPreviewLoading() ? 'Loading…' : 'Preview' }}
+            </button>
           </div>
-        </div>
-      </section>
-    }
-
-    @if (datasets().length > 0) {
-      <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby="project-quality-heading">
-        <div class="border-b border-slate-200 px-5 py-5 sm:px-6 dark:border-slate-700">
-          <p class="eyebrow">Project data quality</p>
-          <h2 id="project-quality-heading" class="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">Quality coverage across this project</h2>
-        </div>
-        <div class="grid divide-y divide-slate-200 lg:grid-cols-3 lg:divide-x lg:divide-y-0 dark:divide-slate-700">
-          <article class="p-5 sm:p-6">
-            <div class="flex items-start gap-4">
-              <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"></path></svg></span>
-              <div><h3 class="font-semibold text-slate-900 dark:text-slate-100">Overall Project Quality</h3><p class="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Project data quality is not available yet.</p><p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">The current API does not provide dataset quality scores to aggregate.</p></div>
-            </div>
-            <dl class="mt-5 grid grid-cols-2 gap-3"><div class="rounded-xl bg-emerald-50 p-3 dark:bg-emerald-950/25"><dt class="text-xs text-emerald-700 dark:text-emerald-300">Analyzed</dt><dd class="mt-1 text-xl font-semibold text-emerald-900 dark:text-emerald-100">{{ analyzedCount() }}</dd></div><div class="rounded-xl bg-slate-100 p-3 dark:bg-slate-800"><dt class="text-xs text-slate-500 dark:text-slate-400">Not analyzed</dt><dd class="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">{{ datasets().length - analyzedCount() }}</dd></div></dl>
-          </article>
-          <article class="p-5 sm:p-6">
-            <h3 class="font-semibold text-slate-900 dark:text-slate-100">Quality Breakdown</h3>
-            <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Good, fair, poor, and critical classifications are not provided by the current API.</p>
-            <div class="mt-5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800" aria-label="Dataset analysis coverage">
-              <div class="h-2.5 rounded-full bg-gradient-to-r from-teal-500 to-indigo-600" [style.width.%]="datasets().length ? analyzedCount() / datasets().length * 100 : 0"></div>
-            </div>
-            <div class="mt-3 flex flex-wrap justify-between gap-2 text-xs"><span class="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><span class="h-2 w-2 rounded-full bg-teal-500"></span>{{ analyzedCount() }} analyzed</span><span class="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400"><span class="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-700"></span>{{ datasets().length - analyzedCount() }} not analyzed</span></div>
-            <div class="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-3 text-center text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">Quality classification breakdown unavailable</div>
-          </article>
-          <article class="p-5 sm:p-6">
-            <h3 class="font-semibold text-slate-900 dark:text-slate-100">Project Summary</h3>
-            <dl class="mt-4 divide-y divide-slate-100 text-sm dark:divide-slate-800">
-              <div class="flex items-center justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Data Sources</dt><dd class="font-semibold text-slate-900 dark:text-slate-100">{{ datasets().length | number }}</dd></div>
-              <div class="flex items-center justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Total rows</dt><dd class="font-semibold text-slate-900 dark:text-slate-100">{{ totalRows() | number }}</dd></div>
-              <div class="flex items-center justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Total columns</dt><dd class="font-semibold text-slate-900 dark:text-slate-100">{{ totalColumns() | number }}</dd></div>
-              <div class="flex items-center justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Analyzed datasets</dt><dd class="font-semibold text-slate-900 dark:text-slate-100">{{ analyzedCount() }} of {{ datasets().length }}</dd></div>
-            </dl>
-          </article>
-        </div>
-      </section>
-    }
-
-    @if (datasetsLoading() && datasets().length === 0) {
-      <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-busy="true" aria-label="Loading datasets">
-        <div class="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)_380px]"><div class="h-96 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"></div><div class="h-96 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"></div><div class="h-96 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"></div></div>
-      </section>
-    } @else if (datasetsError() && datasets().length === 0) {
-      <section class="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900 dark:bg-rose-950/30" role="alert"><h2 class="text-lg font-semibold text-rose-900 dark:text-rose-200">Dataset list failure</h2><p class="mt-2 text-sm text-rose-700 dark:text-rose-300">{{ datasetsError() }}</p><button type="button" class="btn-primary mt-5" (click)="loadDatasets()">Try Again</button></section>
-    } @else if (datasets().length === 0) {
-      <section class="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <div class="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300"><svg viewBox="0 0 24 24" class="h-7 w-7 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 6h16v5H4V6Zm0 7h16v5H4v-5Zm3-4h.01M7 16h.01"></path></svg></div>
-        <h2 class="mt-4 text-xl font-semibold text-slate-950 dark:text-slate-100">No data sources yet</h2><p class="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">Import CSV, Excel, or an HTTP JSON API to begin analyzing and building your database.</p><button type="button" class="btn-primary mt-5" (click)="openUpload()">Add Data Source</button>
-      </section>
-    } @else {
-      <section class="grid min-w-0 gap-5 xl:grid-cols-[280px_minmax(0,1fr)_380px]" aria-labelledby="data-sources-workspace-heading">
-        <aside class="flex min-w-0 flex-col rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:sticky xl:top-5 xl:max-h-[calc(100vh-2.5rem)]">
-          <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800"><div><p class="eyebrow">Project files</p><h2 id="data-sources-workspace-heading" class="mt-1 font-semibold text-slate-950 dark:text-slate-100">All Data Sources <span class="text-slate-400">({{ datasets().length }})</span></h2></div><span class="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><ellipse cx="12" cy="6" rx="6.5" ry="2.75"></ellipse><path d="M5.5 6v6c0 1.52 2.91 2.75 6.5 2.75s6.5-1.23 6.5-2.75V6"></path></svg></span></div>
-          <label for="dataset-search" class="relative mt-4 block"><span class="sr-only">Search data sources</span><svg viewBox="0 0 24 24" class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 fill-none stroke-slate-400" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg><input id="dataset-search" type="search" class="input-field min-h-11 pl-10" placeholder="Search data sources" [ngModel]="search()" (ngModelChange)="updateSearch($event)" /></label>
-          <div class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1"><button type="button" class="btn-primary w-full whitespace-nowrap px-3" (click)="openUpload()"><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span>Add Data Source</span></button><button type="button" class="btn-secondary w-full whitespace-nowrap px-3" (click)="showAllFiles()">View All Files</button></div>
-          @if (datasetsError()) { <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300" role="alert"><p>{{ datasetsError() }}</p><button type="button" class="mt-2 font-semibold underline" (click)="loadDatasets()">Try again</button></div> }
-          <div role="listbox" aria-label="Project datasets" class="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 xl:max-h-[32rem]">
-            @for (dataset of filteredDatasets(); track dataset.id) {
-              <button type="button" role="option" [attr.aria-selected]="selectedDatasetId() === dataset.id" (click)="selectDataset(dataset)" class="block w-full rounded-2xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" [ngClass]="selectedDatasetId() === dataset.id ? 'border-indigo-300 bg-indigo-50 shadow-sm ring-1 ring-indigo-100 dark:border-indigo-700 dark:bg-indigo-950/40 dark:ring-indigo-900' : 'border-transparent hover:border-slate-200 hover:bg-slate-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/60'">
-                <span class="flex items-start gap-3"><span class="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-700"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5"></path></svg></span><span class="min-w-0 flex-1"><span class="flex items-start justify-between gap-2"><span class="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-slate-100" [title]="dataset.tableName">{{ dataset.tableName }}</span>@if (hasDatasetIssues(dataset)) { <span class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">Issues</span> }</span><span class="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400" [title]="displayName(dataset)">{{ displayName(dataset) }}</span><span class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400"><span>{{ dataset.rowCount | number }} rows</span><span>{{ dataset.columnCount }} cols</span><span [ngClass]="isAnalyzed(dataset) ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'">{{ isAnalyzed(dataset) ? 'Analyzed' : 'Not analyzed' }}</span></span></span></span>
-              </button>
-            } @empty {
-              <div class="rounded-2xl border border-dashed border-slate-300 p-5 text-center dark:border-slate-700"><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">No data sources match the search.</p><button type="button" class="btn-secondary mt-3" (click)="updateSearch('')">Clear Search</button></div>
-            }
-          </div>
-          <div class="mt-4 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-3.5 text-xs text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/25 dark:text-indigo-300"><p class="font-semibold">API / JSON imports are available</p><p class="mt-1.5 leading-5">Use Add Data Source to test, preview, and persist an HTTP JSON array.</p></div>
-        </aside>
-
-        @if (mode() === 'all') {
-          <article class="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:col-span-2">
-            <header class="flex flex-col gap-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50/40 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 dark:border-slate-700 dark:from-slate-800/70 dark:to-indigo-950/20"><div><p class="eyebrow">Complete list</p><h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">View All Files</h2><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ datasets().length }} real datasets in this project</p></div>@if (selectedDataset()) { <button type="button" class="btn-secondary" (click)="showSelectedDataset()">Back to Selected Dataset</button> }</header>
-            <div class="max-w-full overflow-x-auto">
-              <table class="min-w-full text-left text-sm">
-                <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"><tr><th scope="col" class="whitespace-nowrap px-5 py-3.5 font-semibold">Name</th><th scope="col" class="whitespace-nowrap px-4 py-3.5 font-semibold">Source type</th><th scope="col" class="whitespace-nowrap px-4 py-3.5 font-semibold">Rows</th><th scope="col" class="whitespace-nowrap px-4 py-3.5 font-semibold">Columns</th><th scope="col" class="whitespace-nowrap px-4 py-3.5 font-semibold">Analysis state</th><th scope="col" class="whitespace-nowrap px-4 py-3.5 font-semibold">Quality / issues</th><th scope="col" class="whitespace-nowrap px-5 py-3.5 text-right font-semibold">Action</th></tr></thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                  @for (dataset of datasets(); track dataset.id) {
-                    <tr class="transition hover:bg-slate-50/80 dark:hover:bg-slate-800/40"><td class="max-w-72 px-5 py-4"><div class="flex items-center gap-3"><span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5"></path></svg></span><div class="min-w-0"><p class="truncate font-semibold text-slate-900 dark:text-slate-100" [title]="dataset.tableName">{{ dataset.tableName }}</p><p class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400" [title]="displayName(dataset)">{{ displayName(dataset) }}</p></div></div></td><td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">{{ dataset.sourceType }}</td><td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">{{ dataset.rowCount | number }}</td><td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">{{ dataset.columnCount | number }}</td><td class="whitespace-nowrap px-4 py-4"><span [class]="statusClass(dataset)">{{ dataset.status || 'Not analyzed' }}</span></td><td class="whitespace-nowrap px-4 py-4 text-slate-700 dark:text-slate-300">@if (hasDatasetIssues(dataset)) { <span class="font-medium text-amber-700 dark:text-amber-300">{{ dataset.missingValuesCount }} missing / {{ dataset.duplicateRowsCount }} duplicates</span> } @else if (isAnalyzed(dataset)) { <span class="text-emerald-700 dark:text-emerald-300">No issues detected</span> } @else { <span class="text-slate-500 dark:text-slate-400">Not analyzed</span> }</td><td class="whitespace-nowrap px-5 py-4 text-right"><button type="button" class="btn-secondary py-2" (click)="selectDataset(dataset)">Open</button></td></tr>
-                  }
-                </tbody>
+          @if (apiConnection(); as connection) {
+            <p class="mt-4 rounded-lg px-3 py-2 text-sm" data-testid="api-connection-success"
+              [class.bg-emerald-50]="connection.success" [class.text-emerald-700]="connection.success">
+              {{ connection.success ? 'Connection successful.' : connection.message }}
+            </p>
+          }
+          @if (apiPreview(); as remotePreview) {
+            <div class="mt-5 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800" data-testid="api-preview">
+              <table class="min-w-full text-left text-xs">
+                <thead class="bg-slate-50 dark:bg-slate-900/50"><tr>@for (column of remotePreview.columns; track column) { <th class="px-3 py-2">{{ column }}</th> }</tr></thead>
+                <tbody>@for (row of apiPreviewRows(); track $index) { <tr>@for (column of remotePreview.columns; track column) { <td class="border-t border-slate-100 px-3 py-2 dark:border-slate-800">{{ previewValue(row, column) }}</td> }</tr> }</tbody>
               </table>
             </div>
-          </article>
-        } @else if (selectedDataset(); as dataset) {
-          <article class="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <header class="border-b border-slate-200 bg-gradient-to-br from-white via-white to-indigo-50/60 p-5 sm:p-6 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/20">
-              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div class="min-w-0"><p class="eyebrow">Selected dataset</p><div class="mt-1.5 flex flex-wrap items-center gap-2"><h2 class="max-w-full truncate text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100" [title]="dataset.tableName">{{ dataset.tableName }}</h2><span [class]="statusClass(dataset)">{{ dataset.status || 'Not analyzed' }}</span></div><p class="mt-2 truncate text-sm text-slate-500 dark:text-slate-400" [title]="displayName(dataset)">{{ displayName(dataset) }} <span aria-hidden="true">·</span> Uploaded {{ dataset.createdAt | date:'mediumDate' }}</p></div><div class="flex items-center gap-2"><button type="button" class="icon-button" aria-label="Previous Dataset" (click)="previousDataset()" [disabled]="selectedIndex() <= 0"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m15 19-7-7 7-7"></path></svg></button><span class="min-w-16 text-center text-sm font-semibold tabular-nums text-slate-600 dark:text-slate-300">{{ selectedIndex() + 1 }} of {{ datasets().length }}</span><button type="button" class="icon-button" aria-label="Next Dataset" (click)="nextDataset()" [disabled]="selectedIndex() >= datasets().length - 1"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button></div></div>
-              <dl class="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
-                <div class="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Rows</dt><dd class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ dataset.rowCount | number }}</dd></div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Columns</dt><dd class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ dataset.columnCount | number }}</dd></div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Source Type</dt><dd class="mt-1 truncate text-lg font-semibold capitalize text-slate-900 dark:text-slate-100">{{ dataset.sourceType }}</dd></div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><dt class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ isAnalyzed(dataset) ? 'Quality Signals' : 'Analysis State' }}</dt><dd class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ isAnalyzed(dataset) ? (dataset.missingValuesCount + ' missing / ' + dataset.duplicateRowsCount + ' duplicates') : 'Analysis required' }}</dd></div>
-              </dl>
-            </header>
-
-            <div class="border-b border-slate-200 px-5 dark:border-slate-700" role="tablist" aria-label="Dataset detail views"><div class="flex gap-1 overflow-x-auto"><button type="button" id="tab-overview" role="tab" aria-controls="panel-overview" [attr.aria-selected]="activeTab() === 'overview'" (click)="selectTab('overview')" class="whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" [ngClass]="activeTab() === 'overview' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'">Overview</button><button type="button" id="tab-preview" role="tab" aria-controls="panel-preview" [attr.aria-selected]="activeTab() === 'preview'" (click)="selectTab('preview')" class="whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" [ngClass]="activeTab() === 'preview' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'">Preview Data</button><button type="button" id="tab-quality" role="tab" aria-controls="panel-quality" [attr.aria-selected]="activeTab() === 'quality'" (click)="selectTab('quality')" class="whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" [ngClass]="activeTab() === 'quality' ? 'border-indigo-600 text-indigo-700 dark:text-indigo-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'">Data Quality</button></div></div>
-
-            @if (activeTab() === 'overview') {
-              <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" class="space-y-5 p-5 sm:p-6">
-                <div class="grid gap-4 2xl:grid-cols-2">
-                  <article class="rounded-2xl border border-slate-200 p-4 dark:border-slate-700"><div class="flex items-center gap-3"><span class="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5M9 13h6m-6 4h6"></path></svg></span><h3 class="font-semibold text-slate-950 dark:text-slate-100">Real Metadata</h3></div><dl class="mt-4 divide-y divide-slate-100 text-sm dark:divide-slate-800"><div class="flex justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Source name</dt><dd class="min-w-0 truncate font-semibold text-slate-800 dark:text-slate-200" [title]="displayName(dataset)">{{ displayName(dataset) }}</dd></div><div class="flex justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Dataset ID</dt><dd class="font-semibold text-slate-800 dark:text-slate-200">{{ dataset.id }}</dd></div><div class="flex justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Uploaded</dt><dd class="text-right font-semibold text-slate-800 dark:text-slate-200">{{ dataset.createdAt | date:'medium' }}</dd></div><div class="flex justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Analysis state</dt><dd class="font-semibold text-slate-800 dark:text-slate-200">{{ dataset.status || 'Not analyzed' }}</dd></div><div class="flex justify-between gap-4 py-2.5"><dt class="text-slate-500 dark:text-slate-400">Source type</dt><dd class="font-semibold capitalize text-slate-800 dark:text-slate-200">{{ dataset.sourceType }}</dd></div></dl></article>
-                  <article class="relative overflow-hidden rounded-2xl border border-indigo-200 bg-indigo-50/70 p-5 dark:border-indigo-900 dark:bg-indigo-950/25"><div class="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full border border-indigo-200 dark:border-indigo-800" aria-hidden="true"></div><div class="relative"><span class="grid h-10 w-10 place-items-center rounded-xl bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100 dark:bg-slate-900 dark:text-indigo-300 dark:ring-indigo-900"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7V2Z"></path></svg></span><p class="mt-4 text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Recommended Next Step</p>@if (!isAnalyzed(dataset)) { <h3 class="mt-2 font-semibold leading-6 text-slate-950 dark:text-slate-100">Analyze this dataset to detect its structure and quality issues.</h3><button type="button" class="btn-primary mt-4" (click)="analyze()">Go to Analysis</button> } @else if (hasDatasetIssues(dataset)) { <h3 class="mt-2 font-semibold leading-6 text-slate-950 dark:text-slate-100">Review the detected data-quality issues before schema work.</h3><button type="button" class="btn-secondary mt-4" (click)="selectTab('quality')">Review Data Quality</button> } @else { <h3 class="mt-2 font-semibold leading-6 text-slate-950 dark:text-slate-100">Review the generated schema.</h3><a [routerLink]="['/projects', projectId, 'schema']" [queryParams]="{ datasetId: dataset.id }" class="btn-primary mt-4">View Schema</a> }</div></article>
-                </div>
-
-                <article class="rounded-2xl border border-slate-200 p-4 sm:p-5 dark:border-slate-700">
-                  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><p class="eyebrow">Analysis findings</p><h3 class="mt-1 font-semibold text-slate-950 dark:text-slate-100">Dataset Quality Issues</h3></div>@if (isAnalyzed(dataset) && analysis()) { <span class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ qualityIssues().length }} issue type{{ qualityIssues().length === 1 ? '' : 's' }} detected</span> }</div>
-                  @if (!isAnalyzed(dataset)) { <div class="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center dark:border-slate-700 dark:bg-slate-800/40"><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Quality issues are available after analysis.</p><button type="button" class="btn-primary mt-3" (click)="analyze()">Analyze Dataset</button></div> }
-                  @else if (qualityLoading()) { <div class="mt-4 h-28 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" aria-label="Loading quality issues" aria-busy="true"></div> }
-                  @else if (qualityError()) { <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm dark:border-rose-900 dark:bg-rose-950/30" role="alert"><p class="font-semibold text-rose-800 dark:text-rose-300">Quality issues could not be loaded.</p><p class="mt-1 text-rose-700 dark:text-rose-400">{{ qualityError() }}</p><button type="button" class="btn-secondary mt-3" (click)="refreshQuality()">Try Again</button></div> }
-                  @else if (analysis()) { @if (qualityIssues().length > 0) { <div class="mt-4 grid gap-3 lg:grid-cols-2">@for (issue of qualityIssues().slice(0, 3); track issue.type + issue.column) { <article class="flex min-w-0 flex-col rounded-xl border border-amber-200 bg-amber-50/60 p-3.5 dark:border-amber-900 dark:bg-amber-950/20"><div class="flex flex-wrap items-center gap-2"><h4 class="font-semibold text-slate-900 dark:text-slate-100">{{ issue.type }}</h4><span [class]="issueSeverityClass(issue)">{{ issue.severity }}</span></div>@if (issue.column) { <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Column <span class="font-semibold text-slate-700 dark:text-slate-300">{{ issue.column }}</span></p> }<p class="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-400">{{ issue.description }}</p><div class="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-amber-200/70 pt-2.5 text-xs dark:border-amber-900/70"><span class="font-semibold text-slate-800 dark:text-slate-200">{{ issue.count | number }} detected</span>@if (issuePercentage(issue) !== null) { <span class="text-slate-500 dark:text-slate-400">{{ issuePercentage(issue) | number:'1.0-2' }}% of rows</span> }</div></article> }</div>@if (qualityIssues().length > 3) { <div class="mt-4 flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800/50"><p class="text-sm text-slate-600 dark:text-slate-400">{{ qualityIssues().length - 3 }} additional issue type{{ qualityIssues().length - 3 === 1 ? '' : 's' }} available.</p><button type="button" class="btn-secondary shrink-0" (click)="selectTab('quality')">View All Issues</button></div> } } @else { <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center dark:border-emerald-900 dark:bg-emerald-950/25"><p class="font-semibold text-emerald-800 dark:text-emerald-300">No issues detected by the current analysis.</p><p class="mt-1 text-xs text-emerald-700 dark:text-emerald-400">This reflects the real metrics returned by the analysis API.</p></div> } }
-                </article>
-              </section>
-            } @else if (activeTab() === 'preview') {
-              <section id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" class="p-5 sm:p-6"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p class="eyebrow">Dataset sample</p><h3 class="mt-1 font-semibold text-slate-950 dark:text-slate-100">Preview Data</h3><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">First 10 real rows returned by the dataset preview endpoint.</p></div><button type="button" class="btn-secondary" (click)="refreshPreview()" [disabled]="previewLoading()">Refresh Preview</button></div>
-                @if (previewLoading()) { <div class="mt-4 h-64 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" aria-busy="true" aria-label="Loading preview"></div> }
-                @else if (previewError()) { <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700" role="alert"><h4 class="font-semibold text-slate-900 dark:text-slate-100">Data preview is not available for this dataset.</h4><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">{{ previewError() }}</p><button type="button" class="btn-secondary mt-4" (click)="refreshPreview()">Try Again</button></div> }
-                @else if (preview(); as previewData) { @if (previewColumns().length > 0 && previewRows().length > 0) { <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">Showing {{ previewRows().length }} of {{ dataset.rowCount | number }} rows</p><div class="mt-3 max-w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700"><table class="min-w-full text-left text-sm"><thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"><tr>@for (column of previewColumns(); track column) { <th scope="col" class="whitespace-nowrap px-4 py-3 font-semibold">{{ column }}</th> }</tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">@for (row of previewRows(); track $index) { <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">@for (column of previewColumns(); track column) { <td class="max-w-64 truncate whitespace-nowrap px-4 py-3 text-slate-700 dark:text-slate-300" [title]="previewValue(row, column)">{{ previewValue(row, column) }}</td> }</tr> }</tbody></table></div> } @else { <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700"><h4 class="font-semibold text-slate-900 dark:text-slate-100">No preview rows returned.</h4><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">The preview endpoint responded for {{ previewData.tableName }}, but it did not include rows to display.</p></div> } }
-                @else { <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700"><h4 class="font-semibold text-slate-900 dark:text-slate-100">Data preview is ready to load.</h4><button type="button" class="btn-primary mt-4" (click)="refreshPreview()">Load Preview</button></div> }
-              </section>
-            } @else {
-              <section id="panel-quality" role="tabpanel" aria-labelledby="tab-quality" class="p-5 sm:p-6"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p class="eyebrow">Analysis results</p><h3 class="mt-1 font-semibold text-slate-950 dark:text-slate-100">Dataset Data Quality</h3><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Only real analysis metrics are shown.</p></div>@if (isAnalyzed(dataset)) { <button type="button" class="btn-secondary" (click)="refreshQuality()" [disabled]="qualityLoading()">Refresh Quality</button> }</div>
-                @if (!isAnalyzed(dataset)) { <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700"><h4 class="font-semibold text-slate-900 dark:text-slate-100">This dataset has not been analyzed yet.</h4><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Analysis is required before data-quality metrics and detected issues are available.</p><button type="button" class="btn-primary mt-4" (click)="analyze()">Analyze Dataset</button></div> }
-                @else if (qualityLoading()) { <div class="mt-4 h-64 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" aria-busy="true" aria-label="Loading quality metrics"></div> }
-                @else if (qualityError()) { <div class="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900 dark:bg-rose-950/30" role="alert"><h4 class="font-semibold text-rose-900 dark:text-rose-200">Quality results could not be loaded.</h4><p class="mt-2 text-sm text-rose-700 dark:text-rose-300">{{ qualityError() }}</p><button type="button" class="btn-secondary mt-4" (click)="refreshQuality()">Try Again</button></div> }
-                @else if (analysis(); as qualityData) {
-                  <div class="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3"><div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Rows</p><p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ qualityData.analysisResult.rowCount | number }}</p></div><div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Columns</p><p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ qualityData.analysisResult.columnCount | number }}</p></div><div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Missing values</p><p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ qualityData.analysisResult.missingValuesCount | number }}</p></div><div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Duplicate rows</p><p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ qualityData.analysisResult.duplicateRowsCount | number }}</p></div><div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Null percentage</p>@if (nullPercentage() !== null) { <p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ nullPercentage() | number:'1.0-2' }}%</p> } @else { <p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Unavailable</p> }</div>@if (qualityData.analyzedAt) { <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60"><p class="text-xs text-slate-500 dark:text-slate-400">Analyzed</p><p class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ qualityData.analyzedAt | date:'medium' }}</p></div> }</div>
-                  <div class="mt-5"><h4 class="font-semibold text-slate-950 dark:text-slate-100">Detected Issues</h4>@if (qualityIssues().length > 0) { <div class="mt-3 space-y-3">@for (issue of qualityIssues(); track issue.type + issue.column) { <article class="rounded-2xl border border-slate-200 p-4 dark:border-slate-700"><div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><h5 class="font-semibold text-slate-900 dark:text-slate-100">{{ issue.type }}</h5><span [class]="issueSeverityClass(issue)">{{ issue.severity }}</span></div>@if (issue.column) { <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Affected column: <span class="font-semibold text-slate-700 dark:text-slate-300">{{ issue.column }}</span></p> }<p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{{ issue.description }}</p></div><div class="shrink-0 rounded-lg bg-slate-50 px-3 py-2 text-right dark:bg-slate-800"><p class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ issue.count | number }} detected</p>@if (issuePercentage(issue) !== null) { <p class="text-xs text-slate-500 dark:text-slate-400">{{ issuePercentage(issue) | number:'1.0-2' }}% of rows</p> }</div></div></article> }</div> } @else { <div class="mt-3 rounded-2xl border border-dashed border-emerald-300 bg-emerald-50 p-6 text-center dark:border-emerald-900 dark:bg-emerald-950/25"><p class="font-semibold text-emerald-800 dark:text-emerald-300">No issues detected by the current analysis.</p><p class="mt-1 text-sm text-emerald-700 dark:text-emerald-400">This reflects only the real metrics returned by the analysis API.</p></div> }</div>
-                } @else { <div class="mt-4 rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700"><h4 class="font-semibold text-slate-900 dark:text-slate-100">Quality results are ready to load.</h4><button type="button" class="btn-primary mt-4" (click)="refreshQuality()">Load Quality Results</button></div> }
-              </section>
-            }
-          </article>
-
-          <aside class="min-w-0 space-y-5">
-            <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby="dataset-actions-heading"><p class="eyebrow">Workflow</p><h2 id="dataset-actions-heading" class="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">Dataset Actions</h2><div class="mt-4 space-y-3">
-              <button type="button" class="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:hover:border-indigo-700 dark:hover:bg-indigo-950/30" (click)="selectTab('preview')"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-indigo-50 text-indigo-700 transition group-hover:bg-indigo-600 group-hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg></span><span class="min-w-0 flex-1"><span class="block font-semibold text-slate-900 dark:text-slate-100">Preview Data</span><span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Inspect the first 10 rows</span></span><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-slate-400" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button>
-              <button type="button" class="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-teal-300 hover:bg-teal-50/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 dark:border-slate-700 dark:hover:border-teal-700 dark:hover:bg-teal-950/25" (click)="analyze()"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-700 transition group-hover:bg-teal-600 group-hover:text-white dark:bg-teal-950/50 dark:text-teal-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"></path></svg></span><span class="min-w-0 flex-1"><span class="block font-semibold text-slate-900 dark:text-slate-100">Analyze</span><span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Profile structure and quality</span></span><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-slate-400" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button>
-              <a [routerLink]="['/projects', projectId, 'schema']" [queryParams]="{ datasetId: dataset.id }" class="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-violet-300 hover:bg-violet-50/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-slate-700 dark:hover:border-violet-700 dark:hover:bg-violet-950/25"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-700 transition group-hover:bg-violet-600 group-hover:text-white dark:bg-violet-950/50 dark:text-violet-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 5h6v5H4V5Zm10 9h6v5h-6v-5ZM10 7h4a3 3 0 0 1 3 3v4M7 10v7h7"></path></svg></span><span class="min-w-0 flex-1"><span class="block font-semibold text-slate-900 dark:text-slate-100">View Schema</span><span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Open the schema designer</span></span><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-slate-400" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></a>
-              <button type="button" class="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-amber-300 hover:bg-amber-50/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-slate-700 dark:hover:border-amber-700 dark:hover:bg-amber-950/25" (click)="openReplace()"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-700 transition group-hover:bg-amber-600 group-hover:text-white dark:bg-amber-950/50 dark:text-amber-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 4v5h.6M20 20v-5h-.6M4.6 9A8 8 0 0 1 19 7.5M19.4 15A8 8 0 0 1 5 16.5"></path></svg></span><span class="min-w-0 flex-1"><span class="block font-semibold text-slate-900 dark:text-slate-100">Replace Dataset</span><span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Upload a new file for this source</span></span><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-slate-400" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button>
-              <button type="button" class="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-rose-300 hover:bg-rose-50/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:border-slate-700 dark:hover:border-rose-700 dark:hover:bg-rose-950/25" (click)="confirmDeleteDataset()"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-rose-50 text-rose-700 transition group-hover:bg-rose-600 group-hover:text-white dark:bg-rose-950/50 dark:text-rose-300"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"></path></svg></span><span class="min-w-0 flex-1"><span class="block font-semibold text-slate-900 dark:text-slate-100">Delete Dataset</span><span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Permanently remove this data source</span></span><svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-slate-400" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button>
-            </div></section>
-
-            <section class="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby="quick-preview-heading"><div class="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-700"><div><p class="eyebrow">Live sample</p><h2 id="quick-preview-heading" class="mt-1 font-semibold text-slate-950 dark:text-slate-100">Quick Preview</h2><p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Up to 10 real rows</p></div><button type="button" class="icon-button" (click)="refreshPreview()" [disabled]="previewLoading()" aria-label="Refresh quick preview" title="Refresh preview"><svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"></path></svg></button></div>
-              @if (previewLoading()) { <div class="p-5" aria-busy="true" aria-label="Loading quick preview"><div class="h-56 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"></div></div> }
-              @else if (previewError()) { <div class="p-5"><div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-700" role="alert"><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Preview unavailable</p><p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{{ previewError() }}</p><button type="button" class="btn-secondary mt-3" (click)="refreshPreview()">Try Again</button></div></div> }
-              @else if (preview(); as previewData) { @if (previewColumns().length > 0 && previewRows().length > 0) { <div class="max-w-full overflow-x-auto overscroll-x-contain" tabindex="0" aria-label="Quick preview table. Scroll horizontally to view every column and value."><table class="w-max min-w-full text-left text-xs"><thead class="border-b border-slate-200 bg-slate-50 uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"><tr>@for (column of previewColumns(); track column) { <th scope="col" class="whitespace-nowrap px-3 py-2.5 font-semibold">{{ column }}</th> }</tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">@for (row of previewRows(); track $index) { <tr>@for (column of previewColumns(); track column) { <td class="whitespace-nowrap px-3 py-2.5 text-slate-700 dark:text-slate-300" [title]="previewValue(row, column)">{{ previewValue(row, column) }}</td> }</tr> }</tbody></table></div><div class="border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">Showing {{ previewRows().length }} of {{ dataset.rowCount | number }} rows</div> } @else { <div class="p-5"><div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-700"><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">No preview rows returned.</p><p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ previewData.tableName }} did not return displayable rows.</p></div></div> } }
-              @else { <div class="p-5"><div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center dark:border-slate-700"><p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Preview ready to load</p><button type="button" class="btn-primary mt-3" (click)="refreshPreview()">Load Preview</button></div></div> }
-            </section>
-          </aside>
-        } @else {
-          <div class="grid min-h-96 place-items-center rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900 xl:col-span-2"><div><h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Invalid dataset selection</h2><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Choose a dataset from the list to continue.</p><button type="button" class="btn-secondary mt-5" (click)="showAllFiles()">View All Files</button></div></div>
+          }
         }
-      </section>
-    }
-  }
-</div>
+
+        @if (importError()) {
+          <p class="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">{{ importError() }}</p>
+        }
+      </div>
+
+      <footer class="flex justify-end gap-3 border-t border-slate-200 p-5 dark:border-slate-800">
+        <button type="button" class="btn-secondary" (click)="closeImport()" [disabled]="importing()">Cancel</button>
+        <button type="button" class="btn-primary" data-testid="import-dataset-button" (click)="importData()" [disabled]="!canImport()">
+          {{ importing() ? 'Importing…' : 'Import' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
 
 @if (replaceOpen()) {
-  <div class="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[1px]" role="presentation">
-    <section role="dialog" aria-modal="true" aria-labelledby="replace-title" class="glass-card w-full max-w-md !bg-white dark:!bg-[#161b22]">
-      <div class="grid h-11 w-11 place-items-center rounded-xl border border-amber-200/50 bg-amber-100/80 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-400">
-        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 4v5h.6M20 20v-5h-.6M4.6 9A8 8 0 0 1 19 7.5M19.4 15A8 8 0 0 1 5 16.5"></path></svg>
-      </div>
-      <h2 id="replace-title" class="mt-4 text-xl font-bold text-slate-900 dark:text-white">Replace dataset</h2>
-      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-[#8a99ad]">
-        Upload a new CSV file for "{{ selectedDataset()?.tableName }}". This clears its cleaning history, versions,
-        and analysis so you can re-analyze the fresh data. Raw content and prior versions cannot be recovered.
-      </p>
-
-      <label for="replace-file-input" class="mt-5 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/70 px-4 py-6 text-center transition hover:border-amber-400 hover:bg-amber-50/50 dark:border-[#30363d] dark:bg-[#0d1117]/40 dark:hover:border-amber-500/50">
-        <svg viewBox="0 0 24 24" class="h-8 w-8 fill-none stroke-current text-slate-400" stroke-width="1.7" aria-hidden="true"><path d="M12 16V4m0 0 4 4m-4-4-4 4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"></path></svg>
-        <span class="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Choose a replacement CSV file</span>
-        <input id="replace-file-input" type="file" class="sr-only" accept=".csv,text/csv" (change)="onReplaceFileSelected($event)" [disabled]="replacing()">
-      </label>
-      @if (replaceFile(); as file) {
-        <div class="mt-3 flex min-w-0 items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-          <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-emerald-700 dark:stroke-emerald-400" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5"></path></svg>
-          <p class="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-200" [title]="file.name">{{ file.name }}</p>
-        </div>
-      }
-      @if (replaceError()) {
-        <p class="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400" role="alert">{{ replaceError() }}</p>
-      }
-
-      <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button type="button" class="btn-secondary" (click)="cancelReplace()" [disabled]="replacing()">Cancel</button>
-        <button type="button" class="btn-primary" (click)="replaceDataset()" [disabled]="!replaceFile() || replacing()">{{ replacing() ? 'Replacing...' : 'Replace Dataset' }}</button>
+  <div class="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" aria-labelledby="replace-title">
+    <section class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#161b22]">
+      <h2 id="replace-title" class="text-xl font-bold">Replace dataset source</h2>
+      <p class="mt-2 text-sm text-slate-500">Upload a non-empty CSV. The backend will create a new active version and keep version history.</p>
+      <input data-testid="replace-file-input" type="file" accept=".csv,text/csv" class="mt-5 block w-full text-sm" (change)="onReplaceFileSelected($event)">
+      @if (replaceFile(); as file) { <p class="mt-2 text-sm">{{ file.name }} · {{ formatSize(file.size) }}</p> }
+      @if (replaceError()) { <p class="mt-4 text-sm text-rose-600" role="alert">{{ replaceError() }}</p> }
+      <div class="mt-6 flex justify-end gap-3">
+        <button type="button" class="btn-secondary" (click)="closeReplace()" [disabled]="replacing()">Cancel</button>
+        <button type="button" class="btn-primary" data-testid="confirm-replace-button" (click)="replaceDataset()" [disabled]="!replaceFile() || replacing()">{{ replacing() ? 'Replacing…' : 'Replace' }}</button>
       </div>
     </section>
   </div>
 }
 
-@if (confirmingDeleteDataset()) {
-  <div class="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[1px]" role="presentation">
-    <section role="alertdialog" aria-modal="true" aria-labelledby="delete-dataset-title" class="glass-card w-full max-w-md !bg-white dark:!bg-[#161b22]">
-      <div class="grid h-11 w-11 place-items-center rounded-xl border border-rose-200/50 bg-rose-100/80 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/20 dark:text-rose-400">
-        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"></path></svg>
+@if (confirmingDelete() && selectedDataset(); as dataset) {
+  <div class="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+    <section class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#161b22]">
+      <h2 id="delete-title" class="text-xl font-bold">Delete {{ dataset.tableName }}?</h2>
+      <p class="mt-2 text-sm text-slate-500">This removes the dataset from the project.</p>
+      @if (deleteError()) { <p class="mt-4 text-sm text-rose-600" role="alert">{{ deleteError() }}</p> }
+      <div class="mt-6 flex justify-end gap-3">
+        <button type="button" class="btn-secondary" (click)="cancelDelete()" [disabled]="deleting()">Cancel</button>
+        <button type="button" class="btn-danger" data-testid="confirm-delete-dataset" (click)="deleteDataset()" [disabled]="deleting()">{{ deleting() ? 'Deleting…' : 'Delete' }}</button>
       </div>
-      <h2 id="delete-dataset-title" class="mt-4 text-xl font-bold text-slate-900 dark:text-white">Delete "{{ selectedDataset()?.tableName }}"?</h2>
-      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-[#8a99ad]">
-        This permanently removes the dataset, its rows, versions, cleaning history, and any relationship
-        suggestions that reference it. This action cannot be undone.
-      </p>
-      @if (deleteError()) {
-        <p class="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400" role="alert">{{ deleteError() }}</p>
-      }
-      <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button type="button" class="btn-secondary" (click)="cancelDeleteDataset()" [disabled]="deletingDataset()">Cancel</button>
-        <button type="button" class="btn-danger" (click)="deleteDataset()" [disabled]="deletingDataset()">{{ deletingDataset() ? 'Deleting...' : 'Delete Dataset' }}</button>
+    </section>
+  </div>
+}
+
+@if (editOpen()) {
+  <div class="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-project-title">
+    <section class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-[#161b22]">
+      <h2 id="edit-project-title" class="text-xl font-bold">Edit project</h2>
+      <label class="mt-5 block">
+        <span class="text-sm font-semibold">Name</span>
+        <input type="text" maxlength="100" class="input-field mt-2" [ngModel]="editName()" (ngModelChange)="editName.set($event)">
+      </label>
+      <label class="mt-4 block">
+        <span class="text-sm font-semibold">Description</span>
+        <textarea maxlength="500" class="input-field mt-2 min-h-28" [ngModel]="editDescription()" (ngModelChange)="editDescription.set($event)"></textarea>
+      </label>
+      @if (editError()) { <p class="mt-4 text-sm text-rose-600" role="alert">{{ editError() }}</p> }
+      <div class="mt-6 flex justify-end gap-3">
+        <button type="button" class="btn-secondary" (click)="closeProjectEdit()" [disabled]="savingProject()">Cancel</button>
+        <button type="button" class="btn-primary" data-testid="save-project-button" (click)="saveProject()" [disabled]="!editName().trim() || editName().length > 100 || editDescription().length > 500 || savingProject()">{{ savingProject() ? 'Saving…' : 'Save' }}</button>
       </div>
     </section>
   </div>

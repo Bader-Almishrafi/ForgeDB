@@ -49,10 +49,12 @@ export class ProjectWorkflowContextService {
     const version = ++this.loadVersion;
     const projectChanged = this.projectIdSignal() !== projectId;
     this.projectIdSignal.set(projectId);
-    if (projectChanged) this.datasetIdSignal.set(null);
-    this.workflowSignal.set(null);
+    if (projectChanged) {
+      this.datasetIdSignal.set(null);
+      this.workflowSignal.set(null);
+    }
     this.errorSignal.set(null);
-    this.loadingSignal.set(true);
+    this.loadingSignal.set(projectChanged || this.workflowSignal() === null);
     this.requestProjectId = projectId;
 
     const request = this.api.getProjectWorkflow(projectId).pipe(

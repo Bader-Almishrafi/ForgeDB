@@ -1,31 +1,31 @@
-import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, finalize, map, of, Subject, switchMap, tap } from 'rxjs';
-import { ApiConnectionTest, ApiJsonImportRequest, ApiJsonPreview, DatasetAnalysisResponse, DatasetPreview, DatasetResponse, ExcelWorkbookPreview, ProjectResponse } from '../../services/api.models';
+import {
+  ApiConnectionTest,
+  ApiJsonImportRequest,
+  ApiJsonPreview,
+  DatasetPreview,
+  DatasetResponse,
+  ExcelWorkbookPreview,
+  ProjectResponse,
+  ProjectWorkflowDataset,
+} from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
+import { ProjectWorkflowContextService } from '../../services/project-workflow-context.service';
 import { routeParameter } from '../../services/route-context';
-import { formatFileSize, isCsvFile } from '../project-create/project-create.utils';
+import { formatFileSize, isCsvFile } from '../../shared/utils/file-import.utils';
 
-type WorkspaceMode = 'selected' | 'all';
-type DatasetTab = 'overview' | 'preview' | 'quality';
-type UploadSource = 'csv' | 'excel' | 'api';
-
-interface QualityIssue {
-  type: string;
-  column?: string;
-  description: string;
-  count: number;
-  severity: 'Warning' | 'Needs Attention';
-}
+type ImportSource = 'csv' | 'excel' | 'api';
 
 @Component({
   selector: 'app-data-sources',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, FormsModule, NgClass, RouterLink],
+  imports: [DecimalPipe, FormsModule],
   templateUrl: './data-sources.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -34,8 +34,9 @@ export class DataSourcesComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  readonly workflowContext = inject(ProjectWorkflowContextService);
   private readonly previewRequests = new Subject<number>();
-  private readonly analysisRequests = new Subject<number>();
+  private queryDatasetValue: string | null = null;
 
   readonly project = signal<ProjectResponse | null>(null);
   readonly datasets = signal<DatasetResponse[]>([]);
@@ -45,18 +46,15 @@ export class DataSourcesComponent implements OnInit {
   readonly projectError = signal('');
   readonly datasetsError = signal('');
   readonly selectionNotice = signal('');
-  readonly search = signal('');
-  readonly mode = signal<WorkspaceMode>('selected');
-  readonly activeTab = signal<DatasetTab>('overview');
+  readonly successMessage = signal('');
+
   readonly preview = signal<DatasetPreview | null>(null);
   readonly previewLoading = signal(false);
   readonly previewError = signal('');
-  readonly analysis = signal<DatasetAnalysisResponse | null>(null);
-  readonly qualityLoading = signal(false);
-  readonly qualityError = signal('');
-  readonly uploadOpen = signal(false);
-  readonly uploadSource = signal<UploadSource>('csv');
-  readonly uploadFile = signal<File | null>(null);
+
+  readonly importOpen = signal(false);
+  readonly importSource = signal<ImportSource>('csv');
+  readonly importFile = signal<File | null>(null);
   readonly excelPreview = signal<ExcelWorkbookPreview | null>(null);
   readonly excelPreviewLoading = signal(false);
   readonly apiUrl = signal('');
@@ -65,62 +63,40 @@ export class DataSourcesComponent implements OnInit {
   readonly apiPreview = signal<ApiJsonPreview | null>(null);
   readonly apiTesting = signal(false);
   readonly apiPreviewLoading = signal(false);
-  readonly uploadError = signal('');
-  readonly uploadSuccess = signal('');
-  readonly uploading = signal(false);
-  readonly dragActive = signal(false);
+  readonly importing = signal(false);
+  readonly importError = signal('');
+
   readonly replaceOpen = signal(false);
   readonly replaceFile = signal<File | null>(null);
   readonly replaceError = signal('');
   readonly replacing = signal(false);
-  readonly confirmingDeleteDataset = signal(false);
-  readonly deletingDataset = signal(false);
+  readonly confirmingDelete = signal(false);
+  readonly deleting = signal(false);
   readonly deleteError = signal('');
+
+  readonly editOpen = signal(false);
+  readonly editName = signal('');
+  readonly editDescription = signal('');
+  readonly editError = signal('');
+  readonly savingProject = signal(false);
   projectId = 0;
 
   readonly selectedDataset = computed(() => this.datasets().find((dataset) => dataset.id === this.selectedDatasetId()) ?? null);
-  readonly selectedIndex = computed(() => this.datasets().findIndex((dataset) => dataset.id === this.selectedDatasetId()));
-  readonly filteredDatasets = computed(() => {
-    const query = this.search().trim().toLocaleLowerCase();
-    return query
-      ? this.datasets().filter((dataset) => `${dataset.tableName} ${dataset.sourceName ?? ''}`.toLocaleLowerCase().includes(query))
-      : this.datasets();
+  readonly selectedWorkflowDataset = computed(() => {
+    const id = this.selectedDatasetId();
+    return this.workflowContext.workflow()?.datasets.find((dataset) => dataset.datasetId === id) ?? null;
   });
-  readonly analyzedCount = computed(() => this.datasets().filter((dataset) => this.isAnalyzed(dataset)).length);
-  readonly totalRows = computed(() => this.datasets().reduce((sum, dataset) => sum + dataset.rowCount, 0));
-  readonly totalColumns = computed(() => this.datasets().reduce((sum, dataset) => sum + dataset.columnCount, 0));
-  readonly previewRows = computed(() => (this.preview()?.rows ?? []).slice(0, 10));
+  readonly projectName = computed(() => this.project()?.name ?? this.workflowContext.workflow()?.projectName ?? 'Project');
+  readonly canContinueToAnalyze = computed(() => this.datasets().length > 0 && this.workflowContext.workflow()?.canAnalyze === true);
+  readonly previewRows = computed(() => (this.preview()?.rows ?? []).slice(0, 20));
   readonly previewColumns = computed(() => this.preview()?.columns ?? []);
-  readonly canImportUpload = computed(() => {
-    if (this.uploading() || this.excelPreviewLoading() || this.apiTesting() || this.apiPreviewLoading()) return false;
-    if (this.uploadSource() === 'api') return !!this.apiPreview() && this.apiUrl().trim().length > 0;
-    if (!this.uploadFile()) return false;
-    return this.uploadSource() === 'csv' || !!this.excelPreview()?.selectedWorksheet;
-  });
-  readonly qualityIssues = computed<QualityIssue[]>(() => {
-    const result = this.analysis()?.analysisResult;
-    if (!result) return [];
-
-    const issues: QualityIssue[] = result.columns
-      .filter((column) => column.missingValuesCount > 0)
-      .map((column) => ({
-        type: 'Missing values',
-        column: column.columnName,
-        description: `${column.columnName} contains missing values.`,
-        count: column.missingValuesCount,
-        severity: 'Needs Attention',
-      }));
-
-    if (result.duplicateRowsCount > 0) {
-      issues.unshift({
-        type: 'Duplicate rows',
-        description: 'The analysis detected duplicate records.',
-        count: result.duplicateRowsCount,
-        severity: 'Warning',
-      });
-    }
-
-    return issues;
+  readonly excelPreviewRows = computed(() => (this.excelPreview()?.rows ?? []).slice(0, 5));
+  readonly apiPreviewRows = computed(() => (this.apiPreview()?.rows ?? []).slice(0, 5));
+  readonly canImport = computed(() => {
+    if (this.importing() || this.excelPreviewLoading() || this.apiTesting() || this.apiPreviewLoading()) return false;
+    if (this.importSource() === 'api') return !!this.apiPreview() && !!this.apiUrl().trim();
+    if (!this.importFile()) return false;
+    return this.importSource() === 'csv' || !!this.excelPreview()?.selectedWorksheet;
   });
 
   constructor() {
@@ -130,32 +106,15 @@ export class DataSourcesComponent implements OnInit {
         this.previewError.set('');
         this.preview.set(null);
       }),
-      switchMap((id) => this.api.getDatasetPreview(id).pipe(
+      switchMap((datasetId) => this.api.getDatasetPreview(datasetId).pipe(
         map((preview) => ({ preview, error: '' })),
-        catchError((error: unknown) => of({ preview: null, error: this.errorMessage(error, 'Data preview is not available for this dataset.') })),
+        catchError((error: unknown) => of({ preview: null, error: this.errorText(error, 'Unable to load this dataset preview.') })),
       )),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(({ preview, error }) => {
       this.preview.set(preview);
       this.previewError.set(error);
       this.previewLoading.set(false);
-    });
-
-    this.analysisRequests.pipe(
-      tap(() => {
-        this.qualityLoading.set(true);
-        this.qualityError.set('');
-        this.analysis.set(null);
-      }),
-      switchMap((id) => this.api.getDatasetAnalysis(id).pipe(
-        map((analysis) => ({ analysis, error: '' })),
-        catchError((error: unknown) => of({ analysis: null, error: this.errorMessage(error, 'Analysis results could not be loaded.') })),
-      )),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe(({ analysis, error }) => {
-      this.analysis.set(analysis);
-      this.qualityError.set(error);
-      this.qualityLoading.set(false);
     });
   }
 
@@ -166,6 +125,11 @@ export class DataSourcesComponent implements OnInit {
       return;
     }
 
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.queryDatasetValue = params.get('datasetId');
+      if (this.datasets().length) this.selectFromQuery();
+    });
+    this.workflowContext.load(this.projectId).subscribe();
     this.loadProject();
     this.loadDatasets();
   }
@@ -174,12 +138,8 @@ export class DataSourcesComponent implements OnInit {
     this.projectLoading.set(true);
     this.projectError.set('');
     this.api.getProject(this.projectId).pipe(finalize(() => this.projectLoading.set(false))).subscribe({
-      next: (project) => {
-        this.project.set(project);
-      },
-      error: (error: unknown) => this.projectError.set(
-        error instanceof HttpErrorResponse && error.status === 404 ? 'Project not found.' : this.errorMessage(error, 'Unable to load project.'),
-      ),
+      next: (project) => this.project.set(project),
+      error: (error: unknown) => this.projectError.set(this.errorText(error, 'Unable to load project details.')),
     });
   }
 
@@ -188,85 +148,124 @@ export class DataSourcesComponent implements OnInit {
     this.datasetsError.set('');
     this.api.getProjectDatasets(this.projectId).pipe(finalize(() => this.datasetsLoading.set(false))).subscribe({
       next: (datasets) => {
-        this.datasets.set(datasets);
-        this.restoreSelection(datasets, preferredId);
+        const ordered = [...datasets].sort((left, right) => left.id - right.id);
+        this.datasets.set(ordered);
+        this.restoreSelection(ordered, preferredId);
       },
-      error: (error: unknown) => this.datasetsError.set(this.errorMessage(error, 'Unable to load datasets.')),
+      error: (error: unknown) => this.datasetsError.set(this.errorText(error, 'Unable to load datasets.')),
     });
   }
 
-  selectDataset(dataset: DatasetResponse): void {
-    if (!this.datasets().some((item) => item.id === dataset.id)) return;
+  selectDatasetById(datasetId: number): void {
+    const dataset = this.datasets().find((item) => item.id === Number(datasetId));
+    if (dataset) this.setSelectedDataset(dataset, false, true);
+  }
 
-    this.selectedDatasetId.set(dataset.id);
-    this.preview.set(null);
-    this.previewError.set('');
-    this.analysis.set(null);
-    this.qualityError.set('');
-    this.mode.set('selected');
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { datasetId: dataset.id },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
+  refreshPreview(): void {
+    const dataset = this.selectedDataset();
+    if (dataset) this.previewRequests.next(dataset.id);
+  }
+
+  openImport(source: ImportSource = 'csv'): void {
+    this.resetImport();
+    this.importSource.set(source);
+    this.importOpen.set(true);
+  }
+
+  selectImportSource(source: ImportSource): void {
+    if (this.importing() || source === this.importSource()) return;
+    this.resetImport();
+    this.importSource.set(source);
+    this.importOpen.set(true);
+  }
+
+  closeImport(): void {
+    if (this.importing()) return;
+    this.resetImport();
+    this.importOpen.set(false);
+  }
+
+  onImportFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+    this.acceptImportFile(file);
+  }
+
+  onWorksheetSelected(event: Event): void {
+    const worksheet = (event.target as HTMLSelectElement).value;
+    if (worksheet) this.loadExcelPreview(worksheet);
+  }
+
+  importData(): void {
+    if (!this.canImport()) return;
+    if (this.importSource() === 'api') {
+      this.importApiData();
+      return;
+    }
+
+    const file = this.importFile();
+    if (!file) return;
+    const source = this.importSource();
+    const worksheet = this.excelPreview()?.selectedWorksheet;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('sourceType', source);
+    formData.append('sourceName', file.name);
+    if (source === 'excel' && worksheet) formData.append('worksheetName', worksheet);
+    formData.append('tableName', this.importTableName(file.name, worksheet));
+
+    this.importing.set(true);
+    this.importError.set('');
+    this.api.uploadDataset(this.projectId, formData).pipe(finalize(() => this.importing.set(false))).subscribe({
+      next: (dataset) => this.finishImport(dataset),
+      error: (error: unknown) => this.importError.set(this.errorText(error, `Unable to import this ${source === 'excel' ? 'Excel workbook' : 'CSV file'}.`)),
     });
-    this.previewRequests.next(dataset.id);
-    if (this.isAnalyzed(dataset)) this.analysisRequests.next(dataset.id);
   }
 
-  previousDataset(): void {
-    const index = this.selectedIndex();
-    if (index > 0) this.selectDataset(this.datasets()[index - 1]);
-  }
-
-  nextDataset(): void {
-    const index = this.selectedIndex();
-    if (index >= 0 && index < this.datasets().length - 1) this.selectDataset(this.datasets()[index + 1]);
-  }
-
-  updateSearch(value: string): void {
-    this.search.set(value);
-  }
-
-  showAllFiles(): void {
-    this.mode.set('all');
-  }
-
-  showSelectedDataset(): void {
-    this.mode.set('selected');
-  }
-
-  selectTab(tab: DatasetTab): void {
-    this.activeTab.set(tab);
-    this.loadActiveTab();
-  }
-
-  openUpload(): void {
-    this.uploadError.set('');
-    this.uploadSuccess.set('');
-    this.uploadOpen.set(true);
-  }
-
-  selectUploadSource(source: UploadSource): void {
-    if (this.uploading() || this.excelPreviewLoading() || this.apiTesting() || this.apiPreviewLoading() || this.uploadSource() === source) return;
-    this.uploadSource.set(source);
-    this.uploadFile.set(null);
-    this.excelPreview.set(null);
+  updateApiUrl(value: string): void {
+    this.apiUrl.set(value);
     this.apiConnection.set(null);
     this.apiPreview.set(null);
-    this.apiUrl.set('');
-    this.apiArrayPath.set('');
-    this.uploadError.set('');
-    this.dragActive.set(false);
+    this.importError.set('');
+  }
+
+  updateApiArrayPath(value: string): void {
+    this.apiArrayPath.set(value);
+    this.apiConnection.set(null);
+    this.apiPreview.set(null);
+    this.importError.set('');
+  }
+
+  testApiConnection(): void {
+    if (!this.apiUrl().trim() || this.apiTesting()) return;
+    this.apiTesting.set(true);
+    this.importError.set('');
+    this.apiConnection.set(null);
+    this.api.testApiConnection(this.apiRequest()).pipe(finalize(() => this.apiTesting.set(false))).subscribe({
+      next: (result) => this.apiConnection.set(result),
+      error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to connect to this API.')),
+    });
+  }
+
+  previewApiData(): void {
+    if (!this.apiUrl().trim() || this.apiPreviewLoading()) return;
+    this.apiPreviewLoading.set(true);
+    this.importError.set('');
+    this.apiPreview.set(null);
+    this.api.previewApi(this.apiRequest()).pipe(finalize(() => this.apiPreviewLoading.set(false))).subscribe({
+      next: (preview) => this.apiPreview.set(preview),
+      error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to preview data from this API.')),
+    });
   }
 
   openReplace(): void {
-    this.replaceError.set('');
     this.replaceFile.set(null);
+    this.replaceError.set('');
     this.replaceOpen.set(true);
   }
 
-  cancelReplace(): void {
+  closeReplace(): void {
     if (this.replacing()) return;
     this.replaceOpen.set(false);
     this.replaceFile.set(null);
@@ -279,8 +278,9 @@ export class DataSourcesComponent implements OnInit {
     input.value = '';
     this.replaceError.set('');
     if (!file) return;
-    if (!file.name.toLocaleLowerCase().endsWith('.csv') || !isCsvFile(file)) {
-      this.replaceError.set('Only a non-empty CSV file is supported.');
+    if (!isCsvFile(file)) {
+      this.replaceFile.set(null);
+      this.replaceError.set('Choose one non-empty CSV file.');
       return;
     }
     this.replaceFile.set(file);
@@ -291,116 +291,97 @@ export class DataSourcesComponent implements OnInit {
     const file = this.replaceFile();
     if (!dataset || !file || this.replacing()) return;
 
-    this.replacing.set(true);
-    this.replaceError.set('');
     const formData = new FormData();
     formData.append('file', file);
     formData.append('sourceType', 'csv');
     formData.append('sourceName', file.name);
-
+    this.replacing.set(true);
+    this.replaceError.set('');
     this.api.replaceDataset(dataset.id, formData).pipe(finalize(() => this.replacing.set(false))).subscribe({
       next: (updated) => {
-        this.replaceOpen.set(false);
-        this.replaceFile.set(null);
-        this.uploadSuccess.set(`${this.displayName(updated)} was replaced successfully. Re-analyze to refresh quality metrics.`);
+        this.closeReplace();
+        this.successMessage.set(`${this.displayName(updated)} was replaced. Re-analysis is required; previous versions remain in history.`);
         this.loadDatasets(updated.id);
+        this.refreshWorkflow();
       },
-      error: (error: unknown) => this.replaceError.set(this.errorMessage(error, 'Unable to replace this dataset.')),
+      error: (error: unknown) => this.replaceError.set(this.errorText(error, 'Unable to replace this dataset.')),
     });
   }
 
-  confirmDeleteDataset(): void {
+  requestDelete(): void {
     this.deleteError.set('');
-    this.confirmingDeleteDataset.set(true);
+    this.confirmingDelete.set(true);
   }
 
-  cancelDeleteDataset(): void {
-    this.confirmingDeleteDataset.set(false);
+  cancelDelete(): void {
+    if (!this.deleting()) this.confirmingDelete.set(false);
   }
 
   deleteDataset(): void {
     const dataset = this.selectedDataset();
-    if (!dataset || this.deletingDataset()) return;
-
-    this.deletingDataset.set(true);
+    if (!dataset || this.deleting()) return;
+    this.deleting.set(true);
     this.deleteError.set('');
-    this.api.deleteDataset(dataset.id).pipe(finalize(() => this.deletingDataset.set(false))).subscribe({
+    this.api.deleteDataset(dataset.id).pipe(finalize(() => this.deleting.set(false))).subscribe({
       next: () => {
-        this.confirmingDeleteDataset.set(false);
-        this.uploadSuccess.set(`${this.displayName(dataset)} was deleted.`);
+        this.confirmingDelete.set(false);
+        this.selectedDatasetId.set(null);
+        this.successMessage.set(`${this.displayName(dataset)} was deleted.`);
         this.loadDatasets();
+        this.refreshWorkflow();
       },
-      error: (error: unknown) => {
-        this.confirmingDeleteDataset.set(false);
-        this.deleteError.set(this.errorMessage(error, 'Unable to delete this dataset.'));
-      },
+      error: (error: unknown) => this.deleteError.set(this.errorText(error, 'Unable to delete this dataset.')),
     });
   }
 
-  refreshPreview(): void {
-    const dataset = this.selectedDataset();
-    if (dataset) this.previewRequests.next(dataset.id);
+  openProjectEdit(): void {
+    const project = this.project();
+    if (!project) return;
+    this.editName.set(project.name);
+    this.editDescription.set(project.description ?? '');
+    this.editError.set('');
+    this.editOpen.set(true);
   }
 
-  refreshQuality(): void {
-    const dataset = this.selectedDataset();
-    if (dataset && this.isAnalyzed(dataset)) this.analysisRequests.next(dataset.id);
+  closeProjectEdit(): void {
+    if (!this.savingProject()) this.editOpen.set(false);
   }
 
-  analyze(): void {
-    const dataset = this.selectedDataset();
-    if (!dataset) return;
+  saveProject(): void {
+    const project = this.project();
+    const name = this.editName().trim();
+    if (!project || !name || name.length > 100 || this.editDescription().length > 500 || this.savingProject()) return;
+    this.savingProject.set(true);
+    this.editError.set('');
+    this.api.updateProject(project.id, { name, description: this.editDescription().trim() || null })
+      .pipe(finalize(() => this.savingProject.set(false)))
+      .subscribe({
+        next: (updated) => {
+          this.project.set(updated);
+          this.editOpen.set(false);
+          this.successMessage.set('Project details updated.');
+          this.refreshWorkflow();
+        },
+        error: (error: unknown) => this.editError.set(this.errorText(error, 'Unable to update this project.')),
+      });
+  }
 
+  continueToAnalyze(): void {
+    if (!this.canContinueToAnalyze()) return;
+    const datasetId = this.selectedDatasetId();
     void this.router.navigate(['/projects', this.projectId, 'analyze'], {
-      queryParams: { datasetId: dataset.id },
+      queryParams: datasetId ? { datasetId } : {},
     });
   }
 
-  onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.acceptFile(input.files?.[0] ?? null);
-    input.value = '';
+  workflowDataset(datasetId: number): ProjectWorkflowDataset | null {
+    return this.workflowContext.workflow()?.datasets.find((dataset) => dataset.datasetId === datasetId) ?? null;
   }
 
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
-    if (!this.uploading()) this.dragActive.set(true);
-  }
-
-  onDragLeave(event: DragEvent): void {
-    event.preventDefault();
-    this.dragActive.set(false);
-  }
-
-  onDrop(event: DragEvent): void {
-    event.preventDefault();
-    this.dragActive.set(false);
-    if (this.uploading()) return;
-    if (this.uploadSource() === 'api') {
-      this.uploadError.set('API imports use the URL fields instead of a local file.');
-      return;
-    }
-
-    const files = event.dataTransfer?.files;
-    if (files && files.length > 1) {
-      this.uploadFile.set(null);
-      this.uploadError.set('Upload one file at a time.');
-      return;
-    }
-
-    this.acceptFile(files?.[0] ?? null);
-  }
-
-  clearUpload(): void {
-    if (this.uploading() || this.apiTesting() || this.apiPreviewLoading()) return;
-    this.uploadFile.set(null);
-    this.excelPreview.set(null);
-    this.apiConnection.set(null);
-    this.apiPreview.set(null);
-    this.apiUrl.set('');
-    this.apiArrayPath.set('');
-    this.uploadError.set('');
-    this.uploadOpen.set(false);
+  analysisStatus(datasetId: number): string {
+    const metadata = this.workflowDataset(datasetId);
+    if (!metadata) return 'Status unavailable';
+    return metadata.hasCurrentAnalysis && !metadata.requiresAnalysis ? 'Analyzed' : 'Analysis required';
   }
 
   formatSize(bytes: number): string {
@@ -411,212 +392,149 @@ export class DataSourcesComponent implements OnInit {
     return dataset.sourceName || dataset.tableName;
   }
 
-  isAnalyzed(dataset: DatasetResponse): boolean {
-    return dataset.status.toLocaleLowerCase() === 'analyzed';
-  }
-
-  hasDatasetIssues(dataset: DatasetResponse): boolean {
-    return dataset.missingValuesCount > 0 || dataset.duplicateRowsCount > 0;
-  }
-
-  statusClass(dataset: DatasetResponse): string {
-    return this.isAnalyzed(dataset) ? 'badge-success' : 'badge-warning';
-  }
-
-  issueSeverityClass(issue: QualityIssue): string {
-    return issue.severity === 'Needs Attention' ? 'badge-warning' : 'badge-neutral';
-  }
-
-  importUpload(): void {
-    if (this.uploadSource() === 'api') {
-      this.importApiDataset();
-      return;
-    }
-    const file = this.uploadFile();
-    if (!file || !this.canImportUpload()) return;
-
-    this.uploading.set(true);
-    this.uploadError.set('');
-    this.uploadSuccess.set('');
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('sourceType', this.uploadSource());
-    formData.append('sourceName', file.name);
-    const worksheet = this.excelPreview()?.selectedWorksheet;
-    if (this.uploadSource() === 'excel' && worksheet) formData.append('worksheetName', worksheet);
-    const baseName = file.name.replace(/\.(csv|xlsx)$/i, '');
-    const tableName = this.uploadSource() === 'excel' && worksheet ? `${baseName}_${worksheet}` : baseName;
-    formData.append('tableName', tableName.replace(/[^a-zA-Z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'dataset');
-
-    this.api.uploadDataset(this.projectId, formData).pipe(finalize(() => this.uploading.set(false))).subscribe({
-      next: (dataset) => {
-        this.uploadSuccess.set(`${dataset.sourceName || dataset.tableName} imported successfully.`);
-        this.uploadFile.set(null);
-        this.excelPreview.set(null);
-        this.uploadOpen.set(false);
-        this.loadDatasets(dataset.id);
-      },
-      error: (error: unknown) => this.uploadError.set(this.errorMessage(error, `Unable to import the ${this.uploadSource() === 'excel' ? 'Excel workbook' : 'CSV file'}.`)),
-    });
-  }
-
-  onWorksheetSelected(event: Event): void {
-    const worksheet = (event.target as HTMLSelectElement).value;
-    if (worksheet) this.loadExcelPreview(worksheet);
-  }
-
-  updateApiUrl(value: string): void {
-    this.apiUrl.set(value);
-    this.apiConnection.set(null);
-    this.apiPreview.set(null);
-    this.uploadError.set('');
-  }
-
-  updateApiArrayPath(value: string): void {
-    this.apiArrayPath.set(value);
-    this.apiConnection.set(null);
-    this.apiPreview.set(null);
-    this.uploadError.set('');
-  }
-
-  testApiConnection(): void {
-    if (!this.apiUrl().trim() || this.apiTesting()) return;
-    this.apiTesting.set(true);
-    this.uploadError.set('');
-    this.apiConnection.set(null);
-    this.api.testApiConnection(this.apiRequest()).pipe(finalize(() => this.apiTesting.set(false))).subscribe({
-      next: (result) => this.apiConnection.set(result),
-      error: (error: unknown) => this.uploadError.set(this.errorMessage(error, 'Unable to connect to this API.')),
-    });
-  }
-
-  previewApiData(): void {
-    if (!this.apiUrl().trim() || this.apiPreviewLoading()) return;
-    this.apiPreviewLoading.set(true);
-    this.uploadError.set('');
-    this.apiPreview.set(null);
-    this.api.previewApi(this.apiRequest()).pipe(finalize(() => this.apiPreviewLoading.set(false))).subscribe({
-      next: (result) => this.apiPreview.set(result),
-      error: (error: unknown) => this.uploadError.set(this.errorMessage(error, 'Unable to preview data from this API.')),
-    });
-  }
-
   previewValue(row: Record<string, unknown>, column: string): string {
     const value = row[column];
     return value === null || value === undefined ? 'Not available' : String(value);
   }
 
-  nullPercentage(): number | null {
-    const result = this.analysis()?.analysisResult;
-    if (!result || result.rowCount <= 0 || result.columnCount <= 0) return null;
-    return (result.missingValuesCount / (result.rowCount * result.columnCount)) * 100;
-  }
-
-  issuePercentage(issue: QualityIssue): number | null {
-    const rowCount = this.analysis()?.analysisResult.rowCount;
-    if (!rowCount || rowCount <= 0) return null;
-    return (issue.count / rowCount) * 100;
-  }
-
-  private acceptFile(file: File | null): void {
-    this.uploadError.set('');
-    if (!file) return;
-    const extension = this.uploadSource() === 'excel' ? '.xlsx' : '.csv';
-    if (!file.name.toLocaleLowerCase().endsWith(extension)) {
-      this.uploadFile.set(null);
-      this.excelPreview.set(null);
-      this.uploadError.set(this.uploadSource() === 'excel' ? 'Only .xlsx Excel workbooks are supported.' : 'Only CSV files are supported.');
+  private restoreSelection(datasets: DatasetResponse[], preferredId?: number): void {
+    this.selectionNotice.set('');
+    if (!datasets.length) {
+      this.selectedDatasetId.set(null);
+      this.preview.set(null);
+      this.updateDatasetQuery(null, true);
       return;
     }
-    if (file.size <= 0 || (this.uploadSource() === 'csv' && !isCsvFile(file))) {
-      this.uploadFile.set(null);
-      this.excelPreview.set(null);
-      this.uploadError.set(`Empty ${this.uploadSource() === 'excel' ? 'Excel workbooks' : 'CSV files'} cannot be uploaded.`);
+
+    const queryId = this.parseDatasetId(this.queryDatasetValue);
+    const preferred = preferredId ? datasets.find((dataset) => dataset.id === preferredId) : null;
+    const requested = queryId ? datasets.find((dataset) => dataset.id === queryId) : null;
+    const selected = preferred ?? requested ?? datasets[0];
+    if (!preferred && this.queryDatasetValue !== null && !requested) {
+      this.selectionNotice.set('The selected dataset is not in this project. Showing the first available dataset.');
+    }
+    this.setSelectedDataset(selected, true, false);
+  }
+
+  private selectFromQuery(): void {
+    const queryId = this.parseDatasetId(this.queryDatasetValue);
+    const requested = queryId ? this.datasets().find((dataset) => dataset.id === queryId) : null;
+    if (requested) {
+      if (requested.id !== this.selectedDatasetId()) this.setSelectedDataset(requested, true, true);
       return;
     }
-    this.uploadFile.set(file);
+    const first = this.datasets()[0];
+    if (!first) return;
+    if (this.queryDatasetValue !== null) {
+      this.selectionNotice.set('The selected dataset is not in this project. Showing the first available dataset.');
+    }
+    this.setSelectedDataset(first, true, false);
+  }
+
+  private setSelectedDataset(dataset: DatasetResponse, replaceUrl: boolean, clearNotice: boolean): void {
+    if (clearNotice) this.selectionNotice.set('');
+    const changed = this.selectedDatasetId() !== dataset.id;
+    this.selectedDatasetId.set(dataset.id);
+    this.updateDatasetQuery(dataset.id, replaceUrl);
+    if (changed || this.preview()?.datasetId !== dataset.id) this.previewRequests.next(dataset.id);
+  }
+
+  private updateDatasetQuery(datasetId: number | null, replaceUrl: boolean): void {
+    this.queryDatasetValue = datasetId === null ? null : String(datasetId);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { datasetId },
+      queryParamsHandling: 'merge',
+      replaceUrl,
+    });
+  }
+
+  private acceptImportFile(file: File | null): void {
+    this.importError.set('');
+    this.importFile.set(null);
     this.excelPreview.set(null);
-    if (this.uploadSource() === 'excel') this.loadExcelPreview();
+    if (!file) return;
+    if (this.importSource() === 'csv') {
+      if (!isCsvFile(file)) {
+        this.importError.set('Choose one non-empty CSV file.');
+        return;
+      }
+      this.importFile.set(file);
+      return;
+    }
+    if (!file.name.toLocaleLowerCase().endsWith('.xlsx') || file.size <= 0) {
+      this.importError.set('Choose one non-empty .xlsx Excel workbook.');
+      return;
+    }
+    this.importFile.set(file);
+    this.loadExcelPreview();
   }
 
   private loadExcelPreview(worksheetName?: string): void {
-    const file = this.uploadFile();
-    if (!file || this.uploadSource() !== 'excel') return;
-    this.excelPreviewLoading.set(true);
-    this.uploadError.set('');
+    const file = this.importFile();
+    if (!file || this.importSource() !== 'excel') return;
     const formData = new FormData();
     formData.append('file', file);
     if (worksheetName) formData.append('worksheetName', worksheetName);
+    this.excelPreviewLoading.set(true);
+    this.importError.set('');
     this.api.previewExcel(formData).pipe(finalize(() => this.excelPreviewLoading.set(false))).subscribe({
       next: (preview) => this.excelPreview.set(preview),
-      error: (error: unknown) => {
-        this.excelPreview.set(null);
-        this.uploadError.set(this.errorMessage(error, 'Unable to read this Excel workbook.'));
-      },
+      error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to read this Excel workbook.')),
     });
   }
 
-  private importApiDataset(): void {
-    if (!this.canImportUpload()) return;
-    this.uploading.set(true);
-    this.uploadError.set('');
-    this.uploadSuccess.set('');
-    this.api.importApi(this.projectId, this.apiRequest()).pipe(finalize(() => this.uploading.set(false))).subscribe({
-      next: (dataset) => {
-        this.uploadSuccess.set(`${dataset.sourceName || dataset.tableName} imported successfully.`);
-        this.uploadOpen.set(false);
-        this.apiConnection.set(null);
-        this.apiPreview.set(null);
-        this.apiUrl.set('');
-        this.apiArrayPath.set('');
-        this.loadDatasets(dataset.id);
-      },
-      error: (error: unknown) => this.uploadError.set(this.errorMessage(error, 'Unable to import data from this API.')),
+  private importApiData(): void {
+    this.importing.set(true);
+    this.importError.set('');
+    this.api.importApi(this.projectId, this.apiRequest()).pipe(finalize(() => this.importing.set(false))).subscribe({
+      next: (dataset) => this.finishImport(dataset),
+      error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to import data from this API.')),
     });
+  }
+
+  private finishImport(dataset: DatasetResponse): void {
+    this.successMessage.set(`${this.displayName(dataset)} imported successfully.`);
+    this.resetImport();
+    this.importOpen.set(false);
+    this.loadDatasets(dataset.id);
+    this.refreshWorkflow();
+  }
+
+  private resetImport(): void {
+    this.importFile.set(null);
+    this.excelPreview.set(null);
+    this.apiUrl.set('');
+    this.apiArrayPath.set('');
+    this.apiConnection.set(null);
+    this.apiPreview.set(null);
+    this.importError.set('');
   }
 
   private apiRequest(): ApiJsonImportRequest {
-    const arrayPath = this.apiArrayPath().trim();
-    return { apiUrl: this.apiUrl().trim(), arrayPath: arrayPath || null };
+    return {
+      apiUrl: this.apiUrl().trim(),
+      arrayPath: this.apiArrayPath().trim() || null,
+    };
   }
 
-  private restoreSelection(datasets: DatasetResponse[], preferredId?: number): void {
-    this.selectionNotice.set('');
-    if (datasets.length === 0) {
-      this.selectedDatasetId.set(null);
-      this.preview.set(null);
-      this.analysis.set(null);
-      void this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams: { datasetId: null },
-        queryParamsHandling: 'merge',
-        replaceUrl: true,
-      });
-      return;
-    }
-
-    const rawQueryId = this.route.snapshot.queryParamMap.get('datasetId');
-    const queryId = rawQueryId ? Number(rawQueryId) : undefined;
-    const requestedId = Number.isFinite(queryId) && queryId && queryId > 0 ? queryId : undefined;
-    const ids = [preferredId, requestedId, this.selectedDatasetId()];
-    const selectedId = ids.find((id) => datasets.some((dataset) => dataset.id === id));
-    const selected = datasets.find((dataset) => dataset.id === selectedId) ?? datasets[0];
-
-    if (preferredId === undefined && requestedId && !datasets.some((dataset) => dataset.id === requestedId)) {
-      this.selectionNotice.set(`Dataset ${requestedId} is not available in this project. Showing ${selected.tableName}.`);
-    }
-
-    this.selectDataset(selected);
+  private importTableName(fileName: string, worksheet?: string | null): string {
+    const base = fileName.replace(/\.(csv|xlsx)$/i, '');
+    const candidate = worksheet ? `${base}_${worksheet}` : base;
+    return candidate.replace(/[^a-zA-Z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'dataset';
   }
 
-  private loadActiveTab(): void {
-    const dataset = this.selectedDataset();
-    if (!dataset) return;
-    if (this.activeTab() === 'preview') this.previewRequests.next(dataset.id);
-    if (this.activeTab() === 'quality' && this.isAnalyzed(dataset)) this.analysisRequests.next(dataset.id);
+  private parseDatasetId(value: string | null): number | null {
+    if (value === null) return null;
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   }
 
-  private errorMessage(error: unknown, fallback: string): string {
+  private refreshWorkflow(): void {
+    this.workflowContext.load(this.projectId, true).subscribe();
+  }
+
+  private errorText(error: unknown, fallback: string): string {
     if (error instanceof HttpErrorResponse && error.error && typeof error.error === 'object' && 'message' in error.error) {
       const message = (error.error as { message?: unknown }).message;
       if (typeof message === 'string' && message.trim()) return message;
