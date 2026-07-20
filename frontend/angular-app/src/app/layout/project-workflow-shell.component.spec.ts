@@ -77,18 +77,24 @@ describe('ProjectWorkflowShellComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Stored project');
   });
 
-  it('renders five top workflow steps and disables future steps from backend permissions', () => {
-    const nav = fixture.nativeElement.querySelector('[data-testid="workflow-top-navigation"]') as HTMLElement;
-    expect(nav).toBeTruthy();
-    expect(nav.querySelectorAll('ol > li')).toHaveLength(5);
-    expect(nav.textContent).toContain('Export & Deploy');
-    expect(nav.querySelectorAll('ol button:disabled')).toHaveLength(3);
-    expect((nav.querySelector('ol button:disabled') as HTMLButtonElement).title).toContain('Analyze every active dataset version first.');
+  it('renders five workflow sidebar steps and disables future steps from backend permissions', () => {
+    const sidebar = fixture.nativeElement.querySelector('[data-testid="workflow-sidebar"]') as HTMLElement;
+    expect(sidebar).toBeTruthy();
+    expect(sidebar.querySelectorAll('[data-testid="workflow-step"]')).toHaveLength(5);
+    expect(sidebar.textContent).toContain('Export & Deploy');
+    expect(sidebar.querySelectorAll('button:disabled')).toHaveLength(3);
+    expect((sidebar.querySelector('button:disabled') as HTMLButtonElement).title).toBe('Analyze every active dataset version first.');
   });
 
-  it('uses top navigation and does not render the old workflow sidebar', () => {
-    expect(fixture.nativeElement.querySelector('aside')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="workflow-top-navigation"]')).toBeTruthy();
+  it('uses a workflow sidebar and removes the horizontal workflow navigation', () => {
+    expect(fixture.nativeElement.querySelector('[data-testid="workflow-sidebar"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="workflow-top-navigation"]')).toBeNull();
+  });
+
+  it('preserves the valid dataset query parameter on enabled workflow links', () => {
+    const links = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="workflow-step"] a')) as HTMLAnchorElement[];
+    expect(links).toHaveLength(2);
+    expect(links.every((link) => link.getAttribute('href')?.includes('datasetId=42'))).toBe(true);
   });
 
   it('clears the previous project name and selected dataset when project route parameters change', () => {
