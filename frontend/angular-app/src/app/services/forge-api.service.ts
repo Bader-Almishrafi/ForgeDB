@@ -7,8 +7,6 @@ import {
   ApiConnectionTest,
   ApiJsonImportRequest,
   ApiJsonPreview,
-  CleanedDatasetPreview,
-  CleaningApplyRecommendedRequest,
   CleaningApplyRequest,
   CleaningApplyResponse,
   CleaningHistory,
@@ -192,20 +190,12 @@ export class ForgeApiService {
     return this.http.post<CleaningApplyResponse>(`${this.baseUrl}/api/projects/${projectId}/cleaning/apply`, request);
   }
 
-  applyRecommendedCleaning(projectId: number, request: CleaningApplyRecommendedRequest): Observable<CleaningApplyResponse> {
-    return this.http.post<CleaningApplyResponse>(`${this.baseUrl}/api/projects/${projectId}/cleaning/apply-recommended`, request);
-  }
-
   getCleaningHistory(projectId: number): Observable<CleaningHistory> {
     return this.http.get<CleaningHistory>(`${this.baseUrl}/api/projects/${projectId}/cleaning/history`);
   }
 
   getDatasetVersions(projectId: number, datasetId: number): Observable<DatasetVersion[]> {
     return this.http.get<DatasetVersion[]>(`${this.baseUrl}/api/projects/${projectId}/cleaning/datasets/${datasetId}/versions`);
-  }
-
-  getCleanedDatasetPreview(projectId: number, datasetId: number): Observable<CleanedDatasetPreview> {
-    return this.http.get<CleanedDatasetPreview>(`${this.baseUrl}/api/projects/${projectId}/cleaning/datasets/${datasetId}/preview`);
   }
 
   undoLatestCleaning(projectId: number): Observable<CleaningApplyResponse> {

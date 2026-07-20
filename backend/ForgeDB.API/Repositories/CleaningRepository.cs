@@ -4,6 +4,7 @@ using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services;
+using ForgeDB.API.Services.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
@@ -200,7 +201,7 @@ public class CleaningRepository : ICleaningRepository
             {
                 await transaction.RollbackAsync(cancellationToken);
                 await transaction.DisposeAsync();
-                throw new InvalidOperationException("The active dataset version changed. Refresh the cleaning workspace and preview again.");
+                throw new ActiveCleaningVersionChangedException();
             }
         }
         var dataset = await _context.Datasets.Include(item => item.Versions)
@@ -208,7 +209,7 @@ public class CleaningRepository : ICleaningRepository
             ?? throw new KeyNotFoundException("Dataset not found.");
         if (dataset.ActiveVersionId != sourceVersionId)
         {
-            throw new InvalidOperationException("The active dataset version changed. Refresh the cleaning workspace and preview again.");
+            throw new ActiveCleaningVersionChangedException();
         }
 
         foreach (var activeVersion in dataset.Versions.Where(version => version.IsActive))

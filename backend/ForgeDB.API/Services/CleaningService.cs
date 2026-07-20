@@ -5,6 +5,7 @@ using ForgeDB.API.Clients;
 using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
+using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Interfaces;
 
 namespace ForgeDB.API.Services;
@@ -122,7 +123,9 @@ public class CleaningService : ICleaningService
             }
             var data = await _repository.GetActiveDatasetVersionAsync(group.Key, cancellationToken)
                 ?? throw new KeyNotFoundException("Dataset or active version not found.");
-            var pythonResult = await _python.PreviewCleaningAsync(BuildPythonRequest(data, group.ToList()), cancellationToken);
+            var operations = group.ToList();
+            EnsureExpectedSourceVersion(operations, data.Version.Id);
+            var pythonResult = await _python.PreviewCleaningAsync(BuildPythonRequest(data, operations), cancellationToken);
             response.Datasets.Add(MapPreview(data.Dataset.TableName, pythonResult));
         }
         response.AffectedRows = response.Datasets.Sum(item => item.AffectedRows);
@@ -155,6 +158,7 @@ public class CleaningService : ICleaningService
             var data = await _repository.GetActiveDatasetVersionAsync(group.Key, cancellationToken)
                 ?? throw new KeyNotFoundException("Dataset or active version not found.");
             var operations = group.ToList();
+            EnsureExpectedSourceVersion(operations, data.Version.Id);
             var preview = await _python.PreviewCleaningAsync(BuildPythonRequest(data, operations), cancellationToken);
             prepared.Add((data, operations, preview));
         }
@@ -546,6 +550,7 @@ public class CleaningService : ICleaningService
         OperationId = suggestion.Id,
         SuggestionId = suggestion.Id,
         DatasetId = suggestion.DatasetId,
+        ExpectedSourceVersionId = suggestion.VersionId,
         OperationType = strategy.OperationType,
         Column = suggestion.Column,
         Parameters = JsonSerializer.SerializeToElement(strategy.Parameters, JsonOptions)
@@ -623,6 +628,17 @@ public class CleaningService : ICleaningService
         if (operations.Count > 100) throw new ArgumentException("A cleaning request may contain at most 100 operations.");
         if (operations.Any(operation => operation.DatasetId <= 0 || string.IsNullOrWhiteSpace(operation.OperationType)))
             throw new ArgumentException("Every cleaning operation requires a dataset and operation type.");
+        if (operations.Any(operation => operation.ExpectedSourceVersionId is <= 0))
+            throw new ArgumentException("Expected source version IDs must be positive when provided.");
+    }
+
+    private static void EnsureExpectedSourceVersion(IReadOnlyList<CleaningOperationRequestDto> operations, int activeVersionId)
+    {
+        if (operations.Any(operation => operation.ExpectedSourceVersionId.HasValue
+            && operation.ExpectedSourceVersionId.Value != activeVersionId))
+        {
+            throw new ActiveCleaningVersionChangedException();
+        }
     }
 
     private static string DescribeOperation(CleaningOperationRequestDto operation) => operation.Column is null

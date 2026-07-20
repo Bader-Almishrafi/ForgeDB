@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using ForgeDB.API.Models.DTOs;
+using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -95,6 +96,10 @@ public class CleaningController : ControllerBase
         catch (KeyNotFoundException exception)
         {
             return NotFound(new ProblemDetails { Status = 404, Title = "Cleaning resource not found", Detail = exception.Message });
+        }
+        catch (ActiveCleaningVersionChangedException exception)
+        {
+            return Conflict(new { code = ActiveCleaningVersionChangedException.ErrorCode, message = exception.Message });
         }
         catch (InvalidOperationException exception)
         {

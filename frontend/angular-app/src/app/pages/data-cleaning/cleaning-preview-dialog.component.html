@@ -1,0 +1,28 @@
+<dialog #dialog class="w-[min(96vw,72rem)] rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-[#161b22] dark:text-white" (cancel)="closeRequested.emit()" data-testid="cleaning-preview-dialog">
+  @if (result; as preview) {
+    <div class="border-b border-slate-200 p-5 dark:border-slate-800">
+      <div class="flex items-start justify-between gap-4"><div><p class="eyebrow">Mandatory preview</p><h2 class="mt-1 text-xl font-bold">Review cleaning changes</h2></div><button type="button" class="btn-secondary" (click)="closeRequested.emit()" [disabled]="applyLoading">Close</button></div>
+      <p class="mt-3 text-sm text-slate-500">{{ preview.datasets.length }} datasets · {{ preview.affectedRows | number }} affected rows · {{ preview.affectedCells | number }} affected cells</p>
+    </div>
+    <div class="max-h-[68vh] space-y-5 overflow-y-auto p-5">
+      <section class="rounded-xl bg-slate-50 p-4 dark:bg-slate-900/50">
+        <h3 class="font-semibold">Selected operations</h3>
+        <div class="mt-3 space-y-2">@for (operation of operations; track operation.operationId) { <div class="flex items-center justify-between gap-3 text-sm"><span>{{ operationLabel(operation) }}</span>@if (operations.length > 1) { <button type="button" class="text-rose-600 hover:underline" (click)="removeRequested.emit(operation.operationId)">Remove</button> }</div> }</div>
+      </section>
+      @for (dataset of preview.datasets; track dataset.datasetId) {
+        <section class="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h3 class="font-bold">{{ dataset.datasetName }}</h3><p class="mt-1 text-xs text-slate-500">Source active {{ previewVersionLabel(dataset) }} · Version ID {{ dataset.sourceVersionId }}</p></div><span class="text-xs font-semibold" [class.text-rose-600]="dataset.destructive">{{ dataset.destructive ? 'Destructive' : 'Non-destructive' }}</span></div>
+          <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">@for (operation of dataset.operationResults; track operation.operationId) { <div class="rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-900/50"><strong>{{ operation.operationType }}</strong>@if (operation.column) { <span> · {{ operation.column }}</span> }<p class="mt-1 text-xs text-slate-500">{{ operation.affectedRows | number }} rows affected · {{ operation.destructive ? 'Destructive' : 'Non-destructive' }}</p></div> }</div>
+          @if (dataset.rows.length) {
+            <div class="mt-4 overflow-x-auto"><table class="min-w-full text-left text-sm"><thead class="border-b border-slate-200 text-xs text-slate-500 dark:border-slate-800"><tr><th class="px-2 py-2">Row</th><th class="px-2 py-2">Column</th><th class="px-2 py-2">Before</th><th class="px-2 py-2">After</th></tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">@for (row of dataset.rows; track row.rowNumber) { @for (column of previewColumns(dataset); track column) { <tr><td class="px-2 py-2">{{ row.rowNumber }}</td><td class="px-2 py-2 font-mono">{{ column }}</td><td class="px-2 py-2">{{ formatValue(row.before?.[column]) }}</td><td class="px-2 py-2">{{ row.after ? formatValue(row.after[column]) : 'ROW REMOVED' }}</td></tr> } }</tbody></table></div>
+          } @else { <p class="mt-4 text-sm text-slate-500">No row-level sample changes were returned.</p> }
+        </section>
+      }
+      @if (preview.warnings.length) { <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">@for (warning of preview.warnings; track warning) { <p>{{ warning }}</p> }</div> }
+      @if (preview.destructive) {
+        <label class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" data-testid="destructive-confirmation"><input class="mt-1" type="checkbox" [ngModel]="destructiveConfirmed" (ngModelChange)="destructiveConfirmedChange.emit($event)"><span><strong>I confirm this destructive operation.</strong><span class="mt-1 block">Applying creates a new active version. Every previous version remains available in history.</span></span></label>
+      }
+    </div>
+    <div class="flex justify-end gap-3 border-t border-slate-200 p-5 dark:border-slate-800"><button type="button" class="btn-secondary" (click)="closeRequested.emit()" [disabled]="applyLoading">Cancel</button><button type="button" class="btn-primary" (click)="applyRequested.emit()" [disabled]="applyLoading || previewLoading || (preview.destructive && !destructiveConfirmed)">{{ applyLoading ? 'Applying…' : 'Apply changes' }}</button></div>
+  }
+</dialog>

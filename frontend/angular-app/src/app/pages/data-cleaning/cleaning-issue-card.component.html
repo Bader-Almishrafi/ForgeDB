@@ -1,0 +1,30 @@
+<article class="rounded-xl border p-4" [class.border-indigo-300]="selected" [class.border-slate-200]="!selected" data-testid="cleaning-issue-card">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-start">
+    <label class="flex min-w-0 flex-1 items-start gap-3">
+      <input class="mt-1" type="checkbox" [checked]="selected" (change)="selectionChange.emit()">
+      <span class="min-w-0">
+        <span class="block font-bold text-slate-950 dark:text-white">{{ suggestion.issueType }}</span>
+        <span class="mt-1 block text-sm text-slate-600 dark:text-slate-400">{{ suggestion.datasetName }}@if (suggestion.column) { · <strong>{{ suggestion.column }}</strong> }</span>
+        <span class="mt-2 block text-sm text-slate-500">{{ suggestion.description }}</span>
+      </span>
+    </label>
+    <div class="flex flex-wrap gap-2 text-xs">
+      <span class="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">{{ suggestion.count | number }} affected</span>
+      @if (suggestion.percentage !== null && suggestion.percentage !== undefined) { <span class="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">{{ suggestion.percentage | number:'1.0-2' }}%</span> }
+      <span class="rounded-full px-2.5 py-1" [class.bg-rose-100]="strategy.isDestructive" [class.text-rose-700]="strategy.isDestructive" [class.bg-amber-100]="!strategy.isDestructive" [class.text-amber-800]="!strategy.isDestructive">{{ suggestion.riskLabel }}</span>
+    </div>
+  </div>
+  <div class="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+    @if (suggestion.availableStrategies.length > 1) {
+      <label><span class="text-xs font-semibold text-slate-500">Strategy</span><select class="input-field mt-1" [ngModel]="strategy.key" (ngModelChange)="strategyChange.emit($event)">@for (item of suggestion.availableStrategies; track item.key) { <option [value]="item.key">{{ item.label }}</option> }</select></label>
+    } @else {
+      <div><span class="text-xs font-semibold text-slate-500">Strategy</span><p class="mt-2 text-sm font-medium">{{ strategy.label }}</p></div>
+    }
+    @if (needsCustomValue) {
+      <label><span class="text-xs font-semibold text-slate-500">Replacement value</span><input class="input-field mt-1" [ngModel]="customValue" (ngModelChange)="customValueChange.emit($event)" placeholder="Enter value"></label>
+    } @else if (needsDuplicateColumns) {
+      <label><span class="text-xs font-semibold text-slate-500">Duplicate columns</span><input class="input-field mt-1" [ngModel]="duplicateColumns" (ngModelChange)="duplicateColumnsChange.emit($event)" placeholder="All, or comma-separated"></label>
+    } @else { <div></div> }
+    <button type="button" class="btn-secondary justify-center" (click)="previewRequested.emit()" [disabled]="busy">Preview this issue</button>
+  </div>
+</article>

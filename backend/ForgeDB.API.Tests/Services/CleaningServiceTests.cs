@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Claims;
 using System.Text.Json;
 using ForgeDB.API.Clients;
 using ForgeDB.API.Controllers;
@@ -9,6 +10,8 @@ using ForgeDB.API.Repositories;
 using ForgeDB.API.Services;
 using ForgeDB.API.Services.Exceptions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace ForgeDB.API.Tests.Services;
@@ -26,6 +29,46 @@ public class CleaningServiceTests
         Assert.Single(await fixture.Context.DatasetVersions.ToListAsync());
         Assert.Equal(before, await fixture.Context.DatasetRows.Select(row => row.RowData).ToListAsync());
         Assert.Empty(await fixture.Context.CleaningBatches.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Preview_RejectsAnExpectedSourceVersionThatIsNoLongerActive()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var summary = await fixture.Service.GetSummaryAsync(1, 1, CancellationToken.None);
+        var request = PreviewRequest(1);
+        request.Operations[0].ExpectedSourceVersionId = summary.Datasets.Single().ActiveVersionId + 1;
+
+        await Assert.ThrowsAsync<ActiveCleaningVersionChangedException>(() =>
+            fixture.Service.PreviewAsync(1, 1, request, CancellationToken.None));
+
+        Assert.Empty(await fixture.Context.CleaningBatches.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Controller_ReturnsActiveVersionConflictCode_ForAStalePreview()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var summary = await fixture.Service.GetSummaryAsync(1, 1, CancellationToken.None);
+        var request = PreviewRequest(1);
+        request.Operations[0].ExpectedSourceVersionId = summary.Datasets.Single().ActiveVersionId + 1;
+        var controller = new CleaningController(fixture.Service)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        new[] { new Claim(ClaimTypes.NameIdentifier, "1") }, "Test"))
+                }
+            }
+        };
+
+        var response = await controller.Preview(1, request, CancellationToken.None);
+
+        var conflict = Assert.IsType<ConflictObjectResult>(response.Result);
+        Assert.Equal(409, conflict.StatusCode);
+        Assert.Contains("active_version_changed", JsonSerializer.Serialize(conflict.Value));
     }
 
     [Fact]
@@ -52,6 +95,21 @@ public class CleaningServiceTests
         Assert.Equal(original, await fixture.Context.DatasetRows.OrderBy(row => row.RowNumber).Select(row => row.RowData).ToListAsync());
         Assert.Single(await fixture.Context.CleaningBatches.ToListAsync());
         Assert.Single(await fixture.Context.CleaningOperations.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Apply_RejectsAnExpectedSourceVersionThatIsNoLongerActive()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var summary = await fixture.Service.GetSummaryAsync(1, 1, CancellationToken.None);
+        var request = ApplyRequest(1);
+        request.Operations[0].ExpectedSourceVersionId = summary.Datasets.Single().ActiveVersionId + 1;
+
+        await Assert.ThrowsAsync<ActiveCleaningVersionChangedException>(() =>
+            fixture.Service.ApplyAsync(1, 1, request, CancellationToken.None));
+
+        Assert.Empty(await fixture.Context.CleaningBatches.ToListAsync());
+        Assert.Single(await fixture.Context.DatasetVersions.ToListAsync());
     }
 
     [Fact]

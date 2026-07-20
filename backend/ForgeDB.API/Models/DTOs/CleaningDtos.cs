@@ -81,6 +81,7 @@ public class CleaningOperationRequestDto
     public string? OperationId { get; set; }
     public string? SuggestionId { get; set; }
     public int DatasetId { get; set; }
+    public int? ExpectedSourceVersionId { get; set; }
     public string OperationType { get; set; } = string.Empty;
     public string? Column { get; set; }
     public JsonElement Parameters { get; set; }

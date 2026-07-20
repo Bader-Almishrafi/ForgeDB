@@ -181,11 +181,6 @@ export interface DatasetAnalysisResponse {
   analysisEngine?: string | null;
 }
 
-export interface CleaningColumnSnapshot {
-  name: string;
-  dataType: string;
-}
-
 export interface CleaningStrategy {
   key: string;
   label: string;
@@ -254,6 +249,7 @@ export interface CleaningOperationRequest {
   operationId?: string | null;
   suggestionId?: string | null;
   datasetId: number;
+  expectedSourceVersionId?: number | null;
   operationType: string;
   column?: string | null;
   parameters: Record<string, unknown>;
@@ -265,11 +261,6 @@ export interface CleaningPreviewRequest {
 
 export interface CleaningApplyRequest extends CleaningPreviewRequest {
   batchName?: string | null;
-  confirmDestructive: boolean;
-}
-
-export interface CleaningApplyRecommendedRequest {
-  suggestionIds: string[];
   confirmDestructive: boolean;
 }
 
@@ -404,16 +395,6 @@ export interface QualityConfirmation {
   schemaReady: boolean;
   confirmedAt: string;
   confirmedVersions: Record<number, number>;
-}
-
-export interface CleanedDatasetPreview {
-  datasetId: number;
-  tableName: string;
-  versionId: number;
-  versionNumber: number;
-  isRawOriginal: boolean;
-  columns: string[];
-  rows: Record<string, unknown>[];
 }
 
 export interface DatasetAnalysisResult {
