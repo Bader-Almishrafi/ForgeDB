@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, HostListener, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ProjectResponse } from '../../services/api.models';
@@ -31,22 +31,15 @@ export class ProjectCardComponent {
   editDescription = '';
 
   startEdit(): void {
-    if (this.saving() || this.deleting()) return;
     this.editName = this.project().name;
     this.editDescription = this.project().description ?? '';
     this.errorMessage.set('');
-    this.confirmingDelete.set(false);
     this.editing.set(true);
   }
 
   cancelEdit(): void {
-    if (this.saving()) return;
     this.editing.set(false);
     this.errorMessage.set('');
-  }
-
-  closeEditFromBackdrop(event: MouseEvent): void {
-    if (event.target === event.currentTarget) this.cancelEdit();
   }
 
   saveEdit(): void {
@@ -66,20 +59,12 @@ export class ProjectCardComponent {
   }
 
   confirmDelete(): void {
-    if (this.saving() || this.deleting()) return;
     this.errorMessage.set('');
-    this.editing.set(false);
     this.confirmingDelete.set(true);
   }
 
   cancelDelete(): void {
-    if (this.deleting()) return;
-    this.confirmingDelete.set(false);
-    this.errorMessage.set('');
-  }
-
-  closeDeleteFromBackdrop(event: MouseEvent): void {
-    if (event.target === event.currentTarget) this.cancelDelete();
+    if (!this.deleting()) this.confirmingDelete.set(false);
   }
 
   deleteProject(): void {
@@ -88,27 +73,11 @@ export class ProjectCardComponent {
     this.deleting.set(true);
     this.errorMessage.set('');
     this.api.deleteProject(projectId).pipe(finalize(() => this.deleting.set(false))).subscribe({
-      next: () => {
-        this.confirmingDelete.set(false);
-        this.projectDeleted.emit(projectId);
-      },
+      next: () => this.projectDeleted.emit(projectId),
       error: (error: unknown) => {
         this.errorMessage.set(this.errorText(error, 'Unable to delete the project.'));
       },
     });
-  }
-
-  editValidationMessage(): string {
-    if (!this.editName.trim()) return 'Project name is required.';
-    if (this.editName.length > 100) return 'Project name must be 100 characters or fewer.';
-    if (this.editDescription.length > 500) return 'Description must be 500 characters or fewer.';
-    return '';
-  }
-
-  @HostListener('document:keydown.escape')
-  closeDialogOnEscape(): void {
-    if (this.editing() && !this.saving()) this.cancelEdit();
-    if (this.confirmingDelete() && !this.deleting()) this.cancelDelete();
   }
 
   private errorText(error: unknown, fallback: string): string {

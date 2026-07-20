@@ -1,104 +1,28 @@
-<div class="min-h-screen overflow-x-hidden bg-[#f1f5f9] text-slate-950 transition-colors dark:bg-[#0d1117] dark:text-slate-100" data-testid="simple-app-shell">
-  @if (mobileSidebarOpen()) {
-    <button type="button" class="fixed inset-0 z-40 bg-slate-950/55 backdrop-blur-[2px] lg:hidden" aria-label="Close navigation" (click)="closeMobileSidebar()"></button>
-  }
-
-  <aside id="app-sidebar" data-testid="app-sidebar"
-    class="fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col overflow-x-hidden border-r border-slate-200/70 bg-white/90 shadow-2xl shadow-slate-950/5 backdrop-blur-xl transition-[width,transform] duration-300 lg:translate-x-0 lg:shadow-none dark:border-white/10 dark:bg-[#161b22]/90"
-    [ngClass]="[
-      mobileSidebarOpen() ? 'translate-x-0' : '-translate-x-full',
-      sidebarCollapsed() ? 'lg:w-20' : 'lg:w-[280px]'
-    ]">
-    <div class="relative flex h-[72px] shrink-0 items-center border-b border-slate-200/70 px-5 dark:border-white/10">
-      <a routerLink="/projects" class="flex min-w-0 items-center gap-3" (click)="closeMobileSidebar()">
-        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md shadow-indigo-500/20">
-          <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.9" aria-hidden="true">
-            <ellipse cx="12" cy="5.5" rx="7" ry="3"></ellipse>
-            <path d="M5 5.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6M5 11.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6"></path>
-          </svg>
-        </span>
-        <span class="min-w-0 transition-opacity duration-200" [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">
-          <strong class="block truncate text-xl tracking-tight text-slate-950 dark:text-white">ForgeDB</strong>
-          <span class="block truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Data workspace</span>
-        </span>
-      </a>
-      <button type="button" class="icon-button ml-auto lg:hidden" aria-label="Close navigation" (click)="closeMobileSidebar()">
-        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
-      </button>
-    </div>
-
-    <nav class="flex-1 px-3 py-6" aria-label="Primary navigation">
-      <p class="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 transition-opacity" [ngClass]="sidebarCollapsed() ? 'lg:opacity-0' : 'opacity-100'">Workspace</p>
-      <ul class="space-y-1.5">
-        @for (item of navItems; track item.route) {
-          <li>
-            <a [routerLink]="item.route" [routerLinkActiveOptions]="{ exact: item.exact }"
-              routerLinkActive="border-indigo-200 bg-indigo-50 font-bold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300"
-              class="flex min-h-11 items-center gap-3 overflow-hidden rounded-xl border border-transparent px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-[#21262d] dark:hover:text-white"
-              (click)="closeMobileSidebar()" [attr.title]="sidebarCollapsed() ? item.label : null">
-              <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="item.icon"></path></svg>
-              <span class="truncate transition-opacity duration-200" [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">{{ item.label }}</span>
-            </a>
-          </li>
-        }
-      </ul>
-    </nav>
-
-    <div class="border-t border-slate-200/70 p-3 dark:border-white/10">
-      <div class="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-[#21262d]/70">
-        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-xs font-bold text-white">{{ initials() }}</span>
-        <span class="min-w-0 transition-opacity duration-200" [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">
-          <strong class="block truncate text-sm text-slate-800 dark:text-slate-100">{{ displayName() }}</strong>
-          <span class="block truncate text-xs text-slate-500 dark:text-[#8a99ad]">{{ user()?.email }}</span>
-        </span>
-      </div>
-    </div>
-  </aside>
-
-  <button type="button" class="fixed top-[86px] z-[60] hidden h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-md transition-[left,color] duration-300 hover:text-indigo-600 lg:grid dark:border-[#30363d] dark:bg-[#21262d] dark:text-slate-300 dark:hover:text-indigo-300"
-    [ngClass]="sidebarCollapsed() ? 'left-[66px]' : 'left-[266px]'" (click)="toggleDesktopSidebar()" [attr.aria-label]="sidebarCollapsed() ? 'Expand sidebar' : 'Collapse sidebar'" [attr.aria-expanded]="!sidebarCollapsed()">
-    <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current transition-transform" [class.rotate-180]="sidebarCollapsed()" stroke-width="2" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
-  </button>
-
-  <div class="min-h-screen min-w-0 transition-[padding] duration-300" [ngClass]="sidebarCollapsed() ? 'lg:pl-20' : 'lg:pl-[280px]'">
-    <header class="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/80 bg-white/90 px-4 shadow-sm backdrop-blur-xl sm:px-6 dark:border-[#30363d] dark:bg-[#161b22]/90">
-      <button type="button" class="icon-button lg:hidden" aria-label="Open navigation" aria-controls="app-sidebar" [attr.aria-expanded]="mobileSidebarOpen()" (click)="toggleMobileSidebar()">
-        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.9" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
-      </button>
-      <div class="min-w-0 flex-1">
-        <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-400">Workspace</p>
-        <h1 class="truncate text-base font-bold text-slate-950 dark:text-white" data-testid="current-page-title">{{ pageTitle() }}</h1>
-      </div>
-
-      <button type="button" class="icon-button" (click)="toggleTheme()" [attr.aria-label]="theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'" [title]="theme() === 'dark' ? 'Light theme' : 'Dark theme'">
-        @if (theme() === 'dark') {
-          <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
-        } @else {
-          <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg>
-        }
-      </button>
-
+<div class="min-h-screen bg-slate-50 text-slate-950 dark:bg-[#0d1117] dark:text-slate-100" data-testid="simple-app-shell">
+  <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-[#161b22]/95">
+    <div class="mx-auto flex min-h-16 max-w-[1600px] items-center gap-6 px-4 sm:px-6">
+      <a routerLink="/projects" class="text-lg font-bold tracking-tight text-indigo-700 dark:text-indigo-300">ForgeDB</a>
+      <a routerLink="/projects" class="text-sm font-semibold text-slate-600 hover:text-indigo-700 dark:text-slate-300">Projects</a>
+      <span class="flex-1"></span>
       <div class="relative">
-        <button type="button" class="flex min-h-10 items-center gap-2 rounded-xl px-1.5 text-sm transition hover:bg-slate-100 dark:hover:bg-[#21262d]" aria-label="Account menu" aria-haspopup="menu" [attr.aria-expanded]="accountOpen()" (click)="accountOpen.set(!accountOpen())">
-          <span class="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-xs font-bold text-white">{{ initials() }}</span>
-          <span class="hidden max-w-32 truncate font-semibold sm:block">{{ user()?.firstName || 'Account' }}</span>
-          <svg viewBox="0 0 24 24" class="hidden h-4 w-4 fill-none stroke-slate-400 sm:block" stroke-width="1.8" aria-hidden="true"><path d="m7 9 5 5 5-5"></path></svg>
+        <button type="button" class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+          aria-label="Account menu" [attr.aria-expanded]="accountOpen()" (click)="accountOpen.set(!accountOpen())">
+          <span class="grid h-8 w-8 place-items-center rounded-full bg-indigo-600 text-xs font-bold text-white">{{ initials() }}</span>
+          <span class="hidden sm:inline">{{ user()?.firstName || 'Account' }}</span>
         </button>
         @if (accountOpen()) {
-          <div class="absolute right-0 mt-2 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-950/10 dark:border-[#30363d] dark:bg-[#161b22]" role="menu">
-            <div class="border-b border-slate-100 px-3 py-3 dark:border-[#30363d]">
-              <p class="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{{ displayName() }}</p>
-              <p class="mt-0.5 truncate text-xs text-slate-500 dark:text-[#8a99ad]">{{ user()?.email }}</p>
-            </div>
-            <a routerLink="/change-password" role="menuitem" class="mt-1 block rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-[#21262d]" (click)="accountOpen.set(false)">Change Password</a>
-            <button type="button" role="menuitem" class="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30" (click)="logout()">Log out</button>
+          <div class="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900" role="menu">
+            <a routerLink="/change-password" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800" (click)="accountOpen.set(false)">Change password</a>
+            <button type="button" class="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800" (click)="toggleTheme()">
+              {{ theme() === 'dark' ? 'Use light theme' : 'Use dark theme' }}
+            </button>
+            <button type="button" class="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30" (click)="logout()">Sign out</button>
           </div>
         }
       </div>
-    </header>
-
-    <main class="min-w-0 p-4 sm:p-6 lg:p-8">
-      <router-outlet />
-    </main>
-  </div>
+    </div>
+  </header>
+  <main class="mx-auto max-w-[1600px] px-4 py-6 sm:px-6">
+    <router-outlet />
+  </main>
 </div>
