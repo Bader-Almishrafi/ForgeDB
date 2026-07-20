@@ -45,6 +45,17 @@ describe('ProjectCardComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Delete');
   });
 
+  it('opens the editor as a viewport modal outside the card', () => {
+    component.startEdit();
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('[data-testid="project-card"]') as HTMLElement;
+    const modal = fixture.nativeElement.querySelector('[data-testid="edit-project-modal"]') as HTMLElement;
+    expect(modal).toBeTruthy();
+    expect(modal.classList.contains('fixed')).toBe(true);
+    expect(card.querySelector('[data-testid="edit-project-modal"]')).toBeNull();
+  });
+
   it('edits name and description through the authenticated project API', () => {
     const emitted = vi.fn();
     component.projectUpdated.subscribe(emitted);
@@ -64,10 +75,26 @@ describe('ProjectCardComponent', () => {
 
     component.confirmDelete();
     fixture.detectChanges();
+    const card = fixture.nativeElement.querySelector('[data-testid="project-card"]') as HTMLElement;
     expect(fixture.nativeElement.querySelector('[data-testid="delete-project-confirmation"]')).toBeTruthy();
+    expect(card.querySelector('[data-testid="delete-project-modal"]')).toBeNull();
     component.deleteProject();
 
     expect(deleteProject).toHaveBeenCalledWith(4);
     expect(emitted).toHaveBeenCalledWith(4);
+  });
+
+  it('closes idle dialogs with Escape or a backdrop click', () => {
+    component.startEdit();
+    fixture.detectChanges();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(component.editing()).toBe(false);
+
+    component.confirmDelete();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="delete-project-modal"]') as HTMLElement).click();
+    fixture.detectChanges();
+    expect(component.confirmingDelete()).toBe(false);
   });
 });
