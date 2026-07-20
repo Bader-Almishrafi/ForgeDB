@@ -38,6 +38,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IProjectWorkflowService, ProjectWorkflowService>();
 builder.Services.AddScoped<IDatasetImportService, DatasetImportService>();
 builder.Services.AddSingleton<IExcelWorkbookReader, ExcelWorkbookReader>();
 builder.Services.Configure<ApiImportOptions>(builder.Configuration.GetSection(ApiImportOptions.SectionName));

@@ -60,14 +60,6 @@ public class DesignController : ControllerBase
         try
         {
             await EnsureOwnedProjectAsync(projectId, cancellationToken);
-            if (!await _cleaningRepository.IsSchemaReadyAsync(projectId, cancellationToken))
-            {
-                return Conflict(new
-                {
-                    message = "Confirm the cleaned, re-analyzed dataset versions before generating a schema."
-                });
-            }
-
             return Ok(await _designService.GenerateAsync(projectId, request ?? new GenerateDesignRequestDto(), ifMatchRevision, cancellationToken));
         }
         catch (UnauthorizedAccessException exception)
@@ -89,6 +81,10 @@ public class DesignController : ControllerBase
         catch (DesignConcurrencyException exception)
         {
             return Conflict(new ConflictResponseDto { CurrentRevision = exception.CurrentRevision, Message = exception.Message });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Conflict(new { message = exception.Message });
         }
     }
 

@@ -179,6 +179,10 @@ public class ProjectsController : ControllerBase
         {
             return UnprocessableEntity(new { message = exception.Message, issues = exception.Issues });
         }
+        catch (ProjectWorkflowBlockedException exception)
+        {
+            return UnprocessableEntity(new { message = exception.Message, blockerCodes = exception.BlockerCodes });
+        }
     }
 
     // Reads the authenticated user ID from signed JWT claims rather than trusting route or body

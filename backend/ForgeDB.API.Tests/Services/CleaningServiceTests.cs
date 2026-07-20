@@ -7,6 +7,7 @@ using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories;
 using ForgeDB.API.Services;
+using ForgeDB.API.Services.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
@@ -59,6 +60,18 @@ public class CleaningServiceTests
         await using var fixture = await Fixture.CreateAsync();
         await Assert.ThrowsAsync<ArgumentException>(() => fixture.Service.ApplyAsync(1, 1, new CleaningApplyRequestDto(), CancellationToken.None));
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => fixture.Service.GetSummaryAsync(1, 2, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Apply_RejectsProjectWithUnanalyzedActiveDataset()
+    {
+        await using var fixture = await Fixture.CreateAsync(datasetAnalyzed: false);
+
+        var exception = await Assert.ThrowsAsync<ProjectWorkflowBlockedException>(() =>
+            fixture.Service.ApplyAsync(1, 1, ApplyRequest(1), CancellationToken.None));
+
+        Assert.Contains("analysis_required", exception.BlockerCodes);
+        Assert.Empty(await fixture.Context.CleaningBatches.ToListAsync());
     }
 
     [Fact]
@@ -196,7 +209,11 @@ public class CleaningServiceTests
         public ForgeDbContext Context { get; }
         public CleaningService Service { get; }
 
-        public static async Task<Fixture> CreateAsync(bool includeSecondDataset = false, int? failApplyDatasetId = null, bool datasetHasIssues = true)
+        public static async Task<Fixture> CreateAsync(
+            bool includeSecondDataset = false,
+            int? failApplyDatasetId = null,
+            bool datasetHasIssues = true,
+            bool datasetAnalyzed = true)
         {
             var options = new DbContextOptionsBuilder<ForgeDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -206,15 +223,15 @@ public class CleaningServiceTests
                 new User { Id = 1, FirstName = "Owner", LastName = "User", Email = "owner@example.com", PasswordHash = "x", Role = "User", CreatedAt = DateTime.UtcNow },
                 new User { Id = 2, FirstName = "Other", LastName = "User", Email = "other@example.com", PasswordHash = "x", Role = "User", CreatedAt = DateTime.UtcNow });
             context.Projects.Add(new Project { Id = 1, UserId = 1, Name = "Cleaning project", CreatedAt = DateTime.UtcNow });
-            context.Datasets.Add(CreateDataset(1, "customers", datasetHasIssues));
-            if (includeSecondDataset) context.Datasets.Add(CreateDataset(2, "orders", datasetHasIssues));
+            context.Datasets.Add(CreateDataset(1, "customers", datasetHasIssues, datasetAnalyzed));
+            if (includeSecondDataset) context.Datasets.Add(CreateDataset(2, "orders", datasetHasIssues, datasetAnalyzed));
             await context.SaveChangesAsync();
             var repository = new CleaningRepository(context);
-            var service = new CleaningService(repository, new FakePythonClient(failApplyDatasetId));
+            var service = new CleaningService(repository, new FakePythonClient(failApplyDatasetId), new ProjectWorkflowService(context));
             return new Fixture(context, service);
         }
 
-        private static Dataset CreateDataset(int id, string name, bool hasIssues = true) => new()
+        private static Dataset CreateDataset(int id, string name, bool hasIssues = true, bool analyzed = true) => new()
         {
             Id = id,
             ProjectId = 1,
@@ -223,10 +240,12 @@ public class CleaningServiceTests
             RowCount = 2,
             ColumnCount = 2,
             MissingValuesCount = hasIssues ? 1 : 0,
-            Status = "Analyzed",
+            Status = analyzed ? "Analyzed" : "Imported",
             CreatedAt = DateTime.UtcNow,
-            AnalyzedAt = DateTime.UtcNow,
-            AnalysisResultJson = hasIssues
+            AnalyzedAt = analyzed ? DateTime.UtcNow : null,
+            AnalysisResultJson = !analyzed
+                ? null
+                : hasIssues
                 ? "{\"rowCount\":2,\"columnCount\":2,\"missingValuesCount\":1,\"duplicateRowsCount\":0,\"columns\":[{\"columnName\":\"name\",\"detectedDataType\":\"string\",\"missingValuesCount\":1},{\"columnName\":\"amount\",\"detectedDataType\":\"integer\",\"missingValuesCount\":0}]}"
                 : "{\"rowCount\":2,\"columnCount\":2,\"missingValuesCount\":0,\"duplicateRowsCount\":0,\"columns\":[{\"columnName\":\"name\",\"detectedDataType\":\"string\",\"missingValuesCount\":0},{\"columnName\":\"amount\",\"detectedDataType\":\"integer\",\"missingValuesCount\":0}]}",
             Columns = new List<DatasetColumn>

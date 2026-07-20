@@ -17,19 +17,22 @@ public class DesignService : IDesignService
     private readonly IDesignSchemaGeneratorResolver _generatorResolver;
     private readonly IDesignValidationService _validationService;
     private readonly ICleaningRepository? _cleaningRepository;
+    private readonly IProjectWorkflowService? _workflowService;
 
     public DesignService(
         IDesignRepository designRepository,
         IDatasetRepository datasetRepository,
         IDesignSchemaGeneratorResolver generatorResolver,
         IDesignValidationService validationService,
-        ICleaningRepository? cleaningRepository = null)
+        ICleaningRepository? cleaningRepository = null,
+        IProjectWorkflowService? workflowService = null)
     {
         _designRepository = designRepository;
         _datasetRepository = datasetRepository;
         _generatorResolver = generatorResolver;
         _validationService = validationService;
         _cleaningRepository = cleaningRepository;
+        _workflowService = workflowService;
     }
 
     public async Task<DesignResponseDto?> GetByProjectIdAsync(int projectId, CancellationToken cancellationToken = default)
@@ -51,10 +54,7 @@ public class DesignService : IDesignService
         CancellationToken cancellationToken = default)
     {
         var cleaning = RequireCleaningRepository();
-        if (!await cleaning.IsSchemaReadyAsync(projectId, cancellationToken))
-        {
-            throw new InvalidOperationException("Confirm the cleaned, re-analyzed dataset versions before generating a schema.");
-        }
+        await EnsureSchemaGenerationAllowedAsync(projectId, cleaning, cancellationToken);
 
         var activeVersions = await cleaning.GetActiveProjectVersionsAsync(projectId, cancellationToken);
         var sourceVersions = activeVersions
@@ -224,6 +224,15 @@ public class DesignService : IDesignService
             throw new KeyNotFoundException("Project not found.");
         }
 
+        if (_workflowService is not null)
+        {
+            await _workflowService.EnsureCanBuildSchemaAsync(projectId, cancellationToken);
+        }
+        else if (_cleaningRepository is not null && !await _cleaningRepository.IsSchemaReadyAsync(projectId, cancellationToken))
+        {
+            throw new InvalidOperationException("Confirm the cleaned, re-analyzed dataset versions before generating a schema.");
+        }
+
         var datasets = await _datasetRepository.GetByProjectIdWithColumnsAsync(projectId, cancellationToken);
         var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: true, cancellationToken);
 
@@ -287,6 +296,10 @@ public class DesignService : IDesignService
 
     public async Task<DesignExportArtifacts?> PrepareExportArtifactsAsync(int projectId, CancellationToken cancellationToken = default)
     {
+        if (_workflowService is not null)
+        {
+            await _workflowService.EnsureCanExportAsync(projectId, cancellationToken);
+        }
         var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: false, cancellationToken);
         if (design is null)
         {
@@ -800,6 +813,23 @@ public class DesignService : IDesignService
     {
         return _cleaningRepository
             ?? throw new InvalidOperationException("Cleaning version metadata is unavailable.");
+    }
+
+    private async Task EnsureSchemaGenerationAllowedAsync(
+        int projectId,
+        ICleaningRepository cleaningRepository,
+        CancellationToken cancellationToken)
+    {
+        if (_workflowService is not null)
+        {
+            await _workflowService.EnsureCanBuildSchemaAsync(projectId, cancellationToken);
+            return;
+        }
+
+        if (!await cleaningRepository.IsSchemaReadyAsync(projectId, cancellationToken))
+        {
+            throw new InvalidOperationException("Confirm the cleaned, re-analyzed dataset versions before generating a schema.");
+        }
     }
 
     private static void ValidateRenameWhitelist(SaveDesignDraftRequestDto request)

@@ -14,11 +14,16 @@ public class CleaningService : ICleaningService
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly ICleaningRepository _repository;
     private readonly IPythonAnalysisClient _python;
+    private readonly IProjectWorkflowService? _workflowService;
 
-    public CleaningService(ICleaningRepository repository, IPythonAnalysisClient python)
+    public CleaningService(
+        ICleaningRepository repository,
+        IPythonAnalysisClient python,
+        IProjectWorkflowService? workflowService = null)
     {
         _repository = repository;
         _python = python;
+        _workflowService = workflowService;
     }
 
     public async Task<ProjectCleaningSummaryDto> GetSummaryAsync(int projectId, int userId, CancellationToken cancellationToken = default)
@@ -104,6 +109,10 @@ public class CleaningService : ICleaningService
         await RequireProjectAsync(projectId, userId, cancellationToken);
         ValidateOperations(request.Operations);
         await _repository.EnsureRawVersionsAsync(projectId, userId, cancellationToken);
+        if (_workflowService is not null)
+        {
+            await _workflowService.EnsureCanCleanAsync(projectId, cancellationToken);
+        }
         var response = new CleaningPreviewResponseDto();
         foreach (var group in request.Operations.GroupBy(operation => operation.DatasetId))
         {
@@ -131,6 +140,10 @@ public class CleaningService : ICleaningService
         await RequireProjectAsync(projectId, userId, cancellationToken);
         ValidateOperations(request.Operations);
         await _repository.EnsureRawVersionsAsync(projectId, userId, cancellationToken);
+        if (_workflowService is not null)
+        {
+            await _workflowService.EnsureCanCleanAsync(projectId, cancellationToken);
+        }
 
         var prepared = new List<(CleaningDatasetVersionData Data, List<CleaningOperationRequestDto> Requests, PythonCleaningResponseDto Preview)>();
         foreach (var group in request.Operations.GroupBy(operation => operation.DatasetId))

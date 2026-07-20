@@ -17,19 +17,22 @@ public class DeploymentService : IDeploymentService
     private readonly IDesignService _designService;
     private readonly ICleaningRepository _cleaningRepository;
     private readonly ILogger<DeploymentService> _logger;
+    private readonly IProjectWorkflowService? _workflowService;
 
     public DeploymentService(
         IDeploymentRepository deploymentRepository,
         IDesignRepository designRepository,
         IDesignService designService,
         ICleaningRepository cleaningRepository,
-        ILogger<DeploymentService>? logger = null)
+        ILogger<DeploymentService>? logger = null,
+        IProjectWorkflowService? workflowService = null)
     {
         _deploymentRepository = deploymentRepository;
         _designRepository = designRepository;
         _designService = designService;
         _cleaningRepository = cleaningRepository;
         _logger = logger ?? NullLogger<DeploymentService>.Instance;
+        _workflowService = workflowService;
     }
 
     public async Task<DeploymentResponseDto> DeployAsync(int projectId, int userId, int ifMatchRevision, CancellationToken cancellationToken = default)
@@ -37,6 +40,10 @@ public class DeploymentService : IDeploymentService
         if (await _deploymentRepository.GetOwnedProjectAsync(projectId, userId, cancellationToken) is null)
         {
             throw new UnauthorizedAccessException("The project does not exist or does not belong to the authenticated user.");
+        }
+        if (_workflowService is not null)
+        {
+            await _workflowService.EnsureCanDeployAsync(projectId, cancellationToken);
         }
 
         var design = await _designRepository.GetFullByProjectIdAsync(projectId, track: false, cancellationToken)

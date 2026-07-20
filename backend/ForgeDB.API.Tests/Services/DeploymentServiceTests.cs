@@ -4,6 +4,7 @@ using ForgeDB.API.Models.DTOs;
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services;
+using ForgeDB.API.Services.Exceptions;
 using ForgeDB.API.Services.Interfaces;
 
 namespace ForgeDB.API.Tests.Services;
@@ -86,6 +87,36 @@ public class DeploymentServiceTests
         var service = new DeploymentService(deploymentRepository, designRepository, designService, cleaningRepository);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.DeployAsync(8, 999, 6));
+    }
+
+    [Fact]
+    public async Task DeployAsync_UsesCentralWorkflowGuardBeforeReadingSchemaOrData()
+    {
+        var deploymentRepository = Proxy<IDeploymentRepository>(new()
+        {
+            [nameof(IDeploymentRepository.GetOwnedProjectAsync)] = _ => Task.FromResult<Project?>(new Project { Id = 8, UserId = 3 })
+        });
+        var workflow = Proxy<IProjectWorkflowService>(new()
+        {
+            [nameof(IProjectWorkflowService.EnsureCanDeployAsync)] = _ => throw new ProjectWorkflowBlockedException(
+                "deploy",
+                new ProjectWorkflowResponseDto
+                {
+                    BlockerCodes = ["schema_stale"],
+                    BlockingReasons = ["The schema references dataset versions that are no longer active."]
+                })
+        });
+        var service = new DeploymentService(
+            deploymentRepository,
+            Proxy<IDesignRepository>(new()),
+            Proxy<IDesignService>(new()),
+            Proxy<ICleaningRepository>(new()),
+            logger: null,
+            workflowService: workflow);
+
+        var exception = await Assert.ThrowsAsync<ProjectWorkflowBlockedException>(() => service.DeployAsync(8, 3, 6));
+
+        Assert.Contains("schema_stale", exception.BlockerCodes);
     }
 
     [Fact]

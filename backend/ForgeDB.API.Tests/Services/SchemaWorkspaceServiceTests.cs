@@ -325,15 +325,16 @@ public class SchemaWorkspaceServiceTests
         Assert.True(validated.IsStale);
         Assert.False(validated.CanContinue);
         Assert.Contains(validated.ValidationIssues, issue => issue.Code == "stale-cleaned-versions" && issue.Severity == ValidationSeverity.Error);
-        var export = await service.PrepareExportArtifactsAsync(seed.ProjectId);
-        Assert.Contains(export!.ValidationIssues, issue => issue.Code == "stale-cleaned-versions" && issue.Severity == "error");
+        var exportBlocked = await Assert.ThrowsAsync<ProjectWorkflowBlockedException>(() => service.PrepareExportArtifactsAsync(seed.ProjectId));
+        Assert.Contains("analysis_stale", exportBlocked.BlockerCodes);
+        Assert.Contains("schema_stale", exportBlocked.BlockerCodes);
         var relationshipService = DispatchProxy.Create<IRelationshipDetectionService, TestInterfaceProxy<IRelationshipDetectionService>>();
         var projectService = new ProjectService(
             new ProjectRepository(context),
             service,
             relationshipService,
             new CleaningRepository(context));
-        await Assert.ThrowsAsync<DesignValidationFailedException>(() => projectService.GetProjectExportPackageAsync(seed.ProjectId));
+        await Assert.ThrowsAsync<ProjectWorkflowBlockedException>(() => projectService.GetProjectExportPackageAsync(seed.ProjectId));
     }
 
     private static ForgeDbContext NewContext() => new(new DbContextOptionsBuilder<ForgeDbContext>()
@@ -342,7 +343,13 @@ public class SchemaWorkspaceServiceTests
     private static DesignService BuildService(ForgeDbContext context)
     {
         var resolver = new DesignSchemaGeneratorResolver([new SqlSchemaGenerator(), new DbmlGenerator(), new JsonSchemaGenerator()]);
-        return new DesignService(new DesignRepository(context), new DatasetRepository(context), resolver, new DesignValidationService(), new CleaningRepository(context));
+        return new DesignService(
+            new DesignRepository(context),
+            new DatasetRepository(context),
+            resolver,
+            new DesignValidationService(),
+            new CleaningRepository(context),
+            new ProjectWorkflowService(context));
     }
 
     private static async Task<(int UserId, int ProjectId)> SeedConfirmedProjectAsync(ForgeDbContext context)
