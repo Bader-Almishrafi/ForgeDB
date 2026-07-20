@@ -5,7 +5,7 @@ import { finalize, forkJoin } from 'rxjs';
 import { ApiErrorBody, DeploymentResponse, DesignModelResponse } from '../../services/api.models';
 import { DesignApiService } from '../../services/design-api.service';
 import { FileDownloadService } from '../../services/file-download.service';
-import { WorkflowStateService } from '../../services/workflow-state.service';
+import { routeParameter } from '../../services/route-context';
 
 @Component({
   selector: 'app-project-deployment',
@@ -33,17 +33,15 @@ export class ProjectDeploymentComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private fileDownload: FileDownloadService,
-    private workflow: WorkflowStateService,
   ) {}
 
   ngOnInit(): void {
-    this.projectId = Number(this.route.snapshot.paramMap.get('projectId'));
-    if (!Number.isFinite(this.projectId) || this.projectId <= 0) {
+    this.projectId = routeParameter(this.route, 'projectId') ?? 0;
+    if (this.projectId <= 0) {
       this.router.navigate(['/projects']);
       return;
     }
 
-    this.workflow.setProjectId(this.projectId);
     this.load();
   }
 

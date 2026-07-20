@@ -7,7 +7,7 @@
       <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Deploy to PostgreSQL</h1>
       <p class="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400">Create a real, dedicated schema in the connected PostgreSQL database from the validated design, and load the cleaned dataset rows into it.</p>
     </div>
-    <a [routerLink]="['/projects', projectId, 'schema-designer']" class="flex items-center gap-2 rounded-xl border border-slate-200/50 bg-white/80 px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm backdrop-blur transition-colors hover:bg-slate-100 dark:border-[#30363d]/50 dark:bg-[#21262d]/80 dark:text-slate-300 dark:hover:bg-[#30363d]">
+    <a [routerLink]="['/projects', projectId, 'schema']" class="flex items-center gap-2 rounded-xl border border-slate-200/50 bg-white/80 px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm backdrop-blur transition-colors hover:bg-slate-100 dark:border-[#30363d]/50 dark:bg-[#21262d]/80 dark:text-slate-300 dark:hover:bg-[#30363d]">
       <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
       Schema Designer
     </a>
@@ -26,7 +26,7 @@
     <div class="glass-card relative z-10 flex flex-1 flex-col items-center justify-center text-center">
       <h2 class="text-lg font-bold text-slate-900 dark:text-white">No schema generated yet</h2>
       <p class="mt-2 max-w-sm text-sm text-slate-500 dark:text-[#8a99ad]">Generate the project design in Schema Designer before deploying.</p>
-      <a [routerLink]="['/projects', projectId, 'schema-designer']" class="btn-primary mt-5">Open Schema Designer</a>
+      <a [routerLink]="['/projects', projectId, 'schema']" class="btn-primary mt-5">Open Schema</a>
     </div>
   } @else {
     <div class="relative z-10 grid gap-5 xl:grid-cols-[430px_minmax(0,1fr)]">

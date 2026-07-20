@@ -5,10 +5,8 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { Router } from '@angular/router';
 import { Observable, Subject, catchError, concatMap, from, map, of, switchMap, take, tap, toArray } from 'rxjs';
 import { ApiConnectionTest, ApiJsonImportRequest, ApiJsonPreview, DatasetResponse, ExcelWorkbookPreview, ProjectResponse } from '../../services/api.models';
-import { AuthService } from '../../services/auth.service';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { UnsavedChangesAware } from '../../services/unsaved-changes.guard';
-import { WorkflowStateService } from '../../services/workflow-state.service';
 import { fileFingerprint, formatFileSize, isCsvFile, selectedIndexAfterRemoval } from './project-create.utils';
 
 // -----------------------------------------------------------------------------
@@ -74,11 +72,9 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
   // ---------------------------------------------------------------------------
 
   // FormBuilder owns the reactive form; the API service sends HTTP requests, while the
-  // authentication and workflow services supply the current user and cross-page selection.
+  // Router navigation uses the project ID returned by the authenticated API.
   private readonly formBuilder = inject(FormBuilder);
   private readonly api = inject(ForgeApiService);
-  private readonly auth = inject(AuthService);
-  private readonly workflow = inject(WorkflowStateService);
   private readonly router = inject(Router);
 
   // ---------------------------------------------------------------------------
@@ -451,12 +447,6 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
       return;
     }
 
-    const userId = this.auth.userId();
-    if (userId === null) {
-      this.feedback.set({ kind: 'error', title: 'Session unavailable', message: 'Sign in again before creating the project.' });
-      return;
-    }
-
     // getRawValue() returns the complete typed form value, including controls regardless of state.
     const value = this.projectForm.getRawValue();
     const source = this.selectedSource();
@@ -466,14 +456,12 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
     this.submissionState.set('creating');
 
     this.api.createProject({
-      userId,
       name: value.name.trim(),
       description: value.description.trim() || null,
     }).pipe(
       // tap performs state side effects without changing the ProjectResponse flowing downstream.
       tap((project) => {
         this.createdProject.set(project);
-        this.workflow.setProject(project);
       }),
       // switchMap waits for project creation, then replaces that Observable with the selected
       // import Observable. This is necessary because every import endpoint requires project.id.
@@ -521,7 +509,7 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
   }
 
   // Accepts a partial result, allows the guard to pass, and carries failed source names to the
-  // overview page so the user understands which imports still need attention.
+  // Data step so the user understands which imports still need attention.
   continueToProject(): void {
     const project = this.createdProject();
     if (!project || this.processing()) {
@@ -535,7 +523,7 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
         ? this.excelFile()?.file.name ?? ''
         : this.failedFiles().map((item) => item.file.name).join(', ');
     this.allowNavigation = true;
-    void this.router.navigate(['/projects', project.id, 'overview'], {
+    void this.router.navigate(['/projects', project.id, 'data'], {
       state: {
         notice: `${project.name} was created and ${uploaded} data source${uploaded === 1 ? '' : 's'} imported. Failed imports: ${failedNames}.`,
       },
@@ -722,7 +710,6 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
           tap((result) => {
             if (result.success && result.dataset) {
               this.updateFile(item.id, { state: 'uploaded', dataset: result.dataset, error: undefined });
-              this.workflow.setDataset(result.dataset);
             } else {
               this.updateFile(item.id, { state: 'failed', error: result.error ?? 'Upload failed.' });
             }
@@ -761,7 +748,6 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
       tap((result) => {
         if (result.success && result.dataset) {
           this.updateExcel({ state: 'uploaded', dataset: result.dataset, error: undefined });
-          this.workflow.setDataset(result.dataset);
         } else {
           this.updateExcel({ state: 'failed', error: result.error ?? 'Excel import failed.' });
         }
@@ -786,7 +772,6 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
         if (result.success && result.dataset) {
           this.apiImportState.set('uploaded');
           this.apiDataset.set(result.dataset);
-          this.workflow.setDataset(result.dataset);
         } else {
           this.apiImportState.set('failed');
           this.apiError.set(result.error ?? 'API import failed.');
@@ -819,7 +804,7 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
     this.submissionState.set('success');
     this.feedback.set({ kind: 'success', title: 'Project created successfully', message: 'Project created successfully.' });
     this.allowNavigation = true;
-    void this.router.navigate(['/projects', project.id, 'overview'], {
+    void this.router.navigate(['/projects', project.id, 'data'], {
       state: { notice: 'Project created successfully.' },
     });
   }

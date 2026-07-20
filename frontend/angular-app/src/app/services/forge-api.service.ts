@@ -27,6 +27,8 @@ import {
   ProjectOverview,
   ProjectCreateRequest,
   ProjectResponse,
+  ProjectSummary,
+  ProjectWorkflow,
   ProjectUpdateRequest,
   ProjectCleaningSummary,
   QualityConfirmation,
@@ -91,6 +93,14 @@ export class ForgeApiService {
   // DELETE /api/projects/{projectId} removes the owned project and expects 204 No Content.
   deleteProject(projectId: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/api/projects/${projectId}`);
+  }
+
+  getProjects(): Observable<ProjectSummary[]> {
+    return this.http.get<ProjectSummary[]>(`${this.baseUrl}/api/projects`);
+  }
+
+  getProjectWorkflow(projectId: number): Observable<ProjectWorkflow> {
+    return this.http.get<ProjectWorkflow>(`${this.baseUrl}/api/projects/${projectId}/workflow`);
   }
 
   // GET /api/projects/{projectId}/overview returns aggregated project, dataset, cleaning,

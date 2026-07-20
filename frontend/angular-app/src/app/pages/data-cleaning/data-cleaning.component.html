@@ -9,7 +9,7 @@
     <section class="state-panel" role="alert">
       <svg lucideCircleAlert class="mx-auto text-rose-600" [size]="42" [strokeWidth]="1.8"></svg>
       <h1>Data Cleaning unavailable</h1><p>{{ loadError() }}</p>
-      <div class="mt-5 flex flex-wrap justify-center gap-2"><a [routerLink]="['/projects', projectId, 'analysis']" class="btn-primary">Back to Analysis</a><a [routerLink]="['/projects', projectId, 'overview']" class="btn-secondary">Project Overview</a></div>
+      <div class="mt-5 flex flex-wrap justify-center gap-2"><a [routerLink]="['/projects', projectId, 'analyze']" class="btn-primary">Back to Analyze</a><a routerLink="/projects" class="btn-secondary">Projects</a></div>
     </section>
   } @else if (summary(); as current) {
     @if (feedback(); as message) {
@@ -21,9 +21,9 @@
     <header class="cleaning-header">
       <div class="min-w-0">
         <nav class="header-links" aria-label="Data Cleaning navigation">
-          <a [routerLink]="['/projects', projectId, 'analysis']"><svg lucideArrowLeft [size]="15" [strokeWidth]="1.8"></svg>Back to Analysis</a>
-          <a [routerLink]="['/projects', projectId, 'datasets']">Data Sources</a>
-          <a [routerLink]="['/projects', projectId, 'overview']">Project Overview</a>
+          <a [routerLink]="['/projects', projectId, 'analyze']"><svg lucideArrowLeft [size]="15" [strokeWidth]="1.8"></svg>Back to Analyze</a>
+          <a [routerLink]="['/projects', projectId, 'data']">Data</a>
+          <a routerLink="/projects">Projects</a>
         </nav>
         <div class="mt-4 flex items-start gap-3">
           <span class="title-icon"><svg lucideWandSparkles [size]="25" [strokeWidth]="1.8"></svg></span>
@@ -52,7 +52,7 @@
     </section>
 
     @if (current.totalDatasets === 0) {
-      <section class="state-panel"><svg lucideDatabase class="mx-auto text-indigo-600" [size]="42" [strokeWidth]="1.8"></svg><h2>No datasets to clean</h2><p>Add and analyze a data source before opening Data Cleaning.</p><a [routerLink]="['/projects', projectId, 'datasets']" class="btn-primary mt-5">Add Data Source</a></section>
+      <section class="state-panel"><svg lucideDatabase class="mx-auto text-indigo-600" [size]="42" [strokeWidth]="1.8"></svg><h2>No datasets to clean</h2><p>Add and analyze a data source before opening Data Cleaning.</p><a [routerLink]="['/projects', projectId, 'data']" class="btn-primary mt-5">Add Data Source</a></section>
     } @else {
       <section class="cleaning-workspace">
         <aside class="left-rail">

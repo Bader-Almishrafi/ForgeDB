@@ -10,8 +10,8 @@ import {
 } from './api.models';
 
 /**
- * Maps the Phase 1 Design API response onto the pre-existing `ProjectSchema` view-model shape
- * so `project-schema-designer` and `project-er-diagram` keep their current templates untouched.
+ * Maps the Design API response onto the legacy `ProjectSchema` view-model shape used by schema
+ * editing and relationship-management code.
  * `detectedDataType` no longer exists on a design column (only `sqlType` does); the lower-cased
  * sqlType is passed through as a reasonable stand-in for the type-based badge coloring.
  */

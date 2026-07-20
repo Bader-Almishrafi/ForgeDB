@@ -8,8 +8,8 @@
     <header class="schema-header">
       <div class="min-w-0">
         <nav class="header-links" aria-label="Schema navigation">
-          <a [routerLink]="['/projects', projectId, 'data-cleaning']"><svg lucideArrowLeft [size]="15"></svg>Back to Data Cleaning</a>
-          <a [routerLink]="['/projects', projectId, 'overview']">Project Overview</a>
+          <a [routerLink]="['/projects', projectId, 'clean']"><svg lucideArrowLeft [size]="15"></svg>Back to Clean</a>
+          <a routerLink="/projects">Projects</a>
         </nav>
         <div class="title-row">
           <span class="title-icon"><svg lucideDatabase [size]="24" [strokeWidth]="1.8"></svg></span>
@@ -59,7 +59,7 @@
         <svg lucideTriangleAlert [size]="38" [strokeWidth]="1.7"></svg>
         <h2>Confirmed cleaned data is required</h2>
         <p>Re-run Analysis for every active cleaned version and confirm data quality before generating or regenerating Schema.</p>
-        <a [routerLink]="['/projects', projectId, 'data-cleaning']" class="btn-primary">Return to Data Cleaning</a>
+        <a [routerLink]="['/projects', projectId, 'clean']" class="btn-primary">Return to Clean</a>
       </section>
     } @else if (!design()) {
       <section class="empty-state">
@@ -209,25 +209,6 @@
               } @else { <p class="panel-empty">Select a generated table.</p> }
             </main>
 
-            <aside class="er-preview">
-              <div class="panel-heading"><div><h2>ER Preview</h2><p>Read-only</p></div><span>{{ schema.relationships.length }} links</span></div>
-              <p class="sr-only">{{ relationshipSummary() }}</p>
-              <div class="er-canvas" [style.min-height.px]="Math.max(260, draftTables().length * 116 + 24)">
-                <svg class="relationship-lines" aria-hidden="true" [attr.viewBox]="'0 0 320 ' + Math.max(260, draftTables().length * 116 + 24)" preserveAspectRatio="none">
-                  @for (relationship of schema.relationships; track relationship.id) {
-                    <line x1="70" [attr.y1]="erNodeY(relationship.fromTableId)" x2="250" [attr.y2]="erNodeY(relationship.toTableId)"></line>
-                  }
-                </svg>
-                @for (table of draftTables(); track table.id; let index = $index) {
-                  <button type="button" class="er-node" [class.active]="selectedTableId() === table.id" [style.top.px]="index * 116 + 12" (click)="selectTable(table.id)">
-                    <strong>{{ table.name }}</strong>
-                    @for (column of table.columns.slice(0, 3); track column.id) { <span><b>{{ column.isPrimaryKey ? 'PK' : schema.relationships.some(item => item.fromColumnId === column.id) ? 'FK' : '' }}</b>{{ column.name }}</span> }
-                    @if (table.columns.length > 3) { <small>+{{ table.columns.length - 3 }} more</small> }
-                  </button>
-                }
-              </div>
-              @if (schema.relationships.length === 0) { <p class="relationship-note">Relationships will be defined in the next step.</p> }
-            </aside>
           </div>
         } @else if (activeTab() === 'sql') {
           <section class="sql-panel" role="tabpanel" aria-labelledby="schema-tab-sql">
@@ -268,8 +249,8 @@
       </section>
 
       <footer class="schema-footer">
-        <div><strong>{{ canContinue() ? 'Schema is ready.' : 'Save and validate the draft to continue.' }}</strong><p>Warnings do not block Relationships; validation errors do.</p></div>
-        <button type="button" class="btn-primary" (click)="continueToRelationships()" [disabled]="!canContinue()">Continue to Relationships</button>
+        <div><strong>{{ canContinue() ? 'Schema is ready.' : 'Save and validate the draft to continue.' }}</strong><p>Warnings do not block export; validation errors do.</p></div>
+        <button type="button" class="btn-primary" (click)="continueToRelationships()" [disabled]="!canContinue()">Continue to Export & Deploy</button>
       </footer>
     }
   }

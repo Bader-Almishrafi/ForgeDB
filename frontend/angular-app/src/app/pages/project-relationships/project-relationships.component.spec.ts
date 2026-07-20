@@ -126,7 +126,7 @@ describe('ProjectRelationshipsComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="suggested-relationships"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="persisted-relationships"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="manual-relationship-form"]')).toBeTruthy();
-    expect((fixture.nativeElement.querySelector('[data-testid="continue-to-er"]') as HTMLAnchorElement).getAttribute('href')).toBe('/projects/10/er-diagram');
+    expect((fixture.nativeElement.querySelector('[data-testid="continue-to-exports"]') as HTMLAnchorElement).getAttribute('href')).toBe('/projects/10/exports');
   });
 
   it('reloads suggestions and the design after detection and clears the busy state', () => {
@@ -246,14 +246,14 @@ describe('ProjectRelationshipsComponent', () => {
     expect(component.feedback()?.message).toContain('changed elsewhere');
   });
 
-  it('revalidates Draft relationship changes without trapping the ER workflow', () => {
+  it('revalidates Draft relationship changes before export', () => {
     component.design.set({ ...currentDesign, status: 'Draft', validatedAt: null });
     component.validateDesign();
     fixture.detectChanges();
 
     expect(api['validateSchema']).toHaveBeenCalledWith(10, 5);
     expect(component.design()?.status).toBe('Valid');
-    expect(fixture.nativeElement.querySelectorAll('[data-testid^="continue-to-er"]').length).toBeGreaterThan(0);
+    expect(fixture.nativeElement.querySelectorAll('[data-testid^="continue-to-exports"]').length).toBeGreaterThan(0);
   });
 
   it('keeps every workflow section contained at the 390px responsive layout', () => {
@@ -264,6 +264,6 @@ describe('ProjectRelationshipsComponent', () => {
     const page = fixture.nativeElement.querySelector('[data-testid="relationships-page"]') as HTMLElement;
     expect(page.classList.contains('overflow-x-hidden')).toBe(true);
     expect(fixture.nativeElement.querySelector('[data-testid="manual-source-table"]')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('[data-testid="continue-to-er-bottom"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="continue-to-exports-bottom"]')).toBeTruthy();
   });
 });

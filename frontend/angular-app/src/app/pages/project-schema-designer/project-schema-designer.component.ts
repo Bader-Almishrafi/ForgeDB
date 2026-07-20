@@ -12,8 +12,8 @@ import { Observable, Subject, finalize, forkJoin, take } from 'rxjs';
 import { DesignColumn, DesignModelResponse, DesignTable, ProjectCleaningSummary, ValidationIssue } from '../../services/api.models';
 import { DesignApiService } from '../../services/design-api.service';
 import { ForgeApiService } from '../../services/forge-api.service';
+import { routeParameter } from '../../services/route-context';
 import { UnsavedChangesAware } from '../../services/unsaved-changes.guard';
-import { WorkflowStateService } from '../../services/workflow-state.service';
 
 type SchemaTab = 'tables' | 'sql' | 'constraints';
 type FeedbackKind = 'success' | 'warning' | 'error';
@@ -65,12 +65,10 @@ const VARCHAR_PATTERN = /^VARCHAR\((\d+)\)$/i;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAware {
-  readonly Math = Math;
   private readonly schemaApi = inject(DesignApiService);
   private readonly api = inject(ForgeApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly workflow = inject(WorkflowStateService);
   private allowNavigation = false;
   private leaveDecision: Subject<boolean> | null = null;
 
@@ -131,19 +129,12 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
   readonly hiddenIssueCount = computed(() => Math.max(0, (this.design()?.validationIssues.length ?? 0) - this.visibleIssues().length));
   readonly canContinue = computed(() => Boolean(this.design()?.canContinue) && !this.dirty() && !this.hasDraftErrors());
   readonly liveSql = computed(() => this.generateSql(this.draftTables(), this.design()?.relationships ?? []));
-  readonly relationshipSummary = computed(() => {
-    const design = this.design();
-    if (!design?.relationships.length) return 'No persisted relationships. Relationships will be defined in the next step.';
-    return design.relationships.map(item => `${this.tableName(item.fromTableId)}.${this.columnName(item.fromColumnId)} references ${this.tableName(item.toTableId)}.${this.columnName(item.toColumnId)}`).join('. ');
-  });
-
   ngOnInit(): void {
-    this.projectId = Number(this.route.snapshot.paramMap.get('projectId'));
-    if (!Number.isFinite(this.projectId) || this.projectId <= 0) {
+    this.projectId = routeParameter(this.route, 'projectId') ?? 0;
+    if (this.projectId <= 0) {
       void this.router.navigate(['/projects']);
       return;
     }
-    this.workflow.setProjectId(this.projectId);
     this.loadWorkspace();
   }
 
@@ -232,7 +223,7 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
           const warnings = validated.validationIssues.length - errors;
           this.feedback.set(errors
             ? { kind: 'error', title: 'Schema is invalid', message: `${errors} blocking error${errors === 1 ? '' : 's'} and ${warnings} warning${warnings === 1 ? '' : 's'} found.` }
-            : { kind: 'success', title: 'Schema validated', message: `${warnings} non-blocking warning${warnings === 1 ? '' : 's'} found. You can continue to Relationships.` });
+            : { kind: 'success', title: 'Schema validated', message: `${warnings} non-blocking warning${warnings === 1 ? '' : 's'} found. You can continue to Export & Deploy.` });
         },
         error: error => this.handleMutationError(error, 'Validation failed', 'Schema validation could not be completed.'),
       });
@@ -347,7 +338,6 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
     return `${table}${column}`;
   }
   focusIssue(issue: ValidationIssue): void { if (issue.tableId) { this.selectedTableId.set(issue.tableId); this.activeTab.set('tables'); } }
-  erNodeY(tableId: number): number { const index = this.draftTables().findIndex(table => table.id === tableId); return 42 + Math.max(index, 0) * 116; }
 
   setTab(tab: SchemaTab): void { this.activeTab.set(tab); }
   onTabKeydown(event: KeyboardEvent, tab: SchemaTab): void {
@@ -368,7 +358,7 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
     const design = this.design();
     if (!design || !this.canContinue()) return;
     this.allowNavigation = true;
-    void this.router.navigate(['/projects', this.projectId, 'relationships'], { queryParams: { schemaId: design.id, returnTo: 'schema' } });
+    void this.router.navigate(['/projects', this.projectId, 'export-deploy']);
   }
 
   canDeactivate(): boolean | Observable<boolean> {

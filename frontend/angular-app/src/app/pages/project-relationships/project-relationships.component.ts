@@ -126,7 +126,7 @@ export class ProjectRelationshipsComponent implements OnInit {
       'validate',
       this.designApi.validateSchema(this.projectId, design.revision),
       'Schema validated',
-      'The current relationship design is valid and ready for ER Diagram and Deployment.',
+      'The current relationship design is valid and ready for export and deployment.',
     );
   }
 
@@ -265,7 +265,7 @@ export class ProjectRelationshipsComponent implements OnInit {
       `delete:${relationship.id}`,
       this.designApi.deleteRelationship(relationship.id, design.revision),
       'Relationship deleted',
-      'It was removed from the persisted design and will no longer appear in the ER Diagram.',
+      'It was removed from the persisted design and generated database artifacts.',
       () => {
         this.deleteTarget.set(null);
         this.cancelRelationshipEdit();

@@ -33,8 +33,8 @@ import {
   ValueFrequency,
 } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
+import { queryParameter, routeParameter } from '../../services/route-context';
 import { ThemeService } from '../../services/theme.service';
-import { WorkflowStateService } from '../../services/workflow-state.service';
 import { AnalysisChartComponent } from './analysis-chart.component';
 
 type AnalysisScope = 'project' | number;
@@ -160,7 +160,6 @@ export class AnalyzeDataComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
-  private readonly workflow = inject(WorkflowStateService);
   private loadVersion = 0;
 
   readonly project = signal<ProjectResponse | null>(null);
@@ -562,19 +561,12 @@ export class AnalyzeDataComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const projectParam = Number(this.route.snapshot.paramMap.get('projectId'));
-    const datasetParam = Number(this.route.snapshot.paramMap.get('datasetId'));
-    const returnProject = Number(this.route.snapshot.queryParamMap.get('returnProject'));
-    const workflowProject = this.workflow.projectId();
-    this.projectId = this.validId(projectParam) ?? this.validId(returnProject) ?? workflowProject ?? 0;
-
-    if (this.projectId > 0) {
-      this.loadProjectWorkspace(this.validId(datasetParam));
-    } else if (this.validId(datasetParam)) {
-      this.loadStandaloneDataset(datasetParam);
-    } else {
+    this.projectId = routeParameter(this.route, 'projectId') ?? 0;
+    if (this.projectId <= 0) {
       void this.router.navigate(['/projects']);
+      return;
     }
+    this.loadProjectWorkspace(queryParameter(this.route, 'datasetId') ?? undefined);
   }
 
   selectProjectScope(): void {
@@ -582,8 +574,7 @@ export class AnalyzeDataComponent implements OnInit {
     this.scope.set('project');
     this.selectedColumnKey.set(null);
     this.resetFiltersForScope();
-    this.workflow.clearDataset();
-    void this.router.navigate(['/projects', this.projectId, 'analysis'], { queryParams: { scope: 'project' }, replaceUrl: true });
+    void this.router.navigate(['/projects', this.projectId, 'analyze'], { queryParams: {}, replaceUrl: true });
   }
 
   selectDataset(dataset: DatasetResponse): void {
@@ -591,10 +582,7 @@ export class AnalyzeDataComponent implements OnInit {
     this.scope.set(dataset.id);
     this.selectedColumnKey.set(null);
     this.resetFiltersForScope();
-    this.workflow.setDataset(dataset);
-    if (this.projectId > 0) {
-      void this.router.navigate(['/projects', this.projectId, 'analysis'], { queryParams: { datasetId: dataset.id }, replaceUrl: true });
-    }
+    void this.router.navigate(['/projects', this.projectId, 'analyze'], { queryParams: { datasetId: dataset.id }, replaceUrl: true });
   }
 
   selectTab(tab: AnalysisTab): void {
@@ -785,16 +773,13 @@ export class AnalyzeDataComponent implements OnInit {
           if (version !== this.loadVersion) return;
           this.project.set(project);
           this.datasets.set(datasets);
-          this.workflow.setProject(project);
           const queryDatasetId = this.validId(Number(this.route.snapshot.queryParamMap.get('datasetId')));
           const requestedDatasetId = routeDatasetId ?? queryDatasetId;
           const selected = requestedDatasetId ? datasets.find((dataset) => dataset.id === requestedDatasetId) : undefined;
           if (selected) {
             this.scope.set(selected.id);
-            this.workflow.setDataset(selected);
           } else {
             this.scope.set('project');
-            this.workflow.clearDataset();
           }
           this.loadAnalysisResults(datasets, version);
         },
@@ -827,7 +812,6 @@ export class AnalyzeDataComponent implements OnInit {
         this.datasets.set([dataset]);
         this.analyses.set({ [dataset.id]: analysis });
         this.scope.set(dataset.id);
-        this.workflow.setDataset(dataset);
       },
       error: (error: unknown) => this.loadError.set(this.errorMessage(error, 'Unable to load saved analysis. Open this page from a project to restore full context.')),
     });

@@ -246,7 +246,7 @@ describe('ProjectSchemaDesignerComponent', () => {
     component.validateSchema();
     expect(component.canContinue()).toBe(true);
     component.continueToRelationships();
-    expect(navigate).toHaveBeenCalledWith(['/projects', 10, 'relationships'], { queryParams: { schemaId: 8, returnTo: 'schema' } });
+    expect(navigate).toHaveBeenCalledWith(['/projects', 10, 'export-deploy']);
   });
 
   it('keeps Continue disabled for blocking validation errors', () => {

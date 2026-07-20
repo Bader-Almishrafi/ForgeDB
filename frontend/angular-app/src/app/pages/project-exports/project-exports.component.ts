@@ -5,7 +5,7 @@ import { finalize } from 'rxjs';
 import { ApiErrorBody, ProjectExportPackage } from '../../services/api.models';
 import { FileDownloadService } from '../../services/file-download.service';
 import { ForgeApiService } from '../../services/forge-api.service';
-import { WorkflowStateService } from '../../services/workflow-state.service';
+import { routeParameter } from '../../services/route-context';
 
 @Component({
   selector: 'app-project-exports',
@@ -28,17 +28,15 @@ export class ProjectExportsComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private fileDownload: FileDownloadService,
-    private workflow: WorkflowStateService,
   ) {}
 
   ngOnInit(): void {
-    this.projectId = Number(this.route.snapshot.paramMap.get('projectId'));
-    if (!Number.isFinite(this.projectId) || this.projectId <= 0) {
+    this.projectId = routeParameter(this.route, 'projectId') ?? 0;
+    if (this.projectId <= 0) {
       this.router.navigate(['/projects']);
       return;
     }
 
-    this.workflow.setProjectId(this.projectId);
     this.loadPackage();
   }
 

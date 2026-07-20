@@ -1,15 +1,64 @@
+import { Route, Routes } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 import { routes } from './app.routes';
 
-describe('application route loading', () => {
-  it('lazy-loads every page component so feature workspaces stay out of the initial bundle', () => {
-    const pageRoutes = routes.flatMap((route) => route.children ?? [route])
-      .filter((route) => route.path !== '**' && route.redirectTo === undefined);
+function flatten(items: Routes, parent = ''): Array<{ fullPath: string; route: Route }> {
+  return items.flatMap((route) => {
+    const fullPath = [parent, route.path].filter(Boolean).join('/');
+    return [{ fullPath, route }, ...flatten(route.children ?? [], fullPath)];
+  });
+}
 
-    expect(pageRoutes.length).toBeGreaterThan(0);
-    for (const route of pageRoutes) {
-      expect(route.component, route.path).toBeUndefined();
-      expect(route.loadComponent, route.path).toBeTypeOf('function');
+describe('simplified application routes', () => {
+  const allRoutes = flatten(routes);
+
+  it('defines Projects plus the five canonical project workflow routes', () => {
+    const paths = allRoutes.map((item) => item.fullPath);
+    expect(paths).toContain('projects');
+    expect(paths).toContain('projects/new');
+    expect(paths).toEqual(expect.arrayContaining([
+      'projects/:projectId/data',
+      'projects/:projectId/analyze',
+      'projects/:projectId/clean',
+      'projects/:projectId/schema',
+      'projects/:projectId/export-deploy',
+    ]));
+
+    const projectRoute = allRoutes.find((item) => item.fullPath === 'projects/:projectId')?.route;
+    const canonicalSteps = projectRoute?.children?.filter((route) => route.loadComponent) ?? [];
+    expect(canonicalSteps.map((route) => route.path)).toEqual(['data', 'analyze', 'clean', 'schema', 'export-deploy']);
+  });
+
+  it('has no ER Diagram route', () => {
+    expect(allRoutes.some((item) => item.fullPath.toLocaleLowerCase().includes('er-diagram'))).toBe(false);
+  });
+
+  it('retains safe project legacy redirects without localStorage context', () => {
+    const projectRoute = allRoutes.find((item) => item.fullPath === 'projects/:projectId')?.route;
+    const redirects = Object.fromEntries((projectRoute?.children ?? [])
+      .filter((route) => typeof route.redirectTo === 'string' && route.path)
+      .map((route) => [route.path!, route.redirectTo]));
+
+    expect(redirects).toMatchObject({
+      overview: 'data',
+      datasets: 'data',
+      upload: 'data',
+      analysis: 'analyze',
+      'data-cleaning': 'clean',
+      'schema-designer': 'schema',
+      relationships: 'schema',
+      exports: 'export-deploy',
+      deployment: 'export-deploy',
+    });
+    expect(allRoutes.find((item) => item.fullPath === 'home')?.route.redirectTo).toBe('projects');
+  });
+
+  it('lazy-loads page and shell components', () => {
+    const componentRoutes = allRoutes.filter((item) => item.route.redirectTo === undefined && item.route.path !== '**');
+    expect(componentRoutes.length).toBeGreaterThan(0);
+    for (const item of componentRoutes) {
+      expect(item.route.component, item.fullPath).toBeUndefined();
+      expect(item.route.loadComponent, item.fullPath).toBeTypeOf('function');
     }
   });
 });

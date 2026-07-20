@@ -47,20 +47,21 @@ export interface ResetPasswordRequest {
   newPassword: string;
 }
 
-// ProjectResponse is the persisted API representation returned after create, read, or update.
-export interface ProjectResponse {
+export interface ProjectSummary {
   id: number;
-  userId: number;
   name: string;
   description?: string | null;
-  dashboardConfig?: string | null;
   createdAt: string;
   updatedAt?: string | null;
+  workflowState: string;
+  currentStep: string;
+  recommendedRoute: string;
+  datasetsCount: number;
 }
 
-// ProjectCreateRequest contains initial input; the server replaces userId with the JWT owner.
+export interface ProjectResponse extends ProjectSummary {}
+
 export interface ProjectCreateRequest {
-  userId: number;
   name: string;
   description?: string | null;
 }
@@ -69,6 +70,38 @@ export interface ProjectCreateRequest {
 export interface ProjectUpdateRequest {
   name: string;
   description?: string | null;
+}
+
+export interface ProjectWorkflowDataset {
+  datasetId: number;
+  datasetName: string;
+  activeVersionId?: number | null;
+  activeVersionNumber?: number | null;
+  rowCount: number;
+  columnCount: number;
+  hasCurrentAnalysis: boolean;
+  requiresAnalysis: boolean;
+  isQualityConfirmed: boolean;
+}
+
+export interface ProjectWorkflow {
+  projectId: number;
+  projectName: string;
+  workflowState: string;
+  currentStep: string;
+  nextStep?: string | null;
+  recommendedRoute: string;
+  canImport: boolean;
+  canAnalyze: boolean;
+  canClean: boolean;
+  canBuildSchema: boolean;
+  canExport: boolean;
+  canDeploy: boolean;
+  blockerCodes: string[];
+  blockingReasons: string[];
+  datasets: ProjectWorkflowDataset[];
+  schemaStatus: string;
+  latestDeploymentStatus?: string | null;
 }
 
 export interface DatasetResponse {

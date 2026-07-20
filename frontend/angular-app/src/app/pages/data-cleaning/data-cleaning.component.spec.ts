@@ -151,6 +151,6 @@ describe('DataCleaningComponent', () => {
     expect(navigate).not.toHaveBeenCalled();
     component.summary.set({ ...summary, schemaReady: true });
     component.continueToSchema();
-    expect(navigate).toHaveBeenCalledWith(['/projects', 10, 'schema-designer'], { queryParams: { returnTo: 'data-cleaning' } });
+    expect(navigate).toHaveBeenCalledWith(['/projects', 10, 'schema'], { queryParams: {} });
   });
 });

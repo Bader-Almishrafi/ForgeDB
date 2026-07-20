@@ -4,9 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 import { ApiErrorBody, ProjectResponse } from '../../services/api.models';
-import { AuthService } from '../../services/auth.service';
 import { ForgeApiService } from '../../services/forge-api.service';
-import { WorkflowStateService } from '../../services/workflow-state.service';
 import { ProjectCardComponent } from '../../shared/project-card/project-card.component';
 
 type ProjectSort = 'modified' | 'created' | 'name';
@@ -40,8 +38,6 @@ export class ProjectsComponent implements OnInit {
 
   constructor(
     private readonly api: ForgeApiService,
-    private readonly auth: AuthService,
-    private readonly workflow: WorkflowStateService,
     private readonly router: Router,
     private readonly route: ActivatedRoute,
   ) {}
@@ -58,14 +54,9 @@ export class ProjectsComponent implements OnInit {
   // Loads only the signed-in user's projects and uses finalize to clear the loading state on
   // either success or error.
   loadProjects(): void {
-    const userId = this.auth.userId();
-    if (userId === null) {
-      return;
-    }
-
     this.loadError.set('');
     this.loading.set(true);
-    this.api.getUserProjects(userId)
+    this.api.getProjects()
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: (projects) => this.projects.set(projects),
@@ -92,11 +83,8 @@ export class ProjectsComponent implements OnInit {
     }
   }
 
-  // Persists the selected project in WorkflowStateService so later project pages and navigation
-  // can recover its ID and name, then opens the overview route.
   openProject(project: ProjectResponse): void {
-    this.workflow.setProject(project);
-    this.router.navigate(['/projects', project.id, 'overview']);
+    void this.router.navigateByUrl(project.recommendedRoute || `/projects/${project.id}/data`);
   }
 
   // Replaces the edited response locally after a card emits it, avoiding a full list reload.

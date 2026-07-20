@@ -7,7 +7,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, map, of, Subject, switchMap, tap } from 'rxjs';
 import { ApiConnectionTest, ApiJsonImportRequest, ApiJsonPreview, DatasetAnalysisResponse, DatasetPreview, DatasetResponse, ExcelWorkbookPreview, ProjectResponse } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
-import { WorkflowStateService } from '../../services/workflow-state.service';
+import { routeParameter } from '../../services/route-context';
 import { formatFileSize, isCsvFile } from '../project-create/project-create.utils';
 
 type WorkspaceMode = 'selected' | 'all';
@@ -33,7 +33,6 @@ export class DataSourcesComponent implements OnInit {
   private readonly api = inject(ForgeApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly workflow = inject(WorkflowStateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly previewRequests = new Subject<number>();
   private readonly analysisRequests = new Subject<number>();
@@ -161,13 +160,12 @@ export class DataSourcesComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.projectId = Number(this.route.snapshot.paramMap.get('projectId'));
-    if (!Number.isFinite(this.projectId) || this.projectId <= 0) {
+    this.projectId = routeParameter(this.route, 'projectId') ?? 0;
+    if (this.projectId <= 0) {
       void this.router.navigate(['/projects']);
       return;
     }
 
-    this.workflow.setProjectId(this.projectId);
     this.loadProject();
     this.loadDatasets();
   }
@@ -178,7 +176,6 @@ export class DataSourcesComponent implements OnInit {
     this.api.getProject(this.projectId).pipe(finalize(() => this.projectLoading.set(false))).subscribe({
       next: (project) => {
         this.project.set(project);
-        this.workflow.setProject(project);
       },
       error: (error: unknown) => this.projectError.set(
         error instanceof HttpErrorResponse && error.status === 404 ? 'Project not found.' : this.errorMessage(error, 'Unable to load project.'),
@@ -202,7 +199,6 @@ export class DataSourcesComponent implements OnInit {
     if (!this.datasets().some((item) => item.id === dataset.id)) return;
 
     this.selectedDatasetId.set(dataset.id);
-    this.workflow.setDataset(dataset);
     this.preview.set(null);
     this.previewError.set('');
     this.analysis.set(null);
@@ -355,9 +351,8 @@ export class DataSourcesComponent implements OnInit {
     const dataset = this.selectedDataset();
     if (!dataset) return;
 
-    this.workflow.setDataset(dataset);
-    void this.router.navigate(['/datasets', dataset.id, 'analyze'], {
-      queryParams: { returnProject: this.projectId, returnTo: 'data-sources' },
+    void this.router.navigate(['/projects', this.projectId, 'analyze'], {
+      queryParams: { datasetId: dataset.id },
     });
   }
 
@@ -459,7 +454,6 @@ export class DataSourcesComponent implements OnInit {
         this.uploadFile.set(null);
         this.excelPreview.set(null);
         this.uploadOpen.set(false);
-        this.workflow.setDataset(dataset);
         this.loadDatasets(dataset.id);
       },
       error: (error: unknown) => this.uploadError.set(this.errorMessage(error, `Unable to import the ${this.uploadSource() === 'excel' ? 'Excel workbook' : 'CSV file'}.`)),
@@ -575,7 +569,6 @@ export class DataSourcesComponent implements OnInit {
         this.apiPreview.set(null);
         this.apiUrl.set('');
         this.apiArrayPath.set('');
-        this.workflow.setDataset(dataset);
         this.loadDatasets(dataset.id);
       },
       error: (error: unknown) => this.uploadError.set(this.errorMessage(error, 'Unable to import data from this API.')),
@@ -591,7 +584,6 @@ export class DataSourcesComponent implements OnInit {
     this.selectionNotice.set('');
     if (datasets.length === 0) {
       this.selectedDatasetId.set(null);
-      this.workflow.clearDataset();
       this.preview.set(null);
       this.analysis.set(null);
       void this.router.navigate([], {
@@ -606,7 +598,7 @@ export class DataSourcesComponent implements OnInit {
     const rawQueryId = this.route.snapshot.queryParamMap.get('datasetId');
     const queryId = rawQueryId ? Number(rawQueryId) : undefined;
     const requestedId = Number.isFinite(queryId) && queryId && queryId > 0 ? queryId : undefined;
-    const ids = [preferredId, requestedId, this.selectedDatasetId(), this.workflow.datasetId()];
+    const ids = [preferredId, requestedId, this.selectedDatasetId()];
     const selectedId = ids.find((id) => datasets.some((dataset) => dataset.id === id));
     const selected = datasets.find((dataset) => dataset.id === selectedId) ?? datasets[0];
 

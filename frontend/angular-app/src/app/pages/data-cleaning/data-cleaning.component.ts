@@ -38,7 +38,7 @@ import {
   ProjectCleaningSummary,
 } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
-import { WorkflowStateService } from '../../services/workflow-state.service';
+import { routeParameter } from '../../services/route-context';
 
 type CleaningScope = 'project' | number;
 type RailMode = 'type' | 'dataset';
@@ -88,7 +88,6 @@ export class DataCleaningComponent implements OnInit {
   private readonly api = inject(ForgeApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly workflow = inject(WorkflowStateService);
 
   readonly previewDialog = viewChild<ElementRef<HTMLDialogElement>>('previewDialog');
   readonly fixAllDialog = viewChild<ElementRef<HTMLDialogElement>>('fixAllDialog');
@@ -169,8 +168,8 @@ export class DataCleaningComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.projectId = Number(this.route.snapshot.paramMap.get('projectId'));
-    if (!Number.isFinite(this.projectId) || this.projectId <= 0) {
+    this.projectId = routeParameter(this.route, 'projectId') ?? 0;
+    if (this.projectId <= 0) {
       void this.router.navigate(['/projects']);
       return;
     }
@@ -185,14 +184,12 @@ export class DataCleaningComponent implements OnInit {
 
   selectProjectScope(): void {
     this.scope.set('project');
-    this.workflow.clearDataset();
     this.columnFilter.set('all');
     this.updateUrl();
   }
 
   selectDataset(dataset: DatasetCleaningSummary): void {
     this.scope.set(dataset.datasetId);
-    this.workflow.setDatasetId(dataset.datasetId, dataset.datasetName, dataset.requiresReanalysis ? 'Cleaned - Analysis Required' : 'Analyzed');
     this.columnFilter.set('all');
     this.updateUrl();
     this.loadVersions(dataset.datasetId);
@@ -403,7 +400,8 @@ export class DataCleaningComponent implements OnInit {
 
   continueToSchema(): void {
     if (!this.summary()?.schemaReady) return;
-    void this.router.navigate(['/projects', this.projectId, 'schema-designer'], { queryParams: { returnTo: 'data-cleaning' } });
+    const datasetId = typeof this.scope() === 'number' ? this.scope() : null;
+    void this.router.navigate(['/projects', this.projectId, 'schema'], { queryParams: datasetId ? { datasetId } : {} });
   }
 
   versionLabel(dataset: DatasetCleaningSummary): string {
@@ -439,7 +437,6 @@ export class DataCleaningComponent implements OnInit {
         this.summary.set(summary);
         this.suggestions.set(suggestions);
         this.history.set(history.entries);
-        this.workflow.setProjectId(this.projectId, summary.projectName);
         if (typeof this.scope() === 'number' && !summary.datasets.some((dataset) => dataset.datasetId === this.scope())) this.scope.set('project');
         if (typeof this.scope() === 'number') this.loadVersions(this.scope() as number);
         this.loading.set(false);
