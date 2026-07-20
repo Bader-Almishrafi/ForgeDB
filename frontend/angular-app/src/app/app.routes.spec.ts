@@ -65,6 +65,7 @@ describe('simplified application routes', () => {
     const loaders = allRoutes.map((item) => item.route.loadComponent?.toString() ?? '').join('\n');
     expect(loaders).not.toContain("pages/analysis");
     expect(loaders).not.toContain("pages/dashboard");
+    expect(loaders).not.toContain("pages/project-relationships");
   });
 
   it('lazy-loads page and shell components', () => {

@@ -1,457 +1,387 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DesignModelResponse, ProjectCleaningSummary } from '../../services/api.models';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { DatasetVersion, DesignModelResponse, ProjectWorkflow, SaveDesignDraftRequest } from '../../services/api.models';
 import { DesignApiService } from '../../services/design-api.service';
 import { ForgeApiService } from '../../services/forge-api.service';
+import { ProjectWorkflowContextService } from '../../services/project-workflow-context.service';
 import { ProjectSchemaDesignerComponent } from './project-schema-designer.component';
 
-const schema: DesignModelResponse = {
-  id: 8, projectId: 10, revision: 2, status: 'Draft', isStale: false, canContinue: false,
-  generatedAt: '2026-07-12T00:00:00Z', validatedAt: null, lastModifiedBy: 'Owner', source: 'Confirmed Cleaned Data',
-  sourceVersions: { 1: 11, 2: 12 }, sqlPreview: '', layout: null, createdAt: '', updatedAt: '',
+const baseSchema = (): DesignModelResponse => ({
+  id: 8,
+  projectId: 10,
+  revision: 2,
+  status: 'Draft',
+  isStale: false,
+  canContinue: false,
+  generatedAt: '2026-07-12T00:00:00Z',
+  validatedAt: null,
+  lastModifiedBy: 'Owner',
+  source: 'Confirmed active versions',
+  sourceVersions: { 1: 11, 2: 12 },
+  layout: null,
+  createdAt: '',
+  updatedAt: '',
   tables: [
-    { id: 1, name: 'customers', sourceDatasetId: 1, sourceDatasetVersionId: 11, sourceName: 'customers.csv', rowCount: 3, origin: 'generated', columns: [
-      { id: 10, name: 'id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: false, isUnique: false, ordinal: 0, sourceColumnName: 'id', origin: 'generated', defaultValue: null, isAutoIncrement: false },
-      { id: 11, name: 'full_name', sqlType: 'TEXT', isNullable: true, isPrimaryKey: false, isUnique: false, ordinal: 1, sourceColumnName: 'Customer Name', origin: 'generated' },
-    ] },
-    { id: 2, name: 'orders', sourceDatasetId: 2, sourceDatasetVersionId: 12, sourceName: 'orders.csv', rowCount: 4, origin: 'generated', columns: [
-      { id: 20, name: 'id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: false, isUnique: false, ordinal: 0, sourceColumnName: 'id', origin: 'generated', defaultValue: null, isAutoIncrement: false },
-    ] },
+    {
+      id: 1,
+      name: 'customers',
+      sourceDatasetId: 1,
+      sourceDatasetVersionId: 11,
+      sourceName: 'customers.csv',
+      rowCount: 3,
+      origin: 'generated',
+      columns: [
+        { id: 10, name: 'id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: true, isUnique: false, ordinal: 0, sourceColumnName: 'Customer ID', origin: 'generated', defaultValue: null, isAutoIncrement: false },
+        { id: 11, name: 'full_name', sqlType: 'TEXT', isNullable: true, isPrimaryKey: false, isUnique: false, ordinal: 1, sourceColumnName: 'Customer Name', origin: 'generated', defaultValue: null, isAutoIncrement: false },
+      ],
+    },
+    {
+      id: 2,
+      name: 'orders',
+      sourceDatasetId: 2,
+      sourceDatasetVersionId: 12,
+      sourceName: 'orders.xlsx',
+      rowCount: 4,
+      origin: 'generated',
+      columns: [
+        { id: 20, name: 'id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: true, isUnique: false, ordinal: 0, sourceColumnName: 'Order ID', origin: 'generated', defaultValue: null, isAutoIncrement: false },
+        { id: 21, name: 'customer_id', sqlType: 'INTEGER', isNullable: false, isPrimaryKey: false, isUnique: false, ordinal: 1, sourceColumnName: 'Customer ID', origin: 'generated', defaultValue: null, isAutoIncrement: false },
+      ],
+    },
   ],
-  relationships: [], validationIssues: [],
+  relationships: [],
+  validationIssues: [],
+});
+
+const baseWorkflow = (): ProjectWorkflow => ({
+  projectId: 10,
+  projectName: 'Schema project',
+  workflowState: 'SchemaDraft',
+  currentStep: 'Schema',
+  nextStep: 'ExportDeploy',
+  recommendedRoute: '/projects/10/schema',
+  canImport: true,
+  canAnalyze: true,
+  canClean: true,
+  canBuildSchema: true,
+  canExport: false,
+  canDeploy: false,
+  blockerCodes: ['schema_invalid'],
+  blockingReasons: ['Complete and validate the schema before export or deployment.'],
+  schemaStatus: 'Draft',
+  datasets: [
+    { datasetId: 1, datasetName: 'customers', activeVersionId: 11, activeVersionNumber: 2, rowCount: 3, columnCount: 2, hasCurrentAnalysis: true, requiresAnalysis: false, isQualityConfirmed: true },
+    { datasetId: 2, datasetName: 'orders', activeVersionId: 12, activeVersionNumber: 1, rowCount: 4, columnCount: 2, hasCurrentAnalysis: true, requiresAnalysis: false, isQualityConfirmed: true },
+  ],
+});
+
+const versions: Record<number, DatasetVersion[]> = {
+  1: [{ id: 11, datasetId: 1, parentVersionId: 7, versionNumber: 2, isRawOriginal: false, isActive: true, rowCount: 3, columnCount: 2, operationSummary: 'Fill missing values', createdAt: '', analyzedAt: '', createdBy: 'Owner' }],
+  2: [{ id: 12, datasetId: 2, parentVersionId: null, versionNumber: 1, isRawOriginal: true, isActive: true, rowCount: 4, columnCount: 2, operationSummary: 'Original imported dataset', createdAt: '', analyzedAt: '', createdBy: 'Owner' }],
 };
 
-const cleaning: ProjectCleaningSummary = {
-  projectId: 10, projectName: 'Project', totalDatasets: 2, analyzedDatasets: 2, unanalyzedDatasets: 0,
-  totalRows: 7, totalColumns: 3, totalIssues: 0, rowsAffected: 0, cellsAffected: 0, missingValues: 0,
-  duplicateRows: 0, dataQualityScore: null, lastAnalyzedAt: '', hasCleaningBatches: true, requiresReanalysis: false,
-  canConfirmQuality: true, qualityConfirmed: true, schemaReady: true, datasets: [], issueCounts: {},
-};
+interface SetupOptions {
+  schema?: DesignModelResponse | null;
+  workflow?: ProjectWorkflow;
+  datasetId?: string | null;
+}
+
+async function setup(options: SetupOptions = {}): Promise<{
+  component: ProjectSchemaDesignerComponent;
+  fixture: ComponentFixture<ProjectSchemaDesignerComponent>;
+  designApi: Record<string, ReturnType<typeof vi.fn>>;
+  workflowContext: Record<string, unknown>;
+  setSchema: (schema: DesignModelResponse | null) => void;
+  setWorkflow: (workflow: ProjectWorkflow) => void;
+}> {
+  let currentSchema = options.schema === undefined ? baseSchema() : options.schema;
+  let currentWorkflow = options.workflow ?? baseWorkflow();
+  const workflowSignal = signal<ProjectWorkflow | null>(structuredClone(currentWorkflow));
+  const errorSignal = signal(null);
+  const workflowContext = {
+    workflow: workflowSignal.asReadonly(),
+    error: errorSignal.asReadonly(),
+    setDatasetFromQuery: vi.fn(),
+    load: vi.fn((_projectId: number, _force = false) => {
+      workflowSignal.set(structuredClone(currentWorkflow));
+      return of(structuredClone(currentWorkflow));
+    }),
+  };
+  const designApi: Record<string, ReturnType<typeof vi.fn>> = {
+    getSchema: vi.fn(() => of(currentSchema ? structuredClone(currentSchema) : null)),
+    generateSchema: vi.fn(() => {
+      currentSchema = baseSchema();
+      return of(structuredClone(currentSchema));
+    }),
+    saveSchemaDraft: vi.fn((_projectId: number, _revision: number, request: SaveDesignDraftRequest) => {
+      if (!currentSchema) throw new Error('missing schema');
+      currentSchema = {
+        ...structuredClone(currentSchema),
+        revision: currentSchema.revision + 1,
+        status: 'Draft',
+        tables: currentSchema.tables.map((table) => ({
+          ...table,
+          name: request.tables.find((item) => item.id === table.id)?.name ?? table.name,
+          columns: table.columns.map((column) => {
+            const saved = request.columns.find((item) => item.id === column.id);
+            return saved ? { ...column, ...saved, sqlType: saved.dataType } : column;
+          }),
+        })),
+      };
+      return of(structuredClone(currentSchema));
+    }),
+    validateSchema: vi.fn(() => of(currentSchema ? structuredClone(currentSchema) : null)),
+    getSchemaSql: vi.fn(() => of({ designId: 8, revision: currentSchema?.revision ?? 0, sql: 'CREATE TABLE customers (id INTEGER PRIMARY KEY);' })),
+    getSuggestions: vi.fn(() => of([])),
+    detectSuggestions: vi.fn(() => of([])),
+    acceptSuggestion: vi.fn(),
+    rejectSuggestion: vi.fn(),
+    createRelationship: vi.fn(),
+    updateRelationship: vi.fn(),
+    deleteRelationship: vi.fn(),
+    isRevisionConflict: vi.fn((error: { status?: number }) => error?.status === 409),
+  };
+  const forgeApi = {
+    getDatasetVersions: vi.fn((_projectId: number, datasetId: number) => of(structuredClone(versions[datasetId] ?? []))),
+  };
+  await TestBed.configureTestingModule({
+    imports: [ProjectSchemaDesignerComponent],
+    providers: [
+      provideRouter([]),
+      { provide: DesignApiService, useValue: designApi },
+      { provide: ForgeApiService, useValue: forgeApi },
+      { provide: ProjectWorkflowContextService, useValue: workflowContext },
+      {
+        provide: ActivatedRoute,
+        useValue: {
+          snapshot: {
+            paramMap: convertToParamMap({ projectId: '10' }),
+            queryParamMap: convertToParamMap(options.datasetId ? { datasetId: options.datasetId } : {}),
+          },
+        },
+      },
+    ],
+  }).compileComponents();
+  const fixture = TestBed.createComponent(ProjectSchemaDesignerComponent);
+  const component = fixture.componentInstance;
+  fixture.detectChanges();
+  return {
+    component,
+    fixture,
+    designApi,
+    workflowContext,
+    setSchema: (schema) => { currentSchema = schema; },
+    setWorkflow: (workflow) => { currentWorkflow = workflow; },
+  };
+}
+
+afterEach(() => {
+  TestBed.resetTestingModule();
+  vi.restoreAllMocks();
+});
 
 describe('ProjectSchemaDesignerComponent', () => {
-  let designApi: Record<string, ReturnType<typeof vi.fn>>;
-  let forgeApi: Record<string, ReturnType<typeof vi.fn>>;
-  let component: ProjectSchemaDesignerComponent;
-  let fixture: ComponentFixture<ProjectSchemaDesignerComponent>;
-
-  beforeEach(async () => {
-    designApi = {
-      getSchema: vi.fn(() => of(structuredClone(schema))),
-      generateSchema: vi.fn(() => of(structuredClone(schema))),
-      saveSchemaDraft: vi.fn(() => of(structuredClone(schema))),
-      validateSchema: vi.fn(() => of({ ...structuredClone(schema), revision: 3, status: 'Valid', canContinue: true })),
-      getSchemaSql: vi.fn(() => of({ designId: 8, revision: 2, sql: component?.liveSql?.() ?? '' })),
-    };
-    forgeApi = {
-      getProject: vi.fn(() => of({ id: 10, userId: 1, name: 'Project', createdAt: '' })),
-      getProjectCleaningSummary: vi.fn(() => of(structuredClone(cleaning))),
-    };
-    await TestBed.configureTestingModule({
-      imports: [ProjectSchemaDesignerComponent],
-      providers: [
-        provideRouter([]),
-        { provide: DesignApiService, useValue: designApi },
-        { provide: ForgeApiService, useValue: forgeApi },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ projectId: '10' }) } } },
-      ],
-    }).compileComponents();
-    fixture = TestBed.createComponent(ProjectSchemaDesignerComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+  it('uses the backend workflow to block Schema actions and display the first reason', async () => {
+    const workflow = { ...baseWorkflow(), canBuildSchema: false, blockerCodes: ['analysis_stale'], blockingReasons: ['Re-analyze the active dataset version.'] };
+    const { component, fixture, designApi } = await setup({ workflow });
+    expect(component.schemaBlocked()).toBe(true);
+    expect(fixture.nativeElement.querySelector('[data-testid="schema-workflow-blocker"]').textContent).toContain('Re-analyze the active dataset version.');
+    component.generateSchema();
+    component.saveDraft();
+    component.validateSchema();
+    expect(designApi['generateSchema']).not.toHaveBeenCalled();
+    expect(designApi['saveSchemaDraft']).not.toHaveBeenCalled();
+    expect(designApi['validateSchema']).not.toHaveBeenCalled();
   });
 
-  function selectEl(columnId: number): HTMLSelectElement {
-    return fixture.nativeElement.querySelector(`#column-type-${columnId}`) as HTMLSelectElement;
-  }
-  function fireSelect(select: HTMLSelectElement, value: string): void {
-    select.value = value;
-    select.dispatchEvent(new Event('change'));
+  it('renders the no-schema state and generates from the backend', async () => {
+    const workflow = { ...baseWorkflow(), schemaStatus: 'None', blockerCodes: ['schema_required'], blockingReasons: ['Generate a schema.'] };
+    const { component, fixture, designApi, workflowContext } = await setup({ schema: null, workflow });
+    expect(fixture.nativeElement.querySelector('[data-testid="schema-empty-state"]')).toBeTruthy();
+    component.generateSchema();
     fixture.detectChanges();
-  }
-  function checkboxEl(idPrefix: string, columnId: number): HTMLInputElement {
-    return fixture.nativeElement.querySelector(`#${idPrefix}-${columnId}`) as HTMLInputElement;
-  }
-  function toggle(input: HTMLInputElement, checked: boolean): void {
-    input.checked = checked;
-    input.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-  }
-  function textInput(id: string): HTMLInputElement {
-    return fixture.nativeElement.querySelector(`#${id}`) as HTMLInputElement;
-  }
-  function typeInto(input: HTMLInputElement, value: string): void {
-    input.value = value;
-    input.dispatchEvent(new Event('input'));
-    fixture.detectChanges();
-  }
+    expect(designApi['generateSchema']).toHaveBeenCalledWith(10, undefined);
+    expect(component.selectedTableId()).toBe(1);
+    expect(workflowContext['load']).toHaveBeenCalledWith(10, true);
+  });
 
-  it('loads the project schema route and selects the first table', () => {
-    expect(component.projectId).toBe(10);
+  it('loads an existing schema, selects tables, and displays exact source versions', async () => {
+    const { component, fixture, designApi } = await setup();
     expect(designApi['getSchema']).toHaveBeenCalledWith(10);
     expect(component.selectedTableId()).toBe(1);
-  });
-
-  it('handles the typed empty-schema response without a 404 request', () => {
-    designApi['getSchema'].mockReturnValueOnce(of(null));
-    component.loadWorkspace();
-    fixture.detectChanges();
-
-    expect(component.tableCount()).toBe(0);
-    expect(component.selectedTable()).toBeNull();
-    expect(component.feedback()).toBeNull();
-  });
-
-  it('calls real schema generation and respects the cleaning gate', () => {
-    component.design.set(null);
-    component.generateSchema();
-    expect(designApi['generateSchema']).toHaveBeenCalledWith(10, undefined);
-    component.cleaning.set({ ...cleaning, schemaReady: false });
-    expect(component.cleaning()?.schemaReady).toBe(false);
-  });
-
-  it('verifies equivalent backend SQL across host line endings', () => {
-    const windowsSql = component.liveSql().replace(/\n/g, '\r\n');
-    designApi['getSchemaSql'].mockReturnValue(of({ designId: 8, revision: 2, sql: windowsSql }));
-
-    component.refreshBackendSql();
-
-    expect(component.feedback()?.title).toBe('SQL verified');
-  });
-
-  it('selects generated tables', () => {
     component.selectTable(2);
     expect(component.selectedTable()?.name).toBe('orders');
+    const sources = fixture.nativeElement.querySelector('[data-testid="schema-source-versions"]') as HTMLElement;
+    expect(sources.textContent).toContain('customers');
+    expect(sources.textContent).toContain('v2');
+    expect(sources.textContent).toContain('Cleaned');
+    expect(sources.textContent).toContain('Quality confirmed');
+    expect(sources.textContent).toContain('Analyzed');
   });
 
-  it('renames tables and columns and updates live SQL and ER labels immediately', () => {
+  it('marks a stale schema and prevents save, validation, relationships, and continuation', async () => {
+    const stale = { ...baseSchema(), isStale: true };
+    const workflow = { ...baseWorkflow(), schemaStatus: 'Stale', blockerCodes: ['schema_stale'], blockingReasons: ['The schema references an older version.'] };
+    const { component, fixture, designApi } = await setup({ schema: stale, workflow });
+    expect(fixture.nativeElement.querySelector('[data-testid="stale-schema"]')).toBeTruthy();
+    expect(component.canValidate()).toBe(false);
+    expect(component.canMutateRelationships()).toBe(false);
+    expect(component.canContinue()).toBe(false);
+    component.validateSchema();
+    expect(designApi['validateSchema']).not.toHaveBeenCalled();
+  });
+
+  it('confirms regeneration and warns that edits and relationships may be replaced', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const { component, designApi } = await setup();
+    component.updateTableName(1, 'local_unsaved_name');
+    component.generateSchema();
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Unsaved edits will be lost'));
+    expect(designApi['generateSchema']).toHaveBeenCalledWith(10, 2);
+    expect(component.dirty()).toBe(false);
+  });
+
+  it('edits table and column fields with primary-key and identity rules', async () => {
+    const { component } = await setup();
     component.updateTableName(1, 'customer_records');
     component.updateColumnName(11, 'display_name');
-    expect(component.liveSql()).toContain('CREATE TABLE customer_records');
-    expect(component.liveSql()).toContain('display_name TEXT');
-    expect(component.tableName(1)).toBe('customer_records');
-    expect(component.columnName(11)).toBe('display_name');
-    expect(component.dirty()).toBe(true);
+    component.updateUnique(11, true);
+    component.updatePrimaryKey(11, true);
+    const primary = component.selectedTable()?.columns[1];
+    expect(primary).toMatchObject({ name: 'display_name', isPrimaryKey: true, isNullable: false, isUnique: false });
+    component.updateAutoIncrement(10, true);
+    expect(component.selectedTable()?.columns[0].isAutoIncrement).toBe(true);
+    component.updateColumnDataType(10, 'TEXT');
+    expect(component.selectedTable()?.columns[0].isAutoIncrement).toBe(false);
   });
 
-  it('keeps live SQL aligned with backend FK ordering and indexes', () => {
-    component.design.set({ ...structuredClone(schema), relationships: [{
-      id: 30, fromColumnId: 10, fromTableId: 1, fromTableName: 'customers', fromColumnName: 'id',
-      toColumnId: 20, toTableId: 2, toTableName: 'orders', toColumnName: 'id',
-      cardinality: 'many-to-one', onDelete: 'no-action', origin: 'user',
-    }] });
-    const sql = component.liveSql();
-    expect(sql.indexOf('CREATE TABLE orders')).toBeLessThan(sql.indexOf('CREATE TABLE customers'));
-    expect(sql).toContain('FOREIGN KEY (id) REFERENCES orders (id) ON DELETE NO ACTION');
-    expect(sql).toContain('CREATE INDEX ix_customers_id ON customers (id);');
-  });
-
-  it('rejects invalid and PostgreSQL-reserved names locally', () => {
-    component.updateTableName(1, 'bad-name');
-    component.updateColumnName(11, 'select');
-    expect(component.tableError(1)).toContain('letters');
-    expect(component.columnError(11)).toContain('reserved');
-    expect(component.hasNameErrors()).toBe(true);
-  });
-
-  it('detects duplicate table and column names case-insensitively', () => {
+  it('provides VARCHAR length and prevents duplicate table and column names', async () => {
+    const { component } = await setup();
+    component.updateColumnDataType(11, 'VARCHAR');
+    component.updateVarcharLength(11, 120);
+    expect(component.selectedTable()?.columns[1].sqlType).toBe('VARCHAR(120)');
     component.updateTableName(2, 'CUSTOMERS');
     component.updateColumnName(11, 'ID');
     expect(component.tableError(1)).toContain('Duplicate');
-    expect(component.tableError(2)).toContain('Duplicate');
     expect(component.columnError(10)).toContain('Duplicate');
-    expect(component.columnError(11)).toContain('Duplicate');
   });
 
-  it('sends only whitelisted table and column schema fields in Save Draft', () => {
+  it('saves only persisted table and column fields, reloads, clears dirty state, and refreshes workflow', async () => {
+    const { component, designApi, workflowContext } = await setup();
     component.updateTableName(1, 'customer_records');
+    component.updateColumnDataType(11, 'VARCHAR');
+    component.updateVarcharLength(11, 120);
     component.saveDraft();
     expect(designApi['saveSchemaDraft']).toHaveBeenCalledWith(10, 2, expect.objectContaining({
       tables: expect.arrayContaining([{ id: 1, name: 'customer_records' }]),
-      columns: expect.arrayContaining([{
-        id: 10, name: 'id', dataType: 'INTEGER', isNullable: false, isPrimaryKey: false,
-        isUnique: false, defaultValue: null, isAutoIncrement: false,
-      }]),
+      columns: expect.arrayContaining([expect.objectContaining({ id: 11, dataType: 'VARCHAR(120)' })]),
     }));
-  });
-
-  it('toggles Nullable and updates SQL immediately', () => {
-    component.updateNullable(11, false);
-    expect(component.selectedTable()?.columns[1].isNullable).toBe(false);
-    expect(component.liveSql()).toContain('full_name TEXT NOT NULL');
-    expect(component.dirty()).toBe(true);
-  });
-
-  it('selecting Primary Key forces NOT NULL and clears redundant Unique', () => {
-    component.updateUnique(11, true);
-    component.updatePrimaryKey(11, true);
-    const column = component.selectedTable()?.columns[1];
-    expect(column?.isPrimaryKey).toBe(true);
-    expect(column?.isNullable).toBe(false);
-    expect(column?.isUnique).toBe(false);
-    expect(component.liveSql()).toContain('PRIMARY KEY (full_name)');
-    expect(component.liveSql()).not.toContain('full_name TEXT NOT NULL UNIQUE');
-  });
-
-  it('toggles a real Unique constraint for a non-PK column', () => {
-    component.updateUnique(11, true);
-    expect(component.selectedTable()?.columns[1].isUnique).toBe(true);
-    expect(component.liveSql()).toContain('full_name TEXT UNIQUE');
-  });
-
-  it('changes the supported data type and rejects an invalid type selection', () => {
-    component.updateColumnDataType(11, 'VARCHAR(255)');
-    expect(component.liveSql()).toContain('full_name VARCHAR(255)');
-    component.updateColumnDataType(11, 'MONEY');
-    expect(component.columnError(11, 'dataType')).toContain('supported');
-    expect(component.hasDraftErrors()).toBe(true);
-  });
-
-  it('enables identity only for compatible integer types and disables it after an incompatible type change', () => {
-    component.updateAutoIncrement(10, true);
-    expect(component.liveSql()).toContain('id INTEGER GENERATED BY DEFAULT AS IDENTITY NOT NULL');
-    component.updateColumnDataType(10, 'TEXT');
-    expect(component.selectedTable()?.columns[0].isAutoIncrement).toBe(false);
-    component.updateAutoIncrement(11, true);
-    expect(component.selectedTable()?.columns[1].isAutoIncrement).toBe(false);
-  });
-
-  it('validates defaults by selected type and renders safe defaults live', () => {
-    component.updateDefaultValue(11, "'guest'");
-    expect(component.columnError(11, 'defaultValue')).toBe('');
-    expect(component.liveSql()).toContain("full_name TEXT DEFAULT 'guest'");
-    component.updateDefaultValue(11, "'guest'; DROP TABLE users;");
-    expect(component.columnError(11, 'defaultValue')).toContain('Statements');
-  });
-
-  it('restores every saved column value after a workspace refresh', () => {
-    const persisted = structuredClone(schema);
-    persisted.revision = 3;
-    Object.assign(persisted.tables[0].columns[0], {
-      sqlType: 'BIGINT', isNullable: false, isPrimaryKey: true, isUnique: false,
-      defaultValue: null, isAutoIncrement: true,
-    });
-    designApi['getSchema'].mockReturnValue(of(persisted));
-    component.loadWorkspace();
-    const restored = component.selectedTable()?.columns[0];
-    expect(restored).toMatchObject({ sqlType: 'BIGINT', isNullable: false, isPrimaryKey: true, isUnique: false, isAutoIncrement: true });
+    expect(component.design()?.revision).toBe(3);
     expect(component.dirty()).toBe(false);
+    expect(workflowContext['load']).toHaveBeenCalledWith(10, true);
   });
 
-  it('uses backend validation state to enable Relationships only after a saved valid draft', () => {
-    const router = TestBed.inject(Router);
-    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    component.validateSchema();
-    expect(component.canContinue()).toBe(true);
-    component.continueToRelationships();
-    expect(navigate).toHaveBeenCalledWith(['/projects', 10, 'export-deploy']);
-  });
-
-  it('keeps Continue disabled for blocking validation errors', () => {
-    component.design.set({ ...structuredClone(schema), status: 'Invalid', canContinue: false, validationIssues: [{ code: 'bad', severity: 'error', message: 'Blocking' }] });
-    expect(component.canContinue()).toBe(false);
-  });
-
-  it('offers an explicit reload on a 409 save conflict instead of retrying the stale revision forever', () => {
-    designApi['saveSchemaDraft'].mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'Stale revision' } })));
-    component.updateTableName(1, 'customer_records');
-
-    component.saveDraft();
-
-    expect(component.conflict()).toBe(true);
-    expect(component.feedback()?.title).toBe('Schema changed elsewhere');
-
-    const reloaded = { ...structuredClone(schema), revision: 5 };
-    designApi['getSchema'].mockReturnValue(of(reloaded));
-    component.reloadAfterConflict();
-
-    expect(designApi['getSchema']).toHaveBeenCalledTimes(2);
-    expect(component.conflict()).toBe(false);
-    expect(component.design()?.revision).toBe(5);
-    expect(component.dirty()).toBe(false);
-  });
-
-  it('protects unsaved changes with the route guard contract', () => {
+  it('protects unsaved changes through the route guard contract', async () => {
+    const { component } = await setup();
     component.updateTableName(1, 'customer_records');
     const decision = component.canDeactivate() as Observable<boolean>;
     let result: boolean | undefined;
-    decision.subscribe(value => result = value);
+    decision.subscribe((value) => result = value);
     expect(component.leaveDialogOpen()).toBe(true);
     component.resolveLeaveDialog(false);
     expect(result).toBe(false);
   });
 
-  it('closes the unsaved-changes dialog on Escape without discarding edits', () => {
+  it('shows revision conflict recovery without overwriting server data', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const { component, designApi, setSchema } = await setup();
+    designApi['saveSchemaDraft'].mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'Stale revision' } })));
     component.updateTableName(1, 'customer_records');
-    const decision = component.canDeactivate() as Observable<boolean>;
-    let result: boolean | undefined;
-    decision.subscribe(value => result = value);
-    expect(component.leaveDialogOpen()).toBe(true);
-
-    component.onEscapeKey();
-
-    expect(result).toBe(false);
-    expect(component.leaveDialogOpen()).toBe(false);
-    expect(component.dirty()).toBe(true);
-  });
-
-  // ---- rendered-DOM assertions (the Data Type control must be a real <select>, not a
-  // free-text input with a datalist, and every control must exist and work through native
-  // DOM events, not just component method calls) ----
-
-  it('renders a real, enabled <select> for Data Type with only backend-supported PostgreSQL types', () => {
-    const select = selectEl(11);
-    expect(select).toBeTruthy();
-    expect(select.tagName).toBe('SELECT');
-    expect(select.disabled).toBe(false);
-    const optionValues = Array.from(select.options).map(option => option.value);
-    expect(select.options.length).toBe(14);
-    expect(optionValues).toEqual([
-      'SMALLINT', 'INTEGER', 'BIGINT', 'NUMERIC', 'DECIMAL', 'REAL', 'DOUBLE PRECISION',
-      'BOOLEAN', 'VARCHAR', 'TEXT', 'DATE', 'TIMESTAMP', 'TIMESTAMPTZ', 'UUID',
-    ]);
-    expect(select.value).toBe('TEXT');
-  });
-
-  it('selecting INTEGER from the rendered dropdown updates the draft and live SQL', () => {
-    fireSelect(selectEl(11), 'INTEGER');
-    expect(component.selectedTable()?.columns[1].sqlType).toBe('INTEGER');
-    expect(component.liveSql()).toContain('full_name INTEGER');
-  });
-
-  it('selecting TEXT from the rendered dropdown updates the draft and live SQL', () => {
-    fireSelect(selectEl(10), 'TEXT');
-    expect(component.selectedTable()?.columns[0].sqlType).toBe('TEXT');
-    expect(component.liveSql()).toContain('id TEXT');
-  });
-
-  it('selecting VARCHAR reveals a length input; editing it composes VARCHAR(length) into the draft and SQL', () => {
-    expect(fixture.nativeElement.querySelector('#column-varchar-length-11')).toBeFalsy();
-
-    fireSelect(selectEl(11), 'VARCHAR');
-
-    const lengthInput = textInput('column-varchar-length-11');
-    expect(lengthInput).toBeTruthy();
-    expect(lengthInput.type).toBe('number');
-    expect(component.selectedTable()?.columns[1].sqlType).toBe('VARCHAR(255)');
-    expect(component.liveSql()).toContain('full_name VARCHAR(255)');
-
-    typeInto(lengthInput, '100');
-    expect(component.selectedTable()?.columns[1].sqlType).toBe('VARCHAR(100)');
-    expect(component.liveSql()).toContain('full_name VARCHAR(100)');
-    expect(fixture.nativeElement.querySelector('#column-type-error-11')).toBeFalsy();
-  });
-
-  it('rejects a VARCHAR length of 0 with an inline error and blocks Continue', () => {
-    fireSelect(selectEl(11), 'VARCHAR');
-    typeInto(textInput('column-varchar-length-11'), '0');
-    expect(component.columnError(11, 'dataType')).toContain('VARCHAR length');
-    expect(component.hasDraftErrors()).toBe(true);
-  });
-
-  it('renders working Nullable, Primary Key, Unique, and Auto Increment checkboxes for every column', () => {
-    const nullable = checkboxEl('column-nullable', 11);
-    const primaryKey = checkboxEl('column-pk', 11);
-    const unique = checkboxEl('column-unique', 11);
-    const autoIncrement = checkboxEl('column-autoincrement', 10);
-    expect(nullable.type).toBe('checkbox');
-    expect(primaryKey.type).toBe('checkbox');
-    expect(unique.type).toBe('checkbox');
-    expect(autoIncrement.type).toBe('checkbox');
-
-    toggle(unique, true);
-    expect(component.selectedTable()?.columns[1].isUnique).toBe(true);
-
-    toggle(nullable, false);
-    expect(component.selectedTable()?.columns[1].isNullable).toBe(false);
-
-    toggle(primaryKey, true);
-    const column = component.selectedTable()?.columns[1];
-    expect(column?.isPrimaryKey).toBe(true);
-    expect(column?.isNullable).toBe(false);
-    expect(column?.isUnique).toBe(false);
-    expect(checkboxEl('column-nullable', 11).disabled).toBe(true);
-
-    component.selectTable(2);
-    fixture.detectChanges();
-    toggle(checkboxEl('column-autoincrement', 20), true);
-    expect(component.selectedTable()?.columns[0].isAutoIncrement).toBe(true);
-    expect(component.liveSql()).toContain('id INTEGER GENERATED BY DEFAULT AS IDENTITY NOT NULL');
-  });
-
-  it('renders a working Default Value input that updates SQL Preview live', () => {
-    const input = textInput('column-default-11');
-    expect(input).toBeTruthy();
-    typeInto(input, "'guest'");
-    expect(component.columnError(11, 'defaultValue')).toBe('');
-    expect(component.liveSql()).toContain("full_name TEXT DEFAULT 'guest'");
-  });
-
-  it('selecting an identity-incompatible type from the rendered dropdown disables the Auto Increment checkbox', () => {
-    toggle(checkboxEl('column-autoincrement', 10), true);
-    expect(component.selectedTable()?.columns[0].isAutoIncrement).toBe(true);
-    expect(checkboxEl('column-autoincrement', 10).disabled).toBe(false);
-
-    fireSelect(selectEl(10), 'TEXT');
-
-    expect(component.selectedTable()?.columns[0].isAutoIncrement).toBe(false);
-    expect(checkboxEl('column-autoincrement', 10).disabled).toBe(true);
-  });
-
-  it('Save Draft sends the exact type selected through the rendered dropdown, including a manually-configured PK/Unique/default/identity column set', () => {
-    fireSelect(selectEl(10), 'INTEGER');
-    toggle(checkboxEl('column-pk', 10), true);
-    toggle(checkboxEl('column-autoincrement', 10), true);
-    fireSelect(selectEl(11), 'VARCHAR');
-    toggle(checkboxEl('column-unique', 11), true);
-
     component.saveDraft();
-
-    expect(designApi['saveSchemaDraft']).toHaveBeenCalledWith(10, 2, expect.objectContaining({
-      columns: expect.arrayContaining([
-        expect.objectContaining({ id: 10, dataType: 'INTEGER', isPrimaryKey: true, isUnique: false, isAutoIncrement: true, isNullable: false }),
-        expect.objectContaining({ id: 11, dataType: 'VARCHAR(255)', isUnique: true, isPrimaryKey: false }),
-      ]),
-    }));
-  });
-
-  it('reload response repopulates the rendered Data Type select, checkboxes, and default input for every column', async () => {
-    const persisted = structuredClone(schema);
-    persisted.revision = 3;
-    Object.assign(persisted.tables[0].columns[0], {
-      sqlType: 'BIGINT', isNullable: false, isPrimaryKey: true, isUnique: false,
-      defaultValue: null, isAutoIncrement: true,
-    });
-    Object.assign(persisted.tables[0].columns[1], {
-      sqlType: 'VARCHAR(100)', isNullable: true, isPrimaryKey: false, isUnique: true,
-      defaultValue: "'guest'", isAutoIncrement: false,
-    });
-    designApi['getSchema'].mockReturnValue(of(persisted));
-
-    component.loadWorkspace();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(component.selectedTable()?.columns[0].sqlType).toBe('BIGINT'); // component state, sanity check
-    expect(selectEl(10).value).toBe('BIGINT');
-    expect(checkboxEl('column-pk', 10).checked).toBe(true);
-    expect(checkboxEl('column-autoincrement', 10).checked).toBe(true);
-
-    expect(selectEl(11).value).toBe('VARCHAR');
-    expect(textInput('column-varchar-length-11').value).toBe('100');
-    expect(checkboxEl('column-unique', 11).checked).toBe(true);
-    expect(textInput('column-default-11').value).toBe("'guest'");
+    expect(component.conflict()).toBe(true);
+    expect(component.feedback()?.title).toBe('Schema changed elsewhere');
+    setSchema({ ...baseSchema(), revision: 8 });
+    component.reloadAfterConflict();
+    expect(component.design()?.revision).toBe(8);
     expect(component.dirty()).toBe(false);
   });
 
-  it('renders a mobile column-card editor with the same seven controls per column', () => {
-    const card = fixture.nativeElement.querySelector('.column-card');
-    expect(card).toBeTruthy();
-    expect(card.querySelector('select.type-select')).toBeTruthy();
-    expect(card.querySelectorAll('input[type="checkbox"]').length).toBe(4); // Nullable, Primary Key, Unique, Auto Increment
-    expect(fixture.nativeElement.querySelectorAll('.column-card').length).toBe(2);
+  it('validates only the persisted schema and displays blocking errors and warnings', async () => {
+    const { component, fixture, designApi, setSchema } = await setup();
+    const validated = {
+      ...baseSchema(),
+      revision: 3,
+      status: 'Invalid',
+      validatedAt: '2026-07-20T00:00:00Z',
+      validationIssues: [
+        { code: 'duplicate-table', severity: 'error', message: 'Duplicate table.', tableId: 1 },
+        { code: 'missing-index', severity: 'warning', message: 'Consider an index.', tableId: 2, columnId: 21 },
+      ],
+    };
+    designApi['validateSchema'].mockImplementationOnce(() => { setSchema(validated); return of(validated); });
+    component.validateSchema();
+    fixture.detectChanges();
+    expect(designApi['validateSchema']).toHaveBeenCalledWith(10, 2);
+    expect(fixture.nativeElement.querySelector('[data-testid="schema-validation"]').textContent).toContain('Duplicate table.');
+    expect(fixture.nativeElement.querySelector('[data-testid="schema-validation"]').textContent).toContain('Consider an index.');
+  });
+
+  it('uses only backend SQL and labels it as last saved while local edits are dirty', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const { component, fixture, designApi } = await setup();
+    expect(designApi['getSchemaSql']).toHaveBeenCalledWith(10);
+    expect(component.sqlPreview()).toContain('CREATE TABLE customers');
+    component.updateTableName(1, 'unsaved_name');
+    component.sqlOpen.set(true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="sql-preview"]').textContent).toContain('last saved schema');
+    component.copySql();
+    expect(writeText).toHaveBeenCalledWith('CREATE TABLE customers (id INTEGER PRIMARY KEY);');
+    expect('liveSql' in component).toBe(false);
+  });
+
+  it('refreshes workflow and backend SQL after an integrated relationship mutation', async () => {
+    const workflow = { ...baseWorkflow(), canExport: true, schemaStatus: 'Valid', blockerCodes: [], blockingReasons: [] };
+    const { component, designApi, workflowContext } = await setup({ schema: { ...baseSchema(), status: 'Valid' }, workflow });
+    expect(component.canContinue()).toBe(true);
+    const changed = { ...baseSchema(), revision: 3, status: 'Draft' };
+    component.handleRelationshipChanged(changed);
+    expect(component.design()?.revision).toBe(3);
+    expect(component.canContinue()).toBe(false);
+    expect(designApi['getSchemaSql']).toHaveBeenCalledTimes(2);
+    expect(workflowContext['load']).toHaveBeenCalledWith(10, true);
+  });
+
+  it('controls Continue with Workflow API and preserves a valid datasetId', async () => {
+    const workflow = { ...baseWorkflow(), canExport: true, schemaStatus: 'Valid', blockerCodes: [], blockingReasons: [] };
+    const valid = { ...baseSchema(), status: 'Valid', canContinue: true };
+    const { component } = await setup({ schema: valid, workflow, datasetId: '1' });
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    expect(component.canContinue()).toBe(true);
+    component.continueToExport();
+    expect(navigate).toHaveBeenCalledWith(['/projects', 10, 'export-deploy'], { queryParams: { datasetId: 1 } });
+  });
+
+  it('does not preserve a datasetId that does not belong to the project', async () => {
+    const workflow = { ...baseWorkflow(), canExport: true, schemaStatus: 'Valid', blockerCodes: [], blockingReasons: [] };
+    const { component, workflowContext } = await setup({ schema: { ...baseSchema(), status: 'Valid' }, workflow, datasetId: '999' });
+    expect(component.datasetId()).toBeNull();
+    expect(workflowContext['setDatasetFromQuery']).toHaveBeenCalledWith(null);
+  });
+
+  it('renders one scrolling layout without Tables, SQL, or Constraints tabs', async () => {
+    const { fixture } = await setup();
+    const page = fixture.nativeElement.querySelector('[data-testid="schema-page"]') as HTMLElement;
+    expect(page.querySelector('[role="tablist"]')).toBeNull();
+    expect(page.querySelector('[data-testid="tables-and-columns"]')).toBeTruthy();
+    expect(page.querySelector('[data-testid="schema-relationships"]')).toBeTruthy();
+    expect(page.querySelector('[data-testid="schema-validation"]')).toBeTruthy();
+    expect(page.querySelector('[data-testid="sql-preview"]')).toBeTruthy();
   });
 });

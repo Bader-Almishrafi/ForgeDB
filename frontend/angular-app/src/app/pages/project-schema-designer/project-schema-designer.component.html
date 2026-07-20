@@ -1,40 +1,36 @@
-<div class="schema-page">
+<div class="schema-page" data-testid="schema-page">
   @if (loading()) {
-    <section class="schema-loading" aria-live="polite" aria-busy="true">
-      <div class="h-40 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800"></div>
-      <div class="h-[34rem] animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800"></div>
+    <section class="space-y-4" aria-live="polite" aria-busy="true">
+      <div class="h-40 animate-pulse rounded-2xl bg-slate-200"></div>
+      <div class="h-[32rem] animate-pulse rounded-2xl bg-slate-200"></div>
     </section>
   } @else {
     <header class="schema-header">
       <div class="min-w-0">
-        <nav class="header-links" aria-label="Schema navigation">
-          <a [routerLink]="['/projects', projectId, 'clean']"><svg lucideArrowLeft [size]="15"></svg>Back to Clean</a>
-          <a routerLink="/projects">Projects</a>
-        </nav>
         <div class="title-row">
           <span class="title-icon"><svg lucideDatabase [size]="24" [strokeWidth]="1.8"></svg></span>
           <div>
             <p class="project-name">{{ projectName() }}</p>
-            <div class="flex flex-wrap items-center gap-2"><h1>Schema Design</h1>@if (design(); as schema) { <span class="status-badge" [ngClass]="'status-' + (schema.status ?? 'Draft').toLowerCase()">{{ schema.status ?? 'Draft' }}</span> }</div>
-            <p class="header-description">Design your database schema based on confirmed cleaned data.</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <h1>Schema</h1>
+              <span class="status-badge" [ngClass]="'status-' + schemaStatus().toLowerCase()">{{ schemaStatus() }}</span>
+              @if (dirty()) { <span class="badge-warning">Unsaved changes</span> }
+            </div>
+            <p class="header-description">Generate, review, relate, validate, and preview the persisted PostgreSQL schema.</p>
           </div>
         </div>
         @if (design(); as schema) {
-          <div class="metadata-line">
-            <span><b>Source:</b> {{ schema.source ?? 'Confirmed Cleaned Data' }}</span>
-            <span>{{ tableCount() }} tables</span><span>{{ columnCount() }} columns</span>
-            @if (schema.generatedAt) { <span>Generated {{ schema.generatedAt | date:'medium' }}</span> }
-          </div>
+          <p class="metadata-line">Revision {{ schema.revision }} · {{ tableCount() }} tables · {{ columnCount() }} columns @if (schema.generatedAt) { · Generated {{ schema.generatedAt | date:'medium' }} }</p>
         }
       </div>
       <div class="header-actions">
-        <button type="button" class="btn-secondary" (click)="generateSchema()" [disabled]="generating() || saving() || validating() || !cleaning()?.schemaReady">
-          <svg lucideRefreshCw [class.animate-spin]="generating()" [size]="16"></svg>{{ generating() ? 'Generating…' : 'Generate Schema' }}
+        <button data-testid="generate-schema" type="button" class="btn-secondary" (click)="generateSchema()" [disabled]="!canGenerate()">
+          <svg lucideRefreshCw [class.animate-spin]="generating()" [size]="16"></svg>{{ generating() ? 'Generating…' : design() ? 'Regenerate Schema' : 'Generate Schema' }}
         </button>
-        <button type="button" class="btn-secondary" (click)="saveDraft()" [disabled]="!dirty() || hasDraftErrors() || saving() || validating()">
-          <svg lucideSave [size]="16"></svg>{{ saving() ? 'Saving…' : 'Save Draft' }}
+        <button data-testid="save-schema" type="button" class="btn-secondary" (click)="saveDraft()" [disabled]="!canSave()">
+          <svg lucideSave [size]="16"></svg>{{ saving() ? 'Saving…' : 'Save Changes' }}
         </button>
-        <button type="button" class="btn-primary" (click)="validateSchema()" [disabled]="!design() || dirty() || validating() || saving()">
+        <button data-testid="validate-schema" type="button" class="btn-primary" (click)="validateSchema()" [disabled]="!canValidate()">
           <svg lucideFileCheck2 [size]="16"></svg>{{ validating() ? 'Validating…' : 'Validate Schema' }}
         </button>
       </div>
@@ -43,214 +39,152 @@
     @if (feedback(); as message) {
       <section class="feedback" [ngClass]="'feedback-' + message.kind" [attr.role]="message.kind === 'error' ? 'alert' : 'status'" aria-live="polite">
         @if (message.kind === 'success') { <svg lucideCheckCircle2 [size]="19"></svg> } @else { <svg lucideTriangleAlert [size]="19"></svg> }
-        <div>
-          <strong>{{ message.title }}</strong><p>{{ message.message }}</p>
-          @if (conflict()) {
-            <button type="button" class="btn-secondary" (click)="reloadAfterConflict()">
-              <svg lucideRefreshCw [size]="14"></svg>Reload Latest Version
-            </button>
+        <div><strong>{{ message.title }}</strong><p>{{ message.message }}</p>
+          @if (conflict()) { <button data-testid="reload-schema" type="button" class="btn-secondary mt-3" (click)="reloadAfterConflict()"><svg lucideRefreshCw [size]="14"></svg>Reload Latest Schema</button> }
+        </div>
+      </section>
+    }
+
+    @if (schemaBlocked()) {
+      <section data-testid="schema-workflow-blocker" class="gate-state" role="alert">
+        <svg lucideTriangleAlert [size]="28"></svg>
+        <div><h2>Schema is blocked</h2><p>{{ schemaBlockingReason() }}</p></div>
+        <a [routerLink]="['/projects', projectId, 'clean']" [queryParams]="datasetQuery()" class="btn-secondary">Back to Clean</a>
+      </section>
+    }
+
+    @if (sourceRows().length) {
+      <section data-testid="schema-source-versions" class="workspace-panel p-5 sm:p-6">
+        <div class="section-heading"><div><h2>Source versions</h2><p>The schema is tied to these quality-confirmed active dataset versions.</p></div></div>
+        <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          @for (source of sourceRows(); track source.dataset.datasetId) {
+            <article class="source-card" [class.source-stale]="!source.usesCurrentVersion">
+              <div class="flex items-start justify-between gap-2"><strong>{{ source.dataset.datasetName }}</strong><span class="badge-neutral">v{{ source.dataset.activeVersionNumber ?? '?' }}</span></div>
+              <p class="mt-2 text-sm text-slate-600">Active version ID {{ source.dataset.activeVersionId ?? 'unavailable' }} · {{ versionKind(source.activeVersion) }}</p>
+              <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                <span [class]="source.dataset.isQualityConfirmed ? 'badge-success' : 'badge-warning'">{{ source.dataset.isQualityConfirmed ? 'Quality confirmed' : 'Quality not confirmed' }}</span>
+                <span [class]="source.dataset.hasCurrentAnalysis ? 'badge-success' : 'badge-warning'">{{ source.dataset.hasCurrentAnalysis ? 'Analyzed' : 'Analysis required' }}</span>
+              </div>
+              @if (source.schemaVersionId && !source.usesCurrentVersion) {
+                <p class="mt-3 text-xs font-medium text-rose-700">Schema uses {{ source.schemaVersion ? 'v' + source.schemaVersion.versionNumber : 'version ID ' + source.schemaVersionId }}. Regeneration is required.</p>
+              }
+            </article>
           }
         </div>
       </section>
     }
 
-    @if (!cleaning()?.schemaReady) {
-      <section class="gate-state" role="alert">
-        <svg lucideTriangleAlert [size]="38" [strokeWidth]="1.7"></svg>
-        <h2>Confirmed cleaned data is required</h2>
-        <p>Re-run Analysis for every active cleaned version and confirm data quality before generating or regenerating Schema.</p>
-        <a [routerLink]="['/projects', projectId, 'clean']" class="btn-primary">Return to Clean</a>
-      </section>
-    } @else if (!design()) {
-      <section class="empty-state">
-        <span class="empty-icon"><svg lucideTable2 [size]="34" [strokeWidth]="1.7"></svg></span>
-        <h2>No schema draft yet</h2>
-        <p>Generate one table per confirmed cleaned CSV. Detected types and nullability initialize the draft; database constraints remain yours to configure.</p>
-        <button type="button" class="btn-primary" (click)="generateSchema()" [disabled]="generating()">{{ generating() ? 'Generating…' : 'Generate Schema' }}</button>
+    @if (!design()) {
+      <section data-testid="schema-empty-state" class="empty-state">
+        <span class="empty-icon"><svg lucideTable2 [size]="34"></svg></span>
+        <h2>No schema yet</h2>
+        <p>Generate one table for each confirmed active dataset version. ForgeDB uses backend-detected PostgreSQL types.</p>
+        <button type="button" class="btn-primary" (click)="generateSchema()" [disabled]="!canGenerate()">Generate Schema</button>
       </section>
     } @else if (design(); as schema) {
-      @if (schema.isStale) {
-        <section class="stale-banner" role="alert"><svg lucideTriangleAlert [size]="18"></svg><div><strong>Schema source versions are stale.</strong><p>Active confirmed cleaned versions changed after this draft was generated. Regenerate before validation.</p></div></section>
+      @if (isStale()) {
+        <section data-testid="stale-schema" class="stale-banner" role="alert">
+          <svg lucideTriangleAlert [size]="18"></svg>
+          <div><strong>Schema source versions are stale.</strong><p>Active versions changed after generation. Regenerate Schema to replace the draft structure before saving, validating, exporting, or deploying.</p></div>
+        </section>
       }
 
-      <section class="schema-shell">
-        <div class="schema-tabs" role="tablist" aria-label="Schema Design views">
-          <button id="schema-tab-tables" type="button" role="tab" [attr.aria-selected]="activeTab() === 'tables'" [class.active]="activeTab() === 'tables'" (click)="setTab('tables')" (keydown)="onTabKeydown($event, 'tables')">Tables</button>
-          <button id="schema-tab-sql" type="button" role="tab" [attr.aria-selected]="activeTab() === 'sql'" [class.active]="activeTab() === 'sql'" (click)="setTab('sql')" (keydown)="onTabKeydown($event, 'sql')">SQL Preview</button>
-          <button id="schema-tab-constraints" type="button" role="tab" [attr.aria-selected]="activeTab() === 'constraints'" [class.active]="activeTab() === 'constraints'" (click)="setTab('constraints')" (keydown)="onTabKeydown($event, 'constraints')">Constraints</button>
-          @if (dirty()) { <span class="dirty-label">Unsaved schema edits</span> }
-        </div>
-
-        @if (activeTab() === 'tables') {
-          <div class="tables-workspace" role="tabpanel" aria-labelledby="schema-tab-tables">
-            <aside class="table-list" aria-label="Generated tables">
-              <div class="panel-heading"><div><h2>Tables</h2><p>One per confirmed dataset</p></div><span>{{ tableCount() }}</span></div>
-              <div class="table-buttons">
-                @for (table of draftTables(); track table.id) {
-                  <button type="button" [class.active]="selectedTableId() === table.id" (click)="selectTable(table.id)">
-                    <span class="table-list-icon"><svg lucideTable2 [size]="16"></svg></span>
-                    <span><strong>{{ table.name || 'Unnamed table' }}</strong><small>{{ table.columns.length }} columns</small></span>
-                    @if (tableError(table.id)) { <svg lucideTriangleAlert class="text-rose-600" [size]="15"></svg> }
-                  </button>
-                }
-              </div>
-            </aside>
-
-            <main class="table-editor">
-              @if (selectedTable(); as table) {
-                <div class="editor-heading">
-                  <div class="table-name-field">
-                    <label [for]="'table-name-' + table.id"><svg lucidePencil [size]="14"></svg>Table name</label>
-                    <input [id]="'table-name-' + table.id" class="input-field" [class.input-error]="tableError(table.id)" [attr.aria-describedby]="tableError(table.id) ? 'table-error-' + table.id : null" [ngModel]="table.name" (ngModelChange)="updateTableName(table.id, $event)" maxlength="63" />
-                    @if (tableError(table.id); as error) { <p [id]="'table-error-' + table.id" class="field-error">{{ error }}</p> }
-                  </div>
-                  <div class="source-facts">
-                    <span><b>Source CSV</b>{{ table.sourceName || 'CSV source unavailable' }}</span>
-                    <span><b>Rows</b>{{ table.rowCount }}</span>
-                    <span><b>Columns</b>{{ table.columns.length }}</span>
-                    <span><b>Status</b>Generated</span>
-                  </div>
-                </div>
-
-                <div class="column-table-wrap">
-                  <table>
-                    <caption class="sr-only">Editable PostgreSQL column properties for {{ table.name }}.</caption>
-                    <thead><tr><th>Column Name</th><th>Data Type</th><th>Nullable</th><th>Primary Key</th><th>Unique</th><th>Default</th><th>Auto Increment</th></tr></thead>
-                    <tbody>
-                      @for (column of table.columns; track column.id) {
-                        <tr>
-                          <td class="column-name-cell">
-                            <label class="sr-only" [for]="'column-name-' + column.id">Column name for {{ column.sourceColumnName || column.name }}</label>
-                            <input [id]="'column-name-' + column.id" class="input-field" [class.input-error]="columnError(column.id, 'name')" [attr.aria-describedby]="columnError(column.id, 'name') ? 'column-name-error-' + column.id : null" [ngModel]="column.name" (ngModelChange)="updateColumnName(column.id, $event)" maxlength="63" />
-                            @if (columnError(column.id, 'name'); as error) { <p [id]="'column-name-error-' + column.id" class="field-error">{{ error }}</p> }
-                          </td>
-                          <td class="type-cell">
-                            <label class="sr-only" [for]="'column-type-' + column.id">Data type for {{ column.name }}</label>
-                            <select [id]="'column-type-' + column.id" class="compact-control type-select" [class.input-error]="columnError(column.id, 'dataType')" [attr.aria-describedby]="columnError(column.id, 'dataType') ? 'column-type-error-' + column.id : null" [ngModel]="baseDataType(column.sqlType)" (ngModelChange)="updateColumnDataType(column.id, $event)">
-                              @for (dataType of dataTypeOptions; track dataType) { <option [value]="dataType">{{ dataType }}</option> }
-                            </select>
-                            @if (isVarchar(column.sqlType)) {
-                              <label class="sr-only" [for]="'column-varchar-length-' + column.id">VARCHAR length for {{ column.name }}</label>
-                              <input [id]="'column-varchar-length-' + column.id" type="number" class="compact-control varchar-length" min="1" [max]="maxVarcharLength" step="1" [ngModel]="varcharLength(column.sqlType)" (ngModelChange)="updateVarcharLength(column.id, $event)" />
-                            }
-                            @if (columnError(column.id, 'dataType'); as error) { <p [id]="'column-type-error-' + column.id" class="field-error">{{ error }}</p> }
-                          </td>
-                          <td class="check-cell">
-                            <label class="compact-check" [class.control-disabled]="column.isPrimaryKey || column.isAutoIncrement" [title]="column.isPrimaryKey ? 'Primary keys are always NOT NULL.' : column.isAutoIncrement ? 'Identity columns must be NOT NULL.' : 'Allow NULL values.'">
-                              <input [id]="'column-nullable-' + column.id" type="checkbox" [checked]="column.isNullable" [disabled]="column.isPrimaryKey || column.isAutoIncrement" (change)="updateNullable(column.id, $any($event.target).checked)" /><span>{{ column.isNullable ? 'Yes' : 'No' }}</span>
-                            </label>
-                            @if (column.isPrimaryKey) { <small>Primary keys are always NOT NULL.</small> }
-                            @if (columnError(column.id, 'nullable'); as error) { <p class="field-error">{{ error }}</p> }
-                          </td>
-                          <td class="check-cell"><label class="compact-check" title="Include this column in the table Primary Key."><input [id]="'column-pk-' + column.id" type="checkbox" [checked]="column.isPrimaryKey" (change)="updatePrimaryKey(column.id, $any($event.target).checked)" /><span>{{ column.isPrimaryKey ? 'PK' : 'No' }}</span></label></td>
-                          <td class="check-cell">
-                            <label class="compact-check" [class.control-disabled]="column.isPrimaryKey" [title]="column.isPrimaryKey ? 'Uniqueness is implied by Primary Key.' : 'Add a UNIQUE constraint.'"><input [id]="'column-unique-' + column.id" type="checkbox" [checked]="column.isUnique" [disabled]="column.isPrimaryKey" (change)="updateUnique(column.id, $any($event.target).checked)" /><span>{{ column.isPrimaryKey ? 'Implied by PK' : column.isUnique ? 'Unique' : 'No' }}</span></label>
-                          </td>
-                          <td class="default-cell">
-                            <label class="sr-only" [for]="'column-default-' + column.id">Default value for {{ column.name }}</label>
-                            <input [id]="'column-default-' + column.id" class="compact-control" [class.input-error]="columnError(column.id, 'defaultValue')" [disabled]="column.isAutoIncrement" [ngModel]="column.defaultValue || ''" (ngModelChange)="updateDefaultValue(column.id, $event)" placeholder="None" maxlength="512" />
-                            @if (columnError(column.id, 'defaultValue'); as error) { <p class="field-error">{{ error }}</p> }
-                          </td>
-                          <td class="check-cell">
-                            <label class="compact-check" [class.control-disabled]="!isIdentityCompatible(column.sqlType) || !!column.defaultValue?.trim()" [title]="!isIdentityCompatible(column.sqlType) ? 'Identity supports SMALLINT, INTEGER, and BIGINT only.' : column.defaultValue?.trim() ? 'Remove the default before enabling identity.' : 'Use GENERATED BY DEFAULT AS IDENTITY.'"><input [id]="'column-autoincrement-' + column.id" type="checkbox" [checked]="column.isAutoIncrement" [disabled]="!isIdentityCompatible(column.sqlType) || !!column.defaultValue?.trim()" (change)="updateAutoIncrement(column.id, $any($event.target).checked)" /><span>{{ column.isAutoIncrement ? 'Identity' : 'No' }}</span></label>
-                            @if (columnError(column.id, 'autoIncrement'); as error) { <p class="field-error">{{ error }}</p> }
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-
-                <div class="column-cards" role="list" [attr.aria-label]="'Editable columns for ' + table.name">
-                  @for (column of table.columns; track column.id) {
-                    <article class="column-card" role="listitem">
-                      <div class="card-name-field">
-                        <label class="sr-only" [for]="'card-name-' + column.id">Column name for {{ column.sourceColumnName || column.name }}</label>
-                        <input [id]="'card-name-' + column.id" class="input-field" [class.input-error]="columnError(column.id, 'name')" [ngModel]="column.name" (ngModelChange)="updateColumnName(column.id, $event)" maxlength="63" placeholder="Column name" />
-                        @if (columnError(column.id, 'name'); as error) { <p class="field-error">{{ error }}</p> }
-                      </div>
-                      <div class="card-grid">
-                        <div class="card-field card-field-type">
-                          <label [for]="'card-type-' + column.id">Data Type</label>
-                          <select [id]="'card-type-' + column.id" class="compact-control type-select" [class.input-error]="columnError(column.id, 'dataType')" [ngModel]="baseDataType(column.sqlType)" (ngModelChange)="updateColumnDataType(column.id, $event)">
-                            @for (dataType of dataTypeOptions; track dataType) { <option [value]="dataType">{{ dataType }}</option> }
-                          </select>
-                          @if (isVarchar(column.sqlType)) {
-                            <label class="sr-only" [for]="'card-varchar-length-' + column.id">VARCHAR length for {{ column.name }}</label>
-                            <input [id]="'card-varchar-length-' + column.id" type="number" class="compact-control varchar-length" min="1" [max]="maxVarcharLength" step="1" [ngModel]="varcharLength(column.sqlType)" (ngModelChange)="updateVarcharLength(column.id, $event)" />
-                          }
-                          @if (columnError(column.id, 'dataType'); as error) { <p class="field-error">{{ error }}</p> }
-                        </div>
-                        <div class="card-field">
-                          <label class="compact-check" [class.control-disabled]="column.isPrimaryKey || column.isAutoIncrement"><input type="checkbox" [checked]="column.isNullable" [disabled]="column.isPrimaryKey || column.isAutoIncrement" (change)="updateNullable(column.id, $any($event.target).checked)" /><span>Nullable</span></label>
-                          @if (column.isPrimaryKey) { <small>Primary keys are always NOT NULL.</small> }
-                          @if (columnError(column.id, 'nullable'); as error) { <p class="field-error">{{ error }}</p> }
-                        </div>
-                        <div class="card-field">
-                          <label class="compact-check"><input type="checkbox" [checked]="column.isPrimaryKey" (change)="updatePrimaryKey(column.id, $any($event.target).checked)" /><span>Primary Key</span></label>
-                        </div>
-                        <div class="card-field">
-                          <label class="compact-check" [class.control-disabled]="column.isPrimaryKey"><input type="checkbox" [checked]="column.isUnique" [disabled]="column.isPrimaryKey" (change)="updateUnique(column.id, $any($event.target).checked)" /><span>{{ column.isPrimaryKey ? 'Unique (implied by PK)' : 'Unique' }}</span></label>
-                        </div>
-                        <div class="card-field card-field-default">
-                          <label [for]="'card-default-' + column.id">Default</label>
-                          <input [id]="'card-default-' + column.id" class="compact-control" [class.input-error]="columnError(column.id, 'defaultValue')" [disabled]="column.isAutoIncrement" [ngModel]="column.defaultValue || ''" (ngModelChange)="updateDefaultValue(column.id, $event)" placeholder="None" maxlength="512" />
-                          @if (columnError(column.id, 'defaultValue'); as error) { <p class="field-error">{{ error }}</p> }
-                        </div>
-                        <div class="card-field">
-                          <label class="compact-check" [class.control-disabled]="!isIdentityCompatible(column.sqlType) || !!column.defaultValue?.trim()"><input type="checkbox" [checked]="column.isAutoIncrement" [disabled]="!isIdentityCompatible(column.sqlType) || !!column.defaultValue?.trim()" (change)="updateAutoIncrement(column.id, $any($event.target).checked)" /><span>Auto Increment</span></label>
-                          @if (!isIdentityCompatible(column.sqlType)) { <small>Identity supports SMALLINT, INTEGER, and BIGINT only.</small> }
-                          @if (columnError(column.id, 'autoIncrement'); as error) { <p class="field-error">{{ error }}</p> }
-                        </div>
-                      </div>
-                    </article>
-                  }
-                </div>
-              } @else { <p class="panel-empty">Select a generated table.</p> }
-            </main>
-
-          </div>
-        } @else if (activeTab() === 'sql') {
-          <section class="sql-panel" role="tabpanel" aria-labelledby="schema-tab-sql">
-            <div class="panel-heading sql-heading"><div><h2>PostgreSQL SQL Preview</h2><p>Updates immediately from every current draft property. SQL is never executed here.</p></div><div><button type="button" class="btn-secondary" (click)="refreshBackendSql()" [disabled]="dirty() || sqlLoading()">{{ sqlLoading() ? 'Verifying…' : 'Verify with Backend' }}</button><button type="button" class="btn-secondary" (click)="copySql()"><svg lucideClipboard [size]="15"></svg>{{ copied() ? 'Copied' : 'Copy SQL' }}</button></div></div>
-            <pre class="sql-code" tabindex="0"><code>{{ liveSql() }}</code></pre>
-          </section>
-        } @else {
-          <section class="constraints-panel" role="tabpanel" aria-labelledby="schema-tab-constraints">
-            <div class="panel-heading"><div><h2>Current Constraints</h2><p>Live metadata from this draft; statistics never create constraints.</p></div></div>
+      <section class="tables-workspace workspace-panel" data-testid="tables-and-columns">
+        <aside class="table-list" aria-label="Schema tables">
+          <div class="section-heading"><div><h2>Tables</h2><p>Select a table to edit.</p></div><span class="badge-neutral">{{ tableCount() }}</span></div>
+          <div class="table-buttons">
             @for (table of draftTables(); track table.id) {
-              <article class="constraint-group">
-                <h3>{{ table.name }}</h3>
-                <div class="constraint-grid">
-                  <div><b>Primary Key</b><span>{{ table.columns.filter(column => column.isPrimaryKey).map(column => column.name).join(', ') || 'None' }}</span></div>
-                  <div><b>Unique</b><span>{{ table.columns.filter(column => column.isUnique && !column.isPrimaryKey).map(column => column.name).join(', ') || 'None' }}</span></div>
-                  <div><b>Not Null</b><span>{{ table.columns.filter(column => !column.isNullable).map(column => column.name).join(', ') || 'None' }}</span></div>
-                  <div><b>Defaults</b><span>{{ table.columns.filter(column => column.defaultValue).map(column => column.name + ': ' + column.defaultValue).join(', ') || 'None' }}</span></div>
-                  <div><b>Identity</b><span>{{ table.columns.filter(column => column.isAutoIncrement).map(column => column.name).join(', ') || 'None' }}</span></div>
-                  <div class="constraint-fk"><b>Foreign Keys</b><span>{{ schema.relationships.filter(item => item.fromTableId === table.id).map(item => columnName(item.fromColumnId) + ' → ' + tableName(item.toTableId) + '.' + columnName(item.toColumnId)).join(', ') || 'None' }}</span></div>
-                </div>
-              </article>
-            } @empty { <p class="panel-empty">No constraints are available for this schema.</p> }
-          </section>
-        }
-      </section>
-
-      <section class="validation-panel" aria-live="polite">
-        <div class="validation-summary"><div><h2>Schema Validation</h2><p>Backend validation of the persisted draft and confirmed source versions.</p></div><span class="error-count">{{ blockingIssues().length }} errors</span><span class="warning-count">{{ warningIssues().length }} warnings</span></div>
-        @if (schema.validatedAt) { <p class="validated-at">Last validated {{ schema.validatedAt | date:'medium' }}@if (schema.lastModifiedBy) { by {{ schema.lastModifiedBy }} }</p> }
-        @if (schema.validationIssues.length > 0) {
-          <div class="issue-list">
-            @for (issue of visibleIssues(); track issue.code + issue.message) {
-              <button type="button" (click)="focusIssue(issue)" [disabled]="!issue.tableId"><span [ngClass]="issue.severity === 'error' ? 'issue-error' : 'issue-warning'">{{ issue.severity }}</span><span><b>{{ issueLocation(issue) }}</b>{{ issue.message }}</span></button>
+              <button type="button" [class.active]="selectedTableId() === table.id" (click)="selectTable(table.id)">
+                <svg lucideTable2 [size]="16"></svg>
+                <span><strong>{{ table.name || 'Unnamed table' }}</strong><small>{{ sourceDataset(table)?.datasetName ?? table.sourceName ?? 'Manual table' }} · {{ table.columns.length }} columns</small></span>
+                @if (tableError(table.id) || tableHasValidationIssue(table.id)) { <svg lucideTriangleAlert class="text-rose-600" [size]="15"></svg> }
+              </button>
             }
           </div>
-          @if (hiddenIssueCount() > 0 || showAllIssues()) { <button type="button" class="show-issues" (click)="showAllIssues.set(!showAllIssues())">{{ showAllIssues() ? 'Show fewer issues' : 'Show all ' + schema.validationIssues.length + ' issues' }}</button> }
-        } @else { <p class="validation-empty"><svg lucideCheckCircle2 [size]="17"></svg>No validation issues are currently reported.</p> }
+        </aside>
+
+        <main class="table-editor">
+          @if (selectedTable(); as table) {
+            <div class="editor-heading">
+              <div class="min-w-0 flex-1">
+                <label class="field-label" [for]="'table-name-' + table.id">Table name</label>
+                <input [id]="'table-name-' + table.id" class="input-field mt-1" [class.input-error]="tableError(table.id)" [ngModel]="table.name" (ngModelChange)="updateTableName(table.id, $event)" maxlength="63" />
+                @if (tableError(table.id); as error) { <p class="field-error">{{ error }}</p> }
+              </div>
+              <div class="source-facts">
+                <span><b>Source dataset</b>{{ sourceDataset(table)?.datasetName ?? table.sourceName ?? 'Manual' }}</span>
+                <span><b>Source version</b>v{{ sourceDataset(table)?.activeVersionNumber ?? '?' }} · ID {{ table.sourceDatasetVersionId ?? '—' }}</span>
+                <span><b>Rows</b>{{ table.rowCount ?? sourceDataset(table)?.rowCount ?? 0 }}</span>
+                <span><b>Columns</b>{{ table.columns.length }}</span>
+              </div>
+            </div>
+
+            <div class="column-cards" role="list" [attr.aria-label]="'Columns for ' + table.name">
+              @for (column of table.columns; track column.id) {
+                <article class="column-card" role="listitem">
+                  <div class="column-card-heading">
+                    <div><label class="field-label" [for]="'column-name-' + column.id">Column name</label><p>Source: {{ column.sourceColumnName ?? 'Manual column' }}</p></div>
+                    <input [id]="'column-name-' + column.id" class="input-field" [class.input-error]="columnError(column.id, 'name')" [ngModel]="column.name" (ngModelChange)="updateColumnName(column.id, $event)" maxlength="63" />
+                    @if (columnError(column.id, 'name'); as error) { <p class="field-error col-span-full">{{ error }}</p> }
+                  </div>
+                  <details class="column-details" open>
+                    <summary>Type and constraints</summary>
+                    <div class="column-controls">
+                      <label>PostgreSQL type
+                        <select [id]="'column-type-' + column.id" class="input-field mt-1" [class.input-error]="columnError(column.id, 'dataType')" [ngModel]="baseDataType(column.sqlType)" (ngModelChange)="updateColumnDataType(column.id, $event)">@for (dataType of dataTypeOptions; track dataType) { <option [value]="dataType">{{ dataType }}</option> }</select>
+                      </label>
+                      @if (isVarchar(column.sqlType)) { <label>VARCHAR length<input [id]="'column-varchar-length-' + column.id" type="number" class="input-field mt-1" min="1" [max]="maxVarcharLength" [ngModel]="varcharLength(column.sqlType)" (ngModelChange)="updateVarcharLength(column.id, $event)" /></label> }
+                      <label>Default value<input [id]="'column-default-' + column.id" class="input-field mt-1" [class.input-error]="columnError(column.id, 'defaultValue')" [disabled]="!!column.isAutoIncrement" [ngModel]="column.defaultValue || ''" (ngModelChange)="updateDefaultValue(column.id, $event)" placeholder="None" maxlength="512" /></label>
+                      <label class="check-control"><input [id]="'column-nullable-' + column.id" type="checkbox" [checked]="column.isNullable" [disabled]="column.isPrimaryKey || column.isAutoIncrement" (change)="updateNullable(column.id, $any($event.target).checked)" /><span>Nullable</span></label>
+                      <label class="check-control"><input [id]="'column-pk-' + column.id" type="checkbox" [checked]="column.isPrimaryKey" (change)="updatePrimaryKey(column.id, $any($event.target).checked)" /><span>Primary Key</span></label>
+                      <label class="check-control"><input [id]="'column-unique-' + column.id" type="checkbox" [checked]="column.isUnique" [disabled]="column.isPrimaryKey" (change)="updateUnique(column.id, $any($event.target).checked)" /><span>{{ column.isPrimaryKey ? 'Unique (implied by PK)' : 'Unique' }}</span></label>
+                      <label class="check-control"><input [id]="'column-autoincrement-' + column.id" type="checkbox" [checked]="column.isAutoIncrement" [disabled]="!isIdentityCompatible(column.sqlType) || !!column.defaultValue?.trim()" (change)="updateAutoIncrement(column.id, $any($event.target).checked)" /><span>Identity</span></label>
+                    </div>
+                    @if (columnError(column.id, 'dataType'); as error) { <p class="field-error">{{ error }}</p> }
+                    @if (columnError(column.id, 'nullable'); as error) { <p class="field-error">{{ error }}</p> }
+                    @if (columnError(column.id, 'defaultValue'); as error) { <p class="field-error">{{ error }}</p> }
+                    @if (columnError(column.id, 'autoIncrement'); as error) { <p class="field-error">{{ error }}</p> }
+                  </details>
+                </article>
+              }
+            </div>
+          } @else { <p class="p-6 text-sm text-slate-500">Select a table.</p> }
+        </main>
       </section>
 
+      <app-schema-relationships
+        [projectId]="projectId"
+        [design]="schema"
+        [disabled]="!canMutateRelationships()"
+        (designChanged)="handleRelationshipChanged($event)"
+        (revisionConflict)="handleRelationshipConflict()"
+      />
+
+      <section data-testid="schema-validation" class="workspace-panel p-5 sm:p-6" aria-live="polite">
+        <div class="section-heading"><div><h2>Validation</h2><p>Results from backend validation of the persisted schema.</p></div><div class="flex gap-2"><span class="badge-error">{{ blockingIssues().length }} blocking</span><span class="badge-warning">{{ warningIssues().length }} warnings</span></div></div>
+        @if (schema.validatedAt) { <p class="mt-3 text-xs text-slate-500">Last validated {{ schema.validatedAt | date:'medium' }}</p> }
+        @if (blockingIssues().length) {
+          <div class="mt-4"><h3 class="font-semibold text-rose-800">Blocking errors</h3>@for (issue of blockingIssues(); track issue.code + issue.message) { <button class="validation-issue" type="button" (click)="focusIssue(issue)" [disabled]="!issue.tableId"><b>{{ issueLocation(issue) }}</b><span>{{ issue.message }}</span></button> }</div>
+        }
+        @if (warningIssues().length) {
+          <div class="mt-4"><h3 class="font-semibold text-amber-800">Warnings</h3>@for (issue of warningIssues(); track issue.code + issue.message) { <button class="validation-issue" type="button" (click)="focusIssue(issue)" [disabled]="!issue.tableId"><b>{{ issueLocation(issue) }}</b><span>{{ issue.message }}</span></button> }</div>
+        }
+        @if (!schema.validationIssues.length) { <p class="validation-empty"><svg lucideCheckCircle2 [size]="17"></svg>No validation issues are currently saved.</p> }
+      </section>
+
+      <details data-testid="sql-preview" class="workspace-panel overflow-hidden" [open]="sqlOpen()" (toggle)="sqlOpen.set($any($event.target).open)">
+        <summary class="sql-summary"><div><h2>SQL Preview</h2><p>Backend-generated SQL for saved revision {{ sqlRevision() ?? schema.revision }}.</p></div><span>{{ sqlOpen() ? 'Hide' : 'Show' }}</span></summary>
+        <div class="border-t border-slate-200 p-5 sm:p-6">
+          @if (dirty()) { <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">This SQL represents the last saved schema, not your unsaved edits.</p> }
+          <div class="mb-3 flex flex-wrap gap-2"><button type="button" class="btn-secondary" (click)="refreshSqlPreview()" [disabled]="sqlLoading()">{{ sqlLoading() ? 'Loading…' : 'Refresh SQL' }}</button><button data-testid="copy-sql" type="button" class="btn-secondary" (click)="copySql()" [disabled]="!sqlPreview()"><svg lucideClipboard [size]="15"></svg>{{ copied() ? 'Copied' : 'Copy SQL' }}</button></div>
+          @if (sqlError()) { <p class="text-sm text-rose-700">{{ sqlError() }}</p> } @else if (sqlLoading() && !sqlPreview()) { <p class="text-sm text-slate-500">Loading backend SQL…</p> } @else { <pre class="sql-code" tabindex="0"><code>{{ sqlPreview() }}</code></pre> }
+        </div>
+      </details>
+
       <footer class="schema-footer">
-        <div><strong>{{ canContinue() ? 'Schema is ready.' : 'Save and validate the draft to continue.' }}</strong><p>Warnings do not block export; validation errors do.</p></div>
-        <button type="button" class="btn-primary" (click)="continueToRelationships()" [disabled]="!canContinue()">Continue to Export & Deploy</button>
+        <a data-testid="back-to-clean" [routerLink]="['/projects', projectId, 'clean']" [queryParams]="datasetQuery()" class="btn-secondary"><svg lucideArrowLeft [size]="15"></svg>Back to Clean</a>
+        <div class="min-w-0 flex-1 text-sm"><strong>{{ canContinue() ? 'Schema is ready.' : 'Export & Deploy is blocked.' }}</strong>@if (!canContinue()) { <p>{{ continueBlockingReason() }}</p> }</div>
+        <button data-testid="continue-to-export" type="button" class="btn-primary" (click)="continueToExport()" [disabled]="!canContinue()">Continue to Export & Deploy</button>
       </footer>
     }
   }
@@ -258,10 +192,10 @@
 
 @if (leaveDialogOpen()) {
   <div class="leave-backdrop" role="presentation">
-    <section role="alertdialog" aria-modal="true" aria-labelledby="schema-unsaved-title" aria-describedby="schema-unsaved-description" class="leave-dialog">
+    <section role="alertdialog" aria-modal="true" aria-labelledby="schema-unsaved-title" class="leave-dialog">
       <span><svg lucideTriangleAlert [size]="22"></svg></span>
       <h2 id="schema-unsaved-title">Unsaved Schema Changes</h2>
-      <p id="schema-unsaved-description">Your schema property edits have not been saved. Leave this page and discard them?</p>
+      <p>Your saved schema and backend SQL do not include these local changes. Leave and discard them?</p>
       <div><button #stayButton type="button" class="btn-secondary" (click)="resolveLeaveDialog(false)">Stay</button><button type="button" class="danger-button" (click)="resolveLeaveDialog(true)">Leave without saving</button></div>
     </section>
   </div>
