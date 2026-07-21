@@ -32,35 +32,35 @@ export class DesignApiService {
   private readonly baseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 
   getDesign(projectId: number): Observable<DesignModelResponse> {
-    return this.http.get<DesignModelResponse>(`${this.baseUrl}/api/projects/${projectId}/design`);
+    return this.http.get<DesignModelResponse>(`${this.baseUrl}/projects/${projectId}/design`);
   }
 
   getSchema(projectId: number): Observable<DesignModelResponse | null> {
-    return this.http.get<DesignModelResponse | null>(`${this.baseUrl}/api/projects/${projectId}/schema`);
+    return this.http.get<DesignModelResponse | null>(`${this.baseUrl}/projects/${projectId}/schema`);
   }
 
   generateSchema(projectId: number, revision?: number): Observable<DesignModelResponse> {
     return this.http.post<DesignModelResponse>(
-      `${this.baseUrl}/api/projects/${projectId}/schema/generate`,
+      `${this.baseUrl}/projects/${projectId}/schema/generate`,
       {},
       revision != null ? { headers: this.ifMatch(revision) } : {},
     );
   }
 
   saveSchemaDraft(projectId: number, revision: number, request: SaveDesignDraftRequest): Observable<DesignModelResponse> {
-    return this.http.patch<DesignModelResponse>(`${this.baseUrl}/api/projects/${projectId}/schema/draft`, request, {
+    return this.http.patch<DesignModelResponse>(`${this.baseUrl}/projects/${projectId}/schema/draft`, request, {
       headers: this.ifMatch(revision),
     });
   }
 
   validateSchema(projectId: number, revision: number): Observable<DesignModelResponse> {
-    return this.http.post<DesignModelResponse>(`${this.baseUrl}/api/projects/${projectId}/schema/validate`, {}, {
+    return this.http.post<DesignModelResponse>(`${this.baseUrl}/projects/${projectId}/schema/validate`, {}, {
       headers: this.ifMatch(revision),
     });
   }
 
   getSchemaSql(projectId: number): Observable<SchemaSqlPreview> {
-    return this.http.get<SchemaSqlPreview>(`${this.baseUrl}/api/projects/${projectId}/schema/sql`);
+    return this.http.get<SchemaSqlPreview>(`${this.baseUrl}/projects/${projectId}/schema/sql`);
   }
 
   /**
@@ -71,55 +71,55 @@ export class DesignApiService {
    */
   generateDesign(projectId: number, mode: 'merge' | 'replace' = 'merge', revision?: number): Observable<DesignModelResponse> {
     return this.http.post<DesignModelResponse>(
-      `${this.baseUrl}/api/projects/${projectId}/design/generate`,
+      `${this.baseUrl}/projects/${projectId}/design/generate`,
       { mode },
       revision != null ? { headers: this.ifMatch(revision) } : {},
     );
   }
 
   getPreview(designId: number, format: 'sql' | 'dbml' | 'json'): Observable<string> {
-    return this.http.get(`${this.baseUrl}/api/designs/${designId}/preview`, {
+    return this.http.get(`${this.baseUrl}/designs/${designId}/preview`, {
       params: { format },
       responseType: 'text',
     });
   }
 
   getValidation(designId: number): Observable<ValidationIssue[]> {
-    return this.http.get<ValidationIssue[]>(`${this.baseUrl}/api/designs/${designId}/validation`);
+    return this.http.get<ValidationIssue[]>(`${this.baseUrl}/designs/${designId}/validation`);
   }
 
   createTable(designId: number, revision: number, request: CreateDesignTableRequest): Observable<DesignModelResponse> {
-    return this.http.post<DesignModelResponse>(`${this.baseUrl}/api/designs/${designId}/tables`, request, {
+    return this.http.post<DesignModelResponse>(`${this.baseUrl}/designs/${designId}/tables`, request, {
       headers: this.ifMatch(revision),
     });
   }
 
   updateTable(tableId: number, revision: number, request: UpdateDesignTableRequest): Observable<DesignModelResponse> {
-    return this.http.patch<DesignModelResponse>(`${this.baseUrl}/api/design-tables/${tableId}`, request, {
+    return this.http.patch<DesignModelResponse>(`${this.baseUrl}/design-tables/${tableId}`, request, {
       headers: this.ifMatch(revision),
     });
   }
 
   deleteTable(tableId: number, revision: number): Observable<DesignModelResponse> {
-    return this.http.delete<DesignModelResponse>(`${this.baseUrl}/api/design-tables/${tableId}`, {
+    return this.http.delete<DesignModelResponse>(`${this.baseUrl}/design-tables/${tableId}`, {
       headers: this.ifMatch(revision),
     });
   }
 
   createColumn(tableId: number, revision: number, request: CreateDesignColumnRequest): Observable<DesignModelResponse> {
-    return this.http.post<DesignModelResponse>(`${this.baseUrl}/api/design-tables/${tableId}/columns`, request, {
+    return this.http.post<DesignModelResponse>(`${this.baseUrl}/design-tables/${tableId}/columns`, request, {
       headers: this.ifMatch(revision),
     });
   }
 
   updateColumn(columnId: number, revision: number, request: UpdateDesignColumnRequest): Observable<DesignModelResponse> {
-    return this.http.patch<DesignModelResponse>(`${this.baseUrl}/api/design-columns/${columnId}`, request, {
+    return this.http.patch<DesignModelResponse>(`${this.baseUrl}/design-columns/${columnId}`, request, {
       headers: this.ifMatch(revision),
     });
   }
 
   deleteColumn(columnId: number, revision: number): Observable<DesignModelResponse> {
-    return this.http.delete<DesignModelResponse>(`${this.baseUrl}/api/design-columns/${columnId}`, {
+    return this.http.delete<DesignModelResponse>(`${this.baseUrl}/design-columns/${columnId}`, {
       headers: this.ifMatch(revision),
     });
   }
@@ -129,58 +129,58 @@ export class DesignApiService {
    * single revision bump, replacing what used to be two sequential updateColumn PATCHes. */
   reorderColumns(tableId: number, revision: number, columnIds: number[]): Observable<DesignModelResponse> {
     return this.http.post<DesignModelResponse>(
-      `${this.baseUrl}/api/design-tables/${tableId}/columns/reorder`,
+      `${this.baseUrl}/design-tables/${tableId}/columns/reorder`,
       { columnIds },
       { headers: this.ifMatch(revision) },
     );
   }
 
   createRelationship(designId: number, revision: number, request: CreateDesignRelationshipRequest): Observable<DesignModelResponse> {
-    return this.http.post<DesignModelResponse>(`${this.baseUrl}/api/designs/${designId}/relationships`, request, {
+    return this.http.post<DesignModelResponse>(`${this.baseUrl}/designs/${designId}/relationships`, request, {
       headers: this.ifMatch(revision),
     });
   }
 
   updateRelationship(relationshipId: number, revision: number, request: UpdateDesignRelationshipRequest): Observable<DesignModelResponse> {
-    return this.http.patch<DesignModelResponse>(`${this.baseUrl}/api/design-relationships/${relationshipId}`, request, {
+    return this.http.patch<DesignModelResponse>(`${this.baseUrl}/design-relationships/${relationshipId}`, request, {
       headers: this.ifMatch(revision),
     });
   }
 
   deleteRelationship(relationshipId: number, revision: number): Observable<DesignModelResponse> {
-    return this.http.delete<DesignModelResponse>(`${this.baseUrl}/api/design-relationships/${relationshipId}`, {
+    return this.http.delete<DesignModelResponse>(`${this.baseUrl}/design-relationships/${relationshipId}`, {
       headers: this.ifMatch(revision),
     });
   }
 
   updateLayout(designId: number, revision: number, request: UpdateDesignLayoutRequest): Observable<DesignModelResponse> {
-    return this.http.put<DesignModelResponse>(`${this.baseUrl}/api/designs/${designId}/layout`, request, {
+    return this.http.put<DesignModelResponse>(`${this.baseUrl}/designs/${designId}/layout`, request, {
       headers: this.ifMatch(revision),
     });
   }
 
   getSuggestions(projectId: number, status?: string): Observable<RelationshipSuggestion[]> {
-    return this.http.get<RelationshipSuggestion[]>(`${this.baseUrl}/api/projects/${projectId}/relationship-suggestions`, {
+    return this.http.get<RelationshipSuggestion[]>(`${this.baseUrl}/projects/${projectId}/relationship-suggestions`, {
       params: status ? { status } : {},
     });
   }
 
   detectSuggestions(projectId: number): Observable<RelationshipSuggestion[]> {
-    return this.http.post<RelationshipSuggestion[]>(`${this.baseUrl}/api/projects/${projectId}/relationship-suggestions/detect`, {});
+    return this.http.post<RelationshipSuggestion[]>(`${this.baseUrl}/projects/${projectId}/relationship-suggestions/detect`, {});
   }
 
   /** Accept mutates the project's DesignModel, so — unlike reject — it requires If-Match with
    * the caller's last-known design revision (missing -> 428, stale -> 409 with currentRevision). */
   acceptSuggestion(suggestionId: number, revision: number, request: AcceptSuggestionRequest): Observable<AcceptSuggestionResponse> {
     return this.http.post<AcceptSuggestionResponse>(
-      `${this.baseUrl}/api/relationship-suggestions/${suggestionId}/accept`,
+      `${this.baseUrl}/relationship-suggestions/${suggestionId}/accept`,
       request,
       { headers: this.ifMatch(revision) },
     );
   }
 
   rejectSuggestion(suggestionId: number): Observable<RelationshipSuggestion> {
-    return this.http.post<RelationshipSuggestion>(`${this.baseUrl}/api/relationship-suggestions/${suggestionId}/reject`, {});
+    return this.http.post<RelationshipSuggestion>(`${this.baseUrl}/relationship-suggestions/${suggestionId}/reject`, {});
   }
 
   /** True when an error response is a 409 revision conflict (stale If-Match). */
@@ -193,27 +193,27 @@ export class DesignApiService {
    * transaction that rolls back fully on failure. Requires If-Match like every other mutation. */
   deployProject(projectId: number, revision: number): Observable<DeploymentResponse> {
     return this.http.post<DeploymentResponse>(
-      `${this.baseUrl}/api/projects/${projectId}/deployments`,
+      `${this.baseUrl}/projects/${projectId}/deployments`,
       {},
       { headers: this.ifMatch(revision) },
     );
   }
 
   getDeploymentPreview(projectId: number): Observable<DeploymentPreview> {
-    return this.http.get<DeploymentPreview>(`${this.baseUrl}/api/projects/${projectId}/deployments/preview`);
+    return this.http.get<DeploymentPreview>(`${this.baseUrl}/projects/${projectId}/deployments/preview`);
   }
 
   getDeploymentHistory(projectId: number): Observable<DeploymentResponse[]> {
-    return this.http.get<DeploymentResponse[]>(`${this.baseUrl}/api/projects/${projectId}/deployments`);
+    return this.http.get<DeploymentResponse[]>(`${this.baseUrl}/projects/${projectId}/deployments`);
   }
 
   getLatestDeployment(projectId: number): Observable<DeploymentResponse> {
-    return this.http.get<DeploymentResponse>(`${this.baseUrl}/api/projects/${projectId}/deployments/latest`);
+    return this.http.get<DeploymentResponse>(`${this.baseUrl}/projects/${projectId}/deployments/latest`);
   }
 
   downloadDeploymentSql(projectId: number, deploymentId: number, fileName: 'schema.sql' | 'seed.sql' | 'deploy.sql'): Observable<string> {
     return this.http.get(
-      `${this.baseUrl}/api/projects/${projectId}/deployments/${deploymentId}/${fileName}`,
+      `${this.baseUrl}/projects/${projectId}/deployments/${deploymentId}/${fileName}`,
       { responseType: 'text' },
     );
   }
