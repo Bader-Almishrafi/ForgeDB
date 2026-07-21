@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Text;
 using ForgeDB.API.Models.DTOs;
@@ -15,6 +16,24 @@ public class AuthServiceTests
     private const string Email = "user@example.com";
     private const string OldPassword = "OldPassword123";
     private const string NewPassword = "NewPassword456";
+
+    [Fact]
+    public async Task LoginAsync_UsesProvidedClockForAllJwtTimestamps()
+    {
+        var fixture = CreateFixture();
+
+        var response = await fixture.Service.LoginAsync(new LoginRequestDto
+        {
+            Email = Email,
+            Password = OldPassword
+        });
+
+        var token = new JwtSecurityTokenHandler().ReadJwtToken(response.Token);
+        var now = fixture.Clock.GetUtcNow().UtcDateTime;
+        Assert.Equal(now, token.ValidFrom);
+        Assert.Equal(now, token.IssuedAt);
+        Assert.Equal(now.AddHours(1), token.ValidTo);
+    }
 
     [Fact]
     public async Task ChangePasswordAsync_RejectsIncorrectCurrentPassword()

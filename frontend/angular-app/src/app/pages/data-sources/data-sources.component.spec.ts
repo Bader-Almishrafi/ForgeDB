@@ -189,7 +189,7 @@ describe('DataSourcesComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Import API');
   });
 
-  it('imports one non-empty CSV and selects it in the query parameter', async () => {
+  it('imports one non-empty CSV, previews it, and selects it in the query parameter', async () => {
     const { fixture, component, api, router } = await setup();
     component.openImport('csv');
     fixture.detectChanges();
@@ -205,6 +205,8 @@ describe('DataSourcesComponent', () => {
     expect(form.get('sourceType')).toBe('csv');
     expect(form.get('file')).toBe(file);
     expect(component.selectedDatasetId()).toBe(9);
+    expect(api['getDatasetPreview']).toHaveBeenCalledWith(9);
+    expect(fixture.nativeElement.querySelector('[data-testid="dataset-preview"]')?.textContent).toContain('Ahmed');
     expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { datasetId: 9 } }));
     expect(api['getProjectWorkflow']).toHaveBeenCalledTimes(2);
   });

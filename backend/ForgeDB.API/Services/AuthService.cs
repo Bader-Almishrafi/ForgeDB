@@ -345,10 +345,13 @@ public class AuthService : IAuthService
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = _timeProvider.GetUtcNow().UtcDateTime.AddHours(1),
+            NotBefore = now,
+            IssuedAt = now,
+            Expires = now.AddHours(1),
             Issuer = jwtIssuer,
             Audience = jwtAudience,
             SigningCredentials = credentials

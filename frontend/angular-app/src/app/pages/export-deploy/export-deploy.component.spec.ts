@@ -195,6 +195,7 @@ describe('ExportDeployComponent', () => {
     fixture.componentInstance.downloadArtifact(fixture.componentInstance.artifacts[1]);
     fixture.componentInstance.downloadDeploymentFile('seed.sql');
 
+    expect(getExportPackage).toHaveBeenCalledWith(10);
     expect(downloadText).toHaveBeenCalledWith('schema.json', exportPackage.jsonSchema, 'application/json;charset=utf-8');
     expect(downloadDeploymentSql).toHaveBeenCalledWith(10, 91, 'seed.sql');
     expect(downloadText).toHaveBeenCalledWith('seed.sql', 'SELECT 1;', 'application/sql;charset=utf-8');

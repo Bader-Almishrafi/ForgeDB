@@ -142,6 +142,26 @@ describe('SchemaRelationshipsComponent', () => {
     expect(component.manualValidationMessage()).toContain('already exists');
   });
 
+  it('creates and deletes a manual relationship using the latest schema revision', () => {
+    component.updateManualDraft({ fromTableId: 2 });
+    component.updateManualDraft({ fromColumnId: 22 });
+    component.updateManualDraft({ toTableId: 1 });
+    component.updateManualDraft({ toColumnId: 11 });
+    component.createManualRelationship();
+
+    expect(api['createRelationship']).toHaveBeenCalledWith(8, 2, expect.objectContaining({ fromColumnId: 22, toColumnId: 11 }));
+    expect(currentDesign.revision).toBe(3);
+    expect(currentDesign.relationships).toHaveLength(1);
+
+    fixture.componentRef.setInput('design', currentDesign);
+    component.requestDelete(currentDesign.relationships[0]);
+    component.confirmDelete();
+
+    expect(api['deleteRelationship']).toHaveBeenCalledWith(70, 3);
+    expect(currentDesign.revision).toBe(4);
+    expect(currentDesign.relationships).toHaveLength(0);
+  });
+
   it('filters and clears manual column choices when their table changes', () => {
     component.updateManualDraft({ fromTableId: 2 });
     fixture.detectChanges();
