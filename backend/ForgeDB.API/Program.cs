@@ -1,4 +1,5 @@
 using ForgeDB.API.Clients;
+using ForgeDB.API.Configuration;
 using ForgeDB.API.Data;
 using ForgeDB.API.Repositories;
 using ForgeDB.API.Repositories.Interfaces;
@@ -11,14 +12,24 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+var databaseConnectionString = DatabaseConnectionStringResolver.Resolve(builder.Configuration);
+
 builder.Services.AddDbContext<ForgeDbContext>(options =>
-	options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+	options.UseNpgsql(databaseConnectionString));
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+	options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+	options.KnownNetworks.Clear();
+	options.KnownProxies.Clear();
+});
 
 var allowedOrigins = builder.Configuration
 	.GetSection("Cors:AllowedOrigins")
@@ -140,6 +151,29 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+if (builder.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
+{
+	var migrationLogger = app.Services
+		.GetRequiredService<ILoggerFactory>()
+		.CreateLogger("DatabaseMigrations");
+
+	migrationLogger.LogInformation("Database migrations started.");
+
+	try
+	{
+		await using var scope = app.Services.CreateAsyncScope();
+		var dbContext = scope.ServiceProvider.GetRequiredService<ForgeDbContext>();
+		await dbContext.Database.MigrateAsync();
+		migrationLogger.LogInformation("Database migrations succeeded.");
+	}
+	catch
+	{
+		migrationLogger.LogError("Database migrations failed.");
+		throw;
+	}
+}
+
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 
 app.UseCors("Frontend");
