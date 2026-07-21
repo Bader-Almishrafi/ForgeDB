@@ -119,34 +119,23 @@
               </div>
             </div>
 
-            <div class="column-cards" role="list" [attr.aria-label]="'Columns for ' + table.name">
-              @for (column of table.columns; track column.id) {
-                <article class="column-card" role="listitem">
-                  <div class="column-card-heading">
-                    <div><label class="field-label" [for]="'column-name-' + column.id">Column name</label><p>Source: {{ column.sourceColumnName ?? 'Manual column' }}</p></div>
-                    <input [id]="'column-name-' + column.id" class="input-field" [class.input-error]="columnError(column.id, 'name')" [ngModel]="column.name" (ngModelChange)="updateColumnName(column.id, $event)" maxlength="63" />
-                    @if (columnError(column.id, 'name'); as error) { <p class="field-error col-span-full">{{ error }}</p> }
-                  </div>
-                  <details class="column-details" open>
-                    <summary>Type and constraints</summary>
-                    <div class="column-controls">
-                      <label>PostgreSQL type
-                        <select [id]="'column-type-' + column.id" class="input-field mt-1" [class.input-error]="columnError(column.id, 'dataType')" [ngModel]="baseDataType(column.sqlType)" (ngModelChange)="updateColumnDataType(column.id, $event)">@for (dataType of dataTypeOptions; track dataType) { <option [value]="dataType">{{ dataType }}</option> }</select>
-                      </label>
-                      @if (isVarchar(column.sqlType)) { <label>VARCHAR length<input [id]="'column-varchar-length-' + column.id" type="number" class="input-field mt-1" min="1" [max]="maxVarcharLength" [ngModel]="varcharLength(column.sqlType)" (ngModelChange)="updateVarcharLength(column.id, $event)" /></label> }
-                      <label>Default value<input [id]="'column-default-' + column.id" class="input-field mt-1" [class.input-error]="columnError(column.id, 'defaultValue')" [disabled]="!!column.isAutoIncrement" [ngModel]="column.defaultValue || ''" (ngModelChange)="updateDefaultValue(column.id, $event)" placeholder="None" maxlength="512" /></label>
-                      <label class="check-control"><input [id]="'column-nullable-' + column.id" type="checkbox" [checked]="column.isNullable" [disabled]="column.isPrimaryKey || column.isAutoIncrement" (change)="updateNullable(column.id, $any($event.target).checked)" /><span>Nullable</span></label>
-                      <label class="check-control"><input [id]="'column-pk-' + column.id" type="checkbox" [checked]="column.isPrimaryKey" (change)="updatePrimaryKey(column.id, $any($event.target).checked)" /><span>Primary Key</span></label>
-                      <label class="check-control"><input [id]="'column-unique-' + column.id" type="checkbox" [checked]="column.isUnique" [disabled]="column.isPrimaryKey" (change)="updateUnique(column.id, $any($event.target).checked)" /><span>{{ column.isPrimaryKey ? 'Unique (implied by PK)' : 'Unique' }}</span></label>
-                      <label class="check-control"><input [id]="'column-autoincrement-' + column.id" type="checkbox" [checked]="column.isAutoIncrement" [disabled]="!isIdentityCompatible(column.sqlType) || !!column.defaultValue?.trim()" (change)="updateAutoIncrement(column.id, $any($event.target).checked)" /><span>Identity</span></label>
-                    </div>
-                    @if (columnError(column.id, 'dataType'); as error) { <p class="field-error">{{ error }}</p> }
-                    @if (columnError(column.id, 'nullable'); as error) { <p class="field-error">{{ error }}</p> }
-                    @if (columnError(column.id, 'defaultValue'); as error) { <p class="field-error">{{ error }}</p> }
-                    @if (columnError(column.id, 'autoIncrement'); as error) { <p class="field-error">{{ error }}</p> }
-                  </details>
-                </article>
-              }
+            <div class="table-wrap schema-columns-table max-h-[42rem] rounded-none border-x-0 border-b-0" data-testid="schema-columns-table" [attr.aria-label]="'Columns for ' + table.name">
+              <table class="data-table">
+                <thead><tr><th>Column</th><th>PostgreSQL Type</th><th>Default</th><th class="text-center">Nullable</th><th class="text-center">Primary Key</th><th class="text-center">Unique</th><th class="text-center">Identity</th></tr></thead>
+                <tbody>
+                  @for (column of table.columns; track column.id) {
+                    <tr>
+                      <td class="min-w-64"><label class="sr-only" [for]="'column-name-' + column.id">Column name</label><input [id]="'column-name-' + column.id" class="input-field" [class.input-error]="columnError(column.id, 'name')" [ngModel]="column.name" (ngModelChange)="updateColumnName(column.id, $event)" maxlength="63" /><span class="mt-1 block text-xs text-slate-500">Source: {{ column.sourceColumnName ?? 'Manual column' }}</span>@if (columnError(column.id, 'name'); as error) { <span class="mt-1 block text-xs font-medium text-rose-700">{{ error }}</span> }</td>
+                      <td class="min-w-52"><label class="sr-only" [for]="'column-type-' + column.id">PostgreSQL type</label><select [id]="'column-type-' + column.id" class="input-field" [class.input-error]="columnError(column.id, 'dataType')" [ngModel]="baseDataType(column.sqlType)" (ngModelChange)="updateColumnDataType(column.id, $event)">@for (dataType of dataTypeOptions; track dataType) { <option [value]="dataType">{{ dataType }}</option> }</select>@if (isVarchar(column.sqlType)) { <label class="mt-2 block text-xs text-slate-500" [for]="'column-varchar-length-' + column.id">VARCHAR length<input [id]="'column-varchar-length-' + column.id" type="number" class="input-field mt-1" min="1" [max]="maxVarcharLength" [ngModel]="varcharLength(column.sqlType)" (ngModelChange)="updateVarcharLength(column.id, $event)" /></label> } @if (columnError(column.id, 'dataType'); as error) { <span class="mt-1 block text-xs font-medium text-rose-700">{{ error }}</span> }</td>
+                      <td class="min-w-52"><label class="sr-only" [for]="'column-default-' + column.id">Default value</label><input [id]="'column-default-' + column.id" class="input-field" [class.input-error]="columnError(column.id, 'defaultValue')" [disabled]="!!column.isAutoIncrement" [ngModel]="column.defaultValue || ''" (ngModelChange)="updateDefaultValue(column.id, $event)" placeholder="None" maxlength="512" />@if (columnError(column.id, 'defaultValue'); as error) { <span class="mt-1 block text-xs font-medium text-rose-700">{{ error }}</span> }</td>
+                      <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-nullable-' + column.id"><span class="sr-only">Nullable</span><input [id]="'column-nullable-' + column.id" type="checkbox" [checked]="column.isNullable" [disabled]="column.isPrimaryKey || column.isAutoIncrement" (change)="updateNullable(column.id, $any($event.target).checked)" /></label>@if (columnError(column.id, 'nullable'); as error) { <span class="mt-1 block max-w-32 text-xs font-medium text-rose-700">{{ error }}</span> }</td>
+                      <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-pk-' + column.id"><span class="sr-only">Primary Key</span><input [id]="'column-pk-' + column.id" type="checkbox" [checked]="column.isPrimaryKey" (change)="updatePrimaryKey(column.id, $any($event.target).checked)" /></label></td>
+                      <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-unique-' + column.id"><span class="sr-only">Unique</span><input [id]="'column-unique-' + column.id" type="checkbox" [checked]="column.isUnique" [disabled]="column.isPrimaryKey" (change)="updateUnique(column.id, $any($event.target).checked)" /></label><span class="block text-[10px] text-slate-500">{{ column.isPrimaryKey ? 'Implied by PK' : '' }}</span></td>
+                      <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-autoincrement-' + column.id"><span class="sr-only">Identity</span><input [id]="'column-autoincrement-' + column.id" type="checkbox" [checked]="column.isAutoIncrement" [disabled]="!isIdentityCompatible(column.sqlType) || !!column.defaultValue?.trim()" (change)="updateAutoIncrement(column.id, $any($event.target).checked)" /></label>@if (columnError(column.id, 'autoIncrement'); as error) { <span class="mt-1 block max-w-32 text-xs font-medium text-rose-700">{{ error }}</span> }</td>
+                    </tr>
+                  } @empty { <tr><td colspan="7" class="py-10 text-center text-slate-500">This schema table has no columns.</td></tr> }
+                </tbody>
+              </table>
             </div>
           } @else { <p class="p-6 text-sm text-slate-500">Select a table.</p> }
         </main>

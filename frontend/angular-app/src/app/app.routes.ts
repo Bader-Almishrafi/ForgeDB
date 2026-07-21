@@ -17,7 +17,6 @@ export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./pages/login/login.component').then((module) => module.LoginComponent) },
   { path: 'register', loadComponent: () => import('./pages/signup/signup.component').then((module) => module.SignupComponent) },
   { path: 'signup', redirectTo: 'register', pathMatch: 'full' },
-  { path: 'home', redirectTo: 'projects', pathMatch: 'full' },
   { path: 'app', redirectTo: 'projects', pathMatch: 'full' },
   { path: 'app/dashboard', redirectTo: 'projects', pathMatch: 'full' },
   { path: 'app/projects', redirectTo: 'projects', pathMatch: 'full' },
@@ -33,6 +32,7 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/app-shell.component').then((module) => module.AppShellComponent),
     canActivateChild: [authGuard],
     children: [
+      { path: 'home', loadComponent: () => import('./pages/home/home.component').then((module) => module.HomeComponent) },
       { path: 'projects', loadComponent: () => import('./pages/projects/projects.component').then((module) => module.ProjectsComponent) },
       { path: 'projects/new', loadComponent: () => import('./pages/project-create/project-create.component').then((module) => module.ProjectCreateComponent), canDeactivate: [unsavedChangesGuard] },
       { path: 'change-password', loadComponent: () => import('./pages/change-password/change-password.component').then((module) => module.ChangePasswordComponent) },

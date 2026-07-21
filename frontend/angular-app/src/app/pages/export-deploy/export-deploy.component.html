@@ -171,26 +171,24 @@
         <h2 id="history-heading" class="text-xl font-semibold text-slate-950 dark:text-white">Deployment history</h2>
         <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Newest attempts appear first. Select one to view its available SQL files.</p>
         @if (history().length) {
-          <div class="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-            <div class="space-y-2">
-              @for (deployment of history(); track deployment.deploymentId) {
-                <button type="button" class="w-full rounded-xl border p-4 text-left transition hover:border-indigo-300"
-                  [class.border-indigo-500]="selectedDeployment()?.deploymentId === deployment.deploymentId"
-                  [class.border-slate-200]="selectedDeployment()?.deploymentId !== deployment.deploymentId"
-                  (click)="selectDeployment(deployment)">
-                  <div class="flex flex-wrap items-center justify-between gap-2">
-                    <span class="font-semibold text-slate-950 dark:text-white">Revision {{ deployment.designRevision }} · {{ deployment.status }}</span>
-                    <span class="text-xs text-slate-500">{{ deployment.startedAt | date:'medium' }}</span>
-                  </div>
-                  <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                    {{ deployment.tablesCreated }} tables · {{ deployment.totalRowsInserted | number }} rows
-                    @if (deployment.completedAt) { · completed {{ deployment.completedAt | date:'short' }} }
-                  </p>
-                  @if (deployment.status === 'Failed' && deployment.errorMessage) {
-                    <p class="mt-2 line-clamp-2 text-sm text-rose-700">{{ deployment.errorMessage }}</p>
+          <div class="mt-5 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+            <div class="table-wrap max-h-[30rem]" data-testid="deployment-history-table">
+              <table class="data-table">
+                <thead><tr><th>Revision</th><th>Status</th><th>Started</th><th class="text-right">Tables</th><th class="text-right">Rows</th><th>Completed</th><th><span class="sr-only">View files</span></th></tr></thead>
+                <tbody>
+                  @for (deployment of history(); track deployment.deploymentId) {
+                    <tr [class]="selectedDeployment()?.deploymentId === deployment.deploymentId ? 'bg-indigo-50 dark:bg-indigo-500/10' : ''">
+                      <td class="font-semibold">{{ deployment.designRevision }}</td>
+                      <td><span [class]="isSuccessful(deployment) ? 'badge-success' : deployment.status === 'Failed' ? 'badge-danger' : 'badge-warning'">{{ deployment.status }}</span>@if (deployment.status === 'Failed' && deployment.errorMessage) { <span class="mt-1 block max-w-56 truncate text-xs text-rose-700" [title]="deployment.errorMessage">{{ deployment.errorMessage }}</span> }</td>
+                      <td class="whitespace-nowrap">{{ deployment.startedAt | date:'medium' }}</td>
+                      <td class="text-right">{{ deployment.tablesCreated }}</td>
+                      <td class="text-right">{{ deployment.totalRowsInserted | number }}</td>
+                      <td class="whitespace-nowrap">@if (deployment.completedAt) { {{ deployment.completedAt | date:'short' }} } @else { — }</td>
+                      <td><button type="button" class="btn-secondary min-h-8 whitespace-nowrap px-3 py-1.5" (click)="selectDeployment(deployment)">View files</button></td>
+                    </tr>
                   }
-                </button>
-              }
+                </tbody>
+              </table>
             </div>
             @if (selectedDeployment(); as selected) {
               <aside class="rounded-xl border border-slate-200 bg-white/50 p-4 dark:border-[#30363d] dark:bg-[#0d1117]/40">

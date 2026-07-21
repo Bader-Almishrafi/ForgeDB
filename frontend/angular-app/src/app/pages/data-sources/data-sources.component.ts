@@ -53,7 +53,7 @@ export class DataSourcesComponent implements OnInit {
   readonly previewError = signal('');
 
   readonly importOpen = signal(false);
-  readonly importSource = signal<ImportSource>('csv');
+  readonly importSource = signal<ImportSource | null>(null);
   readonly importFile = signal<File | null>(null);
   readonly excelPreview = signal<ExcelWorkbookPreview | null>(null);
   readonly excelPreviewLoading = signal(false);
@@ -94,6 +94,7 @@ export class DataSourcesComponent implements OnInit {
   readonly apiPreviewRows = computed(() => (this.apiPreview()?.rows ?? []).slice(0, 5));
   readonly canImport = computed(() => {
     if (this.importing() || this.excelPreviewLoading() || this.apiTesting() || this.apiPreviewLoading()) return false;
+    if (!this.importSource()) return false;
     if (this.importSource() === 'api') return !!this.apiPreview() && !!this.apiUrl().trim();
     if (!this.importFile()) return false;
     return this.importSource() === 'csv' || !!this.excelPreview()?.selectedWorksheet;
@@ -166,7 +167,7 @@ export class DataSourcesComponent implements OnInit {
     if (dataset) this.previewRequests.next(dataset.id);
   }
 
-  openImport(source: ImportSource = 'csv'): void {
+  openImport(source: ImportSource | null = null): void {
     this.resetImport();
     this.importSource.set(source);
     this.importOpen.set(true);
@@ -182,6 +183,7 @@ export class DataSourcesComponent implements OnInit {
   closeImport(): void {
     if (this.importing()) return;
     this.resetImport();
+    this.importSource.set(null);
     this.importOpen.set(false);
   }
 
@@ -207,6 +209,7 @@ export class DataSourcesComponent implements OnInit {
     const file = this.importFile();
     if (!file) return;
     const source = this.importSource();
+    if (!source) return;
     const worksheet = this.excelPreview()?.selectedWorksheet;
     const formData = new FormData();
     formData.append('file', file);
@@ -496,6 +499,7 @@ export class DataSourcesComponent implements OnInit {
   private finishImport(dataset: DatasetResponse): void {
     this.successMessage.set(`${this.displayName(dataset)} imported successfully.`);
     this.resetImport();
+    this.importSource.set(null);
     this.importOpen.set(false);
     this.loadDatasets(dataset.id);
     this.refreshWorkflow();

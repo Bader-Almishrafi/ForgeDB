@@ -36,12 +36,14 @@ export class AppShellComponent {
   });
   readonly pageTitle = computed(() => {
     const path = this.currentUrl().split('?')[0];
+    if (path === '/home') return 'Home';
     if (path === '/projects/new') return 'Create Project';
     if (path === '/change-password') return 'Change Password';
     return 'Projects';
   });
 
   readonly workspaceItems: readonly ShellNavItem[] = [
+    { label: 'Home', route: '/home', icon: 'M3.5 11 12 4l8.5 7M5.5 9.5V20h5v-6h3v6h5V9.5' },
     { label: 'Projects', route: '/projects', icon: 'M3.5 7.5h6l2-2h9v14h-17v-12Z' },
     { label: 'Create Project', route: '/projects/new', icon: 'M12 5v14M5 12h14' },
   ];

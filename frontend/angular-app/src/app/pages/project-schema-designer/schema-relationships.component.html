@@ -1,113 +1,96 @@
-<section data-testid="schema-relationships" class="workspace-panel p-5 sm:p-6">
-  <div class="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-start sm:justify-between dark:border-[#30363d]">
-    <div>
-      <h2 class="text-xl font-semibold text-slate-950 dark:text-white">Relationships</h2>
-      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Review suggestions or create foreign-key relationships manually. The backend validates every change.</p>
-    </div>
-    <button data-testid="detect-relationships" type="button" class="btn-secondary" (click)="detectRelationships()" [disabled]="disabled() || loading() || isBusy()">
-      {{ isBusy('detect') ? 'Detecting…' : 'Detect Relationships' }}
-    </button>
+<section data-testid="schema-relationships" class="workspace-panel p-5 sm:p-6" aria-labelledby="relationships-heading">
+  <div class="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between dark:border-[#30363d]">
+    <div><p class="eyebrow">Schema design</p><h2 id="relationships-heading" class="mt-1 text-xl font-semibold text-slate-950 dark:text-white">Relationships</h2><p class="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">Review suggestions, add a relationship manually, and manage the relationships accepted into this schema revision.</p></div>
+    <button data-testid="detect-relationships" type="button" class="btn-secondary" (click)="detectRelationships()" [disabled]="disabled() || loading() || isBusy()">{{ isBusy('detect') ? 'Detecting...' : 'Detect Relationships' }}</button>
   </div>
 
-  @if (disabled()) {
-    <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">Save current edits and resolve workflow or schema-version blockers before changing relationships.</p>
-  }
+  @if (disabled()) { <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">Save current edits and resolve workflow or schema-version blockers before changing relationships.</p> }
   @if (feedback(); as notice) {
-    <div role="status" class="mt-4 rounded-lg border px-3 py-2 text-sm" [ngClass]="{
-      'border-emerald-200 bg-emerald-50 text-emerald-800': notice.kind === 'success',
-      'border-amber-200 bg-amber-50 text-amber-800': notice.kind === 'warning',
-      'border-rose-200 bg-rose-50 text-rose-800': notice.kind === 'error'
-    }"><b>{{ notice.title }}</b><p>{{ notice.message }}</p></div>
+    <div role="status" class="mt-4 rounded-lg border px-3 py-2 text-sm" [ngClass]="{'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300': notice.kind === 'success','border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300': notice.kind === 'warning','border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300': notice.kind === 'error'}"><b>{{ notice.title }}</b><p class="mt-0.5">{{ notice.message }}</p></div>
   }
 
-  <div class="mt-6 space-y-6">
-    <section data-testid="relationship-suggestions">
-      <div class="flex items-center justify-between gap-3"><h3 class="font-semibold text-slate-950 dark:text-white">Pending suggestions</h3><span class="badge-neutral">{{ pendingSuggestions().length }}</span></div>
+  <div class="mt-7 space-y-8">
+    <section data-testid="relationship-suggestions" aria-labelledby="suggested-relationships-heading">
+      <div class="flex items-center justify-between gap-3"><div><h3 id="suggested-relationships-heading" class="text-lg font-semibold text-slate-950 dark:text-white">Suggested Relationships</h3><p class="mt-1 text-sm text-slate-500">Accept, reject, or expand Edit to change the endpoints and behavior.</p></div><span class="badge-neutral">{{ pendingSuggestions().length }} pending</span></div>
       @if (loading()) {
-        <p class="mt-3 text-sm text-slate-500">Loading suggestions…</p>
+        <div class="mt-4 grid gap-4 lg:grid-cols-2" aria-busy="true" aria-label="Loading relationship suggestions"><div class="h-48 animate-pulse rounded-xl bg-slate-100 dark:bg-[#21262d]"></div><div class="h-48 animate-pulse rounded-xl bg-slate-100 dark:bg-[#21262d]"></div></div>
       } @else {
-        <div class="mt-3 grid gap-3 lg:grid-cols-2">
+        <div class="mt-4 grid gap-4 lg:grid-cols-2">
           @for (suggestion of pendingSuggestions(); track suggestion.id) {
             <article class="rounded-xl border border-slate-200 bg-white/60 p-4 shadow-sm dark:border-[#30363d] dark:bg-[#0d1117]/40">
-              <div class="flex flex-wrap items-start justify-between gap-2">
-                <p class="break-words font-mono text-sm font-semibold">{{ suggestion.sourceTableName }}.{{ suggestion.sourceColumnName }} → {{ suggestion.targetTableName }}.{{ suggestion.targetColumnName }}</p>
-                <span class="badge-neutral">{{ confidencePercent(suggestion) }}%</span>
+              <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)] sm:items-center">
+                <div class="min-w-0 rounded-lg bg-slate-50 p-3 dark:bg-[#21262d]/70"><span class="block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Source</span><span class="mt-1 block break-words font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">{{ suggestion.sourceTableName }}.{{ suggestion.sourceColumnName }}</span></div>
+                <svg viewBox="0 0 24 24" class="mx-auto hidden h-5 w-5 fill-none stroke-indigo-500 sm:block" stroke-width="2" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg>
+                <div class="min-w-0 rounded-lg bg-slate-50 p-3 dark:bg-[#21262d]/70"><span class="block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Target</span><span class="mt-1 block break-words font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">{{ suggestion.targetTableName }}.{{ suggestion.targetColumnName }}</span></div>
               </div>
-              <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full" [ngClass]="confidenceClass(suggestion)" [style.width.%]="confidencePercent(suggestion)"></div></div>
-              <p class="mt-3 text-xs text-slate-500">Proposed: Many to one · On Delete: No action</p>
-              @for (reason of suggestionReasons(suggestion).slice(0, 2); track reason) { <p class="mt-1 text-xs text-slate-600">• {{ reason }}</p> }
-              @if (suggestionAvailabilityMessage(suggestion); as unavailable) { <p class="mt-2 text-xs text-amber-700">{{ unavailable }}</p> }
+              <div class="mt-3 flex items-center gap-3"><span class="badge-neutral shrink-0">{{ confidencePercent(suggestion) }}% confidence</span><div class="h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-[#30363d]"><div class="h-full rounded-full" [ngClass]="confidenceClass(suggestion)" [style.width.%]="confidencePercent(suggestion)"></div></div></div>
+              <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400"><span class="font-semibold text-slate-700 dark:text-slate-300">Why:</span> {{ suggestionReason(suggestion) }}</p>
+              @if (suggestionAvailabilityMessage(suggestion); as unavailable) { <p class="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">Edit required: {{ unavailable }}</p> }
 
               @if (editingSuggestionId() === suggestion.id && suggestionDraft(); as draft) {
-                <div data-testid="suggestion-editor" class="mt-4 grid gap-3 rounded-lg bg-slate-50 p-3 sm:grid-cols-2">
-                  <label class="text-sm">Source table<select class="input-field mt-1" [ngModel]="draft.fromTableId" (ngModelChange)="updateSuggestionDraft({ fromTableId: $event })"><option [ngValue]="null">Select</option>@for (table of tables(); track table.id) { <option [ngValue]="table.id">{{ table.name }}</option> }</select></label>
-                  <label class="text-sm">Source column<select class="input-field mt-1" [ngModel]="draft.fromColumnId" (ngModelChange)="updateSuggestionDraft({ fromColumnId: $event })"><option [ngValue]="null">Select</option>@for (column of columnsFor(draft.fromTableId); track column.id) { <option [ngValue]="column.id">{{ column.name }} · {{ column.sqlType }}</option> }</select></label>
-                  <label class="text-sm">Target table<select class="input-field mt-1" [ngModel]="draft.toTableId" (ngModelChange)="updateSuggestionDraft({ toTableId: $event })"><option [ngValue]="null">Select</option>@for (table of tables(); track table.id) { <option [ngValue]="table.id">{{ table.name }}</option> }</select></label>
-                  <label class="text-sm">Target column<select class="input-field mt-1" [ngModel]="draft.toColumnId" (ngModelChange)="updateSuggestionDraft({ toColumnId: $event })"><option [ngValue]="null">Select PK/Unique</option>@for (column of columnsFor(draft.toTableId); track column.id) { <option [ngValue]="column.id" [disabled]="targetColumnDisabled(draft, column)">{{ column.name }} · {{ column.sqlType }}</option> }</select></label>
-                  <label class="text-sm">Cardinality<select class="input-field mt-1" [ngModel]="draft.cardinality" (ngModelChange)="updateSuggestionDraft({ cardinality: $event })"><option value="many-to-one">Many to one</option><option value="one-to-one">One to one</option></select></label>
-                  <label class="text-sm">On Delete<select class="input-field mt-1" [ngModel]="draft.onDelete" (ngModelChange)="updateSuggestionDraft({ onDelete: $event })"><option value="no-action">No action</option><option value="cascade">Cascade</option><option value="set-null">Set null</option></select></label>
-                  @if (suggestionValidationMessage(); as validation) { <p class="text-sm text-rose-700 sm:col-span-2">{{ validation }}</p> }
-                  <div class="flex gap-2 sm:col-span-2"><button data-testid="accept-edited-suggestion" type="button" class="btn-primary" (click)="acceptEditedSuggestion(suggestion)" [disabled]="disabled() || isBusy() || !!suggestionValidationMessage()">Accept edited</button><button type="button" class="btn-secondary" (click)="closeSuggestionEditor()">Cancel</button></div>
+                <div data-testid="suggestion-editor" class="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-500/30 dark:bg-indigo-500/10">
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <label class="text-sm font-medium">Source Table<select class="input-field mt-1" [ngModel]="draft.fromTableId" (ngModelChange)="updateSuggestionDraft({ fromTableId: $event })"><option [ngValue]="null">Select source table</option>@for (table of tables(); track table.id) { <option [ngValue]="table.id">{{ table.name }}</option> }</select></label>
+                    <label class="text-sm font-medium">Source Column<select class="input-field mt-1" [ngModel]="draft.fromColumnId" (ngModelChange)="updateSuggestionDraft({ fromColumnId: $event })"><option [ngValue]="null">Select source column</option>@for (column of columnsFor(draft.fromTableId); track column.id) { <option [ngValue]="column.id">{{ column.name }} · {{ column.sqlType }}</option> }</select></label>
+                    <label class="text-sm font-medium">Target Table<select class="input-field mt-1" [ngModel]="draft.toTableId" (ngModelChange)="updateSuggestionDraft({ toTableId: $event })"><option [ngValue]="null">Select target table</option>@for (table of tables(); track table.id) { <option [ngValue]="table.id">{{ table.name }}</option> }</select></label>
+                    <label class="text-sm font-medium">Target Column<select class="input-field mt-1" [ngModel]="draft.toColumnId" (ngModelChange)="updateSuggestionDraft({ toColumnId: $event })"><option [ngValue]="null">Select PK or Unique target</option>@for (column of columnsFor(draft.toTableId); track column.id) { <option [ngValue]="column.id" [disabled]="targetColumnDisabled(draft, column)">{{ column.name }} · {{ column.sqlType }}</option> }</select></label>
+                    <label class="text-sm font-medium">Cardinality<select class="input-field mt-1" [ngModel]="draft.cardinality" (ngModelChange)="updateSuggestionDraft({ cardinality: $event })"><option value="many-to-one">Many to one</option><option value="one-to-one">One to one</option></select></label>
+                    <label class="text-sm font-medium">On Delete<select class="input-field mt-1" [ngModel]="draft.onDelete" (ngModelChange)="updateSuggestionDraft({ onDelete: $event })"><option value="no-action">No action</option><option value="cascade">Cascade</option><option value="set-null">Set null</option></select></label>
+                  </div>
+                  @if (suggestionValidationMessage(); as validation) { <p class="mt-3 text-sm font-medium text-rose-700 dark:text-rose-300">{{ validation }}</p> }
+                  <div class="mt-4 flex flex-wrap gap-2"><button data-testid="accept-edited-suggestion" type="button" class="btn-primary" (click)="acceptEditedSuggestion(suggestion)" [disabled]="disabled() || isBusy() || !!suggestionValidationMessage()">{{ isBusy('accept:' + suggestion.id) ? 'Accepting...' : 'Accept Edited' }}</button><button type="button" class="btn-secondary" (click)="closeSuggestionEditor()" [disabled]="isBusy()">Cancel</button></div>
                 </div>
               } @else {
-                <div class="mt-4 flex flex-wrap gap-2">
-                  <button [attr.data-testid]="'accept-suggestion-' + suggestion.id" type="button" class="btn-primary" (click)="acceptSuggestion(suggestion)" [disabled]="disabled() || isBusy() || !!suggestionAvailabilityMessage(suggestion)">Accept</button>
-                  <button [attr.data-testid]="'edit-suggestion-' + suggestion.id" type="button" class="btn-secondary" (click)="startSuggestionEdit(suggestion)" [disabled]="disabled() || isBusy()">Edit</button>
-                  <button [attr.data-testid]="'reject-suggestion-' + suggestion.id" type="button" class="btn-secondary" (click)="rejectSuggestion(suggestion)" [disabled]="disabled() || isBusy()">Reject</button>
-                </div>
+                <div class="mt-4 flex flex-wrap gap-2"><button [attr.data-testid]="'accept-suggestion-' + suggestion.id" type="button" class="btn-primary" (click)="acceptSuggestion(suggestion)" [disabled]="disabled() || isBusy() || !!suggestionAvailabilityMessage(suggestion)">Accept</button><button [attr.data-testid]="'reject-suggestion-' + suggestion.id" type="button" class="btn-secondary" (click)="rejectSuggestion(suggestion)" [disabled]="disabled() || isBusy()">Reject</button><button [attr.data-testid]="'edit-suggestion-' + suggestion.id" type="button" class="btn-secondary" (click)="startSuggestionEdit(suggestion)" [disabled]="disabled() || isBusy()">Edit</button></div>
               }
             </article>
-          } @empty { <p class="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 lg:col-span-2">No pending suggestions.</p> }
+          } @empty { <div class="rounded-xl border border-dashed border-slate-300 px-5 py-9 text-center lg:col-span-2 dark:border-[#30363d]"><p class="font-semibold text-slate-800 dark:text-slate-200">No pending suggestions</p><p class="mt-1 text-sm text-slate-500">Run detection or add a valid relationship manually.</p></div> }
         </div>
       }
     </section>
 
-    <section data-testid="persisted-relationships">
-      <h3 class="font-semibold text-slate-950 dark:text-white">Persisted relationships</h3>
-      <div class="mt-3 grid gap-3 lg:grid-cols-2">
-        @for (relationship of persistedRelationships(); track relationship.id) {
-          <article class="rounded-xl border border-slate-200 bg-white/60 p-4 shadow-sm dark:border-[#30363d] dark:bg-[#0d1117]/40">
-            <p class="break-words font-mono text-sm font-semibold">{{ relationshipLabel(relationship) }}</p>
-            @if (editingRelationshipId() === relationship.id && relationshipDraft(); as edit) {
-              <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                <label class="text-sm">Cardinality<select class="input-field mt-1" [ngModel]="edit.cardinality" (ngModelChange)="updateRelationshipDraft({ cardinality: $event })"><option value="many-to-one">Many to one</option><option value="one-to-one">One to one</option></select></label>
-                <label class="text-sm">On Delete<select class="input-field mt-1" [ngModel]="edit.onDelete" (ngModelChange)="updateRelationshipDraft({ onDelete: $event })"><option value="no-action">No action</option><option value="cascade">Cascade</option><option value="set-null">Set null</option></select></label>
-              </div>
-              <div class="mt-3 flex gap-2"><button data-testid="save-relationship" type="button" class="btn-primary" (click)="saveRelationshipEdit(relationship)" [disabled]="disabled() || isBusy()">Save</button><button type="button" class="btn-secondary" (click)="cancelRelationshipEdit()">Cancel</button></div>
-            } @else {
-              <div class="mt-2 flex flex-wrap gap-2"><span class="badge-neutral">{{ cardinalityLabel(relationship.cardinality) }}</span><span class="badge-neutral">On Delete: {{ onDeleteLabel(relationship.onDelete) }}</span><span class="badge-neutral">{{ relationship.origin }}</span></div>
-              <div class="mt-3 flex gap-2"><button type="button" class="btn-secondary" (click)="startRelationshipEdit(relationship)" [disabled]="disabled() || isBusy()">Edit</button><button type="button" class="btn-danger" (click)="requestDelete(relationship)" [disabled]="disabled() || isBusy()">Delete</button></div>
-            }
-          </article>
-        } @empty { <p class="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 lg:col-span-2">No persisted relationships.</p> }
-      </div>
-    </section>
-
-    <section data-testid="manual-relationship-form" class="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-[#30363d] dark:bg-[#21262d]/60">
-      <h3 class="font-semibold text-slate-950 dark:text-white">Create relationship</h3>
+    <section data-testid="manual-relationship-form" class="rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5 dark:border-[#30363d] dark:bg-[#21262d]/50" aria-labelledby="manual-relationship-heading">
+      <div><h3 id="manual-relationship-heading" class="text-lg font-semibold text-slate-950 dark:text-white">Add Relationship Manually</h3><p class="mt-1 text-sm text-slate-500">Column lists follow the selected table. Invalid or duplicate relationships cannot be submitted.</p></div>
       @if (manualDraft(); as draft) {
-        <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <label class="text-sm">Source table<select data-testid="manual-source-table" class="input-field mt-1" [ngModel]="draft.fromTableId" (ngModelChange)="updateManualDraft({ fromTableId: $event })"><option [ngValue]="null">Select</option>@for (table of tables(); track table.id) { <option [ngValue]="table.id">{{ table.name }}</option> }</select></label>
-          <label class="text-sm">Source column<select data-testid="manual-source-column" class="input-field mt-1" [ngModel]="draft.fromColumnId" (ngModelChange)="updateManualDraft({ fromColumnId: $event })"><option [ngValue]="null">Select</option>@for (column of columnsFor(draft.fromTableId); track column.id) { <option [ngValue]="column.id">{{ column.name }} · {{ column.sqlType }}</option> }</select></label>
-          <label class="text-sm">Target table<select data-testid="manual-target-table" class="input-field mt-1" [ngModel]="draft.toTableId" (ngModelChange)="updateManualDraft({ toTableId: $event })"><option [ngValue]="null">Select</option>@for (table of tables(); track table.id) { <option [ngValue]="table.id">{{ table.name }}</option> }</select></label>
-          <label class="text-sm">Target column<select data-testid="manual-target-column" class="input-field mt-1" [ngModel]="draft.toColumnId" (ngModelChange)="updateManualDraft({ toColumnId: $event })"><option [ngValue]="null">Select PK/Unique</option>@for (column of columnsFor(draft.toTableId); track column.id) { <option [ngValue]="column.id" [disabled]="targetColumnDisabled(draft, column)">{{ column.name }} · {{ column.sqlType }}</option> }</select></label>
-          <label class="text-sm">Cardinality<select class="input-field mt-1" [ngModel]="draft.cardinality" (ngModelChange)="updateManualDraft({ cardinality: $event })"><option value="many-to-one">Many to one</option><option value="one-to-one">One to one</option></select></label>
-          <label class="text-sm">On Delete<select class="input-field mt-1" [ngModel]="draft.onDelete" (ngModelChange)="updateManualDraft({ onDelete: $event })"><option value="no-action">No action</option><option value="cascade">Cascade</option><option value="set-null">Set null</option></select></label>
+        <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <label class="text-sm font-medium">Source Table<select data-testid="manual-source-table" class="input-field mt-1" [ngModel]="draft.fromTableId" (ngModelChange)="updateManualDraft({ fromTableId: $event })"><option [ngValue]="null">Select source table</option>@for (table of tables(); track table.id) { <option [ngValue]="table.id">{{ table.name }}</option> }</select></label>
+          <label class="text-sm font-medium">Source Column<select data-testid="manual-source-column" class="input-field mt-1" [ngModel]="draft.fromColumnId" (ngModelChange)="updateManualDraft({ fromColumnId: $event })"><option [ngValue]="null">Select source column</option>@for (column of columnsFor(draft.fromTableId); track column.id) { <option [ngValue]="column.id">{{ column.name }} · {{ column.sqlType }}</option> }</select></label>
+          <label class="text-sm font-medium">Target Table<select data-testid="manual-target-table" class="input-field mt-1" [ngModel]="draft.toTableId" (ngModelChange)="updateManualDraft({ toTableId: $event })"><option [ngValue]="null">Select target table</option>@for (table of tables(); track table.id) { <option [ngValue]="table.id">{{ table.name }}</option> }</select></label>
+          <label class="text-sm font-medium">Target Column<select data-testid="manual-target-column" class="input-field mt-1" [ngModel]="draft.toColumnId" (ngModelChange)="updateManualDraft({ toColumnId: $event })"><option [ngValue]="null">Select PK or Unique target</option>@for (column of columnsFor(draft.toTableId); track column.id) { <option [ngValue]="column.id" [disabled]="targetColumnDisabled(draft, column)">{{ column.name }} · {{ column.sqlType }}</option> }</select></label>
+          <label class="text-sm font-medium">Cardinality<select data-testid="manual-cardinality" class="input-field mt-1" [ngModel]="draft.cardinality" (ngModelChange)="updateManualDraft({ cardinality: $event })"><option value="many-to-one">Many to one</option><option value="one-to-one">One to one</option></select></label>
+          <label class="text-sm font-medium">On Delete<select data-testid="manual-on-delete" class="input-field mt-1" [ngModel]="draft.onDelete" (ngModelChange)="updateManualDraft({ onDelete: $event })"><option value="no-action">No action</option><option value="cascade">Cascade</option><option value="set-null">Set null</option></select></label>
         </div>
         @if (manualValidationMessage(); as validation) { <p data-testid="manual-validation" class="mt-3 text-sm text-slate-500">{{ validation }}</p> }
-        <div class="mt-4 flex gap-2"><button data-testid="create-manual-relationship" type="button" class="btn-primary" (click)="createManualRelationship()" [disabled]="disabled() || isBusy() || !!manualValidationMessage()">Create Relationship</button><button type="button" class="btn-secondary" (click)="clearManualForm()" [disabled]="isBusy()">Clear</button></div>
+        <div class="mt-4 flex flex-wrap gap-2"><button data-testid="create-manual-relationship" type="button" class="btn-primary" (click)="createManualRelationship()" [disabled]="disabled() || isBusy() || !!manualValidationMessage()">{{ isBusy('create') ? 'Adding...' : 'Add Relationship' }}</button><button type="button" class="btn-secondary" (click)="clearManualForm()" [disabled]="isBusy()">Clear</button></div>
       }
+    </section>
+
+    <section data-testid="persisted-relationships" aria-labelledby="accepted-relationships-heading">
+      <div><h3 id="accepted-relationships-heading" class="text-lg font-semibold text-slate-950 dark:text-white">Accepted Relationships</h3><p class="mt-1 text-sm text-slate-500">These persisted links are included in validation, generated SQL, exports, and deployment.</p></div>
+      @if (persistedRelationships().length) {
+        <div class="table-wrap mt-4 max-h-[30rem]" data-testid="accepted-relationships-table">
+          <table class="data-table"><thead><tr><th>Source</th><th>Target</th><th>Cardinality</th><th>On Delete</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>
+            @for (relationship of persistedRelationships(); track relationship.id) {
+              <tr>
+                <td class="font-mono font-semibold">{{ relationship.fromTableName }}.{{ relationship.fromColumnName }}</td><td class="font-mono font-semibold">{{ relationship.toTableName }}.{{ relationship.toColumnName }}</td>
+                @if (editingRelationshipId() === relationship.id && relationshipDraft(); as edit) {
+                  <td><select data-testid="persisted-edit-cardinality" class="input-field min-w-40" [ngModel]="edit.cardinality" (ngModelChange)="updateRelationshipDraft({ cardinality: $event })"><option value="many-to-one">Many to one</option><option value="one-to-one">One to one</option></select></td>
+                  <td><select data-testid="persisted-edit-on-delete" class="input-field min-w-36" [ngModel]="edit.onDelete" (ngModelChange)="updateRelationshipDraft({ onDelete: $event })"><option value="no-action">No action</option><option value="cascade">Cascade</option><option value="set-null">Set null</option></select></td>
+                  <td><div class="flex gap-2"><button data-testid="save-relationship" type="button" class="btn-primary min-h-9 px-3 py-1.5" (click)="saveRelationshipEdit(relationship)" [disabled]="disabled() || isBusy()">{{ isBusy('edit:' + relationship.id) ? 'Saving...' : 'Save' }}</button><button type="button" class="btn-secondary min-h-9 px-3 py-1.5" (click)="cancelRelationshipEdit()" [disabled]="isBusy()">Cancel</button></div></td>
+                } @else {
+                  <td>{{ cardinalityLabel(relationship.cardinality) }}</td><td>{{ onDeleteLabel(relationship.onDelete) }}</td><td><div class="flex gap-2"><button type="button" class="btn-secondary min-h-9 px-3 py-1.5" (click)="startRelationshipEdit(relationship)" [disabled]="disabled() || isBusy()">Edit</button><button type="button" class="btn-danger min-h-9 px-3 py-1.5" (click)="requestDelete(relationship)" [disabled]="disabled() || isBusy()">Delete</button></div></td>
+                }
+              </tr>
+            }
+          </tbody></table>
+        </div>
+      } @else { <div class="mt-4 rounded-xl border border-dashed border-slate-300 px-5 py-8 text-center dark:border-[#30363d]"><p class="font-semibold text-slate-800 dark:text-slate-200">No accepted relationships</p><p class="mt-1 text-sm text-slate-500">Accept a suggestion or use the manual form above.</p></div> }
     </section>
   </div>
 </section>
 
 @if (deleteTarget(); as relationship) {
   <div class="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="delete-relationship-title">
-    <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-[#30363d] dark:bg-[#161b22]">
-      <h2 id="delete-relationship-title" class="text-xl font-semibold">Delete relationship?</h2>
-      <p class="mt-3 break-words font-mono text-sm">{{ relationshipLabel(relationship) }}</p>
-      <p class="mt-2 text-sm text-slate-600">It will be removed from SQL, exports, and future deployments.</p>
-      <div class="mt-5 flex justify-end gap-2"><button type="button" class="btn-secondary" (click)="cancelDelete()">Cancel</button><button data-testid="confirm-delete-relationship" type="button" class="btn-danger" (click)="confirmDelete()" [disabled]="isBusy()">Delete</button></div>
-    </div>
+    <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-[#30363d] dark:bg-[#161b22]"><h2 id="delete-relationship-title" class="text-xl font-semibold">Delete relationship?</h2><p class="mt-3 break-words font-mono text-sm">{{ relationshipLabel(relationship) }}</p><p class="mt-2 text-sm text-slate-600 dark:text-slate-400">It will be removed from validation, generated SQL, exports, and future deployments.</p><div class="mt-5 flex justify-end gap-2"><button type="button" class="btn-secondary" (click)="cancelDelete()" [disabled]="isBusy()">Cancel</button><button data-testid="confirm-delete-relationship" type="button" class="btn-danger" (click)="confirmDelete()" [disabled]="isBusy()">{{ isBusy('delete:' + relationship.id) ? 'Deleting...' : 'Delete' }}</button></div></div>
   </div>
 }

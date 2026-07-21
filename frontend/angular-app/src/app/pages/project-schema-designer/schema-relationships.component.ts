@@ -267,6 +267,11 @@ export class SchemaRelationshipsComponent implements OnInit {
     }
   }
 
+  suggestionReason(suggestion: RelationshipSuggestion): string {
+    return this.suggestionReasons(suggestion)[0]
+      ?? 'Compatible column structure indicates a likely foreign-key relationship.';
+  }
+
   relationshipLabel(relationship: DesignRelationship): string {
     return `${relationship.fromTableName}.${relationship.fromColumnName} → ${relationship.toTableName}.${relationship.toColumnName}`;
   }

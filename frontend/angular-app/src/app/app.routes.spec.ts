@@ -12,8 +12,9 @@ function flatten(items: Routes, parent = ''): Array<{ fullPath: string; route: R
 describe('simplified application routes', () => {
   const allRoutes = flatten(routes);
 
-  it('defines Projects plus the five canonical project workflow routes', () => {
+  it('defines Home, Projects, and the five canonical project workflow routes', () => {
     const paths = allRoutes.map((item) => item.fullPath);
+    expect(paths).toContain('home');
     expect(paths).toContain('projects');
     expect(paths).toContain('projects/new');
     expect(paths).toEqual(expect.arrayContaining([
@@ -50,7 +51,9 @@ describe('simplified application routes', () => {
       exports: 'export-deploy',
       deployment: 'export-deploy',
     });
-    expect(allRoutes.find((item) => item.fullPath === 'home')?.route.redirectTo).toBe('projects');
+    const homeRoute = allRoutes.find((item) => item.fullPath === 'home')?.route;
+    expect(homeRoute?.redirectTo).toBeUndefined();
+    expect(homeRoute?.loadComponent).toBeTypeOf('function');
   });
 
   it('redirects standalone Explorer, Dashboard, and Profile URLs to canonical Analyze', () => {

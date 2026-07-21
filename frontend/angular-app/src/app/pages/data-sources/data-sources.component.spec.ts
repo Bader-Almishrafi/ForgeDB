@@ -154,6 +154,33 @@ async function setup(
 afterEach(() => TestBed.resetTestingModule());
 
 describe('DataSourcesComponent', () => {
+  it('shows CSV, Excel, and API cards before revealing a source form', async () => {
+    const { fixture, component } = await setup();
+    component.openImport();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="csv-source-option"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="excel-source-option"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="api-source-option"]')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('Supported: non-empty .csv file');
+    expect(fixture.nativeElement.querySelector('[data-testid="dataset-file-input"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="api-import-form"]')).toBeNull();
+  });
+
+  it('reveals only the form for the selected import source', async () => {
+    const { fixture, component } = await setup();
+    component.openImport();
+    component.selectImportSource('excel');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="excel-import-form"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="csv-import-form"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="api-import-form"]')).toBeNull();
+
+    component.selectImportSource('api');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="api-import-form"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="dataset-file-input"]')).toBeNull();
+  });
+
   it('shows the empty project import state', async () => {
     const { fixture } = await setup();
     expect(fixture.nativeElement.querySelector('[data-testid="data-empty-state"]')).toBeTruthy();

@@ -141,7 +141,7 @@
         <section class="workspace-panel p-5 sm:p-6" data-testid="analysis-issues">
           <h2 class="text-xl font-bold text-slate-950 dark:text-white">Issues</h2>
           @if (issues().length) {
-            <div class="mt-4 overflow-x-auto">
+            <div class="table-wrap mt-4 max-h-[30rem]">
               <table class="data-table">
                 <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800">
                   <tr><th class="px-3 py-2">Dataset</th><th class="px-3 py-2">Issue</th><th class="px-3 py-2">Column</th><th class="px-3 py-2 text-right">Count</th><th class="px-3 py-2 text-right">Percent</th></tr>
@@ -163,7 +163,7 @@
             <div><h2 class="text-xl font-bold text-slate-950 dark:text-white">Columns</h2><p class="mt-1 text-sm text-slate-500">Detected types and saved column statistics.</p></div>
             <label class="block sm:w-72"><span class="sr-only">Search columns</span><input type="search" class="input-field" placeholder="Search columns" [ngModel]="columnSearch()" (ngModelChange)="columnSearch.set($event)"></label>
           </div>
-          <div class="mt-4 overflow-x-auto">
+          <div class="table-wrap mt-4 max-h-[34rem]">
             <table class="data-table">
               <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800">
                 <tr><th class="px-3 py-2">Dataset</th><th class="px-3 py-2">Column</th><th class="px-3 py-2">Type</th><th class="px-3 py-2 text-right">Missing</th><th class="px-3 py-2 text-right">Unique</th><th class="px-3 py-2">Numeric statistics</th></tr>

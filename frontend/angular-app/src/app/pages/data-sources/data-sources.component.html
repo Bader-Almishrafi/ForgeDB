@@ -113,7 +113,7 @@
             <button type="button" class="btn-secondary mt-4" (click)="refreshPreview()">Try again</button>
           </div>
         } @else if (preview(); as dataPreview) {
-          <div class="overflow-x-auto">
+          <div class="table-wrap max-h-[34rem] rounded-none border-x-0 border-b-0" data-testid="dataset-preview-table">
             <table class="data-table">
               <thead class="bg-slate-50 dark:bg-slate-900/50">
                 <tr>
@@ -158,45 +158,45 @@
         <button type="button" class="icon-button" aria-label="Close import" (click)="closeImport()" [disabled]="importing()">×</button>
       </header>
 
-      <div class="p-5">
-        <div class="grid grid-cols-3 gap-2" aria-label="Import source">
-          <button type="button" class="btn-secondary justify-center" data-testid="csv-source-option" [class.border-indigo-500]="importSource() === 'csv'" (click)="selectImportSource('csv')">CSV</button>
-          <button type="button" class="btn-secondary justify-center" data-testid="excel-source-option" [class.border-indigo-500]="importSource() === 'excel'" (click)="selectImportSource('excel')">Excel</button>
-          <button type="button" class="btn-secondary justify-center" data-testid="api-source-option" [class.border-indigo-500]="importSource() === 'api'" (click)="selectImportSource('api')">API</button>
+      <div class="p-5 sm:p-6">
+        <div class="grid gap-3 md:grid-cols-3" aria-label="Import source" data-testid="import-source-selector">
+          <button type="button" data-testid="csv-source-option" class="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-indigo-300 hover:shadow-md dark:border-[#30363d] dark:bg-[#0d1117]/40" [class.border-indigo-500]="importSource() === 'csv'" [class.bg-indigo-50]="importSource() === 'csv'" [class.ring-2]="importSource() === 'csv'" [class.ring-indigo-500]="importSource() === 'csv'" [attr.aria-pressed]="importSource() === 'csv'" (click)="selectImportSource('csv')">
+            <span class="grid h-11 w-11 place-items-center rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-400"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5M9 12h6m-6 4h6"></path></svg></span>
+            <strong class="mt-3 block text-base text-slate-950 dark:text-white">CSV</strong><span class="mt-1 block text-sm leading-5 text-slate-600 dark:text-slate-400">Import a comma-separated dataset as one table.</span><span class="mt-3 block text-xs font-semibold text-slate-500">Supported: non-empty .csv file</span>
+          </button>
+          <button type="button" data-testid="excel-source-option" class="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-emerald-300 hover:shadow-md dark:border-[#30363d] dark:bg-[#0d1117]/40" [class.border-emerald-500]="importSource() === 'excel'" [class.bg-emerald-50]="importSource() === 'excel'" [class.ring-2]="importSource() === 'excel'" [class.ring-emerald-500]="importSource() === 'excel'" [attr.aria-pressed]="importSource() === 'excel'" (click)="selectImportSource('excel')">
+            <span class="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-400"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M5 4h14v16H5V4Zm0 5h14M10 4v16m4-11v11"></path></svg></span>
+            <strong class="mt-3 block text-base text-slate-950 dark:text-white">Excel</strong><span class="mt-1 block text-sm leading-5 text-slate-600 dark:text-slate-400">Preview a workbook and choose one non-empty worksheet.</span><span class="mt-3 block text-xs font-semibold text-slate-500">Supported: .xlsx with multiple sheets</span>
+          </button>
+          <button type="button" data-testid="api-source-option" class="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-violet-300 hover:shadow-md dark:border-[#30363d] dark:bg-[#0d1117]/40" [class.border-violet-500]="importSource() === 'api'" [class.bg-violet-50]="importSource() === 'api'" [class.ring-2]="importSource() === 'api'" [class.ring-violet-500]="importSource() === 'api'" [attr.aria-pressed]="importSource() === 'api'" (click)="selectImportSource('api')">
+            <span class="grid h-11 w-11 place-items-center rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-100 dark:bg-violet-500/15 dark:text-violet-400"><svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M8 9 4 12l4 3m8-6 4 3-4 3m-5 3 2-12"></path></svg></span>
+            <strong class="mt-3 block text-base text-slate-950 dark:text-white">API</strong><span class="mt-1 block text-sm leading-5 text-slate-600 dark:text-slate-400">Connect to a JSON endpoint and preview records first.</span><span class="mt-3 block text-xs font-semibold text-slate-500">Supported: JSON array or nested array path</span>
+          </button>
         </div>
 
-        @if (importSource() === 'csv' || importSource() === 'excel') {
-          <div class="mt-6 rounded-xl border border-dashed border-slate-300 p-6 dark:border-slate-700">
-            <label class="block text-sm font-semibold text-slate-800 dark:text-slate-200" for="dataset-file-input">
-              {{ importSource() === 'csv' ? 'CSV file' : 'Excel workbook' }}
+        @if (importSource() === null) {
+          <div class="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-5 py-8 text-center dark:border-[#30363d] dark:bg-[#0d1117]/30"><p class="font-semibold text-slate-800 dark:text-slate-200">Choose a source to continue</p><p class="mt-1 text-sm text-slate-500">Only the form for the selected source will be shown.</p></div>
+        } @else if (importSource() === 'csv' || importSource() === 'excel') {
+          <div class="mt-6" [attr.data-testid]="importSource() === 'csv' ? 'csv-import-form' : 'excel-import-form'">
+            <label for="dataset-file-input" class="flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/70 px-5 py-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-[#30363d] dark:bg-[#0d1117]/40">
+              <svg viewBox="0 0 24 24" class="h-8 w-8 fill-none stroke-current text-slate-400" stroke-width="1.7" aria-hidden="true"><path d="M12 16V4m0 0 4 4m-4-4-4 4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"></path></svg>
+              <span class="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Choose {{ importSource() === 'csv' ? 'a CSV file' : 'an Excel workbook' }}</span><span class="mt-1 text-xs text-slate-500">{{ importSource() === 'csv' ? '.csv files' : '.xlsx files; worksheet selection follows' }}</span>
+              <input id="dataset-file-input" data-testid="dataset-file-input" type="file" class="sr-only" [accept]="importSource() === 'csv' ? '.csv,text/csv' : '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'" (change)="onImportFileSelected($event)">
             </label>
-            <input id="dataset-file-input" data-testid="dataset-file-input" type="file" class="mt-3 block w-full text-sm"
-              [accept]="importSource() === 'csv' ? '.csv,text/csv' : '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'"
-              (change)="onImportFileSelected($event)">
-            @if (importFile(); as file) {
-              <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">{{ file.name }} · {{ formatSize(file.size) }}</p>
-            }
+            @if (importFile(); as file) { <p class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300">{{ file.name }} · {{ formatSize(file.size) }}</p> }
           </div>
 
           @if (importSource() === 'excel' && excelPreviewLoading()) {
-            <p class="mt-5 text-sm text-slate-500">Reading workbook…</p>
+            <p class="mt-5 rounded-xl bg-slate-50 px-4 py-5 text-center text-sm text-slate-500 dark:bg-[#0d1117]/40" aria-busy="true">Reading workbook...</p>
           } @else if (importSource() === 'excel' && excelPreview(); as workbook) {
             <label class="mt-5 block text-sm font-semibold" for="worksheet-selector">Worksheet</label>
-            <select id="worksheet-selector" data-testid="worksheet-selector" class="input-field mt-2" [value]="workbook.selectedWorksheet ?? ''" (change)="onWorksheetSelected($event)">
-              <option value="">Select a worksheet</option>
-              @for (worksheet of workbook.worksheets; track worksheet) { <option [value]="worksheet">{{ worksheet }}</option> }
-            </select>
+            <select id="worksheet-selector" data-testid="worksheet-selector" class="input-field mt-2" [value]="workbook.selectedWorksheet ?? ''" (change)="onWorksheetSelected($event)"><option value="">Select a worksheet</option>@for (worksheet of workbook.worksheets; track worksheet) { <option [value]="worksheet">{{ worksheet }}</option> }</select>
             @if (workbook.selectedWorksheet) {
-              <div class="mt-5 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800" data-testid="excel-preview">
-                <table class="min-w-full text-left text-xs">
-                  <thead class="bg-slate-50 dark:bg-slate-900/50"><tr>@for (column of workbook.columns; track column) { <th class="px-3 py-2">{{ column }}</th> }</tr></thead>
-                  <tbody>@for (row of excelPreviewRows(); track $index) { <tr>@for (column of workbook.columns; track column) { <td class="border-t border-slate-100 px-3 py-2 dark:border-slate-800">{{ previewValue(row, column) }}</td> }</tr> }</tbody>
-                </table>
-              </div>
+              <div class="table-wrap mt-5 max-h-72" data-testid="excel-preview"><table class="data-table"><thead><tr>@for (column of workbook.columns; track column) { <th>{{ column }}</th> }</tr></thead><tbody>@for (row of excelPreviewRows(); track $index) { <tr>@for (column of workbook.columns; track column) { <td>{{ previewValue(row, column) }}</td> }</tr> } @empty { <tr><td [attr.colspan]="workbook.columns.length || 1" class="text-center text-slate-500">No preview rows returned.</td></tr> }</tbody></table></div>
             }
           }
-        } @else {
-          <div class="mt-6 grid gap-4 sm:grid-cols-2">
+        } @else if (importSource() === 'api') {
+          <div class="mt-6 grid gap-4 sm:grid-cols-2" data-testid="api-import-form">
             <label class="sm:col-span-2">
               <span class="text-sm font-semibold">API URL</span>
               <input data-testid="api-url-input" type="url" class="input-field mt-2" [ngModel]="apiUrl()" (ngModelChange)="updateApiUrl($event)" placeholder="https://api.example.com/items">
@@ -219,12 +219,7 @@
             </p>
           }
           @if (apiPreview(); as remotePreview) {
-            <div class="mt-5 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800" data-testid="api-preview">
-              <table class="min-w-full text-left text-xs">
-                <thead class="bg-slate-50 dark:bg-slate-900/50"><tr>@for (column of remotePreview.columns; track column) { <th class="px-3 py-2">{{ column }}</th> }</tr></thead>
-                <tbody>@for (row of apiPreviewRows(); track $index) { <tr>@for (column of remotePreview.columns; track column) { <td class="border-t border-slate-100 px-3 py-2 dark:border-slate-800">{{ previewValue(row, column) }}</td> }</tr> }</tbody>
-              </table>
-            </div>
+            <div class="table-wrap mt-5 max-h-72" data-testid="api-preview"><table class="data-table"><thead><tr>@for (column of remotePreview.columns; track column) { <th>{{ column }}</th> }</tr></thead><tbody>@for (row of apiPreviewRows(); track $index) { <tr>@for (column of remotePreview.columns; track column) { <td>{{ previewValue(row, column) }}</td> }</tr> } @empty { <tr><td [attr.colspan]="remotePreview.columns.length || 1" class="text-center text-slate-500">No preview rows returned.</td></tr> }</tbody></table></div>
           }
         }
 

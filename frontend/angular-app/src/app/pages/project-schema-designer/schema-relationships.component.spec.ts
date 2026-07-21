@@ -142,6 +142,20 @@ describe('SchemaRelationshipsComponent', () => {
     expect(component.manualValidationMessage()).toContain('already exists');
   });
 
+  it('filters and clears manual column choices when their table changes', () => {
+    component.updateManualDraft({ fromTableId: 2 });
+    fixture.detectChanges();
+    let options = Array.from((fixture.nativeElement.querySelector('[data-testid="manual-source-column"]') as HTMLSelectElement).options).map((option) => option.textContent);
+    expect(options.join(' ')).toContain('customer_id');
+
+    component.updateManualDraft({ fromColumnId: 22 });
+    component.updateManualDraft({ fromTableId: 1 });
+    fixture.detectChanges();
+    options = Array.from((fixture.nativeElement.querySelector('[data-testid="manual-source-column"]') as HTMLSelectElement).options).map((option) => option.textContent);
+    expect(component.manualDraft().fromColumnId).toBeNull();
+    expect(options.join(' ')).not.toContain('customer_id');
+  });
+
   it('edits persisted cardinality and delete behavior', () => {
     currentDesign = { ...currentDesign, relationships: [relationship()] };
     fixture.componentRef.setInput('design', currentDesign);
@@ -183,6 +197,8 @@ describe('SchemaRelationshipsComponent', () => {
     const page = fixture.nativeElement as HTMLElement;
     expect(page.querySelector('[data-testid="relationship-suggestions"]')).toBeTruthy();
     expect(page.querySelector('[data-testid="persisted-relationships"]')).toBeTruthy();
+    expect(page.querySelector('[data-testid="accepted-relationships-table"]')).toBeTruthy();
+    expect(page.querySelector('[data-testid="accepted-relationships-table"] table')).toBeTruthy();
     expect(page.querySelector('[data-testid="manual-relationship-form"]')).toBeTruthy();
     expect(page.textContent).not.toContain('ER Diagram');
   });
