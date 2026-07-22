@@ -18,7 +18,7 @@
       <label>
         <span class="mb-2 block text-sm font-semibold text-slate-800 dark:text-slate-200">Full Name</span>
         <input type="text" name="fullName" [(ngModel)]="fullName" #nameInput="ngModel" class="input-field"
-          placeholder="John Doe" autocomplete="name" required>
+          placeholder="Abdulaziz" autocomplete="name" required>
         @if (nameInput.invalid && (nameInput.dirty || nameInput.touched)) {
           <p class="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-400">Full name is required.</p>
         }
