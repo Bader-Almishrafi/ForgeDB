@@ -81,10 +81,10 @@ export class AppShellComponent {
     void this.router.navigate(['/']);
   }
 
-  initials(): string {
+  readonly initials = computed(() => {
     const current = this.user();
     return current ? `${current.firstName[0] ?? ''}${current.lastName[0] ?? ''}`.toUpperCase() : 'FD';
-  }
+  });
 
   @HostListener('document:keydown.escape')
   closeSidebarOnEscape(): void {

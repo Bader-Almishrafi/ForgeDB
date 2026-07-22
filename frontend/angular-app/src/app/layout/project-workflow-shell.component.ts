@@ -46,6 +46,14 @@ export class ProjectWorkflowShellComponent implements OnInit {
     'export-deploy': 'M12 3v12m0 0 4-4m-4 4-4-4M5 17v4h14v-4',
   };
 
+  readonly enrichedSteps = computed(() => {
+    const workflow = this.context.workflow();
+    return this.steps.map((step) => ({
+      ...step,
+      allowed: workflow ? isWorkflowStepAllowed(workflow, step.path) : false,
+    }));
+  });
+
   constructor() {
     this.router.events
       .pipe(
@@ -71,14 +79,11 @@ export class ProjectWorkflowShellComponent implements OnInit {
       });
   }
 
-  isAllowed(step: ProjectWorkflowStepDefinition): boolean {
-    const workflow = this.context.workflow();
-    return workflow ? isWorkflowStepAllowed(workflow, step.path) : false;
-  }
 
-  disabledReason(): string {
+
+  readonly disabledReason = computed(() => {
     return this.context.workflow()?.blockingReasons[0] ?? 'Complete the current workflow step first.';
-  }
+  });
 
   toggleSidebar(): void {
     this.sidebarOpen.update((open) => !open);
@@ -107,10 +112,10 @@ export class ProjectWorkflowShellComponent implements OnInit {
     void this.router.navigate(['/']);
   }
 
-  initials(): string {
+  readonly initials = computed(() => {
     const current = this.user();
     return current ? `${current.firstName[0] ?? ''}${current.lastName[0] ?? ''}`.toUpperCase() : 'FD';
-  }
+  });
 
   @HostListener('document:keydown.escape')
   closeSidebarOnEscape(): void {

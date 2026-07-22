@@ -4,7 +4,7 @@
   }
 
   <aside id="app-sidebar" data-testid="app-sidebar"
-    class="fixed inset-y-0 left-0 z-50 flex w-[290px] flex-col overflow-x-hidden border-r border-slate-200/50 bg-white/70 shadow-xl shadow-slate-950/5 backdrop-blur-xl transition-[width,transform] duration-300 lg:translate-x-0 lg:shadow-none dark:border-white/10 dark:bg-[#161b22]/70"
+    class="fixed inset-y-0 left-0 z-50 flex w-[290px] flex-col overflow-x-hidden border-r border-slate-200/50 bg-white/70 shadow-xl shadow-slate-950/5 backdrop-blur-xl transition-transform duration-300 lg:translate-x-0 lg:shadow-none dark:border-white/10 dark:bg-[#161b22]/70"
     [ngClass]="[sidebarOpen() ? 'translate-x-0' : '-translate-x-full', sidebarCollapsed() ? 'lg:w-[85px]' : 'lg:w-[290px]']">
     <div class="flex h-20 shrink-0 items-center gap-3 border-b border-slate-200/50 px-[22px] dark:border-white/10">
       <a routerLink="/home" class="flex min-w-0 items-center gap-3" (click)="closeSidebar()">
@@ -16,9 +16,6 @@
           <span class="block truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-[#8a99ad]">Data engineering</span>
         </span>
       </a>
-      <button type="button" class="icon-button ml-auto lg:hidden" aria-label="Close navigation" (click)="closeSidebar()">
-        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"></path></svg>
-      </button>
     </div>
 
     <div class="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
@@ -43,19 +40,19 @@
         <ul class="space-y-1.5">
           <li>
             <a routerLink="/change-password" routerLinkActive="border-indigo-200 bg-indigo-50 font-bold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-400"
-              class="flex min-h-11 items-center gap-4 overflow-hidden rounded-xl border border-transparent px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-[#21262d]" (click)="closeSidebar()" title="Change Password">
+              class="flex min-h-11 items-center gap-4 overflow-hidden rounded-xl border border-transparent px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-[#21262d] dark:hover:text-white" (click)="closeSidebar()" title="Change Password">
               <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="1.7"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5V10Zm7 4v3"></path></svg>
               <span class="truncate transition-opacity" [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">Change Password</span>
             </a>
           </li>
           <li>
-            <button type="button" class="flex min-h-11 w-full items-center gap-4 overflow-hidden rounded-xl border border-transparent px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-[#21262d]" (click)="toggleTheme()" title="Toggle theme">
+            <button type="button" class="flex min-h-11 w-full items-center gap-4 overflow-hidden rounded-xl border border-transparent px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-[#21262d] dark:hover:text-white" (click)="toggleTheme()" title="Toggle theme">
               <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="1.7"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg>
               <span class="truncate transition-opacity" [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">{{ theme() === 'dark' ? 'Light Theme' : 'Dark Theme' }}</span>
             </button>
           </li>
           <li>
-            <button type="button" class="flex min-h-11 w-full items-center gap-4 overflow-hidden rounded-xl border border-transparent px-4 text-sm font-medium text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30" (click)="logout()" title="Log out">
+            <button type="button" class="flex min-h-11 w-full items-center gap-4 overflow-hidden rounded-xl border border-transparent px-4 text-sm font-medium text-rose-600 transition hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/30 dark:hover:text-rose-300" (click)="logout()" title="Log out">
               <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="1.7"><path d="M10 5H5v14h5m4-3 4-4-4-4m4 4H9"></path></svg>
               <span class="truncate transition-opacity" [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">Log out</span>
             </button>
@@ -65,18 +62,26 @@
     </div>
   </aside>
 
-  <button type="button" class="fixed top-[94px] z-[60] hidden h-7 w-7 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-md transition-[left,color] duration-300 hover:text-indigo-600 lg:grid dark:border-[#30363d] dark:bg-[#21262d] dark:text-slate-300"
-    [ngClass]="sidebarCollapsed() ? 'left-[71px]' : 'left-[276px]'" (click)="toggleCollapsed()" [attr.aria-label]="sidebarCollapsed() ? 'Expand sidebar' : 'Collapse sidebar'">
-    <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current transition-transform" [class.rotate-180]="sidebarCollapsed()" stroke-width="2"><path d="m14 6-6 6 6 6"></path></svg>
-  </button>
 
-  <div class="min-h-screen min-w-0 transition-[padding] duration-300" [ngClass]="sidebarCollapsed() ? 'lg:pl-[85px]' : 'lg:pl-[290px]'">
+
+  <div class="min-h-screen min-w-0 transition-padding duration-300 lg:transition-none" [ngClass]="sidebarCollapsed() ? 'lg:pl-[85px]' : 'lg:pl-[290px]'">
     <header class="sticky top-0 z-30 flex h-20 items-center gap-3 border-b border-[#e2e8f0] bg-white/95 px-4 shadow-sm backdrop-blur-lg sm:px-6 lg:px-8 dark:border-[#30363d] dark:bg-[#161b22]/95">
-      <button type="button" class="icon-button lg:hidden" (click)="toggleSidebar()" aria-label="Open navigation" aria-controls="app-sidebar" [attr.aria-expanded]="sidebarOpen()">
-        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
-      </button>
+      <div class="lg:hidden">
+        <button type="button" class="icon-button" (click)="toggleSidebar()" aria-label="Open navigation" aria-controls="app-sidebar" [attr.aria-expanded]="sidebarOpen()">
+          <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+      </div>
+      <div class="hidden lg:block">
+        <button type="button" class="icon-button" (click)="toggleCollapsed()" aria-label="Toggle navigation">
+          <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+      </div>
       <nav class="min-w-0 flex-1" aria-label="Breadcrumb">
-        <ol class="flex min-w-0 items-center gap-2 text-sm"><li class="text-slate-500 dark:text-[#8a99ad]">Workspace</li><li class="text-slate-300 dark:text-slate-600" aria-hidden="true">/</li><li class="truncate font-semibold text-slate-900 dark:text-white" data-testid="current-page-title" aria-current="page">{{ pageTitle() }}</li></ol>
+        <ol class="flex min-w-0 items-center gap-2 text-sm">
+          <li><a routerLink="/home" class="text-slate-500 transition-colors hover:text-indigo-600 dark:text-[#8a99ad] dark:hover:text-indigo-400">Workspace</a></li>
+          <li class="text-slate-300 dark:text-slate-600" aria-hidden="true">/</li>
+          <li class="truncate font-semibold text-slate-900 dark:text-white" data-testid="current-page-title" aria-current="page">{{ pageTitle() }}</li>
+        </ol>
       </nav>
       <div class="flex min-w-0 items-center gap-3 rounded-xl px-2 py-1.5">
         <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-xs font-bold text-white shadow-sm">{{ initials() }}</span>
