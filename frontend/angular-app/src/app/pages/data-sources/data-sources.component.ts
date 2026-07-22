@@ -4,28 +4,28 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnIni
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Meta, Title } from '@angular/platform-browser';
 import { catchError, finalize, map, of, Subject, switchMap, tap } from 'rxjs';
 import {
-  ApiConnectionTest,
-  ApiJsonImportRequest,
-  ApiJsonPreview,
   DatasetPreview,
   DatasetResponse,
-  ExcelWorkbookPreview,
   ProjectResponse,
   ProjectWorkflowDataset,
 } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { ProjectWorkflowContextService } from '../../services/project-workflow-context.service';
 import { routeParameter } from '../../services/route-context';
-import { formatFileSize, isCsvFile } from '../../shared/utils/file-import.utils';
+import { EditProjectDialogComponent } from './dialogs/edit-project-dialog.component';
+import { DeleteDatasetDialogComponent } from './dialogs/delete-dataset-dialog.component';
+import { ReplaceDatasetDialogComponent } from './dialogs/replace-dataset-dialog.component';
+import { ImportDatasetDialogComponent } from './dialogs/import-dataset-dialog.component';
 
 type ImportSource = 'csv' | 'excel' | 'api';
 
 @Component({
   selector: 'app-data-sources',
   standalone: true,
-  imports: [DecimalPipe, FormsModule],
+  imports: [DecimalPipe, FormsModule, EditProjectDialogComponent, DeleteDatasetDialogComponent, ReplaceDatasetDialogComponent, ImportDatasetDialogComponent],
   templateUrl: './data-sources.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -34,6 +34,8 @@ export class DataSourcesComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly titleService = inject(Title);
+  private readonly metaService = inject(Meta);
   readonly workflowContext = inject(ProjectWorkflowContextService);
   private readonly previewRequests = new Subject<number>();
   private queryDatasetValue: string | null = null;
@@ -54,31 +56,10 @@ export class DataSourcesComponent implements OnInit {
 
   readonly importOpen = signal(false);
   readonly importSource = signal<ImportSource | null>(null);
-  readonly importFile = signal<File | null>(null);
-  readonly excelPreview = signal<ExcelWorkbookPreview | null>(null);
-  readonly excelPreviewLoading = signal(false);
-  readonly apiUrl = signal('');
-  readonly apiArrayPath = signal('');
-  readonly apiConnection = signal<ApiConnectionTest | null>(null);
-  readonly apiPreview = signal<ApiJsonPreview | null>(null);
-  readonly apiTesting = signal(false);
-  readonly apiPreviewLoading = signal(false);
-  readonly importing = signal(false);
-  readonly importError = signal('');
 
   readonly replaceOpen = signal(false);
-  readonly replaceFile = signal<File | null>(null);
-  readonly replaceError = signal('');
-  readonly replacing = signal(false);
   readonly confirmingDelete = signal(false);
-  readonly deleting = signal(false);
-  readonly deleteError = signal('');
-
   readonly editOpen = signal(false);
-  readonly editName = signal('');
-  readonly editDescription = signal('');
-  readonly editError = signal('');
-  readonly savingProject = signal(false);
   projectId = 0;
 
   readonly selectedDataset = computed(() => this.datasets().find((dataset) => dataset.id === this.selectedDatasetId()) ?? null);
@@ -90,15 +71,6 @@ export class DataSourcesComponent implements OnInit {
   readonly canContinueToAnalyze = computed(() => this.datasets().length > 0 && this.workflowContext.workflow()?.canAnalyze === true);
   readonly previewRows = computed(() => (this.preview()?.rows ?? []).slice(0, 20));
   readonly previewColumns = computed(() => this.preview()?.columns ?? []);
-  readonly excelPreviewRows = computed(() => (this.excelPreview()?.rows ?? []).slice(0, 5));
-  readonly apiPreviewRows = computed(() => (this.apiPreview()?.rows ?? []).slice(0, 5));
-  readonly canImport = computed(() => {
-    if (this.importing() || this.excelPreviewLoading() || this.apiTesting() || this.apiPreviewLoading()) return false;
-    if (!this.importSource()) return false;
-    if (this.importSource() === 'api') return !!this.apiPreview() && !!this.apiUrl().trim();
-    if (!this.importFile()) return false;
-    return this.importSource() === 'csv' || !!this.excelPreview()?.selectedWorksheet;
-  });
 
   constructor() {
     this.previewRequests.pipe(
@@ -120,6 +92,9 @@ export class DataSourcesComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.titleService.setTitle('Data Sources - ForgeDB');
+    this.metaService.updateTag({ name: 'description', content: 'Manage datasets for your ForgeDB project.' });
+    
     this.projectId = routeParameter(this.route, 'projectId') ?? 0;
     if (this.projectId <= 0) {
       void this.router.navigate(['/projects']);
@@ -168,205 +143,39 @@ export class DataSourcesComponent implements OnInit {
   }
 
   openImport(source: ImportSource | null = null): void {
-    this.resetImport();
     this.importSource.set(source);
     this.importOpen.set(true);
   }
 
-  selectImportSource(source: ImportSource): void {
-    if (this.importing() || source === this.importSource()) return;
-    this.resetImport();
-    this.importSource.set(source);
-    this.importOpen.set(true);
-  }
-
-  closeImport(): void {
-    if (this.importing()) return;
-    this.resetImport();
-    this.importSource.set(null);
+  onDatasetImported(dataset: DatasetResponse): void {
+    this.successMessage.set(`${this.displayName(dataset)} imported successfully.`);
     this.importOpen.set(false);
+    this.importSource.set(null);
+    this.loadDatasets(dataset.id);
+    this.refreshWorkflow();
   }
 
-  onImportFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    input.value = '';
-    this.acceptImportFile(file);
-  }
-
-  onWorksheetSelected(event: Event): void {
-    const worksheet = (event.target as HTMLSelectElement).value;
-    if (worksheet) this.loadExcelPreview(worksheet);
-  }
-
-  importData(): void {
-    if (!this.canImport()) return;
-    if (this.importSource() === 'api') {
-      this.importApiData();
-      return;
-    }
-
-    const file = this.importFile();
-    if (!file) return;
-    const source = this.importSource();
-    if (!source) return;
-    const worksheet = this.excelPreview()?.selectedWorksheet;
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('sourceType', source);
-    formData.append('sourceName', file.name);
-    if (source === 'excel' && worksheet) formData.append('worksheetName', worksheet);
-    formData.append('tableName', this.importTableName(file.name, worksheet));
-
-    this.importing.set(true);
-    this.importError.set('');
-    this.api.uploadDataset(this.projectId, formData).pipe(finalize(() => this.importing.set(false))).subscribe({
-      next: (dataset) => this.finishImport(dataset),
-      error: (error: unknown) => this.importError.set(this.errorText(error, `Unable to import this ${source === 'excel' ? 'Excel workbook' : 'CSV file'}.`)),
-    });
-  }
-
-  updateApiUrl(value: string): void {
-    this.apiUrl.set(value);
-    this.apiConnection.set(null);
-    this.apiPreview.set(null);
-    this.importError.set('');
-  }
-
-  updateApiArrayPath(value: string): void {
-    this.apiArrayPath.set(value);
-    this.apiConnection.set(null);
-    this.apiPreview.set(null);
-    this.importError.set('');
-  }
-
-  testApiConnection(): void {
-    if (!this.apiUrl().trim() || this.apiTesting()) return;
-    this.apiTesting.set(true);
-    this.importError.set('');
-    this.apiConnection.set(null);
-    this.api.testApiConnection(this.apiRequest()).pipe(finalize(() => this.apiTesting.set(false))).subscribe({
-      next: (result) => this.apiConnection.set(result),
-      error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to connect to this API.')),
-    });
-  }
-
-  previewApiData(): void {
-    if (!this.apiUrl().trim() || this.apiPreviewLoading()) return;
-    this.apiPreviewLoading.set(true);
-    this.importError.set('');
-    this.apiPreview.set(null);
-    this.api.previewApi(this.apiRequest()).pipe(finalize(() => this.apiPreviewLoading.set(false))).subscribe({
-      next: (preview) => this.apiPreview.set(preview),
-      error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to preview data from this API.')),
-    });
-  }
-
-  openReplace(): void {
-    this.replaceFile.set(null);
-    this.replaceError.set('');
-    this.replaceOpen.set(true);
-  }
-
-  closeReplace(): void {
-    if (this.replacing()) return;
+  onDatasetReplaced(updated: DatasetResponse): void {
+    this.successMessage.set(`${this.displayName(updated)} was replaced. Re-analysis is required; previous versions remain in history.`);
     this.replaceOpen.set(false);
-    this.replaceFile.set(null);
-    this.replaceError.set('');
+    this.loadDatasets(updated.id);
+    this.refreshWorkflow();
   }
 
-  onReplaceFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    input.value = '';
-    this.replaceError.set('');
-    if (!file) return;
-    if (!isCsvFile(file)) {
-      this.replaceFile.set(null);
-      this.replaceError.set('Choose one non-empty CSV file.');
-      return;
-    }
-    this.replaceFile.set(file);
-  }
-
-  replaceDataset(): void {
+  onDatasetDeleted(): void {
     const dataset = this.selectedDataset();
-    const file = this.replaceFile();
-    if (!dataset || !file || this.replacing()) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('sourceType', 'csv');
-    formData.append('sourceName', file.name);
-    this.replacing.set(true);
-    this.replaceError.set('');
-    this.api.replaceDataset(dataset.id, formData).pipe(finalize(() => this.replacing.set(false))).subscribe({
-      next: (updated) => {
-        this.closeReplace();
-        this.successMessage.set(`${this.displayName(updated)} was replaced. Re-analysis is required; previous versions remain in history.`);
-        this.loadDatasets(updated.id);
-        this.refreshWorkflow();
-      },
-      error: (error: unknown) => this.replaceError.set(this.errorText(error, 'Unable to replace this dataset.')),
-    });
+    if (dataset) this.successMessage.set(`${this.displayName(dataset)} was deleted.`);
+    this.confirmingDelete.set(false);
+    this.selectedDatasetId.set(null);
+    this.loadDatasets();
+    this.refreshWorkflow();
   }
 
-  requestDelete(): void {
-    this.deleteError.set('');
-    this.confirmingDelete.set(true);
-  }
-
-  cancelDelete(): void {
-    if (!this.deleting()) this.confirmingDelete.set(false);
-  }
-
-  deleteDataset(): void {
-    const dataset = this.selectedDataset();
-    if (!dataset || this.deleting()) return;
-    this.deleting.set(true);
-    this.deleteError.set('');
-    this.api.deleteDataset(dataset.id).pipe(finalize(() => this.deleting.set(false))).subscribe({
-      next: () => {
-        this.confirmingDelete.set(false);
-        this.selectedDatasetId.set(null);
-        this.successMessage.set(`${this.displayName(dataset)} was deleted.`);
-        this.loadDatasets();
-        this.refreshWorkflow();
-      },
-      error: (error: unknown) => this.deleteError.set(this.errorText(error, 'Unable to delete this dataset.')),
-    });
-  }
-
-  openProjectEdit(): void {
-    const project = this.project();
-    if (!project) return;
-    this.editName.set(project.name);
-    this.editDescription.set(project.description ?? '');
-    this.editError.set('');
-    this.editOpen.set(true);
-  }
-
-  closeProjectEdit(): void {
-    if (!this.savingProject()) this.editOpen.set(false);
-  }
-
-  saveProject(): void {
-    const project = this.project();
-    const name = this.editName().trim();
-    if (!project || !name || name.length > 100 || this.editDescription().length > 500 || this.savingProject()) return;
-    this.savingProject.set(true);
-    this.editError.set('');
-    this.api.updateProject(project.id, { name, description: this.editDescription().trim() || null })
-      .pipe(finalize(() => this.savingProject.set(false)))
-      .subscribe({
-        next: (updated) => {
-          this.project.set(updated);
-          this.editOpen.set(false);
-          this.successMessage.set('Project details updated.');
-          this.refreshWorkflow();
-        },
-        error: (error: unknown) => this.editError.set(this.errorText(error, 'Unable to update this project.')),
-      });
+  onProjectSaved(updated: ProjectResponse): void {
+    this.project.set(updated);
+    this.editOpen.set(false);
+    this.successMessage.set('Project details updated.');
+    this.refreshWorkflow();
   }
 
   continueToAnalyze(): void {
@@ -385,10 +194,6 @@ export class DataSourcesComponent implements OnInit {
     const metadata = this.workflowDataset(datasetId);
     if (!metadata) return 'Status unavailable';
     return metadata.hasCurrentAnalysis && !metadata.requiresAnalysis ? 'Analyzed' : 'Analysis required';
-  }
-
-  formatSize(bytes: number): string {
-    return formatFileSize(bytes);
   }
 
   displayName(dataset: DatasetResponse): string {
@@ -450,82 +255,6 @@ export class DataSourcesComponent implements OnInit {
       queryParamsHandling: 'merge',
       replaceUrl,
     });
-  }
-
-  private acceptImportFile(file: File | null): void {
-    this.importError.set('');
-    this.importFile.set(null);
-    this.excelPreview.set(null);
-    if (!file) return;
-    if (this.importSource() === 'csv') {
-      if (!isCsvFile(file)) {
-        this.importError.set('Choose one non-empty CSV file.');
-        return;
-      }
-      this.importFile.set(file);
-      return;
-    }
-    if (!file.name.toLocaleLowerCase().endsWith('.xlsx') || file.size <= 0) {
-      this.importError.set('Choose one non-empty .xlsx Excel workbook.');
-      return;
-    }
-    this.importFile.set(file);
-    this.loadExcelPreview();
-  }
-
-  private loadExcelPreview(worksheetName?: string): void {
-    const file = this.importFile();
-    if (!file || this.importSource() !== 'excel') return;
-    const formData = new FormData();
-    formData.append('file', file);
-    if (worksheetName) formData.append('worksheetName', worksheetName);
-    this.excelPreviewLoading.set(true);
-    this.importError.set('');
-    this.api.previewExcel(formData).pipe(finalize(() => this.excelPreviewLoading.set(false))).subscribe({
-      next: (preview) => this.excelPreview.set(preview),
-      error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to read this Excel workbook.')),
-    });
-  }
-
-  private importApiData(): void {
-    this.importing.set(true);
-    this.importError.set('');
-    this.api.importApi(this.projectId, this.apiRequest()).pipe(finalize(() => this.importing.set(false))).subscribe({
-      next: (dataset) => this.finishImport(dataset),
-      error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to import data from this API.')),
-    });
-  }
-
-  private finishImport(dataset: DatasetResponse): void {
-    this.successMessage.set(`${this.displayName(dataset)} imported successfully.`);
-    this.resetImport();
-    this.importSource.set(null);
-    this.importOpen.set(false);
-    this.loadDatasets(dataset.id);
-    this.refreshWorkflow();
-  }
-
-  private resetImport(): void {
-    this.importFile.set(null);
-    this.excelPreview.set(null);
-    this.apiUrl.set('');
-    this.apiArrayPath.set('');
-    this.apiConnection.set(null);
-    this.apiPreview.set(null);
-    this.importError.set('');
-  }
-
-  private apiRequest(): ApiJsonImportRequest {
-    return {
-      apiUrl: this.apiUrl().trim(),
-      arrayPath: this.apiArrayPath().trim() || null,
-    };
-  }
-
-  private importTableName(fileName: string, worksheet?: string | null): string {
-    const base = fileName.replace(/\.(csv|xlsx)$/i, '');
-    const candidate = worksheet ? `${base}_${worksheet}` : base;
-    return candidate.replace(/[^a-zA-Z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'dataset';
   }
 
   private parseDatasetId(value: string | null): number | null {
