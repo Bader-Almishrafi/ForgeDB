@@ -3,12 +3,12 @@
     <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-[32%] bg-gradient-to-l from-indigo-50/80 to-transparent lg:block dark:from-indigo-950/20" aria-hidden="true"></div>
     <div class="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
     <div class="min-w-0">
-      <p class="eyebrow">{{ projectName() }}</p>
+      <p class="eyebrow">{{ service.projectName() }}</p>
       <h1 class="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl dark:text-white">Data</h1>
       <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">Import, select, and preview the active dataset versions that belong to this project.</p>
     </div>
     <div class="flex flex-wrap gap-2">
-      @if (project()) {
+      @if (service.project()) {
         <button type="button" class="btn-secondary" (click)="editOpen.set(true)">Edit Project</button>
       }
       <button type="button" class="btn-primary" data-testid="open-import-button" (click)="openImport()">Import Data</button>
@@ -16,32 +16,32 @@
     </div>
   </header>
 
-  @if (projectError()) {
+  @if (service.projectError()) {
     <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300" role="alert">
-      {{ projectError() }}
+      {{ service.projectError() }}
     </div>
   }
-  @if (datasetsError()) {
+  @if (service.datasetsError()) {
     <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300" role="alert">
-      {{ datasetsError() }} <button type="button" class="font-semibold underline" (click)="loadDatasets()">Try again</button>
+      {{ service.datasetsError() }} <button type="button" class="font-semibold underline" (click)="service.loadDatasets()">Try again</button>
     </div>
   }
-  @if (selectionNotice()) {
+  @if (service.selectionNotice()) {
     <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300" role="status">
-      {{ selectionNotice() }}
+      {{ service.selectionNotice() }}
     </div>
   }
-  @if (successMessage()) {
+  @if (service.successMessage()) {
     <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300" role="status">
-      {{ successMessage() }}
+      {{ service.successMessage() }}
     </div>
   }
 
-  @if (datasetsLoading()) {
+  @if (service.datasetsLoading()) {
     <div class="glass-card p-10 text-center text-sm text-slate-500" aria-busy="true">
       Loading datasets…
     </div>
-  } @else if (!datasetsError() && datasets().length === 0) {
+  } @else if (!service.datasetsError() && service.datasets().length === 0) {
     <div class="animate-fade-in-up delay-200 rounded-3xl border border-dashed border-slate-300 bg-white/60 px-6 py-14 text-center shadow-sm backdrop-blur dark:border-[#30363d] dark:bg-[#161b22]/60" data-testid="data-empty-state">
       <h2 class="text-xl font-bold text-slate-950 dark:text-white">Import your first dataset</h2>
       <p class="mx-auto mt-2 max-w-xl text-sm text-slate-600 dark:text-slate-400">This project is empty. Add one CSV file, an Excel worksheet, or records from an API.</p>
@@ -51,12 +51,12 @@
         <button type="button" class="btn-secondary" data-testid="empty-import-api" (click)="openImport('api')">Import API</button>
       </div>
     </div>
-  } @else if (selectedDataset(); as dataset) {
+  } @else if (service.selectedDataset(); as dataset) {
     <div class="animate-fade-in-up delay-200 grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
       <aside class="glass-card self-start p-4" aria-label="Dataset selection">
         <label for="dataset-selector" class="text-sm font-semibold text-slate-800 dark:text-slate-200">Dataset</label>
-        <select id="dataset-selector" data-testid="dataset-selector" class="input-field mt-2" [ngModel]="selectedDatasetId()" (ngModelChange)="selectDatasetById($event)">
-          @for (item of datasets(); track item.id) {
+        <select id="dataset-selector" data-testid="dataset-selector" class="input-field mt-2" [ngModel]="service.selectedDatasetId()" (ngModelChange)="service.selectDatasetById($event)">
+          @for (item of service.datasets(); track item.id) {
             <option [ngValue]="item.id">{{ item.tableName }}</option>
           }
         </select>
@@ -64,12 +64,12 @@
         <dl class="mt-5 divide-y divide-slate-100 text-sm dark:divide-slate-800">
           <div class="flex items-center justify-between gap-3 py-3">
             <dt class="text-slate-500">Source</dt>
-            <dd class="truncate font-medium" [title]="displayName(dataset)">{{ dataset.sourceType }}</dd>
+            <dd class="truncate font-medium" [title]="service.displayName(dataset)">{{ dataset.sourceType }}</dd>
           </div>
           <div class="flex items-center justify-between gap-3 py-3">
             <dt class="text-slate-500">Active version</dt>
             <dd class="font-medium" data-testid="active-version-number">
-              @if (selectedWorkflowDataset()?.activeVersionNumber; as version) { v{{ version }} } @else { — }
+              @if (service.selectedWorkflowDataset()?.activeVersionNumber; as version) { v{{ version }} } @else { — }
             </dd>
           </div>
           <div class="flex items-center justify-between gap-3 py-3">
@@ -83,9 +83,9 @@
           <div class="flex items-center justify-between gap-3 py-3">
             <dt class="text-slate-500">Status</dt>
             <dd class="font-semibold" data-testid="dataset-analysis-status"
-              [class.text-amber-700]="analysisStatus(dataset.id) === 'Analysis required'"
-              [class.text-emerald-700]="analysisStatus(dataset.id) === 'Analyzed'">
-              {{ analysisStatus(dataset.id) }}
+              [class.text-amber-700]="service.analysisStatus(dataset.id) === 'Analysis required'"
+              [class.text-emerald-700]="service.analysisStatus(dataset.id) === 'Analyzed'">
+              {{ service.analysisStatus(dataset.id) }}
             </dd>
           </div>
         </dl>
@@ -100,37 +100,37 @@
         <div class="flex flex-col gap-3 border-b border-slate-200 p-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <div class="min-w-0">
             <h2 class="truncate text-xl font-bold text-slate-950 dark:text-white">{{ dataset.tableName }}</h2>
-            <p class="mt-1 truncate text-sm text-slate-500" [title]="displayName(dataset)">{{ displayName(dataset) }}</p>
+            <p class="mt-1 truncate text-sm text-slate-500" [title]="service.displayName(dataset)">{{ service.displayName(dataset) }}</p>
           </div>
-          <button type="button" class="btn-secondary shrink-0" (click)="refreshPreview()" [disabled]="previewLoading()">Refresh preview</button>
+          <button type="button" class="btn-secondary shrink-0" (click)="service.refreshPreview()" [disabled]="service.previewLoading()">Refresh preview</button>
         </div>
 
-        @if (previewLoading()) {
+        @if (service.previewLoading()) {
           <div class="p-10 text-center text-sm text-slate-500" aria-busy="true">Loading active-version preview…</div>
-        } @else if (previewError()) {
+        } @else if (service.previewError()) {
           <div class="p-8 text-center" role="alert">
-            <p class="text-sm text-rose-600">{{ previewError() }}</p>
-            <button type="button" class="btn-secondary mt-4" (click)="refreshPreview()">Try again</button>
+            <p class="text-sm text-rose-600">{{ service.previewError() }}</p>
+            <button type="button" class="btn-secondary mt-4" (click)="service.refreshPreview()">Try again</button>
           </div>
-        } @else if (preview(); as dataPreview) {
+        } @else if (service.preview(); as dataPreview) {
           <div class="table-wrap max-h-[34rem] rounded-none border-x-0 border-b-0" data-testid="dataset-preview-table">
             <table class="data-table">
               <thead class="bg-slate-50 dark:bg-slate-900/50">
                 <tr>
-                  @for (column of previewColumns(); track column) {
+                  @for (column of service.previewColumns(); track column) {
                     <th class="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">{{ column }}</th>
                   }
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                @for (row of previewRows(); track $index) {
+                @for (row of service.previewRows(); track $index) {
                   <tr>
-                    @for (column of previewColumns(); track column) {
-                      <td class="max-w-72 truncate px-4 py-3 text-slate-600 dark:text-slate-300" [title]="previewValue(row, column)">{{ previewValue(row, column) }}</td>
+                    @for (column of service.previewColumns(); track column) {
+                      <td class="max-w-72 truncate px-4 py-3 text-slate-600 dark:text-slate-300" [title]="service.previewValue(row, column)">{{ service.previewValue(row, column) }}</td>
                     }
                   </tr>
                 } @empty {
-                  <tr><td [attr.colspan]="previewColumns().length || 1" class="px-4 py-10 text-center text-slate-500">No preview rows are available.</td></tr>
+                  <tr><td [attr.colspan]="service.previewColumns().length || 1" class="px-4 py-10 text-center text-slate-500">No preview rows are available.</td></tr>
                 }
               </tbody>
             </table>
@@ -141,13 +141,13 @@
   }
 
   <footer class="flex justify-end border-t border-slate-200 pt-6 dark:border-slate-800">
-    <button type="button" class="btn-primary" data-testid="continue-to-analyze" (click)="continueToAnalyze()" [disabled]="!canContinueToAnalyze()">
+    <button type="button" class="btn-primary" data-testid="continue-to-analyze" (click)="continueToAnalyze()" [disabled]="!service.canContinueToAnalyze()">
       Continue to Analyze
     </button>
   </footer>
 </section>
 
-<app-import-dataset-dialog [isOpen]="importOpen()" [projectId]="projectId" [projectName]="projectName()" [initialSource]="importSource()" (closeDialog)="importOpen.set(false); importSource.set(null)" (imported)="onDatasetImported($event)" />
-<app-replace-dataset-dialog [isOpen]="replaceOpen()" [dataset]="selectedDataset()" (closeDialog)="replaceOpen.set(false)" (replaced)="onDatasetReplaced($event)" />
-<app-delete-dataset-dialog [isOpen]="confirmingDelete()" [dataset]="selectedDataset()" (closeDialog)="confirmingDelete.set(false)" (deleted)="onDatasetDeleted()" />
-<app-edit-project-dialog [isOpen]="editOpen()" [project]="project()" (closeDialog)="editOpen.set(false)" (saved)="onProjectSaved($event)" />
+<app-import-dataset-dialog [isOpen]="importOpen()" [projectId]="service.projectId" [projectName]="service.projectName()" [initialSource]="importSource()" (closeDialog)="importOpen.set(false); importSource.set(null)" (imported)="onDatasetImported($event)" />
+<app-replace-dataset-dialog [isOpen]="replaceOpen()" [dataset]="service.selectedDataset()" (closeDialog)="replaceOpen.set(false)" (replaced)="onDatasetReplaced($event)" />
+<app-delete-dataset-dialog [isOpen]="confirmingDelete()" [dataset]="service.selectedDataset()" (closeDialog)="confirmingDelete.set(false)" (deleted)="onDatasetDeleted()" />
+<app-edit-project-dialog [isOpen]="editOpen()" [project]="service.project()" (closeDialog)="editOpen.set(false)" (saved)="onProjectSaved($event)" />
