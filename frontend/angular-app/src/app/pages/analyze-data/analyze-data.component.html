@@ -1,63 +1,63 @@
-<section class="mx-auto max-w-[1600px] space-y-6 overflow-x-hidden" data-testid="analyze-page">
+<section class="mx-auto max-w-[1600px] space-y-6 overflow-x-hidden animate-fade-in-up" data-testid="analyze-page">
   <header class="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-slate-200 bg-white/80 px-5 py-6 shadow-sm shadow-slate-200/50 backdrop-blur-xl sm:px-7 sm:py-8 lg:flex-row lg:items-end lg:justify-between dark:border-white/10 dark:bg-[#161b22]/80 dark:shadow-black/20">
     <div>
-      <p class="eyebrow">{{ projectName() }}</p>
+      <p class="eyebrow">{{ service.projectName() }}</p>
       <h1 class="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl dark:text-white">Analyze</h1>
       <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">Review saved active-version analysis before cleaning your data.</p>
     </div>
-    @if (!loading() && datasets().length) {
+    @if (!service.loading() && service.datasets().length) {
       <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
         <label class="block min-w-60">
           <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Analysis scope</span>
-          <select class="input-field mt-2" data-testid="analysis-scope-selector" [ngModel]="scope()" (ngModelChange)="changeScope($event)" [disabled]="running()">
+          <select class="input-field mt-2" data-testid="analysis-scope-selector" [ngModel]="service.scope()" (ngModelChange)="changeScope($event)" [disabled]="service.running()">
             <option [ngValue]="'project'">All datasets</option>
-            @for (dataset of datasets(); track dataset.id) {
+            @for (dataset of service.datasets(); track dataset.id) {
               <option [ngValue]="dataset.id">{{ dataset.tableName }}</option>
             }
           </select>
         </label>
-        <button type="button" class="btn-primary justify-center" data-testid="run-analysis" (click)="runAnalysis()" [disabled]="running()">
-          {{ analysisActionLabel() }}
+        <button type="button" class="btn-primary justify-center" data-testid="run-analysis" (click)="runAnalysis()" [disabled]="service.running()">
+          {{ service.analysisActionLabel() }}
         </button>
       </div>
     }
   </header>
 
-  @if (loading()) {
+  @if (service.loading()) {
     <div class="glass-card p-12 text-center text-sm text-slate-500" aria-busy="true">
       Loading saved analysis…
     </div>
-  } @else if (loadError()) {
+  } @else if (service.loadError()) {
     <div class="rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900/50 dark:bg-rose-950/20" role="alert">
-      <p class="font-semibold text-rose-700 dark:text-rose-300">{{ loadError() }}</p>
-      <button type="button" class="btn-secondary mt-4" (click)="loadWorkspace()">Try again</button>
+      <p class="font-semibold text-rose-700 dark:text-rose-300">{{ service.loadError() }}</p>
+      <button type="button" class="btn-secondary mt-4" (click)="service.loadWorkspace(service.projectId, service.selectedDataset()?.id ?? null)">Try again</button>
     </div>
-  } @else if (!datasets().length) {
+  } @else if (!service.datasets().length) {
     <div class="rounded-3xl border border-dashed border-slate-300 bg-white/60 px-6 py-14 text-center shadow-sm backdrop-blur dark:border-[#30363d] dark:bg-[#161b22]/60" data-testid="analysis-empty-state">
       <h2 class="text-xl font-bold text-slate-950 dark:text-white">No datasets to analyze</h2>
       <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Add a dataset in Data before running analysis.</p>
-      <a class="btn-primary mt-5" [routerLink]="['/projects', projectId, 'data']">Go to Data</a>
+      <a class="btn-primary mt-5" [routerLink]="['/projects', service.projectId, 'data']">Go to Data</a>
     </div>
   } @else {
-    @if (scopeNotice()) {
+    @if (service.scopeNotice()) {
       <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300" role="status">
-        {{ scopeNotice() }}
+        {{ service.scopeNotice() }}
       </div>
     }
 
-    @if (running()) {
+    @if (service.running()) {
       <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/20" role="status" data-testid="analysis-progress">
         <div class="flex items-center justify-between gap-4 text-sm">
-          <span class="font-semibold text-indigo-800 dark:text-indigo-300">Analyzing {{ progressDataset() }}</span>
-          <span class="text-indigo-700 dark:text-indigo-400">{{ progressCurrent() }} of {{ progressTotal() }}</span>
+          <span class="font-semibold text-indigo-800 dark:text-indigo-300">Analyzing {{ service.progressDataset() }}</span>
+          <span class="text-indigo-700 dark:text-indigo-400">{{ service.progressCurrent() }} of {{ service.progressTotal() }}</span>
         </div>
         <div class="mt-3 h-2 overflow-hidden rounded-full bg-indigo-100 dark:bg-indigo-950">
-          <span class="block h-full rounded-full bg-indigo-600 transition-all" [style.width.%]="progressTotal() ? progressCurrent() / progressTotal() * 100 : 0"></span>
+          <span class="block h-full rounded-full bg-indigo-600 transition-all" [style.width.%]="service.progressTotal() ? service.progressCurrent() / service.progressTotal() * 100 : 0"></span>
         </div>
       </div>
     }
 
-    @if (feedback(); as message) {
+    @if (service.feedback(); as message) {
       <div class="rounded-xl border px-4 py-3 text-sm"
         [class.border-emerald-200]="message.kind === 'success'" [class.bg-emerald-50]="message.kind === 'success'" [class.text-emerald-800]="message.kind === 'success'"
         [class.border-amber-200]="message.kind === 'warning'" [class.bg-amber-50]="message.kind === 'warning'" [class.text-amber-800]="message.kind === 'warning'"
@@ -65,11 +65,11 @@
         role="status">{{ message.message }}</div>
     }
 
-    @if (executionFailures().length) {
+    @if (service.executionFailures().length) {
       <section class="rounded-2xl border border-rose-200 bg-white p-5 dark:border-rose-900/50 dark:bg-[#161b22]" data-testid="analysis-failures">
         <h2 class="font-bold text-slate-950 dark:text-white">Analysis failures</h2>
         <ul class="mt-3 space-y-2 text-sm">
-          @for (failure of executionFailures(); track failure.datasetId) {
+          @for (failure of service.executionFailures(); track failure.datasetId) {
             <li class="rounded-lg bg-rose-50 px-3 py-2 text-rose-700 dark:bg-rose-950/20 dark:text-rose-300">
               <strong>{{ failure.datasetName }}:</strong> {{ failure.message }}
             </li>
@@ -78,20 +78,20 @@
       </section>
     }
 
-    @if (projectScope()) {
+    @if (service.projectScope()) {
       <section class="workspace-panel p-5" data-testid="dataset-analysis-status-list">
         <div class="flex items-center justify-between gap-4">
           <div>
             <h2 class="text-lg font-bold text-slate-950 dark:text-white">Dataset status</h2>
-            <p class="mt-1 text-sm text-slate-500">{{ summary().analyzedDatasets }} analyzed · {{ summary().requiresAnalysis }} requiring analysis</p>
+            <p class="mt-1 text-sm text-slate-500">Datasets requiring analysis before moving to Data Cleaning.</p>
           </div>
         </div>
         <div class="mt-4 divide-y divide-slate-100 dark:divide-slate-800">
-          @for (dataset of datasets(); track dataset.id) {
+          @for (dataset of service.datasets(); track dataset.id) {
             <div class="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div class="min-w-0">
                 <p class="truncate font-semibold text-slate-900 dark:text-white">{{ dataset.tableName }}</p>
-                <p class="mt-1 text-xs text-slate-500">Active {{ datasetVersion(dataset.id) }} · {{ datasetAnalysisStatus(dataset.id) }}</p>
+                <p class="mt-1 text-xs text-slate-500">Active {{ service.datasetVersion(dataset.id) }} · {{ service.datasetAnalysisStatus(dataset.id) }}</p>
               </div>
               <button type="button" class="btn-secondary shrink-0" (click)="openDataset(dataset.id)">Open</button>
             </div>
@@ -100,131 +100,40 @@
       </section>
     }
 
-    @if (resultsLoading()) {
+    @if (service.resultsLoading()) {
       <div class="glass-card p-10 text-center text-sm text-slate-500" aria-busy="true">
         Loading active-version analysis results…
       </div>
     } @else {
-      @if (!scopeHasSavedAnalysis()) {
+      @if (!service.scopeHasSavedAnalysis()) {
         <div class="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center dark:border-amber-900/50 dark:bg-amber-950/20" data-testid="analysis-required-state">
           <h2 class="text-lg font-bold text-amber-900 dark:text-amber-200">
-            @if (selectedDataset(); as dataset) { {{ datasetAnalysisStatus(dataset.id) }} } @else { Analysis required }
+            @if (service.selectedDataset(); as dataset) { {{ service.datasetAnalysisStatus(dataset.id) }} } @else { Analysis required }
           </h2>
           <p class="mt-2 text-sm text-amber-800 dark:text-amber-300">Run analysis to save results for the current active dataset version.</p>
         </div>
       } @else {
-        <section class="workspace-panel space-y-4 p-5 sm:p-6" data-testid="analysis-summary">
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 class="text-xl font-bold text-slate-950 dark:text-white">Summary</h2>
-              <p class="mt-1 text-sm text-slate-500">Only saved analysis for current active versions is included.</p>
-            </div>
-            @if (summary().lastAnalyzedAt) { <p class="text-xs text-slate-500">Analyzed {{ summary().lastAnalyzedAt | date:'medium' }}</p> }
-          </div>
-          <dl class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <div class="rounded-xl bg-slate-50 p-4 dark:bg-[#21262d]/70"><dt class="text-xs text-slate-500">Rows</dt><dd class="mt-1 text-xl font-bold">{{ summary().rows | number }}</dd></div>
-            <div class="rounded-xl bg-slate-50 p-4 dark:bg-[#21262d]/70"><dt class="text-xs text-slate-500">Columns</dt><dd class="mt-1 text-xl font-bold">{{ summary().columns | number }}</dd></div>
-            <div class="rounded-xl bg-slate-50 p-4 dark:bg-[#21262d]/70"><dt class="text-xs text-slate-500">Missing values</dt><dd class="mt-1 text-xl font-bold">{{ summary().missingValues | number }}</dd></div>
-            <div class="rounded-xl bg-slate-50 p-4 dark:bg-[#21262d]/70"><dt class="text-xs text-slate-500">Duplicate rows</dt><dd class="mt-1 text-xl font-bold">{{ summary().duplicateRows | number }}</dd></div>
-            <div class="rounded-xl bg-slate-50 p-4 dark:bg-[#21262d]/70"><dt class="text-xs text-slate-500">Analyzed version</dt><dd class="mt-1 text-lg font-bold">{{ analyzedVersionLabel() }}</dd></div>
-          </dl>
-          @if (selectedAnalysis(); as analysis) {
-            <p class="text-xs text-slate-500">
-              {{ analysis.isCleanedVersion ? 'Cleaned version' : 'Imported version' }}
-              @if (analysis.analysisEngine) { · Engine: {{ analysis.analysisEngine }} }
-            </p>
-          } @else if (analysisEngines().length) {
-            <p class="text-xs text-slate-500">Engine: {{ analysisEngines().join(', ') }}</p>
-          }
-        </section>
+        
+        <div class="flex flex-col gap-6">
+          <app-analysis-summary [analyses]="service.scopeAnalyses()" [projectScope]="service.projectScope()" />
+          <app-analysis-issues [analyses]="service.scopeAnalyses()" [datasets]="service.datasets()" />
+          <app-analysis-columns [analyses]="service.scopeAnalyses()" [datasets]="service.datasets()" />
+          <app-analysis-visualizations [analyses]="service.scopeAnalyses()" [datasets]="service.datasets()" [projectScope]="service.projectScope()" />
+          <app-analysis-recommendations [analyses]="service.scopeAnalyses()" [datasets]="service.datasets()" />
+        </div>
 
-        <section class="workspace-panel p-5 sm:p-6" data-testid="analysis-issues">
-          <h2 class="text-xl font-bold text-slate-950 dark:text-white">Issues</h2>
-          @if (issues().length) {
-            <div class="table-wrap mt-4 max-h-[30rem]">
-              <table class="data-table">
-                <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800">
-                  <tr><th class="px-3 py-2">Dataset</th><th class="px-3 py-2">Issue</th><th class="px-3 py-2">Column</th><th class="px-3 py-2 text-right">Count</th><th class="px-3 py-2 text-right">Percent</th></tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                  @for (issue of issues(); track issue.key) {
-                    <tr><td class="px-3 py-3 font-medium">{{ issue.datasetName }}</td><td class="px-3 py-3">{{ issue.type }}</td><td class="px-3 py-3 text-slate-500">{{ issue.column || 'All columns' }}</td><td class="px-3 py-3 text-right">{{ issue.count | number }}</td><td class="px-3 py-3 text-right">@if (issue.percentage !== null) { {{ issue.percentage | number:'1.0-1' }}% } @else { — }</td></tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          } @else {
-            <p class="mt-4 text-sm text-slate-500">No missing values or duplicate rows were reported for this scope.</p>
-          }
-        </section>
-
-        <section class="workspace-panel p-5 sm:p-6" data-testid="analysis-columns">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div><h2 class="text-xl font-bold text-slate-950 dark:text-white">Columns</h2><p class="mt-1 text-sm text-slate-500">Detected types and saved column statistics.</p></div>
-            <label class="block sm:w-72"><span class="sr-only">Search columns</span><input type="search" class="input-field" placeholder="Search columns" [ngModel]="columnSearch()" (ngModelChange)="columnSearch.set($event)"></label>
-          </div>
-          <div class="table-wrap mt-4 max-h-[34rem]">
-            <table class="data-table">
-              <thead class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800">
-                <tr><th class="px-3 py-2">Dataset</th><th class="px-3 py-2">Column</th><th class="px-3 py-2">Type</th><th class="px-3 py-2 text-right">Missing</th><th class="px-3 py-2 text-right">Unique</th><th class="px-3 py-2">Numeric statistics</th></tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                @for (row of filteredColumns(); track row.key) {
-                  <tr>
-                    <td class="px-3 py-3">{{ row.datasetName }}</td>
-                    <td class="px-3 py-3 font-mono font-semibold">{{ row.column.columnName }}</td>
-                    <td class="px-3 py-3">{{ row.column.detectedDataType }}</td>
-                    <td class="px-3 py-3 text-right">{{ row.column.missingValuesCount | number }} @if (row.missingPercentage !== null) { <span class="text-xs text-slate-400">({{ row.missingPercentage | number:'1.0-1' }}%)</span> }</td>
-                    <td class="px-3 py-3 text-right">{{ row.column.uniqueValuesCount | number }}</td>
-                    <td class="whitespace-nowrap px-3 py-3 text-xs text-slate-500">@if (row.column.numericStats; as stats) { Min {{ stats.min | number:'1.0-2' }} · Avg {{ stats.average | number:'1.0-2' }} · Max {{ stats.max | number:'1.0-2' }} } @else { — }</td>
-                  </tr>
-                } @empty {
-                  <tr><td colspan="6" class="px-3 py-10 text-center text-slate-500">No columns match this search.</td></tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        @if (missingChartPoints().length || typeChartPoints().length || duplicateChartPoints().length) {
-          <section data-testid="analysis-charts">
-            <h2 class="text-xl font-bold text-slate-950 dark:text-white">Visualizations</h2>
-            <div class="mt-4 grid gap-4 lg:grid-cols-3">
-              @if (missingChartPoints().length) { <app-analysis-chart title="Missing values" description="Largest missing-value counts in this scope." [points]="missingChartPoints()" /> }
-              @if (typeChartPoints().length) { <app-analysis-chart title="Detected data types" description="Column distribution from saved analysis." [points]="typeChartPoints()" /> }
-              @if (duplicateChartPoints().length) { <app-analysis-chart title="Duplicate rows" description="Datasets with reported duplicate rows." [points]="duplicateChartPoints()" /> }
-            </div>
-          </section>
-        }
-
-        @if (recommendations().length) {
-          <section class="workspace-panel p-5 sm:p-6" data-testid="analysis-recommendations">
-            <h2 class="text-xl font-bold text-slate-950 dark:text-white">Recommendations</h2>
-            <ul class="mt-4 grid gap-3 md:grid-cols-2">
-              @for (item of recommendations(); track item.key) {
-                <li class="rounded-xl bg-slate-50 p-4 dark:bg-slate-900/50">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">{{ item.datasetName }}</p>
-                  <h3 class="mt-1 font-semibold">{{ item.recommendation.title }}</h3>
-                  @if (item.recommendation.reason || item.recommendation.usefulness) {
-                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{{ item.recommendation.reason || item.recommendation.usefulness }}</p>
-                  }
-                </li>
-              }
-            </ul>
-          </section>
-        }
       }
     }
 
-    @if (resultLoadFailures().length) {
+    @if (service.resultLoadFailures().length) {
       <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300" role="alert">
-        @for (failure of resultLoadFailures(); track failure.datasetId) { <p><strong>{{ failure.datasetName }}:</strong> {{ failure.message }}</p> }
+        @for (failure of service.resultLoadFailures(); track failure.datasetId) { <p><strong>{{ failure.datasetName }}:</strong> {{ failure.message }}</p> }
       </div>
     }
 
     <footer class="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-      <a class="btn-secondary justify-center" [routerLink]="['/projects', projectId, 'data']" [queryParams]="backToDataQuery()">Back to Data</a>
-      <button type="button" class="btn-primary justify-center" data-testid="continue-to-clean" (click)="continueToClean()" [disabled]="!canContinueToClean()" [title]="canContinueToClean() ? '' : cleanBlockingReason()">Continue to Clean</button>
+      <a class="btn-secondary justify-center" [routerLink]="['/projects', service.projectId, 'data']" [queryParams]="backToDataQuery()">Back to Data</a>
+      <button type="button" class="btn-primary justify-center" data-testid="continue-to-clean" (click)="continueToClean()" [disabled]="!service.canContinueToClean()" [title]="service.canContinueToClean() ? '' : service.cleanBlockingReason()">Continue to Clean</button>
     </footer>
   }
 </section>
