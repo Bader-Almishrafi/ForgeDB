@@ -214,7 +214,6 @@ public class DatasetRepository : IDatasetRepository
     public async Task<bool> DeleteAsync(int datasetId, CancellationToken cancellationToken = default)
     {
         var dataset = await _context.Datasets
-            .Include(dataset => dataset.Versions)
             .FirstOrDefaultAsync(dataset => dataset.Id == datasetId, cancellationToken);
 
         if (dataset is null)
@@ -228,26 +227,47 @@ public class DatasetRepository : IDatasetRepository
             transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         }
 
-        var suggestions = await _context.RelationshipSuggestions
-            .Where(suggestion => suggestion.SourceDatasetId == datasetId || suggestion.TargetDatasetId == datasetId)
-            .ToListAsync(cancellationToken);
-        var operations = await _context.CleaningOperations
-            .Where(operation => operation.DatasetId == datasetId)
-            .ToListAsync(cancellationToken);
-
-        _context.RelationshipSuggestions.RemoveRange(suggestions);
-        _context.CleaningOperations.RemoveRange(operations);
-        dataset.ActiveVersionId = null;
-        _context.Datasets.Remove(dataset);
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-        if (transaction is not null)
+        try
         {
-            await transaction.CommitAsync(cancellationToken);
-        }
+            await _context.RelationshipSuggestions
+                .Where(suggestion => suggestion.SourceDatasetId == datasetId || suggestion.TargetDatasetId == datasetId)
+                .ExecuteDeleteAsync(cancellationToken);
 
-        return true;
+            await _context.CleaningOperations
+                .Where(operation => operation.DatasetId == datasetId)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _context.Datasets.Where(d => d.Id == datasetId)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.ActiveVersionId, (int?)null), cancellationToken);
+
+            await _context.DatasetVersions.Where(v => v.DatasetId == datasetId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(v => v.ParentVersionId, (int?)null)
+                    .SetProperty(v => v.CleaningBatchId, (int?)null), cancellationToken);
+
+            await _context.DatasetRows.Where(r => r.DatasetId == datasetId).ExecuteDeleteAsync(cancellationToken);
+            await _context.DatasetColumns.Where(c => c.DatasetId == datasetId).ExecuteDeleteAsync(cancellationToken);
+            await _context.DatasetVersions.Where(v => v.DatasetId == datasetId).ExecuteDeleteAsync(cancellationToken);
+
+            _context.Datasets.Remove(dataset);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
+            return true;
+        }
+        catch
+        {
+            if (transaction is not null) await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+        finally
+        {
+            if (transaction is not null) await transaction.DisposeAsync();
+        }
     }
 
     public async Task<Dataset?> ReplaceContentAsync(
