@@ -1,0 +1,51 @@
+<section class="tables-workspace workspace-panel" data-testid="tables-and-columns">
+  <aside class="table-list" aria-label="Schema tables">
+    <div class="section-heading"><div><h2>Tables</h2><p>Select a table to edit.</p></div><span class="badge-neutral">{{ service.tableCount() }}</span></div>
+    <div class="table-buttons">
+      @for (table of service.draftTables(); track table.id) {
+        <button type="button" [class.active]="service.selectedTableId() === table.id" (click)="service.selectTable(table.id)">
+          <svg lucideTable2 [size]="16"></svg>
+          <span><strong>{{ table.name || 'Unnamed table' }}</strong><small>{{ service.sourceDataset(table)?.datasetName ?? table.sourceName ?? 'Manual table' }} · {{ table.columns.length }} columns</small></span>
+          @if (service.tableError(table.id) || service.tableHasValidationIssue(table.id)) { <svg lucideTriangleAlert class="text-rose-600" [size]="15"></svg> }
+        </button>
+      }
+    </div>
+  </aside>
+
+  <main class="table-editor">
+    @if (service.selectedTable(); as table) {
+      <div class="editor-heading">
+        <div class="min-w-0 flex-1 max-w-sm">
+          <label class="field-label" [for]="'table-name-' + table.id">Table name</label>
+          <input [id]="'table-name-' + table.id" class="input-field mt-1 text-lg font-semibold" [class.input-error]="service.tableError(table.id)" [ngModel]="table.name" (ngModelChange)="service.updateTableName(table.id, $event)" maxlength="63" />
+          @if (service.tableError(table.id); as error) { <p class="field-error">{{ error }}</p> }
+        </div>
+        <div class="source-facts">
+          <span><b>Source dataset</b>{{ service.sourceDataset(table)?.datasetName ?? table.sourceName ?? 'Manual' }}</span>
+          <span><b>Source version</b>v{{ service.sourceDataset(table)?.activeVersionNumber ?? '?' }} · ID {{ table.sourceDatasetVersionId ?? '—' }}</span>
+          <span><b>Rows</b>{{ table.rowCount ?? service.sourceDataset(table)?.rowCount ?? 0 }}</span>
+          <span><b>Columns</b>{{ table.columns.length }}</span>
+        </div>
+      </div>
+
+      <div class="table-wrap schema-columns-table max-h-[42rem] rounded-none border-x-0 border-b-0" data-testid="schema-columns-table" [attr.aria-label]="'Columns for ' + table.name">
+        <table class="data-table">
+          <thead><tr><th>Column</th><th>PostgreSQL Type</th><th>Default</th><th class="text-center">Nullable</th><th class="text-center">Primary Key</th><th class="text-center">Unique</th><th class="text-center">Identity</th></tr></thead>
+          <tbody>
+            @for (column of table.columns; track column.id) {
+              <tr>
+                <td class="min-w-64"><label class="sr-only" [for]="'column-name-' + column.id">Column name</label><input [id]="'column-name-' + column.id" class="input-field" [class.input-error]="service.columnError(column.id, 'name')" [ngModel]="column.name" (ngModelChange)="service.updateColumnName(column.id, $event)" maxlength="63" /><span class="mt-1 block text-xs text-slate-500">Source: {{ column.sourceColumnName ?? 'Manual column' }}</span>@if (service.columnError(column.id, 'name'); as error) { <span class="mt-1 block text-xs font-medium text-rose-700">{{ error }}</span> }</td>
+                <td class="min-w-52"><label class="sr-only" [for]="'column-type-' + column.id">PostgreSQL type</label><select [id]="'column-type-' + column.id" class="input-field" [class.input-error]="service.columnError(column.id, 'dataType')" [ngModel]="service.baseDataType(column.sqlType)" (ngModelChange)="service.updateColumnDataType(column.id, $event)">@for (dataType of dataTypeOptions; track dataType) { <option [value]="dataType">{{ dataType }}</option> }</select>@if (service.isVarchar(column.sqlType)) { <label class="mt-2 block text-xs text-slate-500" [for]="'column-varchar-length-' + column.id">VARCHAR length<input [id]="'column-varchar-length-' + column.id" type="number" class="input-field mt-1" min="1" [max]="maxVarcharLength" [ngModel]="service.varcharLength(column.sqlType)" (ngModelChange)="service.updateVarcharLength(column.id, $event)" /></label> } @if (service.columnError(column.id, 'dataType'); as error) { <span class="mt-1 block text-xs font-medium text-rose-700">{{ error }}</span> }</td>
+                <td class="min-w-52"><label class="sr-only" [for]="'column-default-' + column.id">Default value</label><input [id]="'column-default-' + column.id" class="input-field" [class.input-error]="service.columnError(column.id, 'defaultValue')" [disabled]="!!column.isAutoIncrement" [ngModel]="column.defaultValue || ''" (ngModelChange)="service.updateDefaultValue(column.id, $event)" placeholder="None" maxlength="512" />@if (service.columnError(column.id, 'defaultValue'); as error) { <span class="mt-1 block text-xs font-medium text-rose-700">{{ error }}</span> }</td>
+                <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-nullable-' + column.id"><span class="sr-only">Nullable</span><input [id]="'column-nullable-' + column.id" type="checkbox" [checked]="column.isNullable" [disabled]="column.isPrimaryKey || column.isAutoIncrement" (change)="service.updateNullable(column.id, $any($event.target).checked)" /></label>@if (service.columnError(column.id, 'nullable'); as error) { <span class="mt-1 block max-w-32 text-xs font-medium text-rose-700">{{ error }}</span> }</td>
+                <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-pk-' + column.id"><span class="sr-only">Primary Key</span><input [id]="'column-pk-' + column.id" type="checkbox" [checked]="column.isPrimaryKey" (change)="service.updatePrimaryKey(column.id, $any($event.target).checked)" /></label></td>
+                <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-unique-' + column.id"><span class="sr-only">Unique</span><input [id]="'column-unique-' + column.id" type="checkbox" [checked]="column.isUnique" [disabled]="column.isPrimaryKey" (change)="service.updateUnique(column.id, $any($event.target).checked)" /></label><span class="block text-[10px] text-slate-500">{{ column.isPrimaryKey ? 'Implied by PK' : '' }}</span></td>
+                <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-autoincrement-' + column.id"><span class="sr-only">Identity</span><input [id]="'column-autoincrement-' + column.id" type="checkbox" [checked]="column.isAutoIncrement" [disabled]="!service.isIdentityCompatible(column.sqlType) || !!column.defaultValue?.trim()" (change)="service.updateAutoIncrement(column.id, $any($event.target).checked)" /></label>@if (service.columnError(column.id, 'autoIncrement'); as error) { <span class="mt-1 block max-w-32 text-xs font-medium text-rose-700">{{ error }}</span> }</td>
+              </tr>
+            } @empty { <tr><td colspan="7" class="py-10 text-center text-slate-500">This schema table has no columns.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    } @else { <p class="p-6 text-sm text-slate-500">Select a table.</p> }
+  </main>
+</section>

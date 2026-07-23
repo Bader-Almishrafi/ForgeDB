@@ -1,5 +1,5 @@
 import { DatePipe, NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ElementRef, HostListener, OnInit, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, HostListener, OnInit, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
@@ -17,7 +17,8 @@ import { Observable, Subject, take } from 'rxjs';
 import { ValidationIssue } from '../../services/api.models';
 import { routeParameter } from '../../services/route-context';
 import { UnsavedChangesAware } from '../../services/unsaved-changes.guard';
-import { dataTypeOptions, maxVarcharLength } from '../../services/schema-draft';
+import { SchemaDesignerTablesComponent } from './schema-designer-tables.component';
+import { SchemaDesignerValidationComponent } from './schema-designer-validation.component';
 import { SchemaRelationshipsComponent } from './schema-relationships.component';
 import { ProjectSchemaDesignerService } from '../../services/project-schema-designer.service';
 
@@ -29,10 +30,11 @@ import { ProjectSchemaDesignerService } from '../../services/project-schema-desi
     FormsModule,
     NgClass,
     RouterLink,
+    SchemaDesignerTablesComponent,
+    SchemaDesignerValidationComponent,
     SchemaRelationshipsComponent,
     LucideArrowLeft,
     LucideCheckCircle2,
-    LucideClipboard,
     LucideDatabase,
     LucideFileCheck2,
     LucideRefreshCw,
@@ -53,12 +55,16 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
   private leaveDecision: Subject<boolean> | null = null;
 
   readonly stayButton = viewChild<ElementRef<HTMLButtonElement>>('stayButton');
-  readonly sqlOpen = signal(false);
-  readonly copied = signal(false);
   readonly leaveDialogOpen = signal(false);
+  readonly activeTab = signal<'tables' | 'relationships' | 'validation'>('tables');
 
-  readonly dataTypeOptions = dataTypeOptions;
-  readonly maxVarcharLength = maxVarcharLength;
+  constructor() {
+    effect(() => {
+      if (this.service.tableCount() <= 1 && this.activeTab() === 'relationships') {
+        this.activeTab.set('tables');
+      }
+    }, { allowSignalWrites: true });
+  }
 
   ngOnInit(): void {
     const projectId = routeParameter(this.route, 'projectId') ?? 0;
@@ -71,16 +77,11 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
     this.service.init(projectId, datasetId);
   }
 
-  copySql(): void {
-    if (!this.service.sqlPreview()) return;
-    navigator.clipboard.writeText(this.service.sqlPreview()).then(() => {
-      this.copied.set(true);
-      window.setTimeout(() => this.copied.set(false), 1800);
-    }).catch(() => this.service.feedback.set({ kind: 'error', title: 'Copy failed', message: 'Clipboard permission was denied.' }));
-  }
-
   focusIssue(issue: ValidationIssue): void {
-    if (issue.tableId) this.service.selectedTableId.set(issue.tableId);
+    if (issue.tableId) {
+      this.service.selectedTableId.set(issue.tableId);
+      this.activeTab.set('tables');
+    }
   }
 
   continueToExport(): void {

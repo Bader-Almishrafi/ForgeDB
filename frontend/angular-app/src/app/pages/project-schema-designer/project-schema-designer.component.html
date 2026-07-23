@@ -1,3 +1,4 @@
+<title>Project Schema - {{ service.projectName() }}</title>
 <div class="schema-page mx-auto max-w-[1600px]" data-testid="schema-page">
   @if (service.loading()) {
     <section class="space-y-4" aria-live="polite" aria-busy="true">
@@ -89,86 +90,46 @@
         </section>
       }
 
-      <section class="tables-workspace workspace-panel" data-testid="tables-and-columns">
-        <aside class="table-list" aria-label="Schema tables">
-          <div class="section-heading"><div><h2>Tables</h2><p>Select a table to edit.</p></div><span class="badge-neutral">{{ service.tableCount() }}</span></div>
-          <div class="table-buttons">
-            @for (table of service.draftTables(); track table.id) {
-              <button type="button" [class.active]="service.selectedTableId() === table.id" (click)="service.selectTable(table.id)">
-                <svg lucideTable2 [size]="16"></svg>
-                <span><strong>{{ table.name || 'Unnamed table' }}</strong><small>{{ service.sourceDataset(table)?.datasetName ?? table.sourceName ?? 'Manual table' }} · {{ table.columns.length }} columns</small></span>
-                @if (service.tableError(table.id) || service.tableHasValidationIssue(table.id)) { <svg lucideTriangleAlert class="text-rose-600" [size]="15"></svg> }
-              </button>
-            }
-          </div>
-        </aside>
+      <nav class="flex space-x-4 border-b border-slate-200 mb-6">
+        <button type="button" class="pb-2 px-1 border-b-2 font-medium text-sm transition-colors" [class.border-indigo-600]="activeTab() === 'tables'" [class.text-indigo-600]="activeTab() === 'tables'" [class.border-transparent]="activeTab() !== 'tables'" [class.text-slate-500]="activeTab() !== 'tables'" [class.hover:border-slate-300]="activeTab() !== 'tables'" [class.hover:text-slate-700]="activeTab() !== 'tables'" (click)="activeTab.set('tables')">
+          Tables & Columns
+        </button>
+        <span [title]="service.tableCount() <= 1 ? 'Relationships require at least two tables' : ''" [class.cursor-not-allowed]="service.tableCount() <= 1">
+          <button type="button" class="pb-2 px-1 border-b-2 font-medium text-sm transition-colors" 
+                  [class.border-indigo-600]="activeTab() === 'relationships'" 
+                  [class.text-indigo-600]="activeTab() === 'relationships'" 
+                  [class.border-transparent]="activeTab() !== 'relationships'" 
+                  [class.text-slate-500]="activeTab() !== 'relationships'" 
+                  [class.hover:border-slate-300]="activeTab() !== 'relationships' && service.tableCount() > 1" 
+                  [class.hover:text-slate-700]="activeTab() !== 'relationships' && service.tableCount() > 1" 
+                  [class.opacity-50]="service.tableCount() <= 1"
+                  [class.pointer-events-none]="service.tableCount() <= 1"
+                  [disabled]="service.tableCount() <= 1"
+                  (click)="activeTab.set('relationships')">
+            Relationships
+          </button>
+        </span>
+        <button type="button" class="pb-2 px-1 border-b-2 font-medium text-sm transition-colors" [class.border-indigo-600]="activeTab() === 'validation'" [class.text-indigo-600]="activeTab() === 'validation'" [class.border-transparent]="activeTab() !== 'validation'" [class.text-slate-500]="activeTab() !== 'validation'" [class.hover:border-slate-300]="activeTab() !== 'validation'" [class.hover:text-slate-700]="activeTab() !== 'validation'" (click)="activeTab.set('validation')">
+          SQL & Validation
+          @if (service.blockingIssues().length || service.warningIssues().length) {
+            <span class="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" [class.bg-rose-100]="service.blockingIssues().length" [class.text-rose-700]="service.blockingIssues().length" [class.bg-amber-100]="!service.blockingIssues().length" [class.text-amber-800]="!service.blockingIssues().length">{{ service.blockingIssues().length + service.warningIssues().length }}</span>
+          }
+        </button>
+      </nav>
 
-        <main class="table-editor">
-          @if (service.selectedTable(); as table) {
-            <div class="editor-heading">
-              <div class="min-w-0 flex-1">
-                <label class="field-label" [for]="'table-name-' + table.id">Table name</label>
-                <input [id]="'table-name-' + table.id" class="input-field mt-1" [class.input-error]="service.tableError(table.id)" [ngModel]="table.name" (ngModelChange)="service.updateTableName(table.id, $event)" maxlength="63" />
-                @if (service.tableError(table.id); as error) { <p class="field-error">{{ error }}</p> }
-              </div>
-              <div class="source-facts">
-                <span><b>Source dataset</b>{{ service.sourceDataset(table)?.datasetName ?? table.sourceName ?? 'Manual' }}</span>
-                <span><b>Source version</b>v{{ service.sourceDataset(table)?.activeVersionNumber ?? '?' }} · ID {{ table.sourceDatasetVersionId ?? '—' }}</span>
-                <span><b>Rows</b>{{ table.rowCount ?? service.sourceDataset(table)?.rowCount ?? 0 }}</span>
-                <span><b>Columns</b>{{ table.columns.length }}</span>
-              </div>
-            </div>
-
-            <div class="table-wrap schema-columns-table max-h-[42rem] rounded-none border-x-0 border-b-0" data-testid="schema-columns-table" [attr.aria-label]="'Columns for ' + table.name">
-              <table class="data-table">
-                <thead><tr><th>Column</th><th>PostgreSQL Type</th><th>Default</th><th class="text-center">Nullable</th><th class="text-center">Primary Key</th><th class="text-center">Unique</th><th class="text-center">Identity</th></tr></thead>
-                <tbody>
-                  @for (column of table.columns; track column.id) {
-                    <tr>
-                      <td class="min-w-64"><label class="sr-only" [for]="'column-name-' + column.id">Column name</label><input [id]="'column-name-' + column.id" class="input-field" [class.input-error]="service.columnError(column.id, 'name')" [ngModel]="column.name" (ngModelChange)="service.updateColumnName(column.id, $event)" maxlength="63" /><span class="mt-1 block text-xs text-slate-500">Source: {{ column.sourceColumnName ?? 'Manual column' }}</span>@if (service.columnError(column.id, 'name'); as error) { <span class="mt-1 block text-xs font-medium text-rose-700">{{ error }}</span> }</td>
-                      <td class="min-w-52"><label class="sr-only" [for]="'column-type-' + column.id">PostgreSQL type</label><select [id]="'column-type-' + column.id" class="input-field" [class.input-error]="service.columnError(column.id, 'dataType')" [ngModel]="service.baseDataType(column.sqlType)" (ngModelChange)="service.updateColumnDataType(column.id, $event)">@for (dataType of dataTypeOptions; track dataType) { <option [value]="dataType">{{ dataType }}</option> }</select>@if (service.isVarchar(column.sqlType)) { <label class="mt-2 block text-xs text-slate-500" [for]="'column-varchar-length-' + column.id">VARCHAR length<input [id]="'column-varchar-length-' + column.id" type="number" class="input-field mt-1" min="1" [max]="maxVarcharLength" [ngModel]="service.varcharLength(column.sqlType)" (ngModelChange)="service.updateVarcharLength(column.id, $event)" /></label> } @if (service.columnError(column.id, 'dataType'); as error) { <span class="mt-1 block text-xs font-medium text-rose-700">{{ error }}</span> }</td>
-                      <td class="min-w-52"><label class="sr-only" [for]="'column-default-' + column.id">Default value</label><input [id]="'column-default-' + column.id" class="input-field" [class.input-error]="service.columnError(column.id, 'defaultValue')" [disabled]="!!column.isAutoIncrement" [ngModel]="column.defaultValue || ''" (ngModelChange)="service.updateDefaultValue(column.id, $event)" placeholder="None" maxlength="512" />@if (service.columnError(column.id, 'defaultValue'); as error) { <span class="mt-1 block text-xs font-medium text-rose-700">{{ error }}</span> }</td>
-                      <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-nullable-' + column.id"><span class="sr-only">Nullable</span><input [id]="'column-nullable-' + column.id" type="checkbox" [checked]="column.isNullable" [disabled]="column.isPrimaryKey || column.isAutoIncrement" (change)="service.updateNullable(column.id, $any($event.target).checked)" /></label>@if (service.columnError(column.id, 'nullable'); as error) { <span class="mt-1 block max-w-32 text-xs font-medium text-rose-700">{{ error }}</span> }</td>
-                      <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-pk-' + column.id"><span class="sr-only">Primary Key</span><input [id]="'column-pk-' + column.id" type="checkbox" [checked]="column.isPrimaryKey" (change)="service.updatePrimaryKey(column.id, $any($event.target).checked)" /></label></td>
-                      <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-unique-' + column.id"><span class="sr-only">Unique</span><input [id]="'column-unique-' + column.id" type="checkbox" [checked]="column.isUnique" [disabled]="column.isPrimaryKey" (change)="service.updateUnique(column.id, $any($event.target).checked)" /></label><span class="block text-[10px] text-slate-500">{{ column.isPrimaryKey ? 'Implied by PK' : '' }}</span></td>
-                      <td class="text-center"><label class="inline-flex min-h-10 items-center justify-center" [for]="'column-autoincrement-' + column.id"><span class="sr-only">Identity</span><input [id]="'column-autoincrement-' + column.id" type="checkbox" [checked]="column.isAutoIncrement" [disabled]="!service.isIdentityCompatible(column.sqlType) || !!column.defaultValue?.trim()" (change)="service.updateAutoIncrement(column.id, $any($event.target).checked)" /></label>@if (service.columnError(column.id, 'autoIncrement'); as error) { <span class="mt-1 block max-w-32 text-xs font-medium text-rose-700">{{ error }}</span> }</td>
-                    </tr>
-                  } @empty { <tr><td colspan="7" class="py-10 text-center text-slate-500">This schema table has no columns.</td></tr> }
-                </tbody>
-              </table>
-            </div>
-          } @else { <p class="p-6 text-sm text-slate-500">Select a table.</p> }
-        </main>
-      </section>
-
-      <app-schema-relationships
-        [projectId]="service.projectId"
-        [design]="schema"
-        [disabled]="!service.canMutateRelationships()"
-        (designChanged)="service.handleRelationshipChanged($event)"
-        (revisionConflict)="service.handleRelationshipConflict()"
-      />
-
-      <section data-testid="schema-validation" class="workspace-panel p-5 sm:p-6" aria-live="polite">
-        <div class="section-heading"><div><h2>Validation</h2><p>Results from backend validation of the persisted schema.</p></div><div class="flex gap-2"><span class="badge-error">{{ service.blockingIssues().length }} blocking</span><span class="badge-warning">{{ service.warningIssues().length }} warnings</span></div></div>
-        @if (schema.validatedAt) { <p class="mt-3 text-xs text-slate-500">Last validated {{ schema.validatedAt | date:'medium' }}</p> }
-        @if (service.blockingIssues().length) {
-          <div class="mt-4"><h3 class="font-semibold text-rose-800">Blocking errors</h3>@for (issue of service.blockingIssues(); track issue.code + issue.message) { <button class="validation-issue" type="button" (click)="focusIssue(issue)" [disabled]="!issue.tableId"><b>{{ service.issueLocation(issue) }}</b><span>{{ issue.message }}</span></button> }</div>
-        }
-        @if (service.warningIssues().length) {
-          <div class="mt-4"><h3 class="font-semibold text-amber-800">Warnings</h3>@for (issue of service.warningIssues(); track issue.code + issue.message) { <button class="validation-issue" type="button" (click)="focusIssue(issue)" [disabled]="!issue.tableId"><b>{{ service.issueLocation(issue) }}</b><span>{{ issue.message }}</span></button> }</div>
-        }
-        @if (!schema.validationIssues.length) { <p class="validation-empty"><svg lucideCheckCircle2 [size]="17"></svg>No validation issues are currently saved.</p> }
-      </section>
-
-      <details data-testid="sql-preview" class="workspace-panel overflow-hidden" [open]="sqlOpen()" (toggle)="sqlOpen.set($any($event.target).open)">
-        <summary class="sql-summary"><div><h2>SQL Preview</h2><p>Backend-generated SQL for saved revision {{ service.sqlRevision() ?? schema.revision }}.</p></div><span>{{ sqlOpen() ? 'Hide' : 'Show' }}</span></summary>
-        <div class="border-t border-slate-200 p-5 sm:p-6">
-          @if (service.dirty()) { <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">This SQL represents the last saved schema, not your unsaved edits.</p> }
-          <div class="mb-3 flex flex-wrap gap-2"><button type="button" class="btn-secondary" (click)="service.refreshSqlPreview()" [disabled]="service.sqlLoading()">{{ service.sqlLoading() ? 'Loading…' : 'Refresh SQL' }}</button><button data-testid="copy-sql" type="button" class="btn-secondary" (click)="copySql()" [disabled]="!service.sqlPreview()"><svg lucideClipboard [size]="15"></svg>{{ copied() ? 'Copied' : 'Copy SQL' }}</button></div>
-          @if (service.sqlError()) { <p class="text-sm text-rose-700">{{ service.sqlError() }}</p> } @else if (service.sqlLoading() && !service.sqlPreview()) { <p class="text-sm text-slate-500">Loading backend SQL…</p> } @else { <pre class="sql-code" tabindex="0"><code>{{ service.sqlPreview() }}</code></pre> }
-        </div>
-      </details>
+      @if (activeTab() === 'tables') {
+        <app-schema-designer-tables />
+      } @else if (activeTab() === 'relationships' && service.tableCount() > 1) {
+        <app-schema-relationships
+          [projectId]="service.projectId"
+          [design]="schema"
+          [disabled]="!service.canMutateRelationships()"
+          (designChanged)="service.handleRelationshipChanged($event)"
+          (revisionConflict)="service.handleRelationshipConflict()"
+        />
+      } @else if (activeTab() === 'validation') {
+        <app-schema-designer-validation (focusTable)="focusIssue($event)" />
+      }
 
       <footer class="schema-footer">
         <a data-testid="back-to-clean" [routerLink]="['/projects', service.projectId, 'clean']" [queryParams]="service.datasetQuery()" class="btn-secondary"><svg lucideArrowLeft [size]="15"></svg>Back to Clean</a>
