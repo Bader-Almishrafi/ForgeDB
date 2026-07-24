@@ -71,7 +71,7 @@
         <div class="table-wrap mt-4 max-h-[30rem]" data-testid="accepted-relationships-table">
           <table class="data-table"><thead><tr><th>Source</th><th>Target</th><th>Cardinality</th><th>On Delete</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>
             @for (relationship of persistedRelationships(); track relationship.id) {
-              <tr>
+              <tr [class.bg-rose-50]="relationshipIssues().has(relationship.id)">
                 <td class="font-mono font-semibold">{{ relationship.fromTableName }}.{{ relationship.fromColumnName }}</td><td class="font-mono font-semibold">{{ relationship.toTableName }}.{{ relationship.toColumnName }}</td>
                 @if (editingRelationshipId() === relationship.id && relationshipDraft(); as edit) {
                   <td><select data-testid="persisted-edit-cardinality" class="input-field min-w-40" [ngModel]="edit.cardinality" (ngModelChange)="updateRelationshipDraft({ cardinality: $event })"><option value="many-to-one">Many to one</option><option value="one-to-one">One to one</option></select></td>
@@ -81,6 +81,16 @@
                   <td>{{ cardinalityLabel(relationship.cardinality) }}</td><td>{{ onDeleteLabel(relationship.onDelete) }}</td><td><div class="flex gap-2"><button type="button" class="btn-secondary min-h-9 px-3 py-1.5" (click)="startRelationshipEdit(relationship)" [disabled]="disabled() || isBusy()">Edit</button><button type="button" class="btn-danger min-h-9 px-3 py-1.5" (click)="requestDelete(relationship)" [disabled]="disabled() || isBusy()">Delete</button></div></td>
                 }
               </tr>
+              @for (issue of relationshipIssues().get(relationship.id) ?? []; track issue.code + issue.message) {
+                <tr class="bg-rose-50/50">
+                  <td colspan="5" class="py-2 !border-t-0 border-rose-200">
+                    <div class="flex items-start gap-1 text-sm font-semibold text-rose-700 ml-2">
+                      <svg lucideTriangleAlert [size]="15" class="shrink-0 mt-0.5 text-rose-600"></svg>
+                      {{ issue.message }}
+                    </div>
+                  </td>
+                </tr>
+              }
             }
           </tbody></table>
         </div>

@@ -1,20 +1,17 @@
-import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Output, inject, signal } from '@angular/core';
-import { LucideCheckCircle2, LucideClipboard } from '@lucide/angular';
-import { ValidationIssue } from '../../services/api.models';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { LucideClipboard } from '@lucide/angular';
 import { ProjectSchemaDesignerService } from './services/project-schema-designer.service';
 
 @Component({
-  selector: 'app-schema-designer-validation',
+  selector: 'app-schema-designer-sql-preview',
   standalone: true,
-  imports: [DatePipe, LucideCheckCircle2, LucideClipboard],
-  templateUrl: './schema-designer-validation.component.html',
+  imports: [LucideClipboard],
+  templateUrl: './schema-designer-sql-preview.component.html',
   styleUrls: ['./project-schema-designer.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SchemaDesignerValidationComponent {
+export class SchemaDesignerSqlPreviewComponent {
   readonly service = inject(ProjectSchemaDesignerService);
-  @Output() focusTable = new EventEmitter<ValidationIssue>();
   
   readonly copied = signal(false);
 
@@ -24,9 +21,5 @@ export class SchemaDesignerValidationComponent {
       this.copied.set(true);
       window.setTimeout(() => this.copied.set(false), 1800);
     }).catch(() => this.service.feedback.set({ kind: 'error', title: 'Copy failed', message: 'Clipboard permission was denied.' }));
-  }
-
-  focusIssue(issue: ValidationIssue): void {
-    this.focusTable.emit(issue);
   }
 }

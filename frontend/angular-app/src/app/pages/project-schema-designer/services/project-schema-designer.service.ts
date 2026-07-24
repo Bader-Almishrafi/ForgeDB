@@ -70,7 +70,39 @@ export class ProjectSchemaDesignerService {
   readonly dirty = computed(() => schemaDraftIsDirty(this.design(), this.tableNames(), this.columnDrafts()));
   readonly blockingIssues = computed(() => (this.design()?.validationIssues ?? []).filter((issue) => issue.severity === 'error'));
   readonly warningIssues = computed(() => (this.design()?.validationIssues ?? []).filter((issue) => issue.severity !== 'error'));
-  
+  readonly issuesByTable = computed(() => {
+    const map = new Map<number, ValidationIssue[]>();
+    for (const issue of this.design()?.validationIssues ?? []) {
+      if (issue.tableId != null && issue.columnId == null) {
+        if (!map.has(issue.tableId)) map.set(issue.tableId, []);
+        map.get(issue.tableId)!.push(issue);
+      }
+    }
+    return map;
+  });
+
+  readonly issuesByColumn = computed(() => {
+    const map = new Map<number, ValidationIssue[]>();
+    for (const issue of this.design()?.validationIssues ?? []) {
+      if (issue.columnId != null) {
+        if (!map.has(issue.columnId)) map.set(issue.columnId, []);
+        map.get(issue.columnId)!.push(issue);
+      }
+    }
+    return map;
+  });
+
+  readonly issuesByRelationship = computed(() => {
+    const map = new Map<number, ValidationIssue[]>();
+    for (const issue of this.design()?.validationIssues ?? []) {
+      if (issue.relationshipId != null) {
+        if (!map.has(issue.relationshipId)) map.set(issue.relationshipId, []);
+        map.get(issue.relationshipId)!.push(issue);
+      }
+    }
+    return map;
+  });
+
   readonly canGenerate = computed(() => !this.schemaBlocked() && !this.conflict() && !this.generating() && !this.saving() && !this.validating());
   readonly canSave = computed(() => !this.schemaBlocked() && !this.isStale() && !this.conflict() && Boolean(this.design())
     && this.dirty() && !this.hasDraftErrors() && !this.saving() && !this.validating());

@@ -10,6 +10,7 @@ import {
   DesignRelationship,
   DesignTable,
   RelationshipSuggestion,
+  ValidationIssue,
 } from '../../services/api.models';
 import { DesignApiService } from './services/design-api.service';
 
@@ -39,10 +40,12 @@ const emptyDraft = (): RelationshipDraft => ({
   onDelete: 'no-action',
 });
 
+import { LucideTriangleAlert } from '@lucide/angular';
+
 @Component({
   selector: 'app-schema-relationships',
   standalone: true,
-  imports: [FormsModule, NgClass],
+  imports: [FormsModule, NgClass, LucideTriangleAlert],
   templateUrl: './schema-relationships.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -67,6 +70,16 @@ export class SchemaRelationshipsComponent implements OnInit {
   readonly pendingSuggestions = computed(() => this.suggestions().filter((item) => item.status === 'suggested'));
   readonly tables = computed(() => this.design().tables);
   readonly persistedRelationships = computed(() => this.design().relationships);
+  readonly relationshipIssues = computed(() => {
+    const map = new Map<number, ValidationIssue[]>();
+    for (const issue of this.design()?.validationIssues ?? []) {
+      if (issue.relationshipId != null) {
+        if (!map.has(issue.relationshipId)) map.set(issue.relationshipId, []);
+        map.get(issue.relationshipId)!.push(issue);
+      }
+    }
+    return map;
+  });
 
   constructor(private readonly designApi: DesignApiService) {}
 

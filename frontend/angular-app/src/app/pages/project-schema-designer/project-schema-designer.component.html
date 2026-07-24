@@ -31,9 +31,14 @@
         <button data-testid="save-schema" type="button" class="btn-secondary" (click)="service.saveDraft()" [disabled]="!service.canSave()">
           <svg lucideSave [size]="16"></svg>{{ service.saving() ? 'Saving…' : 'Save Changes' }}
         </button>
-        <button data-testid="validate-schema" type="button" class="btn-primary" (click)="service.validateSchema()" [disabled]="!service.canValidate()">
-          <svg lucideFileCheck2 [size]="16"></svg>{{ service.validating() ? 'Validating…' : 'Validate Schema' }}
-        </button>
+        <div class="flex items-center gap-2">
+          <button data-testid="validate-schema" type="button" class="btn-primary" (click)="service.validateSchema()" [disabled]="!service.canValidate()">
+            <svg lucideFileCheck2 [size]="16"></svg>{{ service.validating() ? 'Validating…' : 'Validate Schema' }}
+          </button>
+          @if (service.blockingIssues().length || service.warningIssues().length) {
+            <span class="rounded-full px-2.5 py-1 text-xs font-semibold" [class.bg-rose-100]="service.blockingIssues().length" [class.text-rose-700]="service.blockingIssues().length" [class.bg-amber-100]="!service.blockingIssues().length" [class.text-amber-800]="!service.blockingIssues().length">{{ service.blockingIssues().length + service.warningIssues().length }} Issues</span>
+          }
+        </div>
       </div>
     </header>
 
@@ -110,10 +115,7 @@
           </button>
         </span>
         <button type="button" class="pb-2 px-1 border-b-2 font-medium text-sm transition-colors" [class.border-indigo-600]="activeTab() === 'validation'" [class.text-indigo-600]="activeTab() === 'validation'" [class.border-transparent]="activeTab() !== 'validation'" [class.text-slate-500]="activeTab() !== 'validation'" [class.hover:border-slate-300]="activeTab() !== 'validation'" [class.hover:text-slate-700]="activeTab() !== 'validation'" (click)="activeTab.set('validation')">
-          SQL & Validation
-          @if (service.blockingIssues().length || service.warningIssues().length) {
-            <span class="ml-2 rounded-full px-2 py-0.5 text-xs font-semibold" [class.bg-rose-100]="service.blockingIssues().length" [class.text-rose-700]="service.blockingIssues().length" [class.bg-amber-100]="!service.blockingIssues().length" [class.text-amber-800]="!service.blockingIssues().length">{{ service.blockingIssues().length + service.warningIssues().length }}</span>
-          }
+          SQL Preview
         </button>
       </nav>
 
@@ -128,7 +130,7 @@
           (revisionConflict)="service.handleRelationshipConflict()"
         />
       } @else if (activeTab() === 'validation') {
-        <app-schema-designer-validation (focusTable)="focusIssue($event)" />
+        <app-schema-designer-sql-preview />
       }
 
       <footer class="schema-footer">

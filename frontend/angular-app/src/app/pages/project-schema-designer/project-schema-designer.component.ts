@@ -14,11 +14,10 @@ import {
   LucideTriangleAlert,
 } from '@lucide/angular';
 import { Observable, Subject, take } from 'rxjs';
-import { ValidationIssue } from '../../services/api.models';
 import { routeParameter } from '../../services/route-context';
 import { UnsavedChangesAware } from '../../services/unsaved-changes.guard';
 import { SchemaDesignerTablesComponent } from './schema-designer-tables.component';
-import { SchemaDesignerValidationComponent } from './schema-designer-validation.component';
+import { SchemaDesignerSqlPreviewComponent } from './schema-designer-sql-preview.component';
 import { SchemaRelationshipsComponent } from './schema-relationships.component';
 import { ProjectSchemaDesignerService } from './services/project-schema-designer.service';
 
@@ -31,7 +30,7 @@ import { ProjectSchemaDesignerService } from './services/project-schema-designer
     NgClass,
     RouterLink,
     SchemaDesignerTablesComponent,
-    SchemaDesignerValidationComponent,
+    SchemaDesignerSqlPreviewComponent,
     SchemaRelationshipsComponent,
     LucideArrowLeft,
     LucideCheckCircle2,
@@ -75,13 +74,6 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
     const requested = Number(this.route.snapshot.queryParamMap.get('datasetId'));
     const datasetId = Number.isInteger(requested) && requested > 0 ? requested : null;
     this.service.init(projectId, datasetId);
-  }
-
-  focusIssue(issue: ValidationIssue): void {
-    if (issue.tableId) {
-      this.service.selectedTableId.set(issue.tableId);
-      this.activeTab.set('tables');
-    }
   }
 
   continueToExport(): void {
