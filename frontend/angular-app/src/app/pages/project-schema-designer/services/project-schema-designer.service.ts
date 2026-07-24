@@ -8,10 +8,10 @@ import {
   ProjectWorkflow,
   ProjectWorkflowDataset,
   ValidationIssue,
-} from './api.models';
+} from '../../../services/api.models';
 import { DesignApiService } from './design-api.service';
-import { ForgeApiService } from './forge-api.service';
-import { ProjectWorkflowContextService } from './project-workflow-context.service';
+import { ForgeApiService } from '../../../services/forge-api.service';
+import { ProjectWorkflowContextService } from '../../../services/project-workflow-context.service';
 import {
   ColumnDraft,
   baseDataType as getBaseDataType,

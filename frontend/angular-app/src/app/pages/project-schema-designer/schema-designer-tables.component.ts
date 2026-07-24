@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideTable2, LucideTriangleAlert, LucideChevronLeft, LucideChevronRight } from '@lucide/angular';
-import { dataTypeOptions, maxVarcharLength } from '../../services/schema-draft';
-import { ProjectSchemaDesignerService } from '../../services/project-schema-designer.service';
+import { dataTypeOptions, maxVarcharLength } from './services/schema-draft';
+import { ProjectSchemaDesignerService } from './services/project-schema-designer.service';
 
 @Component({
   selector: 'app-schema-designer-tables',

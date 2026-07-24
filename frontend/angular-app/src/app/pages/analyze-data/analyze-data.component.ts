@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { AnalysisScope, AnalyzeDataService } from '../../services/analyze-data.service';
+import { AnalysisScope, AnalyzeDataService } from './services/analyze-data.service';
 import { routeParameter } from '../../services/route-context';
 import { AnalysisSummaryComponent } from './components/analysis-summary.component';
 import { AnalysisIssuesComponent } from './components/analysis-issues.component';

@@ -6,9 +6,9 @@ import {
   DatasetResponse,
   ProjectResponse,
   ProjectWorkflowDataset,
-} from './api.models';
-import { ForgeApiService } from './forge-api.service';
-import { ProjectWorkflowContextService } from './project-workflow-context.service';
+} from '../../../services/api.models';
+import { ForgeApiService } from '../../../services/forge-api.service';
+import { ProjectWorkflowContextService } from '../../../services/project-workflow-context.service';
 
 @Injectable()
 export class DataSourcesService {

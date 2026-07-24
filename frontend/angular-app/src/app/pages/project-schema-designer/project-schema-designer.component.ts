@@ -20,7 +20,7 @@ import { UnsavedChangesAware } from '../../services/unsaved-changes.guard';
 import { SchemaDesignerTablesComponent } from './schema-designer-tables.component';
 import { SchemaDesignerValidationComponent } from './schema-designer-validation.component';
 import { SchemaRelationshipsComponent } from './schema-relationships.component';
-import { ProjectSchemaDesignerService } from '../../services/project-schema-designer.service';
+import { ProjectSchemaDesignerService } from './services/project-schema-designer.service';
 
 @Component({
   selector: 'app-project-schema-designer',

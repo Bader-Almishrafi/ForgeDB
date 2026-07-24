@@ -9,7 +9,7 @@ import {
   ProjectExportPackage,
   ProjectWorkflow,
 } from '../../services/api.models';
-import { DesignApiService } from '../../services/design-api.service';
+import { DesignApiService } from '../project-schema-designer/services/design-api.service';
 import { FileDownloadService } from '../../services/file-download.service';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { ProjectWorkflowContextService } from '../../services/project-workflow-context.service';

@@ -6,7 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Meta, Title } from '@angular/platform-browser';
 import { DatasetResponse, ProjectResponse } from '../../services/api.models';
 import { routeParameter } from '../../services/route-context';
-import { DataSourcesService } from '../../services/data-sources.service';
+import { DataSourcesService } from './services/data-sources.service';
 import { EditProjectDialogComponent } from './dialogs/edit-project-dialog.component';
 import { DeleteDatasetDialogComponent } from './dialogs/delete-dataset-dialog.component';
 import { ReplaceDatasetDialogComponent } from './dialogs/replace-dataset-dialog.component';

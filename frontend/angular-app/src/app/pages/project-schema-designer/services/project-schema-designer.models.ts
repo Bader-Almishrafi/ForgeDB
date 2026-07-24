@@ -1,4 +1,4 @@
-import { DatasetVersion, DesignModelResponse, ProjectWorkflow, ProjectWorkflowDataset } from './api.models';
+import { DatasetVersion, DesignModelResponse, ProjectWorkflow, ProjectWorkflowDataset } from '../../../services/api.models';
 
 export type FeedbackKind = 'success' | 'warning' | 'error';
 

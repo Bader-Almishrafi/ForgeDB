@@ -11,7 +11,7 @@ import {
   DesignTable,
   RelationshipSuggestion,
 } from '../../services/api.models';
-import { DesignApiService } from '../../services/design-api.service';
+import { DesignApiService } from './services/design-api.service';
 
 type FeedbackKind = 'success' | 'warning' | 'error';
 

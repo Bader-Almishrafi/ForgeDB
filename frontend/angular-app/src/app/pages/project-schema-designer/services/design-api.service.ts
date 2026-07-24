@@ -1,7 +1,7 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { environment } from '../../../../environments/environment';
 import {
   AcceptSuggestionResponse,
   AcceptSuggestionRequest,
@@ -19,7 +19,7 @@ import {
   ValidationIssue,
   SaveDesignDraftRequest,
   SchemaSqlPreview,
-} from './api.models';
+} from '../../../services/api.models';
 
 /**
  * Client for the Phase 1 Design API. Every mutation call takes the last-known revision and sends

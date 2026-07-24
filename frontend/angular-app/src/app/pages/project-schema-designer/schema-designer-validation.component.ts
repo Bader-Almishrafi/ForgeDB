@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Output, inject, signal } from '@angular/core';
 import { LucideCheckCircle2, LucideClipboard } from '@lucide/angular';
 import { ValidationIssue } from '../../services/api.models';
-import { ProjectSchemaDesignerService } from '../../services/project-schema-designer.service';
+import { ProjectSchemaDesignerService } from './services/project-schema-designer.service';
 
 @Component({
   selector: 'app-schema-designer-validation',

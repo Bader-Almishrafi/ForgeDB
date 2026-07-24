@@ -1,4 +1,4 @@
-import { DesignModelResponse, DesignTable } from './api.models';
+import { DesignModelResponse, DesignTable } from '../../../services/api.models';
 
 export interface ColumnDraft {
   name: string;

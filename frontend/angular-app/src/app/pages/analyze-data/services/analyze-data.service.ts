@@ -7,9 +7,9 @@ import {
   ProjectResponse,
   ProjectWorkflow,
   ProjectWorkflowDataset,
-} from './api.models';
-import { ForgeApiService } from './forge-api.service';
-import { ProjectWorkflowContextService } from './project-workflow-context.service';
+} from '../../../services/api.models';
+import { ForgeApiService } from '../../../services/forge-api.service';
+import { ProjectWorkflowContextService } from '../../../services/project-workflow-context.service';
 
 export type AnalysisScope = 'project' | number;
 
@@ -277,6 +277,7 @@ export class AnalyzeDataService {
       }),
     );
   }
+
 
   private isResponseCurrent(analysis: DatasetAnalysisResponse, metadata: ProjectWorkflowDataset): boolean {
     if (!metadata.hasCurrentAnalysis || metadata.requiresAnalysis) return false;
