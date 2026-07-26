@@ -185,14 +185,14 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
                     Id = dataset.ActiveVersion.Id,
                     IsActive = dataset.ActiveVersion.IsActive,
                     AnalyzedAt = dataset.ActiveVersion.AnalyzedAt,
-                    HasAnalysis = dataset.ActiveVersion.AnalysisResultJson != null && dataset.ActiveVersion.AnalysisResultJson != "",
+                    HasAnalysis = dataset.ActiveVersion.AnalysisResultJson != null,
                     IsRawOriginal = dataset.ActiveVersion.IsRawOriginal,
                     VersionNumber = dataset.ActiveVersion.VersionNumber,
                     RowCount = dataset.ActiveVersion.RowCount,
                     ColumnCount = dataset.ActiveVersion.ColumnCount
                 },
                 ActiveVersionsCount = dataset.Versions.Count(v => v.IsActive),
-                WasAnalyzedBefore = dataset.Versions.Any(v => v.Id != dataset.ActiveVersionId && v.AnalyzedAt != null && v.AnalysisResultJson != null && v.AnalysisResultJson != "")
+                WasAnalyzedBefore = dataset.Versions.Any(v => v.Id != dataset.ActiveVersionId && v.AnalyzedAt != null && v.AnalysisResultJson != null)
             })
             .ToListAsync(cancellationToken);
 
