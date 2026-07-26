@@ -1,178 +1,23 @@
-using ForgeDB.API.Clients;
 using ForgeDB.API.Configuration;
-using ForgeDB.API.Data;
-using ForgeDB.API.Repositories;
-using ForgeDB.API.Repositories.Interfaces;
-using ForgeDB.API.Services;
-using ForgeDB.API.Services.Generators;
-using ForgeDB.API.Services.Interfaces;
-using ForgeDB.API.Services.Importing;
-using ForgeDB.API.Services.Validation;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.HttpOverrides;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Register controllers and foundational infrastructure via modular architectural extensions (SRP & OCP)
 builder.Services.AddControllers();
-
-var databaseConnectionString = DatabaseConnectionStringResolver.Resolve(builder.Configuration);
-
-builder.Services.AddDbContext<ForgeDbContext>(options =>
-	options.UseNpgsql(databaseConnectionString));
-
-builder.Services.Configure<ForwardedHeadersOptions>(options =>
-{
-	options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-	options.KnownNetworks.Clear();
-	options.KnownProxies.Clear();
-});
-
-var allowedOrigins = builder.Configuration
-	.GetSection("Cors:AllowedOrigins")
-	.Get<string[]>()
-	?? new[] { "http://localhost:4200", "http://127.0.0.1:4200" };
-
-builder.Services.AddCors(options =>
-{
-	options.AddPolicy("Frontend", policy =>
-	{
-		policy
-			.WithOrigins(allowedOrigins)
-			.AllowAnyHeader()
-			.AllowAnyMethod();
-	});
-});
-
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IProjectService, ProjectService>();
-builder.Services.AddScoped<IProjectWorkflowService, ProjectWorkflowService>();
-builder.Services.AddScoped<IDatasetImportService, DatasetImportService>();
-builder.Services.AddSingleton<IExcelWorkbookReader, ExcelWorkbookReader>();
-builder.Services.Configure<ApiImportOptions>(builder.Configuration.GetSection(ApiImportOptions.SectionName));
-builder.Services.AddSingleton<IHostAddressResolver, SystemHostAddressResolver>();
-builder.Services.AddScoped<IApiJsonImportService, ApiJsonImportService>();
-builder.Services.AddHttpClient<IApiJsonClient, ApiJsonClient>()
-	.ConfigurePrimaryHttpMessageHandler(serviceProvider => SafeApiHttpHandler.Create(
-		serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ApiImportOptions>>().Value,
-		serviceProvider.GetRequiredService<IHostEnvironment>()));
-builder.Services.AddScoped<IDashboardService, DashboardService>();
-builder.Services.AddScoped<ICleaningService, CleaningService>();
-builder.Services.AddScoped<IDesignService, DesignService>();
-builder.Services.AddScoped<IRelationshipDetectionService, RelationshipDetectionService>();
-builder.Services.AddScoped<IDeploymentService, DeploymentService>();
-builder.Services.AddSingleton<IDesignValidationService, DesignValidationService>();
-builder.Services.AddSingleton<IDesignSchemaGenerator, SqlSchemaGenerator>();
-builder.Services.AddSingleton<IDesignSchemaGenerator, DbmlGenerator>();
-builder.Services.AddSingleton<IDesignSchemaGenerator, JsonSchemaGenerator>();
-builder.Services.AddSingleton<IDesignSchemaGeneratorResolver, DesignSchemaGeneratorResolver>();
-builder.Services.AddHostedService<LegacySuggestionBackfillService>();
-builder.Services.AddHttpClient<IPythonAnalysisClient, PythonAnalysisClient>(client =>
-{
-	var baseUrl = builder.Configuration["PythonAnalysis:BaseUrl"];
-	if (string.IsNullOrWhiteSpace(baseUrl))
-	{
-		baseUrl = "http://localhost:8002";
-	}
-
-	var timeoutSeconds = builder.Configuration.GetValue<int?>("PythonAnalysis:TimeoutSeconds") ?? 10;
-
-	client.BaseAddress = new Uri(baseUrl, UriKind.Absolute);
-	client.Timeout = TimeSpan.FromSeconds(Math.Max(1, timeoutSeconds));
-});
-
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
-builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
-builder.Services.AddScoped<IDatasetRepository, DatasetRepository>();
-builder.Services.AddScoped<ICleaningRepository, CleaningRepository>();
-builder.Services.AddScoped<IDesignRepository, DesignRepository>();
-builder.Services.AddScoped<IRelationshipSuggestionRepository, RelationshipSuggestionRepository>();
-builder.Services.AddScoped<IDeploymentRepository, DeploymentRepository>();
-builder.Services.AddScoped<IPasswordHasher<ForgeDB.API.Models.Entities.User>, PasswordHasher<ForgeDB.API.Models.Entities.User>>();
-builder.Services.AddSingleton(TimeProvider.System);
-
-var jwtKey = builder.Configuration["Jwt:Key"];
-if (string.IsNullOrWhiteSpace(jwtKey))
-{
-	throw new InvalidOperationException("Jwt:Key configuration is required.");
-}
-
-if (jwtKey.Length < 32)
-{
-	throw new InvalidOperationException("Jwt:Key must be at least 32 characters.");
-}
-
-var jwtIssuer = builder.Configuration["Jwt:Issuer"];
-if (string.IsNullOrWhiteSpace(jwtIssuer))
-{
-	throw new InvalidOperationException("Jwt:Issuer configuration is required.");
-}
-
-var jwtAudience = builder.Configuration["Jwt:Audience"];
-if (string.IsNullOrWhiteSpace(jwtAudience))
-{
-	throw new InvalidOperationException("Jwt:Audience configuration is required.");
-}
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-	.AddJwtBearer(options =>
-	{
-		options.TokenValidationParameters = new TokenValidationParameters
-		{
-			ValidateIssuer = true,
-			ValidateAudience = true,
-			ValidateLifetime = true,
-			ValidateIssuerSigningKey = true,
-			ValidIssuer = jwtIssuer,
-			ValidAudience = jwtAudience,
-			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-		};
-		options.Events = new JwtBearerEvents
-		{
-			OnChallenge = async context =>
-			{
-				// Authentication failures are returned as the same JSON shape used by controller errors.
-				context.HandleResponse();
-				context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-				context.Response.ContentType = "application/json";
-				await context.Response.WriteAsJsonAsync(new
-				{
-					message = "A valid authentication token is required."
-				});
-			}
-		};
-	});
-
-builder.Services.AddAuthorization();
+builder.Services
+    .AddDatabaseServices(builder.Configuration)
+    .AddCorsAndForwardingServices(builder.Configuration)
+    .AddApplicationRepositories()
+    .AddApplicationServices(builder.Configuration)
+    .AddSecurityServices(builder.Configuration);
 
 var app = builder.Build();
 
-if (builder.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
-{
-	var migrationLogger = app.Services
-		.GetRequiredService<ILoggerFactory>()
-		.CreateLogger("DatabaseMigrations");
+// Initialize persistent data schemas cleanly during startup
+await app.ApplyDatabaseMigrationsAsync();
 
-	migrationLogger.LogInformation("Database migrations started.");
-
-	try
-	{
-		await using var scope = app.Services.CreateAsyncScope();
-		var dbContext = scope.ServiceProvider.GetRequiredService<ForgeDbContext>();
-		await dbContext.Database.MigrateAsync();
-		migrationLogger.LogInformation("Database migrations succeeded.");
-	}
-	catch
-	{
-		migrationLogger.LogError("Database migrations failed.");
-		throw;
-	}
-}
-
+// Configure defensive HTTP middleware pipeline and cross-origin policies
+app.UseGlobalExceptionHandler();
 app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 
@@ -180,7 +25,6 @@ app.UseCors("Frontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
-
 
 app.MapControllers();
 
