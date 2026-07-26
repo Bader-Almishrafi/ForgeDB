@@ -32,59 +32,94 @@ public class CleaningRepository : ICleaningRepository
 
     public async Task EnsureRawVersionsAsync(int projectId, int userId, CancellationToken cancellationToken = default)
     {
-        var datasets = await _context.Datasets
+        await CreateMissingRawVersionsAsync(projectId, userId, cancellationToken);
+        await RepairInconsistentActiveVersionsAsync(projectId, cancellationToken);
+    }
+
+    private async Task CreateMissingRawVersionsAsync(int projectId, int userId, CancellationToken cancellationToken)
+    {
+        var missingVersionDatasetIds = await _context.Datasets
+            .Where(dataset => dataset.ProjectId == projectId && !dataset.Versions.Any())
+            .Select(dataset => dataset.Id)
+            .ToListAsync(cancellationToken);
+
+        if (missingVersionDatasetIds.Count == 0) return;
+
+        var datasetsToInit = await _context.Datasets
             .AsSplitQuery()
             .Include(dataset => dataset.Columns.OrderBy(column => column.Id))
             .Include(dataset => dataset.Rows.OrderBy(row => row.RowNumber).ThenBy(row => row.Id))
-            .Include(dataset => dataset.Versions)
-            .Where(dataset => dataset.ProjectId == projectId)
+            .Where(dataset => missingVersionDatasetIds.Contains(dataset.Id))
             .OrderBy(dataset => dataset.Id)
             .ToListAsync(cancellationToken);
 
-        foreach (var dataset in datasets)
+        foreach (var dataset in datasetsToInit)
         {
-            if (dataset.Versions.Count == 0)
-            {
-                var version = new DatasetVersion
-                {
-                    DatasetId = dataset.Id,
-                    CreatedByUserId = userId,
-                    VersionNumber = 1,
-                    IsRawOriginal = true,
-                    IsActive = true,
-                    RowsJson = CleaningSnapshotSerializer.SerializeRows(CleaningSnapshotSerializer.FromDatasetRows(dataset.Rows)),
-                    ColumnsJson = CleaningSnapshotSerializer.SerializeColumns(CleaningSnapshotSerializer.FromDatasetColumns(dataset.Columns)),
-                    RowCount = dataset.RowCount,
-                    ColumnCount = dataset.ColumnCount,
-                    MissingValuesCount = dataset.MissingValuesCount,
-                    DuplicateRowsCount = dataset.DuplicateRowsCount,
-                    OperationSummary = "Original imported dataset",
-                    AnalysisResultJson = dataset.AnalysisResultJson,
-                    AnalyzedAt = dataset.AnalyzedAt,
-                    CreatedAt = dataset.CreatedAt
-                };
-                _context.DatasetVersions.Add(version);
+            await InitializeDatasetRawVersionAsync(dataset, userId, cancellationToken);
+        }
+    }
 
-                try
-                {
-                    await _context.SaveChangesAsync(cancellationToken);
-                    dataset.ActiveVersionId = version.Id;
-                }
-                catch (DbUpdateException exception) when (IsDuplicateRawVersionConflict(exception))
-                {
-                    // A concurrent request (e.g. the frontend firing several cleaning endpoints in
-                    // parallel on first page load) already created this dataset's raw version 1
-                    // between our read and write. Drop our losing insert and adopt the winner's row
-                    // instead of surfacing a 500 — this call only needs the baseline to exist.
-                    _context.Entry(version).State = EntityState.Detached;
-                    var winningVersionId = await _context.DatasetVersions
-                        .Where(existing => existing.DatasetId == dataset.Id && existing.VersionNumber == 1)
-                        .Select(existing => (int?)existing.Id)
-                        .FirstOrDefaultAsync(cancellationToken);
-                    dataset.ActiveVersionId = winningVersionId ?? dataset.ActiveVersionId;
-                }
-            }
-            else if (dataset.ActiveVersionId is null
+    private async Task InitializeDatasetRawVersionAsync(Dataset dataset, int userId, CancellationToken cancellationToken)
+    {
+        var version = new DatasetVersion
+        {
+            DatasetId = dataset.Id,
+            CreatedByUserId = userId,
+            VersionNumber = 1,
+            IsRawOriginal = true,
+            IsActive = true,
+            RowsJson = CleaningSnapshotSerializer.SerializeRows(CleaningSnapshotSerializer.FromDatasetRows(dataset.Rows)),
+            ColumnsJson = CleaningSnapshotSerializer.SerializeColumns(CleaningSnapshotSerializer.FromDatasetColumns(dataset.Columns)),
+            RowCount = dataset.RowCount,
+            ColumnCount = dataset.ColumnCount,
+            MissingValuesCount = dataset.MissingValuesCount,
+            DuplicateRowsCount = dataset.DuplicateRowsCount,
+            OperationSummary = "Original imported dataset",
+            AnalysisResultJson = dataset.AnalysisResultJson,
+            AnalyzedAt = dataset.AnalyzedAt,
+            CreatedAt = dataset.CreatedAt
+        };
+        _context.DatasetVersions.Add(version);
+
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+            dataset.ActiveVersionId = version.Id;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsDuplicateRawVersionConflict(exception))
+        {
+            _context.Entry(version).State = EntityState.Detached;
+            var winningVersionId = await _context.DatasetVersions
+                .Where(existing => existing.DatasetId == dataset.Id && existing.VersionNumber == 1)
+                .Select(existing => (int?)existing.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            dataset.ActiveVersionId = winningVersionId ?? dataset.ActiveVersionId;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private async Task RepairInconsistentActiveVersionsAsync(int projectId, CancellationToken cancellationToken)
+    {
+        var inconsistentDatasetIds = await _context.Datasets
+            .Where(dataset => dataset.ProjectId == projectId && dataset.Versions.Any() && (
+                dataset.ActiveVersionId == null ||
+                !dataset.Versions.Any(v => v.Id == dataset.ActiveVersionId) ||
+                dataset.Versions.Any(v => (v.Id == dataset.ActiveVersionId && !v.IsActive) || (v.Id != dataset.ActiveVersionId && v.IsActive))
+            ))
+            .Select(dataset => dataset.Id)
+            .ToListAsync(cancellationToken);
+
+        if (inconsistentDatasetIds.Count == 0) return;
+
+        var inconsistentDatasets = await _context.Datasets
+            .Include(dataset => dataset.Versions)
+            .Where(dataset => inconsistentDatasetIds.Contains(dataset.Id))
+            .ToListAsync(cancellationToken);
+
+        foreach (var dataset in inconsistentDatasets)
+        {
+            if (dataset.ActiveVersionId is null
                 || dataset.Versions.All(version => version.Id != dataset.ActiveVersionId.Value))
             {
                 var active = dataset.Versions
@@ -99,7 +134,6 @@ public class CleaningRepository : ICleaningRepository
                 version.IsActive = version.Id == dataset.ActiveVersionId;
             }
         }
-
         await _context.SaveChangesAsync(cancellationToken);
     }
 

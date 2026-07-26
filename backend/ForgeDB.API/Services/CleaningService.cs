@@ -32,7 +32,7 @@ public class CleaningService : ICleaningService
         var project = await RequireProjectAsync(projectId, userId, cancellationToken);
         await _repository.EnsureRawVersionsAsync(projectId, userId, cancellationToken);
         var datasets = await _repository.GetActiveProjectVersionsAsync(projectId, cancellationToken);
-        var suggestions = await BuildSuggestionsAsync(projectId, datasets, cancellationToken);
+        var suggestions = CleaningSuggestionBuilder.BuildSuggestions(projectId, datasets);
         var history = await _repository.GetHistoryAsync(projectId, cancellationToken);
         var state = await _repository.GetStateAsync(projectId, cancellationToken);
         var activeVersions = datasets.ToDictionary(item => item.Dataset.Id, item => item.Version.Id);
@@ -92,7 +92,7 @@ public class CleaningService : ICleaningService
         await RequireProjectAsync(projectId, userId, cancellationToken);
         await _repository.EnsureRawVersionsAsync(projectId, userId, cancellationToken);
         var datasets = await _repository.GetActiveProjectVersionsAsync(projectId, cancellationToken);
-        var suggestions = await BuildSuggestionsAsync(projectId, datasets, cancellationToken);
+        var suggestions = CleaningSuggestionBuilder.BuildSuggestions(projectId, datasets);
         var query = search?.Trim();
         return suggestions.Where(item =>
             (!datasetId.HasValue || item.DatasetId == datasetId.Value)
@@ -344,7 +344,7 @@ public class CleaningService : ICleaningService
         {
             // Data with zero detected issues can never produce a batch (there is nothing to fix),
             // so only require one when there are actual outstanding suggestions to address.
-            var suggestions = await BuildSuggestionsAsync(projectId, active, cancellationToken);
+            var suggestions = CleaningSuggestionBuilder.BuildSuggestions(projectId, active);
             if (suggestions.Count > 0)
             {
                 throw new InvalidOperationException("Apply at least one cleaning batch before confirming data quality.");
@@ -400,151 +400,6 @@ public class CleaningService : ICleaningService
         await _repository.CompleteBatchAsync(batch, "Succeeded", response.RowsAffected, response.CellsAffected, null, cancellationToken);
         return response;
     }
-
-    private async Task<List<CleaningSuggestionDto>> BuildSuggestionsAsync(int projectId, IReadOnlyList<CleaningDatasetVersionData> datasets, CancellationToken cancellationToken)
-    {
-        await Task.CompletedTask;
-        var suggestions = new List<CleaningSuggestionDto>();
-        foreach (var data in datasets)
-        {
-            if (string.IsNullOrWhiteSpace(data.Version.AnalysisResultJson)) continue;
-            using var analysis = JsonDocument.Parse(data.Version.AnalysisResultJson);
-            var root = analysis.RootElement;
-            if (root.TryGetProperty("columns", out var columns) && columns.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var column in columns.EnumerateArray())
-                {
-                    var name = column.TryGetProperty("columnName", out var nameElement) ? nameElement.GetString() : null;
-                    if (string.IsNullOrWhiteSpace(name)) continue;
-                    var type = column.TryGetProperty("detectedDataType", out var typeElement) ? typeElement.GetString() ?? "string" : "string";
-                    var missing = column.TryGetProperty("missingValuesCount", out var missingElement) ? missingElement.GetInt32() : 0;
-                    if (missing > 0) suggestions.Add(BuildMissingSuggestion(projectId, data, name, type, missing));
-                    AddDerivedColumnSuggestions(suggestions, projectId, data, name, type);
-                }
-            }
-            var duplicates = root.TryGetProperty("duplicateRowsCount", out var duplicateElement) ? duplicateElement.GetInt32() : data.Version.DuplicateRowsCount;
-            if (duplicates > 0) suggestions.Add(BuildDuplicateSuggestion(projectId, data, duplicates));
-        }
-        return suggestions.GroupBy(item => item.Id, StringComparer.OrdinalIgnoreCase).Select(group => group.First()).ToList();
-    }
-
-    private static CleaningSuggestionDto BuildMissingSuggestion(int projectId, CleaningDatasetVersionData data, string column, string type, int count)
-    {
-        var numeric = IsNumericType(type);
-        var strategies = numeric
-            ? new List<CleaningStrategyDto>
-            {
-                Strategy("median", "Fill with median", "fill_missing", new() { ["strategy"] = "median" }, true),
-                Strategy("mean", "Fill with mean", "fill_missing", new() { ["strategy"] = "mean" }),
-                Strategy("zero", "Fill with zero", "fill_missing", new() { ["strategy"] = "zero" }),
-                Strategy("custom", "Fill with custom value", "fill_missing", new() { ["strategy"] = "custom", ["value"] = null }),
-                Strategy("delete", "Delete affected rows", "fill_missing", new() { ["strategy"] = "delete_rows" }, false, true),
-                Strategy("leave", "Leave unchanged", "fill_missing", new() { ["strategy"] = "leave" })
-            }
-            : new List<CleaningStrategyDto>
-            {
-                Strategy("mode", "Fill with most frequent value", "fill_missing", new() { ["strategy"] = "mode" }),
-                Strategy("empty", "Fill with empty string", "fill_missing", new() { ["strategy"] = "empty" }),
-                Strategy("custom", "Fill with custom value", "fill_missing", new() { ["strategy"] = "custom", ["value"] = null }),
-                Strategy("forward", "Forward fill", "fill_missing", new() { ["strategy"] = "forward_fill" }),
-                Strategy("backward", "Backward fill", "fill_missing", new() { ["strategy"] = "backward_fill" }),
-                Strategy("delete", "Delete affected rows", "fill_missing", new() { ["strategy"] = "delete_rows" }, false, true),
-                Strategy("leave", "Leave unchanged", "fill_missing", new() { ["strategy"] = "leave" })
-            };
-        return Suggestion(projectId, data, "Missing Values", column, count, $"{column} contains {count} missing value(s).", strategies[0], strategies);
-    }
-
-    private static CleaningSuggestionDto BuildDuplicateSuggestion(int projectId, CleaningDatasetVersionData data, int count)
-    {
-        var strategies = new List<CleaningStrategyDto>
-        {
-            Strategy("keep-first", "Remove exact duplicates, keep first", "remove_duplicates", new() { ["keep"] = "first", ["columns"] = data.Columns.Select(column => column.Name).ToList() }, false, true),
-            Strategy("keep-last", "Remove exact duplicates, keep last", "remove_duplicates", new() { ["keep"] = "last", ["columns"] = data.Columns.Select(column => column.Name).ToList() }, false, true)
-        };
-        return Suggestion(projectId, data, "Duplicates", null, count, $"{count} exact duplicate row(s) were detected.", strategies[0], strategies);
-    }
-
-    private static void AddDerivedColumnSuggestions(List<CleaningSuggestionDto> suggestions, int projectId, CleaningDatasetVersionData data, string column, string type)
-    {
-        var values = data.Rows.Select(row => row.GetValueOrDefault(column)).Where(value => value is not null).ToList();
-        // Snapshot rows deserialize object-valued JSON cells as JsonElement. Reading only
-        // OfType<string>() silently discarded every persisted CSV text cell, so whitespace,
-        // case, and currency suggestions could never be generated from real active versions.
-        var textValues = values.Select(TryText).Where(value => value is not null).Select(value => value!).ToList();
-        var extraSpaces = textValues.Count(value => value != value.Trim() || Regex.IsMatch(value, @"\s{2,}"));
-        if (extraSpaces > 0)
-        {
-            var strategy = Strategy("trim-collapse", "Trim and collapse spaces", "text_normalize", new() { ["action"] = "trim" }, true);
-            suggestions.Add(Suggestion(projectId, data, "Extra Spaces", column, extraSpaces, $"{extraSpaces} value(s) contain leading, trailing, or repeated spaces.", strategy,
-                new() { strategy, Strategy("collapse", "Collapse repeated spaces", "text_normalize", new() { ["action"] = "collapse_spaces" }, true) }));
-        }
-
-        var caseVariants = textValues.Where(value => !string.IsNullOrWhiteSpace(value))
-            .GroupBy(value => value.Trim().ToLowerInvariant())
-            .Where(group => group.Select(value => value.Trim()).Distinct(StringComparer.Ordinal).Count() > 1)
-            .Sum(group => group.Count());
-        if (caseVariants > 0)
-        {
-            var strategies = new List<CleaningStrategyDto>
-            {
-                Strategy("lower", "Convert to lowercase", "text_normalize", new() { ["action"] = "lowercase" }),
-                Strategy("upper", "Convert to uppercase", "text_normalize", new() { ["action"] = "uppercase" }),
-                Strategy("title", "Convert to title case", "text_normalize", new() { ["action"] = "title_case" })
-            };
-            suggestions.Add(Suggestion(projectId, data, "Inconsistent Case", column, caseVariants, $"{caseVariants} value(s) differ only by letter case.", strategies[0], strategies));
-        }
-
-        if (IsNumericType(type))
-        {
-            var numbers = values.Select(TryDecimal).Where(value => value.HasValue).Select(value => value!.Value).Order().ToList();
-            if (numbers.Count >= 4)
-            {
-                var q1 = Percentile(numbers, 0.25m); var q3 = Percentile(numbers, 0.75m); var iqr = q3 - q1;
-                var lower = q1 - 1.5m * iqr; var upper = q3 + 1.5m * iqr;
-                var count = numbers.Count(value => value < lower || value > upper);
-                if (count > 0)
-                {
-                    var strategies = new List<CleaningStrategyDto>
-                    {
-                        Strategy("cap", "Cap to IQR bounds", "handle_outliers", new() { ["action"] = "cap", ["iqrMultiplier"] = 1.5m }),
-                        Strategy("median", "Replace with median", "handle_outliers", new() { ["action"] = "median", ["iqrMultiplier"] = 1.5m }),
-                        Strategy("delete", "Delete outlier rows", "handle_outliers", new() { ["action"] = "delete", ["iqrMultiplier"] = 1.5m }, false, true),
-                        Strategy("keep", "Keep unchanged", "handle_outliers", new() { ["action"] = "keep", ["iqrMultiplier"] = 1.5m })
-                    };
-                    suggestions.Add(Suggestion(projectId, data, "Outliers", column, count, $"{count} value(s) fall outside the deterministic 1.5×IQR bounds ({lower:g} to {upper:g}).", strategies[0], strategies));
-                }
-            }
-        }
-
-        var currencyValues = textValues.Count(value => Regex.IsMatch(value, @"(\$|€|£|¥|₹|\bSAR\b|\bUSD\b|%)"));
-        if (currencyValues > 0)
-        {
-            var strategy = Strategy("numeric", "Normalize numeric or currency values", "normalize_numeric", new() { ["removeThousands"] = true, ["decimalSeparator"] = ".", ["currencySymbols"] = new[] { "$", "€", "£", "¥", "₹", "SAR", "USD" }, ["percentage"] = false, ["targetType"] = "decimal" });
-            suggestions.Add(Suggestion(projectId, data, "Other Issues", column, currencyValues, $"{currencyValues} value(s) contain a known currency or percentage marker and require explicit locale review.", strategy, new() { strategy }));
-        }
-    }
-
-    private static CleaningSuggestionDto Suggestion(int projectId, CleaningDatasetVersionData data, string type, string? column, int count, string description, CleaningStrategyDto recommended, List<CleaningStrategyDto> strategies) => new()
-    {
-        Id = $"{data.Dataset.Id}:{data.Version.Id}:{type}:{column ?? "row"}".ToLowerInvariant().Replace(' ', '-'),
-        ProjectId = projectId,
-        DatasetId = data.Dataset.Id,
-        VersionId = data.Version.Id,
-        DatasetName = data.Dataset.TableName,
-        IssueType = type,
-        Column = column,
-        Count = count,
-        Percentage = data.Version.RowCount > 0 ? Math.Round((decimal)count / data.Version.RowCount * 100, 2) : null,
-        RiskLabel = recommended.IsDestructive ? "High — destructive" : data.Version.RowCount > 0 && count * 10 > data.Version.RowCount ? "Review — affects over 10%" : "Low — deterministic",
-        Description = description,
-        RecommendedStrategy = recommended,
-        AvailableStrategies = strategies
-    };
-
-    private static CleaningStrategyDto Strategy(string key, string label, string operationType, Dictionary<string, object?> parameters, bool safe = false, bool destructive = false) => new()
-    {
-        Key = key, Label = label, OperationType = operationType, Parameters = parameters, IsSafeRecommended = safe, IsDestructive = destructive
-    };
 
     private static CleaningOperationRequestDto StrategyToOperation(CleaningSuggestionDto suggestion, CleaningStrategyDto strategy) => new()
     {
@@ -648,33 +503,6 @@ public class CleaningService : ICleaningService
     private static string SafeFailureMessage(Exception exception) => exception is HttpRequestException
         ? "The cleaning execution service could not complete this dataset."
         : exception.Message;
-
-    private static bool IsNumericType(string type) => type.Contains("int", StringComparison.OrdinalIgnoreCase)
-        || type.Contains("decimal", StringComparison.OrdinalIgnoreCase)
-        || type.Contains("number", StringComparison.OrdinalIgnoreCase)
-        || type.Contains("float", StringComparison.OrdinalIgnoreCase)
-        || type.Contains("double", StringComparison.OrdinalIgnoreCase);
-
-    private static decimal? TryDecimal(object? value)
-    {
-        if (value is null) return null;
-        var text = value is JsonElement element ? element.ToString() : Convert.ToString(value, CultureInfo.InvariantCulture);
-        return decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out var number) ? number : null;
-    }
-
-    private static string? TryText(object? value) => value switch
-    {
-        string text => text,
-        JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
-        _ => null
-    };
-
-    private static decimal Percentile(IReadOnlyList<decimal> values, decimal percentile)
-    {
-        var position = (values.Count - 1) * percentile;
-        var lower = (int)Math.Floor(position); var upper = (int)Math.Ceiling(position);
-        return lower == upper ? values[lower] : values[lower] + (values[upper] - values[lower]) * (position - lower);
-    }
 
     private static Dictionary<int, int> ParseConfirmedVersions(string? json)
     {
