@@ -13,9 +13,9 @@ const legacyDatasetRedirect = (step: 'data' | 'analyze'): RedirectFunction =>
   };
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', loadComponent: () => import('./pages/landing/landing.component').then((module) => module.LandingComponent) },
-  { path: 'login', loadComponent: () => import('./pages/login/login.component').then((module) => module.LoginComponent) },
-  { path: 'register', loadComponent: () => import('./pages/signup/signup.component').then((module) => module.SignupComponent) },
+  { path: '', pathMatch: 'full', title: 'ForgeDB - Data-to-database workflow', loadComponent: () => import('./pages/landing/landing.component').then((module) => module.LandingComponent) },
+  { path: 'login', title: 'Log In - ForgeDB', loadComponent: () => import('./pages/login/login.component').then((module) => module.LoginComponent) },
+  { path: 'register', title: 'Create Account - ForgeDB', loadComponent: () => import('./pages/signup/signup.component').then((module) => module.SignupComponent) },
   { path: 'signup', redirectTo: 'register', pathMatch: 'full' },
   { path: 'app', redirectTo: 'projects', pathMatch: 'full' },
   { path: 'app/dashboard', redirectTo: 'projects', pathMatch: 'full' },
@@ -32,10 +32,10 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/app-shell.component').then((module) => module.AppShellComponent),
     canActivateChild: [authGuard],
     children: [
-      { path: 'home', loadComponent: () => import('./pages/home/home.component').then((module) => module.HomeComponent) },
-      { path: 'projects', loadComponent: () => import('./pages/projects/projects.component').then((module) => module.ProjectsComponent) },
-      { path: 'projects/new', loadComponent: () => import('./pages/project-create/project-create.component').then((module) => module.ProjectCreateComponent), canDeactivate: [unsavedChangesGuard] },
-      { path: 'change-password', loadComponent: () => import('./pages/change-password/change-password.component').then((module) => module.ChangePasswordComponent) },
+      { path: 'home', title: 'Workspace - ForgeDB', loadComponent: () => import('./pages/home/home.component').then((module) => module.HomeComponent) },
+      { path: 'projects', title: 'All Projects - ForgeDB', loadComponent: () => import('./pages/projects/projects.component').then((module) => module.ProjectsComponent) },
+      { path: 'projects/new', title: 'Create Project - ForgeDB', loadComponent: () => import('./pages/project-create/project-create.component').then((module) => module.ProjectCreateComponent), canDeactivate: [unsavedChangesGuard] },
+      { path: 'change-password', title: 'Change Password - ForgeDB', loadComponent: () => import('./pages/change-password/change-password.component').then((module) => module.ChangePasswordComponent) },
     ],
   },
   {
@@ -44,11 +44,11 @@ export const routes: Routes = [
     canActivateChild: [authGuard],
     children: [
       { path: '', redirectTo: 'data', pathMatch: 'full' },
-      { path: 'data', loadComponent: () => import('./pages/data-sources/data-sources.component').then((module) => module.DataSourcesComponent), canActivate: [projectWorkflowGuard] },
-      { path: 'analyze', loadComponent: () => import('./pages/analyze-data/analyze-data.component').then((module) => module.AnalyzeDataComponent), canActivate: [projectWorkflowGuard] },
-      { path: 'clean', loadComponent: () => import('./pages/data-cleaning/data-cleaning.component').then((module) => module.DataCleaningComponent), canActivate: [projectWorkflowGuard] },
-      { path: 'schema', loadComponent: () => import('./pages/project-schema-designer/project-schema-designer.component').then((module) => module.ProjectSchemaDesignerComponent), canActivate: [projectWorkflowGuard], canDeactivate: [unsavedChangesGuard] },
-      { path: 'export-deploy', loadComponent: () => import('./pages/export-deploy/export-deploy.component').then((module) => module.ExportDeployComponent), canActivate: [projectWorkflowGuard] },
+      { path: 'data', title: 'Data Sources - ForgeDB', loadComponent: () => import('./pages/data-sources/data-sources.component').then((module) => module.DataSourcesComponent), canActivate: [projectWorkflowGuard] },
+      { path: 'analyze', title: 'Data Analysis - ForgeDB', loadComponent: () => import('./pages/analyze-data/analyze-data.component').then((module) => module.AnalyzeDataComponent), canActivate: [projectWorkflowGuard] },
+      { path: 'clean', title: 'Data Cleaning - ForgeDB', loadComponent: () => import('./pages/data-cleaning/data-cleaning.component').then((module) => module.DataCleaningComponent), canActivate: [projectWorkflowGuard] },
+      { path: 'schema', title: 'Schema Designer - ForgeDB', loadComponent: () => import('./pages/project-schema-designer/project-schema-designer.component').then((module) => module.ProjectSchemaDesignerComponent), canActivate: [projectWorkflowGuard], canDeactivate: [unsavedChangesGuard] },
+      { path: 'export-deploy', title: 'Export & Deploy - ForgeDB', loadComponent: () => import('./pages/export-deploy/export-deploy.component').then((module) => module.ExportDeployComponent), canActivate: [projectWorkflowGuard] },
 
       { path: 'overview', redirectTo: 'data', pathMatch: 'full' },
       { path: 'datasets', redirectTo: 'data', pathMatch: 'full' },
