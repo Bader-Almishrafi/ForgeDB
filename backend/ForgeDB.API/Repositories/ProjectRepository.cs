@@ -3,6 +3,7 @@ using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using ForgeDB.API.Repositories.Extensions;
 
 namespace ForgeDB.API.Repositories;
 
@@ -132,35 +133,41 @@ public class ProjectRepository : IProjectRepository
             var designTableIdsQuery = _context.DesignTables.Where(t => designIdsQuery.Contains(t.DesignModelId)).Select(t => t.Id);
 
             // Remove leaf dependencies first to avoid constraint violations
-            await _context.DesignRelationships.Where(r => designIdsQuery.Contains(r.DesignModelId)).ExecuteDeleteAsync(cancellationToken);
-            await _context.RelationshipSuggestions.Where(s => s.ProjectId == projectId).ExecuteDeleteAsync(cancellationToken);
-            await _context.CleaningOperations.Where(o => batchIdsQuery.Contains(o.CleaningBatchId) || datasetIdsQuery.Contains(o.DatasetId)).ExecuteDeleteAsync(cancellationToken);
-            await _context.ProjectCleaningStates.Where(s => s.ProjectId == projectId).ExecuteDeleteAsync(cancellationToken);
-            await _context.Deployments.Where(d => d.ProjectId == projectId).ExecuteDeleteAsync(cancellationToken);
+            await _context.DesignRelationships.Where(r => designIdsQuery.Contains(r.DesignModelId)).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
+            await _context.RelationshipSuggestions.Where(s => s.ProjectId == projectId).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
+            await _context.CleaningOperations.Where(o => batchIdsQuery.Contains(o.CleaningBatchId) || datasetIdsQuery.Contains(o.DatasetId)).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
+            await _context.ProjectCleaningStates.Where(s => s.ProjectId == projectId).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
+            await _context.Deployments.Where(d => d.ProjectId == projectId).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
 
             // Break circular/self-referencing dependencies via ExecuteUpdate
-            await datasetsQuery.ExecuteUpdateAsync(s => s.SetProperty(d => d.ActiveVersionId, (int?)null), cancellationToken);
+            await datasetsQuery.ExecuteUpdateCompatibleAsync(_context,
+                s => s.SetProperty(d => d.ActiveVersionId, (int?)null),
+                d => d.ActiveVersionId = null,
+                cancellationToken);
             
             await _context.DatasetVersions.Where(v => datasetIdsQuery.Contains(v.DatasetId))
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(v => v.ParentVersionId, (int?)null)
-                    .SetProperty(v => v.CleaningBatchId, (int?)null), cancellationToken);
+                .ExecuteUpdateCompatibleAsync(_context,
+                    s => s
+                        .SetProperty(v => v.ParentVersionId, (int?)null)
+                        .SetProperty(v => v.CleaningBatchId, (int?)null),
+                    v => { v.ParentVersionId = null; v.CleaningBatchId = null; },
+                    cancellationToken);
 
             // Delete schema definitions
-            await _context.DesignColumns.Where(c => designTableIdsQuery.Contains(c.DesignTableId)).ExecuteDeleteAsync(cancellationToken);
-            await _context.DesignTables.Where(t => designIdsQuery.Contains(t.DesignModelId)).ExecuteDeleteAsync(cancellationToken);
-            await _context.DesignModels.Where(m => m.ProjectId == projectId).ExecuteDeleteAsync(cancellationToken);
+            await _context.DesignColumns.Where(c => designTableIdsQuery.Contains(c.DesignTableId)).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
+            await _context.DesignTables.Where(t => designIdsQuery.Contains(t.DesignModelId)).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
+            await _context.DesignModels.Where(m => m.ProjectId == projectId).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
             
             // Delete cleaning batches
-            await _context.CleaningBatches.Where(b => b.ProjectId == projectId).ExecuteDeleteAsync(cancellationToken);
+            await _context.CleaningBatches.Where(b => b.ProjectId == projectId).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
 
             // Bulk delete all massive data rows and columns directly in database
-            await _context.DatasetRows.Where(r => datasetIdsQuery.Contains(r.DatasetId)).ExecuteDeleteAsync(cancellationToken);
-            await _context.DatasetColumns.Where(c => datasetIdsQuery.Contains(c.DatasetId)).ExecuteDeleteAsync(cancellationToken);
+            await _context.DatasetRows.Where(r => datasetIdsQuery.Contains(r.DatasetId)).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
+            await _context.DatasetColumns.Where(c => datasetIdsQuery.Contains(c.DatasetId)).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
             
             // Delete versions, then datasets
-            await _context.DatasetVersions.Where(v => datasetIdsQuery.Contains(v.DatasetId)).ExecuteDeleteAsync(cancellationToken);
-            await datasetsQuery.ExecuteDeleteAsync(cancellationToken);
+            await _context.DatasetVersions.Where(v => datasetIdsQuery.Contains(v.DatasetId)).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
+            await datasetsQuery.ExecuteDeleteCompatibleAsync(_context, cancellationToken);
 
             // Delete the project entity
             _context.Projects.Remove(project);

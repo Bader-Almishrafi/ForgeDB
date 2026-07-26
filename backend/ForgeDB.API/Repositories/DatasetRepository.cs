@@ -5,6 +5,7 @@ using ForgeDB.API.Services;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using ForgeDB.API.Repositories.Extensions;
 
 namespace ForgeDB.API.Repositories;
 
@@ -231,23 +232,29 @@ public class DatasetRepository : IDatasetRepository
         {
             await _context.RelationshipSuggestions
                 .Where(suggestion => suggestion.SourceDatasetId == datasetId || suggestion.TargetDatasetId == datasetId)
-                .ExecuteDeleteAsync(cancellationToken);
+                .ExecuteDeleteCompatibleAsync(_context, cancellationToken);
 
             await _context.CleaningOperations
                 .Where(operation => operation.DatasetId == datasetId)
-                .ExecuteDeleteAsync(cancellationToken);
+                .ExecuteDeleteCompatibleAsync(_context, cancellationToken);
 
             await _context.Datasets.Where(d => d.Id == datasetId)
-                .ExecuteUpdateAsync(s => s.SetProperty(d => d.ActiveVersionId, (int?)null), cancellationToken);
+                .ExecuteUpdateCompatibleAsync(_context,
+                    s => s.SetProperty(d => d.ActiveVersionId, (int?)null),
+                    d => d.ActiveVersionId = null,
+                    cancellationToken);
 
             await _context.DatasetVersions.Where(v => v.DatasetId == datasetId)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(v => v.ParentVersionId, (int?)null)
-                    .SetProperty(v => v.CleaningBatchId, (int?)null), cancellationToken);
+                .ExecuteUpdateCompatibleAsync(_context,
+                    s => s
+                        .SetProperty(v => v.ParentVersionId, (int?)null)
+                        .SetProperty(v => v.CleaningBatchId, (int?)null),
+                    v => { v.ParentVersionId = null; v.CleaningBatchId = null; },
+                    cancellationToken);
 
-            await _context.DatasetRows.Where(r => r.DatasetId == datasetId).ExecuteDeleteAsync(cancellationToken);
-            await _context.DatasetColumns.Where(c => c.DatasetId == datasetId).ExecuteDeleteAsync(cancellationToken);
-            await _context.DatasetVersions.Where(v => v.DatasetId == datasetId).ExecuteDeleteAsync(cancellationToken);
+            await _context.DatasetRows.Where(r => r.DatasetId == datasetId).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
+            await _context.DatasetColumns.Where(c => c.DatasetId == datasetId).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
+            await _context.DatasetVersions.Where(v => v.DatasetId == datasetId).ExecuteDeleteCompatibleAsync(_context, cancellationToken);
 
             _context.Datasets.Remove(dataset);
             await _context.SaveChangesAsync(cancellationToken);
