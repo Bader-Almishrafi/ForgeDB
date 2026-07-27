@@ -38,9 +38,12 @@ describe('ProjectCardComponent', () => {
 
   it('shows useful project information and explicit actions', () => {
     expect(fixture.nativeElement.textContent).toContain('Orders');
-    expect(fixture.nativeElement.textContent).toContain('Analyze');
+    expect(fixture.nativeElement.textContent).toContain('Continue to Analysis');
     expect(fixture.nativeElement.textContent).toContain('3');
-    expect(fixture.nativeElement.textContent).toContain('Open');
+    expect(fixture.nativeElement.querySelector('[aria-label="Open Orders"]')).toBeTruthy();
+
+    (fixture.nativeElement.querySelector('[data-testid="project-actions-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Edit');
     expect(fixture.nativeElement.textContent).toContain('Delete');
   });

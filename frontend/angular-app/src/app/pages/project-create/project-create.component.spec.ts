@@ -41,13 +41,12 @@ describe('ProjectCreateComponent', () => {
     fixture.detectChanges();
   });
 
-  it('renders only the simple name and description form', () => {
+  it('renders a short details form without import controls', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="project-name"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="project-description"]')).toBeTruthy();
     expect(fixture.nativeElement.textContent).not.toContain('Review');
-    expect(fixture.nativeElement.textContent).not.toContain('CSV');
-    expect(fixture.nativeElement.textContent).not.toContain('Excel');
     expect(fixture.nativeElement.textContent).not.toContain('API URL');
+    expect(fixture.nativeElement.textContent).toContain('go directly to Data Sources');
     expect(fixture.nativeElement.querySelectorAll('input[type="file"]')).toHaveLength(0);
   });
 

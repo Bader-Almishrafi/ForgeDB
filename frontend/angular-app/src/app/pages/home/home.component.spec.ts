@@ -48,10 +48,10 @@ describe('HomeComponent', () => {
 
   it('loads authenticated recent projects and initially renders at most four cards', () => {
     expect(api['getProjects']).toHaveBeenCalledTimes(1);
-    expect(fixture.nativeElement.textContent).toContain('Welcome back, Mona');
+    expect(fixture.nativeElement.textContent).toContain('Welcome, Mona');
     expect(fixture.nativeElement.querySelectorAll('[data-testid="project-card"]')).toHaveLength(4);
-    expect(fixture.nativeElement.textContent).toContain('View all 5 projects');
-    expect(fixture.nativeElement.querySelector('[data-testid="recent-activity"]')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('View All Projects');
+    expect(fixture.nativeElement.querySelector('[data-testid="recent-activity"]')).toBeNull();
   });
 
   it('opens a recent project at the API-recommended workflow route', () => {

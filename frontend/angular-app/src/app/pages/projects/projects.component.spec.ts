@@ -78,12 +78,12 @@ describe('ProjectsComponent', () => {
     fixture.detectChanges();
     component.projects.set([]);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('You do not have any projects yet');
+    expect(fixture.nativeElement.textContent).toContain('No projects yet');
 
     component.projects.set(projects);
     component.updateSearch('missing');
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('No projects match');
+    expect(fixture.nativeElement.textContent).toContain('No matching projects');
   });
 
   it('shows an API error and retry action', () => {
@@ -93,6 +93,6 @@ describe('ProjectsComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Project service unavailable.');
-    expect(fixture.nativeElement.textContent).toContain('Try again');
+    expect(fixture.nativeElement.textContent).toContain('Try Again');
   });
 });
