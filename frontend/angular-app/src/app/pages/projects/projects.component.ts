@@ -33,7 +33,8 @@ export class ProjectsComponent implements OnInit {
   readonly filteredProjects = computed(() => {
     const query = this.searchQuery().trim().toLocaleLowerCase();
     const matching = query
-      ? this.projects().filter((project) => project.name.toLocaleLowerCase().includes(query))
+      ? this.projects().filter((project) =>
+          `${project.name} ${project.description ?? ''}`.toLocaleLowerCase().includes(query))
       : [...this.projects()];
     return matching.sort((left, right) => this.compareProjects(left, right));
   });

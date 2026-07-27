@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthService } from '../../services/auth.service';
@@ -8,6 +8,7 @@ import { LoginComponent } from './login.component';
 describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>;
   let auth: Record<string, ReturnType<typeof vi.fn>>;
+  let route: { snapshot: { queryParamMap: ReturnType<typeof convertToParamMap> } };
 
   beforeEach(async () => {
     auth = {
@@ -15,9 +16,14 @@ describe('LoginComponent', () => {
       requestPasswordReset: vi.fn(() => of({ message: 'If the account exists, reset instructions were created.', developmentToken: 'dev-token' })),
       resetPassword: vi.fn(() => of(undefined)),
     };
+    route = { snapshot: { queryParamMap: convertToParamMap({}) } };
     await TestBed.configureTestingModule({
       imports: [LoginComponent],
-      providers: [provideRouter([]), { provide: AuthService, useValue: auth }],
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: route },
+        { provide: AuthService, useValue: auth },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(LoginComponent);
     fixture.detectChanges();
@@ -25,14 +31,28 @@ describe('LoginComponent', () => {
 
   afterEach(() => TestBed.resetTestingModule());
 
-  it('redirects a successful login to Home', () => {
+  it('redirects a successful login to Home when there is no protected return URL', () => {
     const router = TestBed.inject(Router);
-    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const navigateByUrl = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     fixture.componentInstance.email = 'mona@example.com';
     fixture.componentInstance.password = 'password1';
     fixture.componentInstance.onLogin();
     expect(auth['login']).toHaveBeenCalledWith({ email: 'mona@example.com', password: 'password1' });
-    expect(navigate).toHaveBeenCalledWith(['/home']);
+    expect(navigateByUrl).toHaveBeenCalledWith('/home');
+  });
+
+  it('returns to a protected internal URL after login and rejects auth-page loops', () => {
+    const router = TestBed.inject(Router);
+    const navigateByUrl = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    route.snapshot.queryParamMap = convertToParamMap({ returnUrl: '/projects/12/schema?datasetId=4' });
+
+    fixture.componentInstance.onLogin();
+
+    expect(navigateByUrl).toHaveBeenLastCalledWith('/projects/12/schema?datasetId=4');
+
+    route.snapshot.queryParamMap = convertToParamMap({ returnUrl: '//example.com' });
+    fixture.componentInstance.onLogin();
+    expect(navigateByUrl).toHaveBeenLastCalledWith('/home');
   });
 
   it('requests a backend reset and exposes a development token only from the response', () => {

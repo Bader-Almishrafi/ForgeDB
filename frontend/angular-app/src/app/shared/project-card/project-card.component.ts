@@ -1,6 +1,17 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, HostListener, inject, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  HostListener,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ProjectResponse } from '../../services/api.models';
@@ -21,7 +32,16 @@ export class ProjectCardComponent {
   readonly projectDeleted = output<number>();
 
   readonly relevantDate = computed(() => this.project().updatedAt || this.project().createdAt);
-  readonly dateLabel = computed(() => this.project().updatedAt ? 'Last modified' : 'Created');
+  readonly dateLabel = computed(() => this.project().updatedAt ? 'Last updated' : 'Created');
+  readonly stepLabel = computed(() => this.friendlyStep(this.project().currentStep));
+  readonly statusLabel = computed(() => this.friendlyStatus(this.project().workflowState));
+  readonly statusClass = computed(() => {
+    const state = this.project().workflowState;
+    if (state === 'Deployed' || state === 'ReadyToDeploy' || state === 'SchemaValid') return 'badge-success';
+    if (state === 'NeedsAnalysis' || state === 'NeedsReanalysis' || state === 'SchemaDraft') return 'badge-warning';
+    return 'badge-neutral';
+  });
+  readonly menuOpen = signal(false);
   readonly editing = signal(false);
   readonly confirmingDelete = signal(false);
   readonly saving = signal(false);
@@ -29,6 +49,18 @@ export class ProjectCardComponent {
   readonly errorMessage = signal('');
   editName = '';
   editDescription = '';
+  readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
+  readonly editNameInput = viewChild<ElementRef<HTMLInputElement>>('editNameInput');
+  readonly deleteCancelButton = viewChild<ElementRef<HTMLButtonElement>>('deleteCancelButton');
+
+  toggleMenu(event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuOpen.update((open) => !open);
+  }
+
+  keepMenuOpen(event: MouseEvent): void {
+    event.stopPropagation();
+  }
 
   startEdit(): void {
     if (this.saving() || this.deleting()) return;
@@ -36,13 +68,16 @@ export class ProjectCardComponent {
     this.editDescription = this.project().description ?? '';
     this.errorMessage.set('');
     this.confirmingDelete.set(false);
+    this.menuOpen.set(false);
     this.editing.set(true);
+    window.setTimeout(() => this.editNameInput()?.nativeElement.focus());
   }
 
   cancelEdit(): void {
     if (this.saving()) return;
     this.editing.set(false);
     this.errorMessage.set('');
+    this.restoreMenuFocus();
   }
 
   closeEditFromBackdrop(event: MouseEvent): void {
@@ -60,6 +95,7 @@ export class ProjectCardComponent {
         next: (updated) => {
           this.editing.set(false);
           this.projectUpdated.emit(updated);
+          this.restoreMenuFocus();
         },
         error: (error: unknown) => this.errorMessage.set(this.errorText(error, 'Unable to update the project.')),
       });
@@ -69,13 +105,16 @@ export class ProjectCardComponent {
     if (this.saving() || this.deleting()) return;
     this.errorMessage.set('');
     this.editing.set(false);
+    this.menuOpen.set(false);
     this.confirmingDelete.set(true);
+    window.setTimeout(() => this.deleteCancelButton()?.nativeElement.focus());
   }
 
   cancelDelete(): void {
     if (this.deleting()) return;
     this.confirmingDelete.set(false);
     this.errorMessage.set('');
+    this.restoreMenuFocus();
   }
 
   closeDeleteFromBackdrop(event: MouseEvent): void {
@@ -107,8 +146,46 @@ export class ProjectCardComponent {
 
   @HostListener('document:keydown.escape')
   closeDialogOnEscape(): void {
+    if (this.menuOpen()) {
+      this.menuOpen.set(false);
+      this.restoreMenuFocus();
+      return;
+    }
     if (this.editing() && !this.saving()) this.cancelEdit();
     if (this.confirmingDelete() && !this.deleting()) this.cancelDelete();
+  }
+
+  @HostListener('document:click')
+  closeMenu(): void {
+    this.menuOpen.set(false);
+  }
+
+  private restoreMenuFocus(): void {
+    window.setTimeout(() => this.menuButton()?.nativeElement.focus());
+  }
+
+  private friendlyStep(step: string): string {
+    return ({
+      Data: 'Data Sources',
+      Analyze: 'Analysis',
+      Clean: 'Data Cleaning',
+      Schema: 'Schema Design',
+      'Export & Deploy': 'Export and Deploy',
+    } as Record<string, string>)[step] ?? step;
+  }
+
+  private friendlyStatus(status: string): string {
+    return ({
+      NoData: 'Needs data',
+      NeedsAnalysis: 'Analysis needed',
+      NeedsReanalysis: 'Re-analysis needed',
+      Analyzed: 'Ready to clean',
+      ReadyForSchema: 'Ready for schema',
+      SchemaDraft: 'Schema needs validation',
+      SchemaValid: 'Export ready',
+      ReadyToDeploy: 'Ready to deploy',
+      Deployed: 'Deployed',
+    } as Record<string, string>)[status] ?? 'In progress';
   }
 
   private errorText(error: unknown, fallback: string): string {

@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiErrorBody } from '../../services/api.models';
 import { AuthService } from '../../services/auth.service';
@@ -28,7 +28,11 @@ export class LoginComponent {
   isLoading = false;
   errorMessage = '';
 
-  constructor(private readonly authService: AuthService, private readonly router: Router) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly router: Router,
+    private readonly route: ActivatedRoute,
+  ) {}
 
   onLogin(): void {
     this.errorMessage = '';
@@ -40,7 +44,7 @@ export class LoginComponent {
       password: this.password,
     }).pipe(finalize(() => this.isLoading = false))
       .subscribe({
-        next: () => this.router.navigate(['/home']),
+        next: () => this.router.navigateByUrl(this.safeReturnUrl()),
         error: (error: { error?: ApiErrorBody }) => {
           this.errorMessage = error.error?.message ?? 'Unable to sign in. Check the backend and try again.';
         },
@@ -136,5 +140,16 @@ export class LoginComponent {
   private clearMessages(): void {
     this.errorMessage = '';
     this.successMessage = '';
+  }
+
+  private safeReturnUrl(): string {
+    const candidate = this.route.snapshot.queryParamMap.get('returnUrl')?.trim();
+    if (!candidate
+      || !candidate.startsWith('/')
+      || candidate.startsWith('//')
+      || /^\/(?:login|register|signup)(?:[/?#]|$)/i.test(candidate)) {
+      return '/home';
+    }
+    return candidate;
   }
 }
