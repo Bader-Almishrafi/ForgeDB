@@ -133,7 +133,7 @@
       </div>
     }
 
-    <footer class="flex flex-col-reverse gap-3 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-2xl backdrop-blur-xl dark:border-slate-700 dark:bg-[#161b22]/80 sm:flex-row sm:items-center sm:justify-between sticky bottom-6 z-50 animate-fade-in-up delay-300">
+    <footer class="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
       <a class="btn-secondary justify-center" [routerLink]="['/projects', service.projectId, 'data']" [queryParams]="backToDataQuery()">Back to Data</a>
       <button type="button" class="btn-primary justify-center" data-testid="continue-to-clean" (click)="continueToClean()" [disabled]="!service.canContinueToClean()" [title]="service.canContinueToClean() ? '' : service.cleanBlockingReason()">Continue to Clean</button>
     </footer>

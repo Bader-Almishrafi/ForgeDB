@@ -143,6 +143,16 @@
       <main class="grid min-h-[calc(100vh-5rem)] place-items-center px-6"><section class="glass-card max-w-lg text-center" role="alert"><h2 class="text-xl font-bold">{{ error.message }}</h2>@if (error.kind === 'unavailable') { <button type="button" class="btn-primary mt-5" (click)="retry()">Try again</button> } @else { <a routerLink="/projects" class="btn-primary mt-5">Back to Projects</a> }</section></main>
     } @else if (context.workflow()) {
       <main class="min-w-0 p-4 sm:p-6 lg:p-8"><router-outlet /></main>
+      
+      <!-- Global scroll buttons -->
+      <div class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 animate-fade-in-up delay-300">
+        <button type="button" class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100/80 backdrop-blur text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:bg-[#161b22]/80 dark:text-slate-400 dark:hover:bg-[#21262d] dark:hover:text-white transition-all shadow-lg border border-slate-200 dark:border-slate-800" (click)="scrollToTop()" aria-label="Scroll to top" title="Scroll to top">
+          <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"></path></svg>
+        </button>
+        <button type="button" class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100/80 backdrop-blur text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:bg-[#161b22]/80 dark:text-slate-400 dark:hover:bg-[#21262d] dark:hover:text-white transition-all shadow-lg border border-slate-200 dark:border-slate-800" (click)="scrollToBottom()" aria-label="Scroll to bottom" title="Scroll to bottom">
+          <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+        </button>
+      </div>
     }
   </div>
 </div>
