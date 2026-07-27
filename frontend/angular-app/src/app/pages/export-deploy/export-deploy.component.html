@@ -42,7 +42,37 @@
         <a [routerLink]="['/projects', projectId, 'schema']" class="btn-primary mt-5">Back to Schema</a>
       </article>
     } @else {
-      <section class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-100" aria-labelledby="artifacts-heading">
+      <section class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-100" aria-labelledby="deployment-summary-heading">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 id="deployment-summary-heading" class="text-xl font-semibold text-slate-950 dark:text-white">Deployment summary</h2>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Review the backend-prepared PostgreSQL plan before confirming.</p>
+          </div>
+          <button type="button" class="btn-primary" (click)="openConfirmation()"
+            [disabled]="!currentWorkflow.canDeploy || !deploymentPreview() || deploying()">
+            {{ deploymentPreview()?.isRedeployment ? 'Redeploy to PostgreSQL' : 'Deploy to PostgreSQL' }}
+          </button>
+        </div>
+
+        @if (!currentWorkflow.canDeploy) {
+          <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" data-testid="deployment-blocker">
+            {{ firstBlockingReason() }}
+          </p>
+        } @else if (deploymentPreview(); as preview) {
+          <dl class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div class="metric-card"><dt class="section-title">Target schema</dt><dd class="mt-2 break-all font-semibold">{{ preview.schemaName }}</dd></div>
+            <div class="metric-card"><dt class="section-title">Revision</dt><dd class="mt-2 text-2xl font-semibold">{{ preview.designRevision }}</dd></div>
+            <div class="metric-card"><dt class="section-title">Tables</dt><dd class="mt-2 text-2xl font-semibold">{{ preview.tablesCount }}</dd></div>
+            <div class="metric-card"><dt class="section-title">Relationships</dt><dd class="mt-2 text-2xl font-semibold">{{ preview.relationshipsCount }}</dd></div>
+            <div class="metric-card"><dt class="section-title">Planned rows</dt><dd class="mt-2 text-2xl font-semibold">{{ preview.totalRowsPlanned | number }}</dd></div>
+          </dl>
+          <p class="mt-3 text-sm text-slate-500">{{ preview.sourceVersionCount }} exact source version(s) · {{ preview.isRedeployment ? 'Redeployment' : 'First deployment' }}</p>
+        } @else {
+          <p class="mt-4 text-sm text-slate-500">Loading deployment preview...</p>
+        }
+      </section>
+
+      <section class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-200" aria-labelledby="artifacts-heading">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 id="artifacts-heading" class="text-xl font-semibold text-slate-950 dark:text-white">Export artifacts</h2>
@@ -101,36 +131,6 @@
           </div>
         } @else if (loading()) {
           <p class="mt-5 text-sm text-slate-500">Loading export artifacts...</p>
-        }
-      </section>
-
-      <section class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-200" aria-labelledby="deployment-summary-heading">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 id="deployment-summary-heading" class="text-xl font-semibold text-slate-950 dark:text-white">Deployment summary</h2>
-            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Review the backend-prepared PostgreSQL plan before confirming.</p>
-          </div>
-          <button type="button" class="btn-primary" (click)="openConfirmation()"
-            [disabled]="!currentWorkflow.canDeploy || !deploymentPreview() || deploying()">
-            {{ deploymentPreview()?.isRedeployment ? 'Redeploy to PostgreSQL' : 'Deploy to PostgreSQL' }}
-          </button>
-        </div>
-
-        @if (!currentWorkflow.canDeploy) {
-          <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800" data-testid="deployment-blocker">
-            {{ firstBlockingReason() }}
-          </p>
-        } @else if (deploymentPreview(); as preview) {
-          <dl class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <div class="metric-card"><dt class="section-title">Target schema</dt><dd class="mt-2 break-all font-semibold">{{ preview.schemaName }}</dd></div>
-            <div class="metric-card"><dt class="section-title">Revision</dt><dd class="mt-2 text-2xl font-semibold">{{ preview.designRevision }}</dd></div>
-            <div class="metric-card"><dt class="section-title">Tables</dt><dd class="mt-2 text-2xl font-semibold">{{ preview.tablesCount }}</dd></div>
-            <div class="metric-card"><dt class="section-title">Relationships</dt><dd class="mt-2 text-2xl font-semibold">{{ preview.relationshipsCount }}</dd></div>
-            <div class="metric-card"><dt class="section-title">Planned rows</dt><dd class="mt-2 text-2xl font-semibold">{{ preview.totalRowsPlanned | number }}</dd></div>
-          </dl>
-          <p class="mt-3 text-sm text-slate-500">{{ preview.sourceVersionCount }} exact source version(s) · {{ preview.isRedeployment ? 'Redeployment' : 'First deployment' }}</p>
-        } @else {
-          <p class="mt-4 text-sm text-slate-500">Loading deployment preview...</p>
         }
       </section>
 

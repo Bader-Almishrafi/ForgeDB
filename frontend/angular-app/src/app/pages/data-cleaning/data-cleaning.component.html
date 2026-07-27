@@ -76,7 +76,11 @@
             <li class="rounded-lg bg-white/60 px-3 py-2 dark:bg-black/10"><strong>{{ dataset.datasetName }}</strong> · Active v{{ dataset.activeVersionNumber || '—' }}</li>
           }
         </ul>
-        <a class="btn-primary mt-5" [routerLink]="['/projects', projectId, 'analyze']" [queryParams]="navigationQuery()">Back to Analyze</a>
+        @if (apiService.reanalyzing()) {
+          <p class="mt-5 text-sm font-semibold text-amber-800 dark:text-amber-300">Re-analyzing in progress...</p>
+        } @else {
+          <a class="btn-primary mt-5" [routerLink]="['/projects', projectId, 'analyze']" [queryParams]="navigationQuery()">Back to Analyze</a>
+        }
       </section>
     } @else {
       @if (stateService.scope() === 'project') {
@@ -126,7 +130,20 @@
 
           <div class="mt-4 flex flex-col gap-3 rounded-xl border border-slate-200/70 bg-slate-50/80 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-[#30363d] dark:bg-[#21262d]/60">
             <label class="inline-flex items-center gap-2 text-sm font-medium"><input type="checkbox" [checked]="stateService.allVisibleSelected()" (change)="stateService.toggleAllVisible()"> Select visible issues</label>
-            <div class="flex items-center gap-3"><span class="text-xs text-slate-500">{{ stateService.selectedSuggestions().length }} selected</span><button type="button" class="btn-secondary" (click)="previewSelected()" [disabled]="!stateService.selectedSuggestions().length || apiService.previewLoading()">Preview selected issues</button></div>
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-slate-500">{{ stateService.selectedSuggestions().length }} selected</span>
+              
+              @if (stateService.selectedSuggestions().length) {
+                <select class="input-field max-w-xs text-sm" (change)="applyBulkStrategy($any($event.target).value); $any($event.target).value = ''">
+                  <option value="" disabled selected>Apply bulk strategy...</option>
+                  @for (option of bulkStrategyOptions(); track option.key) {
+                    <option [value]="option.key">{{ option.label }}</option>
+                  }
+                </select>
+              }
+
+              <button type="button" class="btn-secondary" (click)="previewSelected()" [disabled]="!stateService.selectedSuggestions().length || apiService.previewLoading()">Preview selected issues</button>
+            </div>
           </div>
 
           <div class="mt-4 space-y-3">
@@ -206,7 +223,7 @@
         </details>
       }
 
-      <footer class="flex flex-col-reverse gap-3 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-2xl backdrop-blur-xl dark:border-slate-700 dark:bg-[#161b22]/80 sm:flex-row sm:items-center sm:justify-between sticky bottom-6 z-50 animate-fade-in-up delay-300">
+      <footer class="flex flex-col-reverse gap-3 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm backdrop-blur-xl dark:border-slate-700 dark:bg-[#161b22]/80 sm:flex-row sm:items-center sm:justify-between animate-fade-in-up delay-300">
         <a class="btn-secondary justify-center" [routerLink]="['/projects', projectId, 'analyze']" [queryParams]="navigationQuery()">Back to Analyze</a>
         <div class="text-right">
           <button type="button" class="btn-primary justify-center" data-testid="continue-to-schema" (click)="continueToSchema()" [disabled]="!apiService.canContinueToSchema()" [title]="apiService.canContinueToSchema() ? '' : apiService.schemaBlockingReason()">Continue to Schema</button>

@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, OnInit, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, OnInit, viewChild, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -35,6 +35,21 @@ export class DataCleaningComponent implements OnInit {
   readonly previewDialog = viewChild(CleaningPreviewDialogComponent);
   readonly confirmDialog = viewChild<ElementRef<HTMLDialogElement>>('confirmDialog');
 
+  readonly bulkStrategyOptions = computed(() => {
+    const selected = this.stateService.selectedSuggestions();
+    if (!selected.length) return [];
+    
+    const strategyMap = new Map<string, { key: string; label: string }>();
+    selected.forEach(suggestion => {
+      suggestion.availableStrategies.forEach(strategy => {
+        if (!strategyMap.has(strategy.key)) {
+          strategyMap.set(strategy.key, { key: strategy.key, label: strategy.label });
+        }
+      });
+    });
+    return Array.from(strategyMap.values());
+  });
+
   projectId = 0;
 
   ngOnInit(): void {
@@ -64,6 +79,17 @@ export class DataCleaningComponent implements OnInit {
     const selected = this.stateService.selectedSuggestions();
     if (!selected.length) return;
     await this.apiService.previewOperationsRequest(this.stateService.buildOperations(selected));
+  }
+
+  applyBulkStrategy(strategyKey: string): void {
+    if (!strategyKey) return;
+    const selected = this.stateService.selectedSuggestions();
+    selected.forEach(suggestion => {
+      const strategy = suggestion.availableStrategies.find(s => s.key === strategyKey);
+      if (strategy) {
+        this.stateService.updateStrategy(suggestion, strategy.key);
+      }
+    });
   }
 
   async previewRecommendedFixes(): Promise<void> {
