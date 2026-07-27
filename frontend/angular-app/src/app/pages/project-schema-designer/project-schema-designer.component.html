@@ -1,164 +1,429 @@
-<title>Project Schema - {{ service.projectName() }}</title>
+<title>Schema Design - {{ service.projectName() }}</title>
+
 <div class="schema-page mx-auto max-w-[1600px]" data-testid="schema-page">
   @if (service.loading()) {
     <section class="space-y-4" aria-live="polite" aria-busy="true">
-      <div class="h-40 animate-pulse rounded-2xl bg-slate-200"></div>
-      <div class="h-[32rem] animate-pulse rounded-2xl bg-slate-200"></div>
+      <div class="skeleton h-32 rounded-2xl"></div>
+      <div class="skeleton h-[32rem] rounded-2xl"></div>
     </section>
   } @else {
-    <header class="schema-header animate-fade-in-up">
-      <div class="min-w-0">
-        <div class="title-row">
-          <span class="title-icon"><svg lucideDatabase [size]="24" [strokeWidth]="1.8"></svg></span>
-          <div>
-            <p class="project-name">{{ service.projectName() }}</p>
-            <div class="flex flex-wrap items-center gap-2">
-              <h1>Schema</h1>
-              <span class="status-badge" [ngClass]="'status-' + service.schemaStatus().toLowerCase()">{{ service.schemaStatus() }}</span>
-              @if (service.dirty()) { <span class="badge-warning">Unsaved changes</span> }
-            </div>
-            <p class="header-description">Generate, review, relate, validate, and preview the persisted PostgreSQL schema.</p>
-          </div>
-        </div>
-        @if (service.design(); as schema) {
-          <p class="metadata-line">Revision {{ schema.revision }} · {{ service.tableCount() }} tables · {{ service.columnCount() }} columns @if (schema.generatedAt) { · Generated {{ schema.generatedAt | date:'medium' }} }</p>
-        }
-      </div>
-      @if (!service.dirty()) {
-        <div class="header-actions">
-          <button data-testid="generate-schema" type="button" class="btn-secondary" (click)="requestRegenerate()" [disabled]="!service.canGenerate()">
-            <svg lucideRefreshCw [class.animate-spin]="service.generating()" [size]="16"></svg>{{ service.generating() ? 'Generating…' : service.design() ? 'Regenerate Schema' : 'Generate Schema' }}
-          </button>
-          <button data-testid="save-schema" type="button" class="btn-secondary" (click)="service.saveDraft()" [disabled]="!service.canSave()">
-            <svg lucideSave [size]="16"></svg>{{ service.saving() ? 'Saving…' : 'Save Changes' }}
-          </button>
-          <div class="flex items-center gap-2">
-            <button data-testid="validate-schema" type="button" class="btn-primary" (click)="service.validateSchema()" [disabled]="!service.canValidate()">
-              <svg lucideFileCheck2 [size]="16"></svg>{{ service.validating() ? 'Validating…' : 'Validate Schema' }}
-            </button>
-            @if (service.blockingIssues().length || service.warningIssues().length) {
-              <span class="rounded-full px-2.5 py-1 text-xs font-semibold" [class.bg-rose-100]="service.blockingIssues().length" [class.text-rose-700]="service.blockingIssues().length" [class.bg-amber-100]="!service.blockingIssues().length" [class.text-amber-800]="!service.blockingIssues().length">{{ service.blockingIssues().length + service.warningIssues().length }} Issues</span>
+    <header class="schema-header">
+      <div class="title-row">
+        <span class="title-icon" aria-hidden="true"><svg lucideDatabase [size]="24" [strokeWidth]="1.8"></svg></span>
+        <div class="min-w-0">
+          <p class="project-name">{{ service.projectName() }} &middot; Step 4 of 5</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1>Schema Design</h1>
+            <span class="status-badge" [ngClass]="'status-' + service.schemaStatus().toLowerCase()">
+              {{ service.schemaStatus() }}
+            </span>
+            @if (service.dirty()) {
+              <span class="badge-warning">Unsaved changes</span>
             }
           </div>
+          <p class="header-description">
+            Shape tables and relationships, resolve validation issues, then review the PostgreSQL that ForgeDB will export.
+          </p>
+          @if (service.design(); as schema) {
+            <p class="metadata-line">
+              Revision {{ schema.revision }} &middot; {{ service.tableCount() }} tables &middot;
+              {{ service.columnCount() }} columns
+              @if (schema.generatedAt) { &middot; Generated {{ schema.generatedAt | date:'medium' }} }
+            </p>
+          }
         </div>
-      }
+      </div>
     </header>
 
-    @if (service.dirty()) {
-      <div class="fixed bottom-24 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-3 rounded-full border border-slate-200/50 bg-white/90 p-2.5 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/90 animate-fade-in-up">
-        <div class="flex items-center gap-2 pl-3 pr-2">
-          <span class="relative flex h-2.5 w-2.5"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span><span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"></span></span>
-          <span class="text-sm font-bold text-slate-800 dark:text-slate-200">Unsaved changes</span>
-        </div>
-        <div class="h-6 w-px bg-slate-200 dark:bg-white/10"></div>
-        <button type="button" class="btn-secondary rounded-full border-0 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700" (click)="service.undoChange()" [disabled]="!service.canUndo()">Undo Edit</button>
-        <button data-testid="generate-schema-floating" type="button" class="btn-secondary rounded-full" (click)="service.generateSchema()" [disabled]="!service.canGenerate()">
-          <svg lucideRefreshCw [class.animate-spin]="service.generating()" [size]="16"></svg>{{ service.generating() ? 'Generating…' : 'Regenerate' }}
-        </button>
-        <button data-testid="save-schema-floating" type="button" class="btn-secondary rounded-full" (click)="service.saveDraft()" [disabled]="!service.canSave()">
-          <svg lucideSave [size]="16"></svg>{{ service.saving() ? 'Saving…' : 'Save Changes' }}
-        </button>
-        <button data-testid="validate-schema-floating" type="button" class="btn-primary rounded-full px-5 shadow-indigo-500/25" (click)="service.validateSchema()" [disabled]="!service.canValidate()">
-          <svg lucideFileCheck2 [size]="16"></svg>{{ service.validating() ? 'Validating…' : 'Validate' }}
-        </button>
-      </div>
-    }
-
     @if (service.feedback(); as message) {
-      <section class="feedback" [ngClass]="'feedback-' + message.kind" [attr.role]="message.kind === 'error' ? 'alert' : 'status'" aria-live="polite">
-        @if (message.kind === 'success') { <svg lucideCheckCircle2 [size]="19"></svg> } @else { <svg lucideTriangleAlert [size]="19"></svg> }
-        <div><strong>{{ message.title }}</strong><p>{{ message.message }}</p>
-          @if (service.conflict()) { <button data-testid="reload-schema" type="button" class="btn-secondary mt-3" (click)="service.reloadAfterConflict()"><svg lucideRefreshCw [size]="14"></svg>Reload Latest Schema</button> }
+      <section
+        class="feedback"
+        [ngClass]="'feedback-' + message.kind"
+        [attr.role]="message.kind === 'error' ? 'alert' : 'status'"
+        aria-live="polite"
+      >
+        @if (message.kind === 'success') {
+          <svg lucideCheckCircle2 [size]="19" aria-hidden="true"></svg>
+        } @else {
+          <svg lucideTriangleAlert [size]="19" aria-hidden="true"></svg>
+        }
+        <div>
+          <strong>{{ message.title }}</strong>
+          <p>{{ message.message }}</p>
+          @if (service.conflict()) {
+            <button data-testid="reload-schema" type="button" class="btn-secondary mt-3" (click)="service.reloadAfterConflict()">
+              <svg lucideRefreshCw [size]="14" aria-hidden="true"></svg>
+              Reload latest schema
+            </button>
+          }
         </div>
       </section>
     }
 
     @if (service.schemaBlocked()) {
       <section data-testid="schema-workflow-blocker" class="gate-state" role="alert">
-        <svg lucideTriangleAlert [size]="28"></svg>
-        <div><h2>Schema is blocked</h2><p>{{ service.schemaBlockingReason() }}</p></div>
-        <a [routerLink]="['/projects', service.projectId, 'clean']" [queryParams]="service.datasetQuery()" class="btn-secondary">Back to Clean</a>
+        <svg lucideTriangleAlert [size]="28" aria-hidden="true"></svg>
+        <div>
+          <h2>Schema Design is blocked</h2>
+          <p>{{ service.schemaBlockingReason() }}</p>
+        </div>
+        <a [routerLink]="['/projects', service.projectId, 'clean']" [queryParams]="service.datasetQuery()" class="btn-secondary">
+          Back to Data Cleaning
+        </a>
       </section>
     }
 
     @if (service.sourceRows().length) {
-      <section data-testid="schema-source-versions" class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-100">
-        <div class="section-heading"><div><h2>Source versions</h2><p>The schema is tied to these quality-confirmed active dataset versions.</p></div></div>
-        <div class="mt-4 flex gap-4 overflow-x-auto pb-4 snap-x">
+      <details data-testid="schema-source-versions" class="source-context">
+        <summary>
+          <span>
+            <strong>Source datasets</strong>
+            <small>{{ service.sourceRows().length }} project dataset(s) and their active versions.</small>
+          </span>
+          <span class="summary-action">View details</span>
+        </summary>
+        <div class="source-grid">
           @for (source of service.sourceRows(); track source.dataset.datasetId) {
-            <article class="source-card min-w-[320px] shrink-0 snap-start" [class.source-stale]="!source.usesCurrentVersion">
-              <div class="flex items-start justify-between gap-2"><strong>{{ source.dataset.datasetName }}</strong><span class="badge-neutral">v{{ source.dataset.activeVersionNumber ?? '?' }}</span></div>
-              <p class="mt-2 text-sm text-slate-600">Active version ID {{ source.dataset.activeVersionId ?? 'unavailable' }} · {{ service.versionKind(source.activeVersion) }}</p>
+            <article class="source-card" [class.source-stale]="!source.usesCurrentVersion">
+              <div class="flex items-start justify-between gap-2">
+                <strong>{{ source.dataset.datasetName }}</strong>
+                <span class="badge-neutral">v{{ source.dataset.activeVersionNumber ?? '?' }}</span>
+              </div>
+              <p class="mt-2 text-sm text-slate-600">
+                {{ service.versionKind(source.activeVersion) }} active version
+                @if (source.dataset.activeVersionId) { &middot; ID {{ source.dataset.activeVersionId }} }
+              </p>
               <div class="mt-3 flex flex-wrap gap-2 text-xs">
-                <span [class]="source.dataset.isQualityConfirmed ? 'badge-success' : 'badge-warning'">{{ source.dataset.isQualityConfirmed ? 'Quality confirmed' : 'Quality not confirmed' }}</span>
-                <span [class]="source.dataset.hasCurrentAnalysis ? 'badge-success' : 'badge-warning'">{{ source.dataset.hasCurrentAnalysis ? 'Analyzed' : 'Analysis required' }}</span>
+                <span [class]="source.dataset.isQualityConfirmed ? 'badge-success' : 'badge-warning'">
+                  {{ source.dataset.isQualityConfirmed ? 'Quality confirmed' : 'Quality not confirmed' }}
+                </span>
+                <span [class]="source.dataset.hasCurrentAnalysis ? 'badge-success' : 'badge-warning'">
+                  {{ source.dataset.hasCurrentAnalysis ? 'Analysis current' : 'Analysis required' }}
+                </span>
               </div>
               @if (source.schemaVersionId && !source.usesCurrentVersion) {
-                <p class="mt-3 text-xs font-medium text-rose-700">Schema uses {{ source.schemaVersion ? 'v' + source.schemaVersion.versionNumber : 'version ID ' + source.schemaVersionId }}. Regeneration is required.</p>
+                <p class="mt-3 text-xs font-medium text-rose-700">
+                  This schema uses
+                  {{ source.schemaVersion ? 'v' + source.schemaVersion.versionNumber : 'version ID ' + source.schemaVersionId }}.
+                  Regenerate to use the active version.
+                </p>
               }
             </article>
           }
         </div>
-      </section>
+      </details>
     }
 
     @if (!service.design()) {
       <section data-testid="schema-empty-state" class="empty-state">
-        <span class="empty-icon"><svg lucideTable2 [size]="34"></svg></span>
-        <h2>No schema yet</h2>
-        <p>Generate one table for each confirmed active dataset version. ForgeDB uses backend-detected PostgreSQL types.</p>
-        <button type="button" class="btn-primary" (click)="service.generateSchema()" [disabled]="!service.canGenerate()">Generate Schema</button>
+        <span class="empty-icon" aria-hidden="true"><svg lucideTable2 [size]="34"></svg></span>
+        <h2>Create the first schema draft</h2>
+        <p>ForgeDB will create one table for each confirmed active dataset version and use the detected PostgreSQL types.</p>
+        <button type="button" class="btn-primary" (click)="service.generateSchema()" [disabled]="!service.canGenerate()">
+          {{ service.generating() ? 'Generating schema...' : 'Generate schema' }}
+        </button>
       </section>
     } @else if (service.design(); as schema) {
       @if (service.isStale()) {
         <section data-testid="stale-schema" class="stale-banner" role="alert">
-          <svg lucideTriangleAlert [size]="18"></svg>
-          <div><strong>Schema source versions are stale.</strong><p>Active versions changed after generation. Regenerate Schema to replace the draft structure before saving, validating, exporting, or deploying.</p></div>
+          <svg lucideTriangleAlert [size]="18" aria-hidden="true"></svg>
+          <div>
+            <strong>Source versions changed after this schema was generated.</strong>
+            <p>Regenerate the schema before saving, validating, exporting, or deploying.</p>
+          </div>
         </section>
       }
 
-      <nav class="flex space-x-4 border-b border-slate-200 mb-6 animate-fade-in-up delay-200">
-        <button type="button" class="pb-2 px-1 border-b-2 font-medium text-sm transition-colors" [class.border-indigo-600]="activeTab() === 'tables'" [class.text-indigo-600]="activeTab() === 'tables'" [class.border-transparent]="activeTab() !== 'tables'" [class.text-slate-500]="activeTab() !== 'tables'" [class.hover:border-slate-300]="activeTab() !== 'tables'" [class.hover:text-slate-700]="activeTab() !== 'tables'" (click)="activeTab.set('tables')">
-          Tables & Columns
-        </button>
-        <span [title]="service.tableCount() <= 1 ? 'Relationships require at least two tables' : ''" [class.cursor-not-allowed]="service.tableCount() <= 1">
-          <button type="button" class="pb-2 px-1 border-b-2 font-medium text-sm transition-colors" 
-                  [class.border-indigo-600]="activeTab() === 'relationships'" 
-                  [class.text-indigo-600]="activeTab() === 'relationships'" 
-                  [class.border-transparent]="activeTab() !== 'relationships'" 
-                  [class.text-slate-500]="activeTab() !== 'relationships'" 
-                  [class.hover:border-slate-300]="activeTab() !== 'relationships' && service.tableCount() > 1" 
-                  [class.hover:text-slate-700]="activeTab() !== 'relationships' && service.tableCount() > 1" 
-                  [class.opacity-50]="service.tableCount() <= 1"
-                  [class.pointer-events-none]="service.tableCount() <= 1"
-                  [disabled]="service.tableCount() <= 1"
-                  (click)="activeTab.set('relationships')">
-            Relationships
+      <section class="schema-actions" aria-labelledby="schema-actions-heading">
+        <div class="action-status" aria-live="polite">
+          <p id="schema-actions-heading" class="action-eyebrow">Current next action</p>
+          @if (service.isStale()) {
+            <strong>Regenerate from the current source versions.</strong>
+            <p>Your existing draft structure will be replaced.</p>
+          } @else if (service.dirty() && service.hasDraftErrors()) {
+            <strong>Fix {{ service.draftIssues().length }} draft issue(s) before saving.</strong>
+            <p>Open Validation for locations and return to Tables to correct them.</p>
+          } @else if (service.dirty()) {
+            <strong>Save your schema changes.</strong>
+            <p>Validation runs against the saved revision, so save before validating.</p>
+          } @else if (service.schemaStatus() !== 'Valid') {
+            <strong>Validate the saved schema.</strong>
+            <p>Validation must pass before Export and Deploy becomes available.</p>
+          } @else {
+            <strong>The saved schema is valid.</strong>
+            <p>You can continue, or make another focused edit below.</p>
+          }
+        </div>
+
+        <div class="action-buttons">
+          <button type="button" class="btn-secondary" (click)="service.undoChange()" [disabled]="!service.canUndo()">
+            Undo edit
           </button>
-        </span>
-        <button type="button" class="pb-2 px-1 border-b-2 font-medium text-sm transition-colors" [class.border-indigo-600]="activeTab() === 'validation'" [class.text-indigo-600]="activeTab() === 'validation'" [class.border-transparent]="activeTab() !== 'validation'" [class.text-slate-500]="activeTab() !== 'validation'" [class.hover:border-slate-300]="activeTab() !== 'validation'" [class.hover:text-slate-700]="activeTab() !== 'validation'" (click)="activeTab.set('validation')">
+          <button
+            data-testid="save-schema"
+            type="button"
+            [class]="service.dirty() ? 'btn-primary' : 'btn-secondary'"
+            (click)="service.saveDraft()"
+            [disabled]="!service.canSave()"
+          >
+            <svg lucideSave [size]="16" aria-hidden="true"></svg>
+            {{ service.saving() ? 'Saving...' : 'Save changes' }}
+          </button>
+          <button
+            data-testid="validate-schema"
+            type="button"
+            [class]="!service.dirty() && service.schemaStatus() !== 'Valid' ? 'btn-primary' : 'btn-secondary'"
+            (click)="service.validateSchema()"
+            [disabled]="!service.canValidate()"
+          >
+            <svg lucideFileCheck2 [size]="16" aria-hidden="true"></svg>
+            {{ service.validating() ? 'Validating...' : 'Validate schema' }}
+          </button>
+          <button
+            data-testid="generate-schema"
+            type="button"
+            class="btn-danger"
+            (click)="requestRegenerate($event)"
+            [disabled]="!service.canGenerate()"
+          >
+            <svg lucideRefreshCw [size]="16" aria-hidden="true"></svg>
+            {{ service.generating() ? 'Regenerating...' : 'Regenerate schema' }}
+          </button>
+        </div>
+      </section>
+
+      <nav class="schema-tabs" aria-label="Schema Design sections" role="tablist" (keydown)="onTabKeydown($event)">
+        <button
+          id="schema-tab-tables"
+          type="button"
+          role="tab"
+          [attr.aria-selected]="activeTab() === 'tables'"
+          [attr.tabindex]="activeTab() === 'tables' ? 0 : -1"
+          aria-controls="schema-panel-tables"
+          [class.active]="activeTab() === 'tables'"
+          (click)="activeTab.set('tables')"
+        >
+          Tables
+          <span>{{ service.tableCount() }}</span>
+        </button>
+        <button
+          id="schema-tab-relationships"
+          type="button"
+          role="tab"
+          [attr.aria-selected]="activeTab() === 'relationships'"
+          [attr.tabindex]="activeTab() === 'relationships' ? 0 : -1"
+          aria-controls="schema-panel-relationships"
+          [attr.aria-disabled]="service.tableCount() <= 1"
+          [disabled]="service.tableCount() <= 1"
+          [class.active]="activeTab() === 'relationships'"
+          (click)="activeTab.set('relationships')"
+        >
+          Relationships
+          <span>{{ schema.relationships.length }}</span>
+        </button>
+        <button
+          id="schema-tab-validation"
+          type="button"
+          role="tab"
+          [attr.aria-selected]="activeTab() === 'validation'"
+          [attr.tabindex]="activeTab() === 'validation' ? 0 : -1"
+          aria-controls="schema-panel-validation"
+          [class.active]="activeTab() === 'validation'"
+          (click)="activeTab.set('validation')"
+        >
+          Validation
+          @if (service.draftIssues().length + service.blockingIssues().length + service.warningIssues().length; as issueCount) {
+            <span [class.issue-count]="service.draftIssues().length + service.blockingIssues().length > 0">{{ issueCount }}</span>
+          }
+        </button>
+        <button
+          id="schema-tab-sql"
+          type="button"
+          role="tab"
+          [attr.aria-selected]="activeTab() === 'sql'"
+          [attr.tabindex]="activeTab() === 'sql' ? 0 : -1"
+          aria-controls="schema-panel-sql"
+          [class.active]="activeTab() === 'sql'"
+          (click)="activeTab.set('sql')"
+        >
           SQL Preview
         </button>
       </nav>
 
       @if (activeTab() === 'tables') {
-        <app-schema-designer-tables />
+        <div id="schema-panel-tables" role="tabpanel" aria-labelledby="schema-tab-tables">
+          <app-schema-designer-tables />
+        </div>
       } @else if (activeTab() === 'relationships' && service.tableCount() > 1) {
-        <app-schema-relationships
-          [projectId]="service.projectId"
-          [design]="schema"
-          [disabled]="!service.canMutateRelationships()"
-          (designChanged)="service.handleRelationshipChanged($event)"
-          (revisionConflict)="service.handleRelationshipConflict()"
-        />
+        <div id="schema-panel-relationships" role="tabpanel" aria-labelledby="schema-tab-relationships">
+          <app-schema-relationships
+            [projectId]="service.projectId"
+            [design]="schema"
+            [disabled]="!service.canMutateRelationships()"
+            (designChanged)="service.handleRelationshipChanged($event)"
+            (revisionConflict)="service.handleRelationshipConflict()"
+          />
+        </div>
       } @else if (activeTab() === 'validation') {
-        <app-schema-designer-sql-preview />
+        <section
+          id="schema-panel-validation"
+          data-testid="schema-validation"
+          class="workspace-panel validation-workspace"
+          role="tabpanel"
+          aria-labelledby="schema-tab-validation"
+        >
+          <div class="section-heading">
+            <div>
+              <h2>Validation</h2>
+              <p>Local draft checks run as you edit. Backend checks describe the last saved validation result.</p>
+            </div>
+          </div>
+
+          <div class="validation-summary-grid">
+            <article>
+              <span>Draft checks</span>
+              <strong>{{ service.draftIssues().length ? service.draftIssues().length + ' to fix' : 'Passed' }}</strong>
+              <p>{{ service.dirty() ? 'Checks include your unsaved edits.' : 'No unsaved edits.' }}</p>
+            </article>
+            <article>
+              <span>Saved revision</span>
+              <strong>
+                @if (service.blockingIssues().length) {
+                  {{ service.blockingIssues().length }} blocking
+                } @else if (service.schemaStatus() === 'Valid') {
+                  Passed
+                } @else {
+                  {{ service.schemaStatus() }}
+                }
+              </strong>
+              <p>{{ service.warningIssues().length }} warning(s) reported.</p>
+            </article>
+          </div>
+
+          @if (service.draftIssues().length) {
+            <section class="issue-group" aria-labelledby="draft-issues-heading">
+              <div class="issue-heading">
+                <div>
+                  <h3 id="draft-issues-heading">Draft issues</h3>
+                  <p>These checks block Save changes.</p>
+                </div>
+                <span class="issue-total issue-total-error">{{ service.draftIssues().length }}</span>
+              </div>
+              <ul class="issue-list">
+                @for (issue of service.draftIssues(); track issue.location + issue.message) {
+                  <li>
+                    <div>
+                      <strong>{{ issue.location }}</strong>
+                      <p>{{ issue.message }}</p>
+                    </div>
+                  </li>
+                }
+              </ul>
+              <button type="button" class="btn-secondary mt-4" (click)="activeTab.set('tables')">Review tables</button>
+            </section>
+          }
+
+          @if (service.blockingIssues().length) {
+            <section class="issue-group" aria-labelledby="blocking-issues-heading">
+              <div class="issue-heading">
+                <div>
+                  <h3 id="blocking-issues-heading">Blocking issues</h3>
+                  <p>Resolve these issues and validate again.</p>
+                </div>
+                <span class="issue-total issue-total-error">{{ service.blockingIssues().length }}</span>
+              </div>
+              <ul class="issue-list">
+                @for (issue of service.blockingIssues(); track issue.code + issue.message) {
+                  <li>
+                    <div>
+                      <span class="issue-code">{{ issue.code }}</span>
+                      <strong>{{ service.issueLocation(issue) }}</strong>
+                      <p>{{ issue.message }}</p>
+                    </div>
+                    @if (issue.tableId || issue.relationshipId) {
+                      <button type="button" class="btn-secondary" (click)="reviewIssue(issue)">Review</button>
+                    }
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (service.warningIssues().length) {
+            <section class="issue-group issue-group-warning" aria-labelledby="warning-issues-heading">
+              <div class="issue-heading">
+                <div>
+                  <h3 id="warning-issues-heading">Warnings</h3>
+                  <p>Warnings do not block Export and Deploy, but should be reviewed.</p>
+                </div>
+                <span class="issue-total issue-total-warning">{{ service.warningIssues().length }}</span>
+              </div>
+              <ul class="issue-list">
+                @for (issue of service.warningIssues(); track issue.code + issue.message) {
+                  <li>
+                    <div>
+                      <span class="issue-code">{{ issue.code }}</span>
+                      <strong>{{ service.issueLocation(issue) }}</strong>
+                      <p>{{ issue.message }}</p>
+                    </div>
+                    @if (issue.tableId || issue.relationshipId) {
+                      <button type="button" class="btn-secondary" (click)="reviewIssue(issue)">Review</button>
+                    }
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (!service.draftIssues().length && !service.blockingIssues().length && !service.warningIssues().length) {
+            <div class="validation-empty-state">
+              <svg lucideCheckCircle2 [size]="24" aria-hidden="true"></svg>
+              <div>
+                @if (service.schemaStatus() === 'Valid') {
+                  <strong>No validation issues</strong>
+                  <p>The saved schema passed validation and is ready for Export and Deploy.</p>
+                } @else if (service.dirty()) {
+                  <strong>Draft checks passed</strong>
+                  <p>Save these changes, then validate the saved revision.</p>
+                } @else {
+                  <strong>Ready to validate</strong>
+                  <p>Run Validate schema from the action area above.</p>
+                }
+              </div>
+            </div>
+          }
+        </section>
+      } @else if (activeTab() === 'sql') {
+        <div id="schema-panel-sql" role="tabpanel" aria-labelledby="schema-tab-sql">
+          <app-schema-designer-sql-preview />
+        </div>
       }
 
-      <footer class="schema-footer animate-fade-in-up delay-300">
-        <a data-testid="back-to-clean" [routerLink]="['/projects', service.projectId, 'clean']" [queryParams]="service.datasetQuery()" class="btn-secondary"><svg lucideArrowLeft [size]="15"></svg>Back to Clean</a>
-        <div class="min-w-0 flex-1 text-sm"><strong>{{ service.canContinue() ? 'Schema is ready.' : 'Export & Deploy is blocked.' }}</strong>@if (!service.canContinue()) { <p>{{ service.continueBlockingReason() }}</p> }</div>
-        <button data-testid="continue-to-export" type="button" class="btn-primary" (click)="continueToExport()" [disabled]="!service.canContinue()">Continue to Export & Deploy</button>
+      <footer class="schema-footer">
+        <a
+          data-testid="back-to-clean"
+          [routerLink]="['/projects', service.projectId, 'clean']"
+          [queryParams]="service.datasetQuery()"
+          class="btn-secondary"
+        >
+          <svg lucideArrowLeft [size]="15" aria-hidden="true"></svg>
+          Back to Data Cleaning
+        </a>
+        <div class="min-w-0 flex-1 text-sm">
+          <strong>{{ service.canContinue() ? 'Schema Design is complete.' : 'Export and Deploy is blocked.' }}</strong>
+          @if (!service.canContinue()) {
+            <p>{{ service.continueBlockingReason() }}</p>
+          }
+        </div>
+        <button
+          data-testid="continue-to-export"
+          type="button"
+          class="btn-primary"
+          (click)="continueToExport()"
+          [disabled]="!service.canContinue()"
+        >
+          Continue to Export and Deploy
+        </button>
       </footer>
     }
   }
@@ -166,27 +431,45 @@
 
 @if (leaveDialogOpen()) {
   <div class="leave-backdrop" role="presentation">
-    <section role="alertdialog" aria-modal="true" aria-labelledby="schema-unsaved-title" class="leave-dialog">
-      <span><svg lucideTriangleAlert [size]="22"></svg></span>
-      <h2 id="schema-unsaved-title">Unsaved Schema Changes</h2>
-      <p>Your saved schema and backend SQL do not include these local changes. Leave and discard them?</p>
-      <div><button #stayButton type="button" class="btn-secondary" (click)="resolveLeaveDialog(false)">Stay</button><button type="button" class="danger-button" (click)="resolveLeaveDialog(true)">Leave without saving</button></div>
+    <section
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="schema-unsaved-title"
+      aria-describedby="schema-unsaved-description"
+      class="leave-dialog"
+    >
+      <span aria-hidden="true"><svg lucideTriangleAlert [size]="22"></svg></span>
+      <h2 id="schema-unsaved-title">Discard unsaved schema changes?</h2>
+      <p id="schema-unsaved-description">
+        Your saved schema and backend SQL do not include these local changes.
+      </p>
+      <div>
+        <button #stayButton type="button" class="btn-secondary" (click)="resolveLeaveDialog(false)">Stay on Schema Design</button>
+        <button #leaveButton type="button" class="danger-button" (click)="resolveLeaveDialog(true)">Discard and leave</button>
+      </div>
     </section>
   </div>
 }
 
-<dialog #regenerateDialog class="fixed top-1/2 left-1/2 m-0 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-900/50 backdrop:backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+<dialog
+  #regenerateDialog
+  class="regenerate-dialog"
+  aria-labelledby="regenerate-schema-title"
+  aria-describedby="regenerate-schema-description"
+  (cancel)="onRegenerateCancel($event)"
+>
   <div class="p-6">
-    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Regenerate Schema</h3>
-    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
-      Regenerate Schema from the current confirmed active versions?
+    <h2 id="regenerate-schema-title">Regenerate schema?</h2>
+    <p id="regenerate-schema-description" class="mt-2">
+      ForgeDB will rebuild tables from the current confirmed active dataset versions.
     </p>
-    <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/50 dark:bg-rose-950/20 text-sm text-rose-800 dark:text-rose-300">
-      <strong>Unsaved edits will be lost</strong> and existing relationships may require review.
+    <div class="regenerate-warning">
+      <strong>Unsaved edits will be discarded.</strong>
+      Existing relationships may also need review after regeneration.
     </div>
     <div class="mt-6 flex justify-end gap-3">
-      <button type="button" class="btn-secondary" (click)="closeRegenerateDialog()">Cancel</button>
-      <button type="button" class="btn-primary bg-rose-600 hover:bg-rose-700 border-rose-600 text-white" (click)="confirmRegenerate()">Regenerate</button>
+      <button #regenerateCancelButton type="button" class="btn-secondary" (click)="closeRegenerateDialog()">Cancel</button>
+      <button type="button" class="btn-danger" (click)="confirmRegenerate()">Regenerate schema</button>
     </div>
   </div>
 </dialog>

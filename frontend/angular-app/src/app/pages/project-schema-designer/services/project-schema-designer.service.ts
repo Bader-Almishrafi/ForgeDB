@@ -72,6 +72,24 @@ export class ProjectSchemaDesignerService {
   readonly draftErrors = computed(() => validateSchemaDraft(this.draftTables()));
   readonly hasDraftErrors = computed(() => Object.keys(this.draftErrors().tables).length > 0
     || Object.values(this.draftErrors().columns).some((fields) => Object.keys(fields).length > 0));
+  readonly draftIssues = computed(() => {
+    const errors = this.draftErrors();
+    const tables = this.draftTables();
+    const issues: Array<{ location: string; message: string }> = [];
+    for (const table of tables) {
+      const tableError = errors.tables[table.id];
+      if (tableError) issues.push({ location: table.name || 'Unnamed table', message: tableError });
+      for (const column of table.columns) {
+        for (const [field, message] of Object.entries(errors.columns[column.id] ?? {})) {
+          issues.push({
+            location: `${table.name || 'Unnamed table'} / ${column.name || 'Unnamed column'} / ${this.fieldLabel(field)}`,
+            message,
+          });
+        }
+      }
+    }
+    return issues;
+  });
   readonly dirty = computed(() => schemaDraftIsDirty(this.design(), this.tableNames(), this.columnDrafts()));
   readonly blockingIssues = computed(() => (this.design()?.validationIssues ?? []).filter((issue) => issue.severity === 'error'));
   readonly warningIssues = computed(() => (this.design()?.validationIssues ?? []).filter((issue) => issue.severity !== 'error'));
@@ -110,7 +128,7 @@ export class ProjectSchemaDesignerService {
 
   readonly canGenerate = computed(() => !this.schemaBlocked() && !this.conflict() && !this.generating() && !this.saving() && !this.validating());
   readonly canSave = computed(() => !this.schemaBlocked() && !this.isStale() && !this.conflict() && Boolean(this.design())
-    && this.dirty() && !this.saving() && !this.validating());
+    && this.dirty() && !this.hasDraftErrors() && !this.saving() && !this.validating());
   readonly canValidate = computed(() => !this.schemaBlocked() && !this.isStale() && !this.conflict() && Boolean(this.design())
     && !this.dirty() && !this.saving() && !this.validating());
   readonly canMutateRelationships = computed(() => !this.schemaBlocked() && !this.isStale() && !this.conflict()
@@ -419,7 +437,13 @@ export class ProjectSchemaDesignerService {
       return;
     }
     this.versions.set(workspace.versions);
-    this.workflowContext.setDatasetFromQuery(this.datasetId());
+    const requestedDatasetId = this.datasetId();
+    const selectedDatasetId = requestedDatasetId !== null
+      && workspace.workflow.datasets.some((dataset) => dataset.datasetId === requestedDatasetId)
+      ? requestedDatasetId
+      : null;
+    this.datasetId.set(selectedDatasetId);
+    this.workflowContext.setDatasetFromQuery(selectedDatasetId);
     this.applyDesign(workspace.design);
     this.loadSqlPreview();
   }
@@ -497,5 +521,15 @@ export class ProjectSchemaDesignerService {
       if (typeof detail === 'string' && detail.trim()) return detail;
     }
     return fallback;
+  }
+
+  private fieldLabel(field: string): string {
+    switch (field) {
+      case 'dataType': return 'Data type';
+      case 'defaultValue': return 'Default value';
+      case 'autoIncrement': return 'Identity';
+      case 'nullable': return 'Nullable';
+      default: return 'Name';
+    }
   }
 }

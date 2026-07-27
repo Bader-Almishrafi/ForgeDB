@@ -1,5 +1,5 @@
 import { NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, HostListener, OnInit, computed, input, output, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable, finalize, forkJoin, switchMap } from 'rxjs';
 import {
@@ -66,6 +66,9 @@ export class SchemaRelationshipsComponent implements OnInit {
   readonly editingRelationshipId = signal<number | null>(null);
   readonly relationshipDraft = signal<{ cardinality: string; onDelete: string } | null>(null);
   readonly deleteTarget = signal<DesignRelationship | null>(null);
+  readonly deleteCancelButton = viewChild<ElementRef<HTMLButtonElement>>('deleteCancelButton');
+  readonly deleteConfirmButton = viewChild<ElementRef<HTMLButtonElement>>('deleteConfirmButton');
+  private deleteTrigger: HTMLElement | null = null;
 
   readonly pendingSuggestions = computed(() => this.suggestions().filter((item) => item.status === 'suggested'));
   readonly tables = computed(() => this.design().tables);
@@ -213,12 +216,16 @@ export class SchemaRelationshipsComponent implements OnInit {
     );
   }
 
-  requestDelete(relationship: DesignRelationship): void {
+  requestDelete(relationship: DesignRelationship, event?: Event): void {
+    this.deleteTrigger = event?.currentTarget instanceof HTMLElement
+      ? event.currentTarget
+      : document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.deleteTarget.set(relationship);
+    setTimeout(() => this.deleteCancelButton()?.nativeElement.focus(), 0);
   }
 
   cancelDelete(): void {
-    if (!this.busyAction()?.startsWith('delete:')) this.deleteTarget.set(null);
+    if (!this.busyAction()?.startsWith('delete:')) this.dismissDeleteConfirmation();
   }
 
   confirmDelete(): void {
@@ -230,10 +237,31 @@ export class SchemaRelationshipsComponent implements OnInit {
       'Relationship deleted',
       'The backend SQL preview has been refreshed. Validate the schema again.',
       () => {
-        this.deleteTarget.set(null);
+        this.dismissDeleteConfirmation();
         this.cancelRelationshipEdit();
       },
     );
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  handleDeleteDialogKeydown(event: KeyboardEvent): void {
+    if (!this.deleteTarget() || this.isBusy()) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.cancelDelete();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const first = this.deleteCancelButton()?.nativeElement;
+    const last = this.deleteConfirmButton()?.nativeElement;
+    if (!first || !last) return;
+    if (event.shiftKey && (document.activeElement === first || !first.closest('[role="alertdialog"]')?.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   columnsFor(tableId: number | null): DesignColumn[] {
@@ -401,6 +429,13 @@ export class SchemaRelationshipsComponent implements OnInit {
     const normalize = (value: string): string => value.trim().replace(/\s+/g, ' ').toUpperCase()
       .replace('TIMESTAMP WITH TIME ZONE', 'TIMESTAMPTZ');
     return normalize(left) === normalize(right);
+  }
+
+  private dismissDeleteConfirmation(): void {
+    this.deleteTarget.set(null);
+    const trigger = this.deleteTrigger;
+    this.deleteTrigger = null;
+    setTimeout(() => trigger?.focus(), 0);
   }
 
   private showError(error: unknown, fallback: string): void {
