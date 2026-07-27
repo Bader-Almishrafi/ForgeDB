@@ -1,5 +1,5 @@
 <section class="mx-auto max-w-[1600px] space-y-6 overflow-x-hidden" data-testid="clean-page">
-  <header class="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-slate-200 bg-white/80 px-5 py-6 shadow-sm shadow-slate-200/50 backdrop-blur-xl sm:px-7 sm:py-8 lg:flex-row lg:items-end lg:justify-between dark:border-white/10 dark:bg-[#161b22]/80 dark:shadow-black/20">
+  <header class="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-slate-200 bg-white/80 px-5 py-6 shadow-sm shadow-slate-200/50 backdrop-blur-xl sm:px-7 sm:py-8 lg:flex-row lg:items-end lg:justify-between dark:border-white/10 dark:bg-[#161b22]/80 dark:shadow-black/20 animate-fade-in-up">
     <div>
       <p class="eyebrow">{{ apiService.projectName() }}</p>
       <h1 class="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl dark:text-white">Clean</h1>
@@ -80,7 +80,7 @@
       </section>
     } @else {
       @if (stateService.scope() === 'project') {
-        <section class="workspace-panel p-5 sm:p-6" data-testid="cleaning-dataset-status">
+        <section class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-100" data-testid="cleaning-dataset-status">
           <h2 class="text-lg font-bold text-slate-950 dark:text-white">Dataset status</h2>
           <div class="mt-4 divide-y divide-slate-100 dark:divide-slate-800">
             @for (dataset of apiService.datasets(); track dataset.datasetId) {
@@ -99,7 +99,7 @@
         </section>
       }
 
-      <section class="workspace-panel p-5 sm:p-6" data-testid="cleaning-issues">
+      <section class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-100" data-testid="cleaning-issues">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 class="text-xl font-bold text-slate-950 dark:text-white">Issues</h2>
@@ -161,7 +161,7 @@
         </section>
       }
 
-      <section class="workspace-panel p-5 sm:p-6" data-testid="quality-confirmation">
+      <section class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-200" data-testid="quality-confirmation">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 class="text-lg font-bold text-slate-950 dark:text-white">Data quality</h2>
@@ -174,7 +174,7 @@
         </div>
       </section>
 
-      <details class="workspace-panel p-5" data-testid="cleaning-history">
+      <details class="workspace-panel p-5 animate-fade-in-up delay-300" data-testid="cleaning-history">
         <summary class="cursor-pointer font-bold text-slate-950 dark:text-white">Cleaning history ({{ apiService.history().length }})</summary>
         @if (apiService.history().length) {
           <div class="mt-4 divide-y divide-slate-100 dark:divide-slate-800">
