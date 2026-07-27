@@ -156,7 +156,7 @@ public class ProjectWorkflowServiceTests
     }
 
     [Fact]
-    public async Task ValidSchemaOverRawVersion_IsSchemaValidButDeploymentNotReady()
+    public async Task ValidSchemaOverAnalyzedQualityConfirmedRawVersion_IsReadyForDeployment()
     {
         await using var fixture = await Fixture.CreateAsync();
         await fixture.AddDatasetAsync("customers", analyzed: true);
@@ -165,10 +165,10 @@ public class ProjectWorkflowServiceTests
 
         var workflow = await fixture.Service.EvaluateAsync(fixture.ProjectId);
 
-        Assert.Equal(ProjectWorkflowStates.SchemaValid, workflow.WorkflowState);
+        Assert.Equal(ProjectWorkflowStates.ReadyToDeploy, workflow.WorkflowState);
         Assert.True(workflow.CanExport);
-        Assert.False(workflow.CanDeploy);
-        Assert.Contains("deployment_not_ready", workflow.BlockerCodes);
+        Assert.True(workflow.CanDeploy);
+        Assert.Empty(workflow.BlockerCodes);
     }
 
     [Fact]

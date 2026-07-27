@@ -233,7 +233,7 @@ public class ProjectService : IProjectService
             Status = "Database Package Ready",
             GeneratedAt = DateTime.UtcNow,
             SourceDatasetVersions = sourceVersions,
-            AvailableArtifactNames = ["schema.sql", "schema.json", "relationship-report.json", "data-quality-report.json"],
+            AvailableArtifactNames = ["schema.sql", "schema.dbml", "schema.json", "relationship-report.json", "data-quality-report.json"],
             Sql = artifacts.Sql,
             Dbml = artifacts.Dbml,
             JsonSchema = artifacts.Json,

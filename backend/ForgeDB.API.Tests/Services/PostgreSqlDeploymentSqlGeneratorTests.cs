@@ -1,6 +1,8 @@
 using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Repositories.Interfaces;
 using ForgeDB.API.Services;
+using ForgeDB.API.Services.Generators;
+using GeneratorFixtures = ForgeDB.API.Tests.Generators.Fixtures;
 
 namespace ForgeDB.API.Tests.Services;
 
@@ -133,6 +135,38 @@ public class PostgreSqlDeploymentSqlGeneratorTests
         Assert.True(
             artifacts.DeploySql.LastIndexOf("INSERT INTO", StringComparison.Ordinal)
             < artifacts.DeploySql.IndexOf("ALTER TABLE", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void DeploySql_PreservesUniqueSourceIndexForOneToOneRelationship()
+    {
+        var snapshot = GeneratorFixtures.TwoTableWithForeignKey();
+        snapshot.Relationships[0].Cardinality = DesignCardinality.OneToOne;
+        var customers = new DesignTable { Id = 1, Name = "customers" };
+        var orders = new DesignTable { Id = 2, Name = "orders" };
+        var customerId = new DesignColumn { Id = 11, DesignTableId = 1, DesignTable = customers, Name = "id" };
+        var orderCustomerId = new DesignColumn { Id = 21, DesignTableId = 2, DesignTable = orders, Name = "customer_id" };
+        var relationship = new DesignRelationship
+        {
+            Id = 31,
+            FromColumnId = orderCustomerId.Id,
+            FromColumn = orderCustomerId,
+            ToColumnId = customerId.Id,
+            ToColumn = customerId,
+            Cardinality = DesignCardinality.OneToOne,
+            OnDelete = DesignOnDelete.Cascade,
+        };
+
+        var artifacts = PostgreSqlDeploymentSqlGenerator.Generate(
+            "forgedb_project_3",
+            new SqlSchemaGenerator().Generate(snapshot),
+            Array.Empty<TableInsertPlan>(),
+            new[] { relationship });
+
+        const string uniqueIndex = "CREATE UNIQUE INDEX ix_orders_customer_id ON orders (customer_id);";
+        Assert.Contains(uniqueIndex, artifacts.SchemaSql);
+        Assert.Contains(uniqueIndex, artifacts.PreSeedDdlSql);
+        Assert.Contains(uniqueIndex, artifacts.DeploySql);
     }
 
     [Fact]

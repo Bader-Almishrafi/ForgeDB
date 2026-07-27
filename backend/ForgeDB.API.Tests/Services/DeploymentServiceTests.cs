@@ -29,14 +29,16 @@ public class DeploymentServiceTests
     }
 
     [Fact]
-    public async Task DeployAsync_RejectsRawOriginalVersion_WithoutCreatingCompletedRecord()
+    public async Task DeployAsync_AllowsAnalyzedApprovedRawVersion_WhenNoCleaningWasNeeded()
     {
         var fixture = CreateFixture(cleanedValue: "raw-original-value", isRawOriginal: true);
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Service.DeployAsync(8, 3, 6));
+        var response = await fixture.Service.DeployAsync(8, 3, 6);
 
-        Assert.Contains("Raw uploaded data cannot be deployed", exception.Message);
-        Assert.Null(fixture.StoredDeployment);
+        Assert.Equal(DeploymentStatus.Completed, response.Status);
+        Assert.Equal(2, fixture.RequestedVersionId);
+        Assert.Equal("raw-original-value", fixture.CapturedPlans![0].Rows[0][0]);
+        Assert.Contains("raw-original-value", fixture.StoredDeployment!.SeedSql, StringComparison.Ordinal);
     }
 
     [Fact]

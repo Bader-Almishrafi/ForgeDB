@@ -385,14 +385,14 @@ public class DeploymentService : IDeploymentService
             }
 
             var version = await _cleaningRepository.GetVersionAsync(table.SourceDatasetId.Value, table.SourceDatasetVersionId.Value, cancellationToken);
-            if (version is null || version.IsRawOriginal)
+            if (version is null)
             {
-                throw new InvalidOperationException($"Table '{table.Name}' has no finalized cleaned dataset. Raw uploaded data cannot be deployed.");
+                throw new InvalidOperationException($"Table '{table.Name}' has no finalized dataset version.");
             }
 
             if (version.AnalyzedAt is null || string.IsNullOrWhiteSpace(version.AnalysisResultJson))
             {
-                throw new InvalidOperationException($"The active cleaned dataset for table '{table.Name}' must be re-analyzed before deployment.");
+                throw new InvalidOperationException($"The active dataset version for table '{table.Name}' must be re-analyzed before deployment.");
             }
 
             var rows = CleaningSnapshotSerializer.DeserializeRows(version.RowsJson);

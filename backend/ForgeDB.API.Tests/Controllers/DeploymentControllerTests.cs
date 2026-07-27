@@ -81,6 +81,31 @@ public class DeploymentControllerTests
         Assert.Contains("active_version_changed", JsonSerializer.Serialize(conflict.Value));
     }
 
+    [Theory]
+    [InlineData("\"7\"")]
+    [InlineData("W/\"7\"")]
+    public async Task Deploy_AcceptsStandardEntityTagRevisionHeaders(string ifMatch)
+    {
+        await using var context = NewContext();
+        var project = await SeedProjectAsync(context, ownerId: 3);
+        var capturedRevision = 0;
+        var service = Proxy<IDeploymentService>(new()
+        {
+            [nameof(IDeploymentService.DeployAsync)] = args =>
+            {
+                capturedRevision = (int)args![2]!;
+                return Task.FromResult(new DeploymentResponseDto());
+            }
+        });
+        var controller = BuildController(context, service, callingUserId: 3);
+        controller.Request.Headers.IfMatch = ifMatch;
+
+        var result = await controller.Deploy(project.Id, CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Equal(7, capturedRevision);
+    }
+
     [Fact]
     public async Task DeploymentFile_ReturnsForbiddenForForeignProjectBeforeReadingArtifact()
     {

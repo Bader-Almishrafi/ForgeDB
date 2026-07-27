@@ -373,8 +373,9 @@ public class SchemaWorkspaceServiceTests
         Assert.Equal(DesignStatus.Valid, package.SchemaStatus);
         Assert.Equal(3, package.SourceDatasetVersions.Count);
         Assert.Equal(
-            ["schema.sql", "schema.json", "relationship-report.json", "data-quality-report.json"],
+            ["schema.sql", "schema.dbml", "schema.json", "relationship-report.json", "data-quality-report.json"],
             package.AvailableArtifactNames);
+        Assert.False(string.IsNullOrWhiteSpace(package.Dbml));
         using var quality = JsonDocument.Parse(package.DataQualityReportJson);
         var customersQuality = quality.RootElement.GetProperty("datasets").EnumerateArray()
             .Single(item => item.GetProperty("datasetName").GetString() == "customers");

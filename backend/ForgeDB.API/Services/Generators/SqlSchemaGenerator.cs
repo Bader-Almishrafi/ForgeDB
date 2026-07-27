@@ -1,4 +1,5 @@
 using System.Text;
+using ForgeDB.API.Models.Entities;
 
 namespace ForgeDB.API.Services.Generators;
 
@@ -125,8 +126,9 @@ public class SqlSchemaGenerator : IDesignSchemaGenerator
         var indexName = MakeUnique(
             $"ix_{relationship.FromTableName}_{relationship.FromColumnName}",
             usedIndexNames);
+        var uniqueness = relationship.Cardinality == DesignCardinality.OneToOne ? "UNIQUE " : string.Empty;
 
-        return $"CREATE INDEX {Quote(indexName)} ON {Quote(relationship.FromTableName)} ({Quote(relationship.FromColumnName)});";
+        return $"CREATE {uniqueness}INDEX {Quote(indexName)} ON {Quote(relationship.FromTableName)} ({Quote(relationship.FromColumnName)});";
     }
 
     private static string MapOnDelete(string onDelete)

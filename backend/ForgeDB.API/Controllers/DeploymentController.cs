@@ -241,7 +241,14 @@ public class DeploymentController : ControllerBase
             throw new DesignPreconditionRequiredException();
         }
 
-        return int.TryParse(values.First(), out var revision)
+        var raw = values.First()!.Trim();
+        if (raw.StartsWith("W/", StringComparison.OrdinalIgnoreCase))
+        {
+            raw = raw[2..].TrimStart();
+        }
+        raw = raw.Trim('"');
+
+        return int.TryParse(raw, out var revision)
             ? revision
             : throw new ArgumentException("If-Match header must be an integer revision.");
     }

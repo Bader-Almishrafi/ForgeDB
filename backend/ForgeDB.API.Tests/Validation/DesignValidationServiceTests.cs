@@ -1,4 +1,5 @@
 using System.Linq;
+using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Services.Validation;
 using Xunit;
 
@@ -117,6 +118,21 @@ public class DesignValidationServiceTests
         var issues = _validationService.Validate(model);
 
         Assert.Contains(issues, issue => issue.Code == "nullable-fk-column" && issue.Severity == ValidationSeverity.Warning);
+    }
+
+    [Fact]
+    public void Validate_SetNullOnNonNullableForeignKey_ProducesBlockingError()
+    {
+        var model = ValidationFixtures.CleanModel();
+        model.Relationships[0].OnDelete = DesignOnDelete.SetNull;
+
+        var issues = _validationService.Validate(model);
+
+        Assert.Contains(
+            issues,
+            issue => issue.Code == "set-null-requires-nullable-fk"
+                && issue.Severity == ValidationSeverity.Error
+                && issue.ColumnId == model.Relationships[0].FromColumnId);
     }
 
     [Fact]

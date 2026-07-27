@@ -29,6 +29,17 @@ public class SqlSchemaGeneratorTests
     }
 
     [Fact]
+    public void Generate_OneToOneRelationship_EmitsUniqueSourceIndex()
+    {
+        var snapshot = Fixtures.TwoTableWithForeignKey();
+        snapshot.Relationships[0].Cardinality = "one-to-one";
+
+        var sql = new SqlSchemaGenerator().Generate(snapshot);
+
+        Assert.Contains("CREATE UNIQUE INDEX ix_orders_customer_id ON orders (customer_id);", sql);
+    }
+
+    [Fact]
     public void Generate_CyclicRelationships_FallsBackToAlterTableAfterAllCreateTables()
     {
         var snapshot = Fixtures.CyclicTables();

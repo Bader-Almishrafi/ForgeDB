@@ -1,3 +1,4 @@
+using ForgeDB.API.Models.Entities;
 using ForgeDB.API.Services.Generators;
 
 namespace ForgeDB.API.Services.Validation;
@@ -288,6 +289,20 @@ public class DesignValidationService : IDesignValidationService
                     Severity = ValidationSeverity.Error,
                     Message = $"Relationship columns have mismatched types: '{relationship.FromTableName}.{relationship.FromColumnName}' ({fromColumn.SqlType}) vs '{relationship.ToTableName}.{relationship.ToColumnName}' ({toColumn.SqlType}).",
                     RelationshipId = relationship.Id
+                });
+            }
+
+            if (!fromColumn.IsNullable
+                && string.Equals(relationship.OnDelete, DesignOnDelete.SetNull, StringComparison.Ordinal))
+            {
+                issues.Add(new ValidationIssue
+                {
+                    Code = "set-null-requires-nullable-fk",
+                    Severity = ValidationSeverity.Error,
+                    Message = $"Relationship '{relationship.FromTableName}.{relationship.FromColumnName}' cannot use ON DELETE SET NULL because the foreign-key column is NOT NULL.",
+                    RelationshipId = relationship.Id,
+                    TableId = relationship.FromTableId,
+                    ColumnId = relationship.FromColumnId
                 });
             }
 
