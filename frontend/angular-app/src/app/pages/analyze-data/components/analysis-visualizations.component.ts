@@ -8,7 +8,7 @@ import { AnalysisChartComponent, AnalysisChartPoint } from '../analysis-chart.co
   imports: [AnalysisChartComponent],
   template: `
     @if (missingChartPoints().length || typeChartPoints().length || duplicateChartPoints().length) {
-      <section data-testid="analysis-charts" class="animate-dialog" style="animation-delay: 0.3s">
+      <section data-testid="analysis-charts">
         <h2 class="text-xl font-bold text-slate-950 dark:text-white">Visualizations</h2>
         <div class="mt-4 grid gap-4 lg:grid-cols-3">
           @if (missingChartPoints().length) { <app-analysis-chart title="Missing values" description="Largest missing-value counts in this scope." [points]="missingChartPoints()" /> }

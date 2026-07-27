@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Meta, Title } from '@angular/platform-browser';
 import { AnalysisScope, AnalyzeDataService } from './services/analyze-data.service';
 import { routeParameter } from '../../services/route-context';
 import { AnalysisSummaryComponent } from './components/analysis-summary.component';
@@ -9,6 +10,8 @@ import { AnalysisIssuesComponent } from './components/analysis-issues.component'
 import { AnalysisColumnsComponent } from './components/analysis-columns.component';
 import { AnalysisVisualizationsComponent } from './components/analysis-visualizations.component';
 import { AnalysisRecommendationsComponent } from './components/analysis-recommendations.component';
+
+type AnalysisSection = 'summary' | 'issues' | 'columns' | 'visualizations' | 'recommendations';
 
 @Component({
   selector: 'app-analyze-data',
@@ -30,10 +33,22 @@ export class AnalyzeDataComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly titleService = inject(Title);
+  private readonly metaService = inject(Meta);
   
   readonly service = inject(AnalyzeDataService);
+  readonly activeSection = signal<AnalysisSection>('summary');
+  readonly sections: ReadonlyArray<{ id: AnalysisSection; label: string }> = [
+    { id: 'summary', label: 'Summary' },
+    { id: 'issues', label: 'Issues' },
+    { id: 'columns', label: 'Columns' },
+    { id: 'visualizations', label: 'Visualizations' },
+    { id: 'recommendations', label: 'Recommendations' },
+  ];
 
   ngOnInit(): void {
+    this.titleService.setTitle('Analysis - ForgeDB');
+    this.metaService.updateTag({ name: 'description', content: 'Profile dataset quality and review analysis results.' });
     const projectId = routeParameter(this.route, 'projectId') ?? 0;
     if (!projectId || projectId <= 0) {
       void this.router.navigate(['/projects']);
@@ -62,6 +77,10 @@ export class AnalyzeDataComponent implements OnInit {
 
   runAnalysis(): void {
     this.service.runAnalysis();
+  }
+
+  showSection(section: AnalysisSection): void {
+    this.activeSection.set(section);
   }
 
   continueToClean(): void {

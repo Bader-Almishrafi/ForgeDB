@@ -16,7 +16,7 @@ interface AnalysisIssue {
   standalone: true,
   imports: [DecimalPipe],
   template: `
-    <section class="workspace-panel p-5 sm:p-6 animate-dialog" data-testid="analysis-issues" style="animation-delay: 0.1s">
+    <section class="workspace-panel p-5 sm:p-6" data-testid="analysis-issues">
       <h2 class="text-xl font-bold text-slate-950 dark:text-white">Issues</h2>
       @if (issues().length) {
         <div class="table-wrap mt-4 max-h-[30rem]">

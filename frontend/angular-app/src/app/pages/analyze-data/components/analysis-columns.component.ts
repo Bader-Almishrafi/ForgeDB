@@ -15,7 +15,7 @@ interface AnalysisColumnRow {
   standalone: true,
   imports: [DecimalPipe, FormsModule],
   template: `
-    <section class="workspace-panel p-5 sm:p-6 animate-dialog" data-testid="analysis-columns" style="animation-delay: 0.2s">
+    <section class="workspace-panel p-5 sm:p-6" data-testid="analysis-columns">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div><h2 class="text-xl font-bold text-slate-950 dark:text-white">Columns</h2><p class="mt-1 text-sm text-slate-500">Detected types and saved column statistics.</p></div>
         <label class="block sm:w-72"><span class="sr-only">Search columns</span><input type="search" class="input-field" placeholder="Search columns" [ngModel]="columnSearch()" (ngModelChange)="columnSearch.set($event)"></label>

@@ -16,7 +16,7 @@ interface AnalysisSummary {
   standalone: true,
   imports: [DatePipe, DecimalPipe],
   template: `
-    <section class="workspace-panel space-y-4 p-5 sm:p-6 animate-dialog" data-testid="analysis-summary">
+    <section class="workspace-panel space-y-4 p-5 sm:p-6" data-testid="analysis-summary">
       <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 class="text-xl font-bold text-slate-950 dark:text-white">Summary</h2>

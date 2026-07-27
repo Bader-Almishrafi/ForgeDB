@@ -70,6 +70,12 @@ export class AnalyzeDataService {
     return Object.values(this.currentAnalyses()).filter((analysis) => ids.has(analysis.datasetId));
   });
   readonly scopeHasSavedAnalysis = computed(() => this.scopeAnalyses().length > 0);
+  readonly analyzedScopeCount = computed(() =>
+    this.scopeDatasets().filter((dataset) => this.datasetAnalysisStatus(dataset.id) === 'Analyzed').length,
+  );
+  readonly scopeReady = computed(() =>
+    this.scopeDatasets().length > 0 && this.analyzedScopeCount() === this.scopeDatasets().length,
+  );
   
   readonly analysisActionLabel = computed(() => {
     if (this.running()) return this.projectScope() ? 'Analyzing Project…' : 'Analyzing Dataset…';

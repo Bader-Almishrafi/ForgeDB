@@ -1,172 +1,236 @@
-<section class="mx-auto max-w-[1600px] space-y-6 overflow-x-hidden animate-fade-in-up" data-testid="analyze-page">
-  <header
-    class="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-slate-200 bg-white/80 px-5 py-6 shadow-sm shadow-slate-200/50 backdrop-blur-xl sm:px-7 sm:py-8 lg:flex-row lg:items-end lg:justify-between dark:border-white/10 dark:bg-[#161b22]/80 dark:shadow-black/20">
+<section class="mx-auto max-w-[1500px] space-y-6" data-testid="analyze-page">
+  <header class="page-header">
     <div>
-      <p class="eyebrow">{{ service.projectName() }}</p>
-      <h1 class="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl dark:text-white">Analyze
-      </h1>
-      <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">Review saved active-version
-        analysis before cleaning your data.</p>
+      <p class="eyebrow">{{ service.projectName() }} · Step 2 of 5</p>
+      <h1 class="mt-1 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">Analysis</h1>
+      <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
+        Profile active dataset versions, find quality issues, and decide what needs attention before cleaning.
+      </p>
     </div>
     @if (!service.loading() && service.datasets().length) {
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
-      <label class="block min-w-60">
-        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Analysis scope</span>
-        <select class="input-field mt-2" data-testid="analysis-scope-selector" [ngModel]="service.scope()"
-          (ngModelChange)="changeScope($event)" [disabled]="service.running()">
-          <option [ngValue]="'project'">All datasets</option>
-          @for (dataset of service.datasets(); track dataset.id) {
-          <option [ngValue]="dataset.id">{{ dataset.tableName }}</option>
-          }
-        </select>
-      </label>
-      <button type="button" class="btn-primary justify-center" data-testid="run-analysis" (click)="runAnalysis()"
-        [disabled]="service.running()">
-        {{ service.analysisActionLabel() }}
-      </button>
-    </div>
+      <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end">
+        <label class="block min-w-60">
+          <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Analysis scope</span>
+          <select
+            class="input-field mt-2"
+            data-testid="analysis-scope-selector"
+            [ngModel]="service.scope()"
+            (ngModelChange)="changeScope($event)"
+            [disabled]="service.running()">
+            <option [ngValue]="'project'">All datasets</option>
+            @for (dataset of service.datasets(); track dataset.id) {
+              <option [ngValue]="dataset.id">{{ dataset.tableName }}</option>
+            }
+          </select>
+        </label>
+        <button
+          type="button"
+          class="btn-primary justify-center"
+          data-testid="run-analysis"
+          (click)="runAnalysis()"
+          [disabled]="service.running()">
+          {{ service.analysisActionLabel() }}
+        </button>
+      </div>
     }
   </header>
 
   @if (service.loading()) {
-  <div class="glass-card p-12 text-center text-sm text-slate-500" aria-busy="true">
-    Loading saved analysis…
-  </div>
+    <div class="grid gap-3" aria-busy="true" aria-label="Loading analysis workspace">
+      <div class="skeleton h-24"></div>
+      <div class="skeleton h-64"></div>
+    </div>
   } @else if (service.loadError()) {
-  <div class="rounded-2xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900/50 dark:bg-rose-950/20"
-    role="alert">
-    <p class="font-semibold text-rose-700 dark:text-rose-300">{{ service.loadError() }}</p>
-    <button type="button" class="btn-secondary mt-4"
-      (click)="service.loadWorkspace(service.projectId, service.selectedDataset()?.id ?? null)">Try again</button>
-  </div>
+    <div class="alert alert-error p-6 text-center" role="alert">
+      <p class="font-semibold">{{ service.loadError() }}</p>
+      <button
+        type="button"
+        class="btn-secondary mt-4"
+        (click)="service.loadWorkspace(service.projectId, service.selectedDataset()?.id ?? null)">Try again</button>
+    </div>
   } @else if (!service.datasets().length) {
-  <div
-    class="rounded-3xl border border-dashed border-slate-300 bg-white/60 px-6 py-14 text-center shadow-sm backdrop-blur dark:border-[#30363d] dark:bg-[#161b22]/60"
-    data-testid="analysis-empty-state">
-    <h2 class="text-xl font-bold text-slate-950 dark:text-white">No datasets to analyze</h2>
-    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Add a dataset in Data before running analysis.</p>
-    <a class="btn-primary mt-5" [routerLink]="['/projects', service.projectId, 'data']">Go to Data</a>
-  </div>
+    <div class="empty-state" data-testid="analysis-empty-state">
+      <h2 class="text-lg font-bold text-slate-950 dark:text-white">Import data before running analysis</h2>
+      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Analysis runs against each dataset’s active version.</p>
+      <a class="btn-primary mt-5" [routerLink]="['/projects', service.projectId, 'data']">Go to Data Sources</a>
+    </div>
   } @else {
-  @if (service.scopeNotice()) {
-  <div
-    class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300"
-    role="status">
-    {{ service.scopeNotice() }}
-  </div>
-  }
+    @if (service.scopeNotice()) {
+      <div class="alert alert-warning" role="status">{{ service.scopeNotice() }}</div>
+    }
 
-  @if (service.running()) {
-  <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/20"
-    role="status" data-testid="analysis-progress">
-    <div class="flex items-center justify-between gap-4 text-sm">
-      <span class="font-semibold text-indigo-800 dark:text-indigo-300">Analyzing {{ service.progressDataset() }}</span>
-      <span class="text-indigo-700 dark:text-indigo-400">{{ service.progressCurrent() }} of {{ service.progressTotal()
-        }}</span>
-    </div>
-    <div class="mt-3 h-2 overflow-hidden rounded-full bg-indigo-100 dark:bg-indigo-950">
-      <span class="block h-full rounded-full bg-indigo-600 transition-all"
-        [style.width.%]="service.progressTotal() ? service.progressCurrent() / service.progressTotal() * 100 : 0"></span>
-    </div>
-  </div>
-  }
-
-  @if (service.feedback(); as message) {
-  <div class="rounded-xl border px-4 py-3 text-sm" [class.border-emerald-200]="message.kind === 'success'"
-    [class.bg-emerald-50]="message.kind === 'success'" [class.text-emerald-800]="message.kind === 'success'"
-    [class.border-amber-200]="message.kind === 'warning'" [class.bg-amber-50]="message.kind === 'warning'"
-    [class.text-amber-800]="message.kind === 'warning'" [class.border-rose-200]="message.kind === 'error'"
-    [class.bg-rose-50]="message.kind === 'error'" [class.text-rose-800]="message.kind === 'error'" role="status">{{
-    message.message }}</div>
-  }
-
-  @if (service.executionFailures().length) {
-  <section class="rounded-2xl border border-rose-200 bg-white p-5 dark:border-rose-900/50 dark:bg-[#161b22]"
-    data-testid="analysis-failures">
-    <h2 class="font-bold text-slate-950 dark:text-white">Analysis failures</h2>
-    <ul class="mt-3 space-y-2 text-sm">
-      @for (failure of service.executionFailures(); track failure.datasetId) {
-      <li class="rounded-lg bg-rose-50 px-3 py-2 text-rose-700 dark:bg-rose-950/20 dark:text-rose-300">
-        <strong>{{ failure.datasetName }}:</strong> {{ failure.message }}
-      </li>
-      }
-    </ul>
-  </section>
-  }
-
-  @if (service.projectScope()) {
-  <section class="workspace-panel p-5" data-testid="dataset-analysis-status-list">
-    <div class="flex items-center justify-between gap-4">
-      <div>
-        <h2 class="text-lg font-bold text-slate-950 dark:text-white">Dataset status</h2>
-        <p class="mt-1 text-sm text-slate-500">Datasets requiring analysis before moving to Data Cleaning.</p>
+    <section
+      class="alert"
+      [class.alert-success]="service.scopeReady()"
+      [class.alert-warning]="!service.scopeReady()"
+      aria-live="polite">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <strong>
+            {{ service.scopeReady() ? 'Analysis is current for this scope.' : 'Analysis is still required.' }}
+          </strong>
+          <p class="mt-1 text-sm">
+            {{ service.analyzedScopeCount() }} of {{ service.scopeDatasets().length }}
+            {{ service.scopeDatasets().length === 1 ? 'dataset has' : 'datasets have' }}
+            current saved results.
+          </p>
+        </div>
+        @if (!service.scopeReady()) {
+          <span class="text-sm font-semibold">Next: {{ service.analysisActionLabel() }}</span>
+        }
       </div>
-    </div>
-    <div class="mt-4 flex gap-4 overflow-x-auto pb-4 snap-x">
-      @for (dataset of service.datasets(); track dataset.id) {
+    </section>
+
+    @if (service.running()) {
+      <div class="alert border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:text-indigo-300"
+        role="status"
+        data-testid="analysis-progress">
+        <div class="flex items-center justify-between gap-4 text-sm">
+          <span class="font-semibold">Analyzing {{ service.progressDataset() }}</span>
+          <span>{{ service.progressCurrent() }} of {{ service.progressTotal() }}</span>
+        </div>
+        <div class="mt-3 h-2 overflow-hidden rounded-full bg-indigo-100 dark:bg-indigo-950">
+          <span
+            class="block h-full rounded-full bg-indigo-600 transition-[width]"
+            [style.width.%]="service.progressTotal() ? service.progressCurrent() / service.progressTotal() * 100 : 0"></span>
+        </div>
+      </div>
+    }
+
+    @if (service.feedback(); as message) {
       <div
-        class="min-w-[320px] shrink-0 snap-start flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white/50 p-4 dark:border-slate-800 dark:bg-black/20">
-        <div class="min-w-0 flex-1">
-          <p class="truncate font-semibold text-slate-900 dark:text-white">{{ dataset.tableName }}</p>
-          <p class="mt-1 text-xs text-slate-500">Active {{ service.datasetVersion(dataset.id) }} · {{
-            service.datasetAnalysisStatus(dataset.id) }}</p>
-        </div>
-        <div class="mt-auto flex items-center justify-end border-t border-slate-100 pt-3 dark:border-slate-800">
-          <button type="button" class="btn-secondary text-xs py-1 px-3 min-h-0 h-7"
-            (click)="openDataset(dataset.id)">Open</button>
-        </div>
+        class="alert"
+        [class.alert-success]="message.kind === 'success'"
+        [class.alert-warning]="message.kind === 'warning'"
+        [class.alert-error]="message.kind === 'error'"
+        [attr.role]="message.kind === 'error' ? 'alert' : 'status'">
+        {{ message.message }}
       </div>
-      }
-    </div>
-  </section>
-  }
+    }
 
-  @if (service.resultsLoading()) {
-  <div class="glass-card p-10 text-center text-sm text-slate-500" aria-busy="true">
-    Loading active-version analysis results…
-  </div>
-  } @else {
-  @if (!service.scopeHasSavedAnalysis()) {
-  <div
-    class="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center dark:border-amber-900/50 dark:bg-amber-950/20"
-    data-testid="analysis-required-state">
-    <h2 class="text-lg font-bold text-amber-900 dark:text-amber-200">
-      @if (service.selectedDataset(); as dataset) { {{ service.datasetAnalysisStatus(dataset.id) }} } @else { Analysis
-      required }
-    </h2>
-    <p class="mt-2 text-sm text-amber-800 dark:text-amber-300">Run analysis to save results for the current active
-      dataset version.</p>
-  </div>
-  } @else {
+    @if (service.executionFailures().length) {
+      <section class="workspace-panel p-5" data-testid="analysis-failures">
+        <h2 class="font-bold text-slate-950 dark:text-white">Datasets that could not be analyzed</h2>
+        <ul class="mt-3 grid gap-2 text-sm">
+          @for (failure of service.executionFailures(); track failure.datasetId) {
+            <li class="alert alert-error">
+              <strong>{{ failure.datasetName }}:</strong> {{ failure.message }}
+            </li>
+          }
+        </ul>
+      </section>
+    }
 
-  <div class="flex flex-col gap-6">
-    <app-analysis-summary [analyses]="service.scopeAnalyses()" [projectScope]="service.projectScope()" />
-    <app-analysis-issues [analyses]="service.scopeAnalyses()" [datasets]="service.datasets()" />
-    <app-analysis-columns [analyses]="service.scopeAnalyses()" [datasets]="service.datasets()" />
-    <app-analysis-visualizations [analyses]="service.scopeAnalyses()" [datasets]="service.datasets()"
-      [projectScope]="service.projectScope()" />
-    <app-analysis-recommendations [analyses]="service.scopeAnalyses()" [datasets]="service.datasets()" />
-  </div>
+    @if (service.projectScope()) {
+      <section class="workspace-panel p-5 sm:p-6" data-testid="dataset-analysis-status-list">
+        <div class="section-header">
+          <div>
+            <h2 class="section-heading">Dataset status</h2>
+            <p class="section-description">Open one dataset when you need to inspect or re-run it independently.</p>
+          </div>
+        </div>
+        <ul class="mt-4 divide-y divide-slate-200 dark:divide-slate-800">
+          @for (dataset of service.datasets(); track dataset.id) {
+            <li class="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+              <div class="min-w-0">
+                <p class="truncate font-semibold text-slate-950 dark:text-white">{{ dataset.tableName }}</p>
+                <p class="mt-1 text-sm text-slate-500">
+                  Active {{ service.datasetVersion(dataset.id) }} · {{ service.datasetAnalysisStatus(dataset.id) }}
+                </p>
+              </div>
+              <button type="button" class="btn-secondary shrink-0" (click)="openDataset(dataset.id)">
+                Review dataset
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
 
-  }
-  }
+    @if (service.resultsLoading()) {
+      <div class="skeleton h-64" aria-busy="true" aria-label="Loading saved analysis results"></div>
+    } @else if (!service.scopeHasSavedAnalysis()) {
+      <div class="empty-state" data-testid="analysis-required-state">
+        <h2 class="text-lg font-bold text-slate-950 dark:text-white">No current results for this scope</h2>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+          Use “{{ service.analysisActionLabel() }}” above to profile the active version and save its results.
+        </p>
+      </div>
+    } @else {
+      <section aria-labelledby="analysis-results-title">
+        <div class="section-header">
+          <div>
+            <h2 id="analysis-results-title" class="section-heading">Analysis results</h2>
+            <p class="section-description">Start with the summary, then open the detail you need.</p>
+          </div>
+        </div>
+        <nav
+          class="mt-4 flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
+          aria-label="Analysis result sections">
+          @for (section of sections; track section.id) {
+            <button
+              type="button"
+              class="shrink-0 rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 aria-[current=page]:bg-indigo-50 aria-[current=page]:text-indigo-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:aria-[current=page]:bg-indigo-950/40 dark:aria-[current=page]:text-indigo-300"
+              [attr.aria-current]="activeSection() === section.id ? 'page' : null"
+              (click)="showSection(section.id)">
+              {{ section.label }}
+            </button>
+          }
+        </nav>
 
-  @if (service.resultLoadFailures().length) {
-  <div
-    class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300"
-    role="alert">
-    @for (failure of service.resultLoadFailures(); track failure.datasetId) { <p><strong>{{ failure.datasetName
-        }}:</strong> {{ failure.message }}</p> }
-  </div>
-  }
+        <div class="mt-4">
+          @switch (activeSection()) {
+            @case ('summary') {
+              <app-analysis-summary [analyses]="service.scopeAnalyses()" [projectScope]="service.projectScope()" />
+            }
+            @case ('issues') {
+              <app-analysis-issues [analyses]="service.scopeAnalyses()" [datasets]="service.datasets()" />
+            }
+            @case ('columns') {
+              <app-analysis-columns [analyses]="service.scopeAnalyses()" [datasets]="service.datasets()" />
+            }
+            @case ('visualizations') {
+              <app-analysis-visualizations
+                [analyses]="service.scopeAnalyses()"
+                [datasets]="service.datasets()"
+                [projectScope]="service.projectScope()" />
+            }
+            @case ('recommendations') {
+              <app-analysis-recommendations [analyses]="service.scopeAnalyses()" [datasets]="service.datasets()" />
+            }
+          }
+        </div>
+      </section>
+    }
 
-  <footer
-    class="flex flex-col-reverse gap-3 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm dark:border-slate-700 dark:bg-[#161b22]/80 sm:flex-row sm:items-center sm:justify-between mt-6">
-    <a class="btn-secondary justify-center" [routerLink]="['/projects', service.projectId, 'data']"
-      [queryParams]="backToDataQuery()">Back to Data</a>
-    <button type="button" class="btn-primary justify-center" data-testid="continue-to-clean" (click)="continueToClean()"
-      [disabled]="!service.canContinueToClean()"
-      [title]="service.canContinueToClean() ? '' : service.cleanBlockingReason()">Continue to Clean</button>
-  </footer>
+    @if (service.resultLoadFailures().length) {
+      <div class="alert alert-warning" role="alert">
+        @for (failure of service.resultLoadFailures(); track failure.datasetId) {
+          <p><strong>{{ failure.datasetName }}:</strong> {{ failure.message }}</p>
+        }
+      </div>
+    }
+
+    <footer class="workflow-page-footer">
+      <a
+        class="btn-secondary justify-center"
+        [routerLink]="['/projects', service.projectId, 'data']"
+        [queryParams]="backToDataQuery()">Back to Data Sources</a>
+      <div class="flex flex-col items-stretch gap-3 sm:items-end">
+        @if (!service.canContinueToClean()) {
+          <p class="max-w-xl text-sm text-amber-700 dark:text-amber-300" role="status">
+            <strong>Before you continue:</strong> {{ service.cleanBlockingReason() }}
+          </p>
+        } @else {
+          <p class="text-sm text-slate-500">Current analysis is saved. Data Cleaning is ready.</p>
+        }
+        <button
+          type="button"
+          class="btn-primary justify-center"
+          data-testid="continue-to-clean"
+          (click)="continueToClean()"
+          [disabled]="!service.canContinueToClean()">Continue to Data Cleaning</button>
+      </div>
+    </footer>
   }
 </section>

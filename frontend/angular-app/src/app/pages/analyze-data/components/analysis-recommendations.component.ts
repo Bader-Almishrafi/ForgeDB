@@ -12,7 +12,7 @@ interface AnalysisRecommendation {
   standalone: true,
   template: `
     @if (recommendations().length) {
-      <section class="workspace-panel p-5 sm:p-6 animate-dialog" data-testid="analysis-recommendations" style="animation-delay: 0.4s">
+      <section class="workspace-panel p-5 sm:p-6" data-testid="analysis-recommendations">
         <h2 class="text-xl font-bold text-slate-950 dark:text-white">Recommendations</h2>
         <ul class="mt-4 grid gap-3 md:grid-cols-2">
           @for (item of recommendations(); track item.key) {
