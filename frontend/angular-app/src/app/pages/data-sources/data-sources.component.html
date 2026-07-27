@@ -52,57 +52,35 @@
       </div>
     </div>
   } @else if (service.selectedDataset(); as dataset) {
-    <div class="animate-fade-in-up delay-200 grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
-      <aside class="glass-card self-start p-4" aria-label="Dataset selection">
-        <label for="dataset-selector" class="text-sm font-semibold text-slate-800 dark:text-slate-200">Dataset</label>
-        <select id="dataset-selector" data-testid="dataset-selector" class="input-field mt-2" [ngModel]="service.selectedDatasetId()" (ngModelChange)="service.selectDatasetById($event)">
-          @for (item of service.datasets(); track item.id) {
-            <option [ngValue]="item.id">{{ item.tableName }}</option>
-          }
-        </select>
-
-        <dl class="mt-5 divide-y divide-slate-100 text-sm dark:divide-slate-800">
-          <div class="flex items-center justify-between gap-3 py-3">
-            <dt class="text-slate-500">Source</dt>
-            <dd class="truncate font-medium" [title]="service.displayName(dataset)">{{ dataset.sourceType }}</dd>
-          </div>
-          <div class="flex items-center justify-between gap-3 py-3">
-            <dt class="text-slate-500">Active version</dt>
-            <dd class="font-medium" data-testid="active-version-number">
-              @if (service.selectedWorkflowDataset()?.activeVersionNumber; as version) { v{{ version }} } @else { — }
-            </dd>
-          </div>
-          <div class="flex items-center justify-between gap-3 py-3">
-            <dt class="text-slate-500">Rows</dt>
-            <dd class="font-medium">{{ dataset.rowCount | number }}</dd>
-          </div>
-          <div class="flex items-center justify-between gap-3 py-3">
-            <dt class="text-slate-500">Columns</dt>
-            <dd class="font-medium">{{ dataset.columnCount | number }}</dd>
-          </div>
-          <div class="flex items-center justify-between gap-3 py-3">
-            <dt class="text-slate-500">Status</dt>
-            <dd class="font-semibold" data-testid="dataset-analysis-status"
-              [class.text-amber-700]="service.analysisStatus(dataset.id) === 'Analysis required'"
-              [class.text-emerald-700]="service.analysisStatus(dataset.id) === 'Analyzed'">
-              {{ service.analysisStatus(dataset.id) }}
-            </dd>
-          </div>
-        </dl>
-
-        <div class="mt-5 grid gap-2">
-          <button type="button" class="btn-secondary justify-center" data-testid="replace-dataset-button" (click)="replaceOpen.set(true)">Replace source</button>
-          <button type="button" class="btn-danger justify-center" data-testid="delete-dataset-button" (click)="confirmingDelete.set(true)">Delete dataset</button>
-        </div>
-      </aside>
+    <div class="animate-fade-in-up delay-200 flex flex-col gap-6">
+      <div class="flex gap-4 overflow-x-auto pb-4 snap-x">
+        @for (item of service.datasets(); track item.id) {
+          <button type="button" class="min-w-[320px] shrink-0 snap-start flex flex-col justify-between gap-4 rounded-2xl border p-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/5" [class.bg-indigo-50]="service.selectedDatasetId() === item.id" [class.border-indigo-200]="service.selectedDatasetId() === item.id" [class.text-indigo-900]="service.selectedDatasetId() === item.id" [class.dark:bg-indigo-900/20]="service.selectedDatasetId() === item.id" [class.dark:border-indigo-500/30]="service.selectedDatasetId() === item.id" [class.text-slate-700]="service.selectedDatasetId() !== item.id" [class.dark:text-slate-300]="service.selectedDatasetId() !== item.id" [class.bg-white]="service.selectedDatasetId() !== item.id" [class.border-slate-200]="service.selectedDatasetId() !== item.id" [class.dark:bg-black/20]="service.selectedDatasetId() !== item.id" [class.dark:border-slate-800]="service.selectedDatasetId() !== item.id" (click)="service.selectDatasetById(item.id)">
+            <div class="min-w-0 flex-1">
+              <p class="truncate font-semibold">{{ item.tableName }}</p>
+              <p class="mt-1 text-xs opacity-70">{{ service.displayName(item) }}</p>
+            </div>
+            <div class="mt-auto flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800" [class.border-indigo-100]="service.selectedDatasetId() === item.id" [class.dark:border-indigo-500/20]="service.selectedDatasetId() === item.id">
+              <span class="text-xs font-semibold" [class.text-amber-600]="service.analysisStatus(item.id) === 'Analysis required'" [class.text-emerald-600]="service.analysisStatus(item.id) === 'Analyzed'">{{ service.analysisStatus(item.id) }}</span>
+              <span class="text-xs opacity-80">{{ item.rowCount | number }} rows · {{ item.columnCount | number }} cols</span>
+            </div>
+          </button>
+        }
+      </div>
 
       <article class="workspace-panel min-w-0 overflow-hidden" data-testid="dataset-preview">
         <div class="flex flex-col gap-3 border-b border-slate-200 p-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-          <div class="min-w-0">
-            <h2 class="truncate text-xl font-bold text-slate-950 dark:text-white">{{ dataset.tableName }}</h2>
-            <p class="mt-1 truncate text-sm text-slate-500" [title]="service.displayName(dataset)">{{ service.displayName(dataset) }}</p>
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white">{{ dataset.tableName }}</h2>
+            <p class="mt-1 truncate text-sm text-slate-500 dark:text-[#8a99ad]">
+              @if (service.selectedWorkflowDataset()?.activeVersionNumber; as version) { Active v{{ version }} · } {{ service.displayName(dataset) }}
+            </p>
           </div>
-          <button type="button" class="btn-secondary shrink-0" (click)="service.refreshPreview()" [disabled]="service.previewLoading()">Refresh preview</button>
+          <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn-secondary shrink-0" (click)="service.refreshPreview()" [disabled]="service.previewLoading()">Refresh preview</button>
+            <button type="button" class="btn-secondary shrink-0" data-testid="replace-dataset-button" (click)="replaceOpen.set(true)">Replace</button>
+            <button type="button" class="btn-danger shrink-0" data-testid="delete-dataset-button" (click)="confirmingDelete.set(true)">Delete</button>
+          </div>
         </div>
 
         @if (service.previewLoading()) {

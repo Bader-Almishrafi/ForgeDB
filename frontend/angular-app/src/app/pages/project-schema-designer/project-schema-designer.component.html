@@ -55,10 +55,10 @@
         <button data-testid="generate-schema-floating" type="button" class="btn-secondary rounded-full" (click)="service.generateSchema()" [disabled]="!service.canGenerate()">
           <svg lucideRefreshCw [class.animate-spin]="service.generating()" [size]="16"></svg>{{ service.generating() ? 'Generating…' : 'Regenerate' }}
         </button>
-        <button data-testid="save-schema-floating" type="button" class="btn-primary rounded-full px-5 shadow-indigo-500/25" (click)="service.saveDraft()" [disabled]="!service.canSave()">
+        <button data-testid="save-schema-floating" type="button" class="btn-secondary rounded-full" (click)="service.saveDraft()" [disabled]="!service.canSave()">
           <svg lucideSave [size]="16"></svg>{{ service.saving() ? 'Saving…' : 'Save Changes' }}
         </button>
-        <button data-testid="validate-schema-floating" type="button" class="btn-secondary rounded-full" (click)="service.validateSchema()" [disabled]="!service.canValidate()">
+        <button data-testid="validate-schema-floating" type="button" class="btn-primary rounded-full px-5 shadow-indigo-500/25" (click)="service.validateSchema()" [disabled]="!service.canValidate()">
           <svg lucideFileCheck2 [size]="16"></svg>{{ service.validating() ? 'Validating…' : 'Validate' }}
         </button>
       </div>

@@ -110,7 +110,7 @@ export class ProjectSchemaDesignerService {
 
   readonly canGenerate = computed(() => !this.schemaBlocked() && !this.conflict() && !this.generating() && !this.saving() && !this.validating());
   readonly canSave = computed(() => !this.schemaBlocked() && !this.isStale() && !this.conflict() && Boolean(this.design())
-    && this.dirty() && !this.hasDraftErrors() && !this.saving() && !this.validating());
+    && this.dirty() && !this.saving() && !this.validating());
   readonly canValidate = computed(() => !this.schemaBlocked() && !this.isStale() && !this.conflict() && Boolean(this.design())
     && !this.dirty() && !this.saving() && !this.validating());
   readonly canMutateRelationships = computed(() => !this.schemaBlocked() && !this.isStale() && !this.conflict()
