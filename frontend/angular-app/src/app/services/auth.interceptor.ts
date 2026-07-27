@@ -22,8 +22,9 @@ export const authTokenInterceptor: HttpInterceptorFn = (request, next) => {
       // When the JWT token expires or is invalid (401 Unauthorized) during session usage,
       // clear session state and redirect directly to login rather than showing cryptic error alerts.
       if (error instanceof HttpErrorResponse && error.status === 401 && !router.url.startsWith('/login')) {
+        const returnUrl = router.url.startsWith('/') && !router.url.startsWith('//') ? router.url : '/projects';
         authService.logout();
-        void router.navigate(['/login']);
+        void router.navigate(['/login'], { queryParams: { returnUrl } });
       }
       return throwError(() => error);
     })

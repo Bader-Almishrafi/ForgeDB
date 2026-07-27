@@ -23,7 +23,14 @@ export class AuthService {
   // AuthService owns browser session state; ForgeApiService only sends HTTP requests.
   readonly user = this.userSignal.asReadonly();
   readonly token = this.tokenSignal.asReadonly();
-  readonly isLoggedIn = computed(() => Boolean(this.tokenSignal() && this.userSignal()));
+  readonly isLoggedIn = computed(() => {
+    const token = this.tokenSignal();
+    return Boolean(token && this.userSignal() && this.isCurrentJwt(token));
+  });
+
+  constructor() {
+    if (this.tokenSignal() || this.userSignal()) this.hasValidSession();
+  }
 
   register(request: RegisterRequest) {
     return this.api.register(request).pipe(tap((response) => this.storeSession(response)));
@@ -56,6 +63,13 @@ export class AuthService {
     return this.userSignal()?.id ?? null;
   }
 
+  hasValidSession(): boolean {
+    const token = this.tokenSignal();
+    if (token && this.userSignal() && this.isCurrentJwt(token)) return true;
+    if (token || this.userSignal()) this.logout();
+    return false;
+  }
+
   private storeSession(response: AuthResponse): void {
     localStorage.setItem(tokenKey, response.token);
     localStorage.setItem(userKey, JSON.stringify(response.user));
@@ -78,6 +92,21 @@ export class AuthService {
     } catch {
       localStorage.removeItem(userKey);
       return null;
+    }
+  }
+
+  private isCurrentJwt(token: string): boolean {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+
+    try {
+      const payloadPart = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const paddedPayload = payloadPart.padEnd(payloadPart.length + ((4 - payloadPart.length % 4) % 4), '=');
+      const payload = JSON.parse(atob(paddedPayload)) as { exp?: unknown };
+      const expiresAtSeconds = Number(payload.exp);
+      return Number.isFinite(expiresAtSeconds) && expiresAtSeconds * 1000 > Date.now();
+    } catch {
+      return false;
     }
   }
 }
