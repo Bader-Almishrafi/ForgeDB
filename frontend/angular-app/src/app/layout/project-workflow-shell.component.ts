@@ -25,6 +25,7 @@ export class ProjectWorkflowShellComponent implements OnInit {
   readonly context = inject(ProjectWorkflowContextService);
   readonly sidebarOpen = signal(false);
   readonly sidebarCollapsed = signal(false);
+  readonly userMenuOpen = signal(false);
   readonly currentUrl = signal(this.router.url);
   readonly user = this.auth.user;
   readonly theme = this.themeService.theme;
@@ -63,6 +64,7 @@ export class ProjectWorkflowShellComponent implements OnInit {
       .subscribe((event) => {
         this.currentUrl.set(event.urlAfterRedirects);
         this.sidebarOpen.set(false);
+        this.userMenuOpen.set(false);
       });
   }
 
@@ -91,6 +93,15 @@ export class ProjectWorkflowShellComponent implements OnInit {
 
   closeSidebar(): void {
     this.sidebarOpen.set(false);
+    this.userMenuOpen.set(false);
+  }
+
+  toggleUserMenu(): void {
+    this.userMenuOpen.update((open) => !open);
+  }
+
+  closeUserMenu(): void {
+    this.userMenuOpen.set(false);
   }
 
   toggleCollapsed(): void {
@@ -120,5 +131,6 @@ export class ProjectWorkflowShellComponent implements OnInit {
   @HostListener('document:keydown.escape')
   closeSidebarOnEscape(): void {
     this.sidebarOpen.set(false);
+    this.userMenuOpen.set(false);
   }
 }
