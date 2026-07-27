@@ -1,114 +1,129 @@
-<section class="mx-auto max-w-[1600px] space-y-6 overflow-x-hidden" data-testid="data-page">
-  <header class="animate-fade-in-up relative overflow-hidden rounded-3xl border border-slate-200 bg-white/80 px-5 py-6 shadow-sm shadow-slate-200/50 backdrop-blur-xl sm:px-7 sm:py-8 dark:border-white/10 dark:bg-[#161b22]/80 dark:shadow-black/20">
-    <div class="pointer-events-none absolute inset-y-0 right-0 hidden w-[32%] bg-gradient-to-l from-indigo-50/80 to-transparent lg:block dark:from-indigo-950/20" aria-hidden="true"></div>
-    <div class="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+<section class="mx-auto max-w-[1500px] space-y-6" data-testid="data-page">
+  <header class="page-header">
     <div class="min-w-0">
-      <p class="eyebrow">{{ service.projectName() }}</p>
-      <h1 class="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl dark:text-white">Data</h1>
-      <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">Import, select, and preview the active dataset versions that belong to this project.</p>
+      <p class="eyebrow">Step 1 of 5</p>
+      <h1 class="page-title mt-1">Data Sources</h1>
+      <p class="page-subtitle">Import source data, choose a dataset, and inspect its active version.</p>
     </div>
     <div class="flex flex-wrap gap-2">
       @if (service.project()) {
-        <button type="button" class="btn-secondary" (click)="editOpen.set(true)">Edit Project</button>
+        <button type="button" class="btn-ghost" (click)="editOpen.set(true)">Edit Project Details</button>
       }
-      <button type="button" class="btn-primary" data-testid="open-import-button" (click)="openImport()">Import Data</button>
-    </div>
+      <button type="button" class="btn-primary" data-testid="open-import-button" (click)="openImport()">Import Dataset</button>
     </div>
   </header>
 
   @if (service.projectError()) {
-    <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300" role="alert">
-      {{ service.projectError() }}
-    </div>
+    <div class="alert alert-error" role="alert">{{ service.projectError() }}</div>
   }
   @if (service.datasetsError()) {
-    <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300" role="alert">
-      {{ service.datasetsError() }} <button type="button" class="font-semibold underline" (click)="service.loadDatasets()">Try again</button>
+    <div class="alert alert-error" role="alert">
+      <span>{{ service.datasetsError() }}</span>
+      <button type="button" class="btn-secondary" (click)="service.loadDatasets()">Try Again</button>
     </div>
   }
   @if (service.selectionNotice()) {
-    <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300" role="status">
-      {{ service.selectionNotice() }}
-    </div>
+    <div class="alert alert-warning" role="status">{{ service.selectionNotice() }}</div>
   }
   @if (service.successMessage()) {
-    <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300" role="status">
-      {{ service.successMessage() }}
-    </div>
+    <div class="alert alert-success" role="status">{{ service.successMessage() }}</div>
   }
 
   @if (service.datasetsLoading()) {
-    <div class="glass-card p-10 text-center text-sm text-slate-500" aria-busy="true">
-      Loading datasets…
-    </div>
+    <div class="card p-10 text-center text-sm text-slate-500" aria-busy="true">Loading datasets…</div>
   } @else if (!service.datasetsError() && service.datasets().length === 0) {
-    <div class="animate-fade-in-up delay-200 rounded-3xl border border-dashed border-slate-300 bg-white/60 px-6 py-14 text-center shadow-sm backdrop-blur dark:border-[#30363d] dark:bg-[#161b22]/60" data-testid="data-empty-state">
-      <h2 class="text-xl font-bold text-slate-950 dark:text-white">Import your first dataset</h2>
-      <p class="mx-auto mt-2 max-w-xl text-sm text-slate-600 dark:text-slate-400">This project is empty. Add one CSV file, an Excel worksheet, or records from an API.</p>
-      <div class="mt-6 flex flex-wrap justify-center gap-3">
-        <button type="button" class="btn-secondary" data-testid="empty-import-csv" (click)="openImport('csv')">Import CSV</button>
-        <button type="button" class="btn-secondary" data-testid="empty-import-excel" (click)="openImport('excel')">Import Excel</button>
-        <button type="button" class="btn-secondary" data-testid="empty-import-api" (click)="openImport('api')">Import API</button>
-      </div>
+    <div class="empty-state" data-testid="data-empty-state">
+      <svg viewBox="0 0 24 24" class="mx-auto h-9 w-9 fill-none stroke-current text-slate-400" stroke-width="1.7" aria-hidden="true">
+        <path d="M12 16V4m0 0 4 4m-4-4-4 4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"></path>
+      </svg>
+      <h2 class="mt-4 text-xl font-semibold text-slate-950 dark:text-white">Import your first dataset</h2>
+      <p class="mx-auto mt-2 max-w-xl text-sm text-slate-600 dark:text-slate-400">
+        Add a CSV file, an Excel worksheet, or records from a JSON API. You will choose the source inside one guided import.
+      </p>
+      <button type="button" class="btn-primary mt-6" data-testid="empty-import-dataset" (click)="openImport()">Import Dataset</button>
+      <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">CSV and XLSX files must be non-empty. API sources must return a JSON array.</p>
     </div>
   } @else if (service.selectedDataset(); as dataset) {
-    <div class="animate-fade-in-up delay-200 flex flex-col gap-6">
-      <div class="flex gap-4 overflow-x-auto pb-4 snap-x">
-        @for (item of service.datasets(); track item.id) {
-          <button type="button" class="min-w-[320px] shrink-0 snap-start flex flex-col justify-between gap-4 rounded-2xl border p-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-white/5" [class.bg-indigo-50]="service.selectedDatasetId() === item.id" [class.border-indigo-200]="service.selectedDatasetId() === item.id" [class.text-indigo-900]="service.selectedDatasetId() === item.id" [class.dark:bg-indigo-900/20]="service.selectedDatasetId() === item.id" [class.dark:border-indigo-500/30]="service.selectedDatasetId() === item.id" [class.text-slate-700]="service.selectedDatasetId() !== item.id" [class.dark:text-slate-300]="service.selectedDatasetId() !== item.id" [class.bg-white]="service.selectedDatasetId() !== item.id" [class.border-slate-200]="service.selectedDatasetId() !== item.id" [class.dark:bg-black/20]="service.selectedDatasetId() !== item.id" [class.dark:border-slate-800]="service.selectedDatasetId() !== item.id" (click)="service.selectDatasetById(item.id)">
-            <div class="min-w-0 flex-1">
-              <p class="truncate font-semibold">{{ item.tableName }}</p>
-              <p class="mt-1 text-xs opacity-70">{{ service.displayName(item) }}</p>
-            </div>
-            <div class="mt-auto flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800" [class.border-indigo-100]="service.selectedDatasetId() === item.id" [class.dark:border-indigo-500/20]="service.selectedDatasetId() === item.id">
-              <span class="text-xs font-semibold" [class.text-amber-600]="service.analysisStatus(item.id) === 'Analysis required'" [class.text-emerald-600]="service.analysisStatus(item.id) === 'Analyzed'">{{ service.analysisStatus(item.id) }}</span>
-              <span class="text-xs opacity-80">{{ item.rowCount | number }} rows · {{ item.columnCount | number }} cols</span>
-            </div>
-          </button>
-        }
-      </div>
+    <div class="grid min-w-0 gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <aside class="min-w-0" aria-labelledby="dataset-list-heading">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <h2 id="dataset-list-heading" class="text-sm font-semibold text-slate-950 dark:text-white">Datasets</h2>
+          <span class="text-xs text-slate-500">{{ service.datasets().length }}</span>
+        </div>
+        <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-1" role="list">
+          @for (item of service.datasets(); track item.id) {
+            <button
+              type="button"
+              class="dataset-list-item"
+              [class.dataset-list-item-active]="service.selectedDatasetId() === item.id"
+              (click)="service.selectDatasetById(item.id)"
+              [attr.aria-current]="service.selectedDatasetId() === item.id ? 'true' : null">
+              <span class="block truncate font-semibold">{{ item.tableName }}</span>
+              <span class="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400">{{ item.sourceType || 'File' }} · {{ item.rowCount | number }} rows</span>
+              <span class="mt-2 block text-xs font-medium"
+                [class.text-amber-700]="service.analysisStatus(item.id) === 'Analysis required'"
+                [class.text-emerald-700]="service.analysisStatus(item.id) === 'Analyzed'">
+                {{ service.analysisStatus(item.id) }}
+              </span>
+            </button>
+          }
+        </div>
+      </aside>
 
-      <article class="workspace-panel min-w-0 overflow-hidden" data-testid="dataset-preview">
-        <div class="flex flex-col gap-3 border-b border-slate-200 p-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 class="text-xl font-bold text-slate-900 dark:text-white">{{ dataset.tableName }}</h2>
-            <p class="mt-1 truncate text-sm text-slate-500 dark:text-[#8a99ad]">
-              @if (service.selectedWorkflowDataset()?.activeVersionNumber; as version) { Active v{{ version }} · } {{ service.displayName(dataset) }}
-            </p>
+      <article class="card min-w-0 overflow-hidden p-0" data-testid="dataset-preview">
+        <div class="border-b border-slate-200 p-5 dark:border-slate-700 sm:p-6">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0">
+              <h2 class="truncate text-xl font-semibold text-slate-950 dark:text-white">{{ dataset.tableName }}</h2>
+              <p class="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">{{ service.displayName(dataset) }}</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="btn-ghost" (click)="service.refreshPreview()" [disabled]="service.previewLoading()">Refresh Preview</button>
+              <button type="button" class="btn-secondary" data-testid="replace-dataset-button" (click)="replaceOpen.set(true)">Replace Source</button>
+              <button type="button" class="btn-danger" data-testid="delete-dataset-button" (click)="confirmingDelete.set(true)">Delete Dataset</button>
+            </div>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="button" class="btn-secondary shrink-0" (click)="service.refreshPreview()" [disabled]="service.previewLoading()">Refresh preview</button>
-            <button type="button" class="btn-secondary shrink-0" data-testid="replace-dataset-button" (click)="replaceOpen.set(true)">Replace</button>
-            <button type="button" class="btn-danger shrink-0" data-testid="delete-dataset-button" (click)="confirmingDelete.set(true)">Delete</button>
-          </div>
+
+          <dl class="mt-5 grid gap-x-6 gap-y-3 border-t border-slate-200 pt-4 text-sm sm:grid-cols-2 xl:grid-cols-4 dark:border-slate-700">
+            <div><dt class="text-xs text-slate-500">Source type</dt><dd class="mt-1 font-medium">{{ dataset.sourceType || 'Unknown' }}</dd></div>
+            <div><dt class="text-xs text-slate-500">Active version</dt><dd class="mt-1 font-medium">v{{ service.selectedWorkflowDataset()?.activeVersionNumber || 1 }}</dd></div>
+            <div><dt class="text-xs text-slate-500">Rows</dt><dd class="mt-1 font-medium">{{ dataset.rowCount | number }}</dd></div>
+            <div><dt class="text-xs text-slate-500">Columns</dt><dd class="mt-1 font-medium">{{ dataset.columnCount | number }}</dd></div>
+          </dl>
         </div>
 
         @if (service.previewLoading()) {
           <div class="p-10 text-center text-sm text-slate-500" aria-busy="true">Loading active-version preview…</div>
         } @else if (service.previewError()) {
-          <div class="p-8 text-center" role="alert">
-            <p class="text-sm text-rose-600">{{ service.previewError() }}</p>
-            <button type="button" class="btn-secondary mt-4" (click)="service.refreshPreview()">Try again</button>
+          <div class="p-8" role="alert">
+            <div class="alert alert-error">
+              <span>{{ service.previewError() }}</span>
+              <button type="button" class="btn-secondary" (click)="service.refreshPreview()">Try Again</button>
+            </div>
           </div>
         } @else if (service.preview(); as dataPreview) {
+          <div class="flex items-center justify-between gap-4 px-5 py-3 text-xs text-slate-500 sm:px-6">
+            <span>Preview of the active version</span>
+            <span>Showing {{ service.previewRows().length }} sample {{ service.previewRows().length === 1 ? 'row' : 'rows' }}</span>
+          </div>
           <div class="table-wrap max-h-[34rem] rounded-none border-x-0 border-b-0" data-testid="dataset-preview-table">
             <table class="data-table">
-              <thead class="bg-slate-50 dark:bg-slate-900/50">
+              <thead>
                 <tr>
                   @for (column of service.previewColumns(); track column) {
-                    <th class="whitespace-nowrap px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">{{ column }}</th>
+                    <th>{{ column }}</th>
                   }
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody>
                 @for (row of service.previewRows(); track $index) {
                   <tr>
                     @for (column of service.previewColumns(); track column) {
-                      <td class="max-w-72 truncate px-4 py-3 text-slate-600 dark:text-slate-300" [title]="service.previewValue(row, column)">{{ service.previewValue(row, column) }}</td>
+                      <td class="max-w-72 truncate" [title]="service.previewValue(row, column)">{{ service.previewValue(row, column) }}</td>
                     }
                   </tr>
                 } @empty {
-                  <tr><td [attr.colspan]="service.previewColumns().length || 1" class="px-4 py-10 text-center text-slate-500">No preview rows are available.</td></tr>
+                  <tr><td [attr.colspan]="service.previewColumns().length || 1" class="py-10 text-center text-slate-500">No preview rows are available.</td></tr>
                 }
               </tbody>
             </table>
@@ -118,14 +133,40 @@
     </div>
   }
 
-  <footer class="flex justify-end border-t border-slate-200 pt-6 dark:border-slate-800">
+  <footer class="workflow-page-footer">
+    <div>
+      <strong class="text-sm text-slate-950 dark:text-white">
+        {{ service.canContinueToAnalyze() ? 'Your data source is ready.' : 'Import a dataset to continue.' }}
+      </strong>
+      @if (service.canContinueToAnalyze()) {
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Analysis will inspect the active version of each dataset.</p>
+      }
+    </div>
     <button type="button" class="btn-primary" data-testid="continue-to-analyze" (click)="continueToAnalyze()" [disabled]="!service.canContinueToAnalyze()">
-      Continue to Analyze
+      Continue to Analysis
     </button>
   </footer>
 </section>
 
-<app-import-dataset-dialog [isOpen]="importOpen()" [projectId]="service.projectId" [projectName]="service.projectName()" [initialSource]="importSource()" (closeDialog)="importOpen.set(false); importSource.set(null)" (imported)="onDatasetImported($event)" />
-<app-replace-dataset-dialog [isOpen]="replaceOpen()" [dataset]="service.selectedDataset()" (closeDialog)="replaceOpen.set(false)" (replaced)="onDatasetReplaced($event)" />
-<app-delete-dataset-dialog [isOpen]="confirmingDelete()" [dataset]="service.selectedDataset()" (closeDialog)="confirmingDelete.set(false)" (deleted)="onDatasetDeleted()" />
-<app-edit-project-dialog [isOpen]="editOpen()" [project]="service.project()" (closeDialog)="editOpen.set(false)" (saved)="onProjectSaved($event)" />
+<app-import-dataset-dialog
+  [isOpen]="importOpen()"
+  [projectId]="service.projectId"
+  [projectName]="service.projectName()"
+  [initialSource]="importSource()"
+  (closeDialog)="importOpen.set(false); importSource.set(null)"
+  (imported)="onDatasetsImported($event)" />
+<app-replace-dataset-dialog
+  [isOpen]="replaceOpen()"
+  [dataset]="service.selectedDataset()"
+  (closeDialog)="replaceOpen.set(false)"
+  (replaced)="onDatasetReplaced($event)" />
+<app-delete-dataset-dialog
+  [isOpen]="confirmingDelete()"
+  [dataset]="service.selectedDataset()"
+  (closeDialog)="confirmingDelete.set(false)"
+  (deleted)="onDatasetDeleted()" />
+<app-edit-project-dialog
+  [isOpen]="editOpen()"
+  [project]="service.project()"
+  (closeDialog)="editOpen.set(false)"
+  (saved)="onProjectSaved($event)" />

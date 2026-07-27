@@ -115,6 +115,18 @@ export class DataSourcesService {
     this.refreshWorkflow();
   }
 
+  onDatasetsImported(datasets: DatasetResponse[]): void {
+    if (!datasets.length) return;
+    const lastDataset = datasets[datasets.length - 1];
+    this.successMessage.set(
+      datasets.length === 1
+        ? `${this.displayName(lastDataset)} imported successfully.`
+        : `${datasets.length} datasets imported successfully.`,
+    );
+    this.loadDatasets(lastDataset.id);
+    this.refreshWorkflow();
+  }
+
   onDatasetReplaced(updated: DatasetResponse): void {
     this.successMessage.set(`${this.displayName(updated)} was replaced. Re-analysis is required; previous versions remain in history.`);
     this.loadDatasets(updated.id);

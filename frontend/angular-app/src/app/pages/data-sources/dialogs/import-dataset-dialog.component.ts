@@ -1,12 +1,32 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, inject, Input, Output, signal, OnChanges, SimpleChanges, computed } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  EventEmitter,
+  HostListener,
+  inject,
+  Input,
+  OnChanges,
+  Output,
+  signal,
+  SimpleChanges,
+  computed,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { finalize, from, concatMap, toArray } from 'rxjs';
+import { catchError, concatMap, finalize, from, map, of, toArray } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ApiConnectionTest, ApiJsonImportRequest, ApiJsonPreview, DatasetResponse, ExcelWorkbookPreview } from '../../../services/api.models';
 import { ForgeApiService } from '../../../services/forge-api.service';
-import { isCsvFile, formatFileSize } from '../../../shared/utils/file-import.utils';
+import { formatFileSize, isCsvFile, MAX_IMPORT_FILE_BYTES } from '../../../shared/utils/file-import.utils';
 
 type ImportSource = 'csv' | 'excel' | 'api';
+
+interface CsvImportResult {
+  file: File;
+  dataset: DatasetResponse | null;
+  error: unknown | null;
+}
 
 @Component({
   selector: 'app-import-dataset-dialog',
@@ -24,8 +44,10 @@ export class ImportDatasetDialogComponent implements OnChanges {
   @Input() initialSource: ImportSource | null = null;
   
   @Output() closeDialog = new EventEmitter<void>();
-  @Output() imported = new EventEmitter<DatasetResponse>();
+  @Output() imported = new EventEmitter<DatasetResponse[]>();
 
+  private readonly initialFocus = viewChild<ElementRef<HTMLButtonElement>>('initialFocus');
+  private previouslyFocused: HTMLElement | null = null;
   readonly importSource = signal<ImportSource | null>(null);
   readonly importFiles = signal<File[]>([]);
   readonly excelPreview = signal<ExcelWorkbookPreview | null>(null);
@@ -52,17 +74,27 @@ export class ImportDatasetDialogComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['isOpen'] && this.isOpen) {
+      this.previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       this.resetImport();
       if (this.initialSource) {
         this.importSource.set(this.initialSource);
       }
+      setTimeout(() => this.initialFocus()?.nativeElement.focus());
     }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.isOpen) this.close();
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) this.close();
   }
 
   close(): void {
     if (this.importing()) return;
-    this.resetImport();
-    this.closeDialog.emit();
+    this.finishClose();
   }
 
   selectImportSource(source: ImportSource): void {
@@ -112,18 +144,36 @@ export class ImportDatasetDialogComponent implements OnChanges {
           formData.append('sourceType', 'csv');
           formData.append('sourceName', file.name);
           formData.append('tableName', this.importTableName(file.name));
-          return this.api.uploadDataset(this.projectId, formData);
+          return this.api.uploadDataset(this.projectId, formData).pipe(
+            map((dataset): CsvImportResult => ({ file, dataset, error: null })),
+            catchError((error: unknown) => of<CsvImportResult>({ file, dataset: null, error })),
+          );
         }),
         toArray(),
         finalize(() => this.importing.set(false))
       ).subscribe({
-        next: (datasets) => {
-          if (datasets.length > 0) {
-            this.imported.emit(datasets[datasets.length - 1]);
+        next: (results) => {
+          const datasets = results
+            .map((result) => result.dataset)
+            .filter((dataset): dataset is DatasetResponse => dataset !== null);
+          const failed = results.filter((result) => result.error !== null);
+
+          if (datasets.length) this.imported.emit(datasets);
+
+          if (failed.length) {
+            this.importFiles.set(failed.map((result) => result.file));
+            const importedCount = datasets.length;
+            const importedPrefix = importedCount
+              ? `Imported ${importedCount} of ${results.length} files. `
+              : '';
+            this.importError.set(
+              `${importedPrefix}Could not import ${failed.map((result) => result.file.name).join(', ')}. Review the files and try again.`,
+            );
+            return;
           }
-          this.closeDialog.emit();
+
+          this.finishClose();
         },
-        error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to import one or more CSV files.'))
       });
     } else {
       const file = files[0];
@@ -137,8 +187,8 @@ export class ImportDatasetDialogComponent implements OnChanges {
 
       this.api.uploadDataset(this.projectId, formData).pipe(finalize(() => this.importing.set(false))).subscribe({
         next: (dataset) => {
-          this.imported.emit(dataset);
-          this.closeDialog.emit();
+          this.imported.emit([dataset]);
+          this.finishClose();
         },
         error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to import this Excel workbook.')),
       });
@@ -195,18 +245,34 @@ export class ImportDatasetDialogComponent implements OnChanges {
     if (!filesList || filesList.length === 0) return;
     
     if (this.importSource() === 'csv') {
-      const validFiles = Array.from(filesList).filter(f => isCsvFile(f));
+      const candidates = Array.from(filesList);
+      const validFiles = candidates.filter((file) => isCsvFile(file));
       if (validFiles.length === 0) {
-        this.importError.set('Choose at least one non-empty CSV file.');
+        this.importError.set('Choose at least one non-empty CSV file no larger than 10 MB.');
         return;
       }
-      this.importFiles.update(current => [...current, ...validFiles]);
+      const selectedNames = new Set(this.importFiles().map((file) => file.name.toLocaleLowerCase()));
+      const uniqueFiles = validFiles.filter((file) => {
+        const normalizedName = file.name.toLocaleLowerCase();
+        if (selectedNames.has(normalizedName)) return false;
+        selectedNames.add(normalizedName);
+        return true;
+      });
+      this.importFiles.update((current) => [...current, ...uniqueFiles]);
+
+      const skippedInvalid = candidates.length - validFiles.length;
+      const skippedDuplicates = validFiles.length - uniqueFiles.length;
+      const notices = [
+        skippedInvalid ? `${skippedInvalid} invalid, empty, or oversized file${skippedInvalid === 1 ? '' : 's'} skipped.` : '',
+        skippedDuplicates ? `${skippedDuplicates} duplicate file name${skippedDuplicates === 1 ? '' : 's'} skipped.` : '',
+      ].filter(Boolean);
+      if (notices.length) this.importError.set(notices.join(' '));
       return;
     }
     
     const file = filesList[0];
-    if (!file.name.toLocaleLowerCase().endsWith('.xlsx') || file.size <= 0) {
-      this.importError.set('Choose one non-empty .xlsx Excel workbook.');
+    if (!file.name.toLocaleLowerCase().endsWith('.xlsx') || file.size <= 0 || file.size > MAX_IMPORT_FILE_BYTES) {
+      this.importError.set('Choose one non-empty .xlsx Excel workbook no larger than 10 MB.');
       return;
     }
     this.importFiles.set([file]);
@@ -233,8 +299,8 @@ export class ImportDatasetDialogComponent implements OnChanges {
     this.importError.set('');
     this.api.importApi(this.projectId, this.apiRequest()).pipe(finalize(() => this.importing.set(false))).subscribe({
       next: (dataset) => {
-        this.imported.emit(dataset);
-        this.closeDialog.emit();
+        this.imported.emit([dataset]);
+        this.finishClose();
       },
       error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to import data from this API.')),
     });
@@ -249,6 +315,14 @@ export class ImportDatasetDialogComponent implements OnChanges {
     this.apiConnection.set(null);
     this.apiPreview.set(null);
     this.importError.set('');
+  }
+
+  private finishClose(): void {
+    this.resetImport();
+    this.closeDialog.emit();
+    const focusTarget = this.previouslyFocused;
+    this.previouslyFocused = null;
+    setTimeout(() => focusTarget?.focus());
   }
 
   private apiRequest(): ApiJsonImportRequest {

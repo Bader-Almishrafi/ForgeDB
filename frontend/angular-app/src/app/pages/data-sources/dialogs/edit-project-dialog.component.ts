@@ -1,4 +1,17 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, inject, Input, Output, signal, OnChanges, SimpleChanges } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  EventEmitter,
+  HostListener,
+  inject,
+  Input,
+  OnChanges,
+  Output,
+  signal,
+  SimpleChanges,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -14,6 +27,8 @@ import { ForgeApiService } from '../../../services/forge-api.service';
 })
 export class EditProjectDialogComponent implements OnChanges {
   private readonly api = inject(ForgeApiService);
+  private readonly initialFocus = viewChild<ElementRef<HTMLInputElement>>('initialFocus');
+  private previouslyFocused: HTMLElement | null = null;
 
   @Input() isOpen = false;
   @Input() project: ProjectResponse | null = null;
@@ -28,14 +43,25 @@ export class EditProjectDialogComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['isOpen'] && this.isOpen && this.project) {
+      this.previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       this.editName.set(this.project.name);
       this.editDescription.set(this.project.description ?? '');
       this.editError.set('');
+      setTimeout(() => this.initialFocus()?.nativeElement.focus());
     }
   }
 
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.isOpen) this.close();
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) this.close();
+  }
+
   close(): void {
-    if (!this.savingProject()) this.closeDialog.emit();
+    if (!this.savingProject()) this.finishClose();
   }
 
   saveProject(): void {
@@ -50,6 +76,7 @@ export class EditProjectDialogComponent implements OnChanges {
       .subscribe({
         next: (updated) => {
           this.saved.emit(updated);
+          this.finishClose();
         },
         error: (error: unknown) => this.editError.set(this.errorText(error, 'Unable to update this project.')),
       });
@@ -61,5 +88,12 @@ export class EditProjectDialogComponent implements OnChanges {
       if (typeof message === 'string' && message.trim()) return message;
     }
     return fallback;
+  }
+
+  private finishClose(): void {
+    this.closeDialog.emit();
+    const focusTarget = this.previouslyFocused;
+    this.previouslyFocused = null;
+    setTimeout(() => focusTarget?.focus());
   }
 }

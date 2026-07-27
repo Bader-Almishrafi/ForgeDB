@@ -1,5 +1,9 @@
+export const MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024;
+
 export function isCsvFile(file: File): boolean {
-  return file.size > 0 && file.name.toLocaleLowerCase().endsWith('.csv');
+  return file.size > 0
+    && file.size <= MAX_IMPORT_FILE_BYTES
+    && file.name.toLocaleLowerCase().endsWith('.csv');
 }
 
 export function formatFileSize(bytes: number): string {

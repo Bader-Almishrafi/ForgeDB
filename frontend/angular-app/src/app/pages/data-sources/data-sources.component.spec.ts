@@ -154,14 +154,14 @@ async function setup(
 afterEach(() => TestBed.resetTestingModule());
 
 describe('DataSourcesComponent', () => {
-  it('shows CSV, Excel, and API cards before revealing a source form', async () => {
+  it('opens one guided import dialog before revealing a source form', async () => {
     const { fixture, component } = await setup();
     component.openImport();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="csv-source-option"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="excel-source-option"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="api-source-option"]')).toBeTruthy();
-    expect(fixture.nativeElement.textContent).toContain('Supported: non-empty .csv file');
+    expect(fixture.nativeElement.textContent).toContain('Choose a source to continue');
     expect(fixture.nativeElement.querySelector('[data-testid="dataset-file-input"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="api-import-form"]')).toBeNull();
   });
@@ -169,13 +169,14 @@ describe('DataSourcesComponent', () => {
   it('reveals only the form for the selected import source', async () => {
     const { fixture, component } = await setup();
     component.openImport();
-    component.selectImportSource('excel');
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[data-testid="excel-source-option"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="excel-import-form"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="csv-import-form"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="api-import-form"]')).toBeNull();
 
-    component.selectImportSource('api');
+    (fixture.nativeElement.querySelector('[data-testid="api-source-option"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="api-import-form"]')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[data-testid="dataset-file-input"]')).toBeNull();
@@ -184,9 +185,8 @@ describe('DataSourcesComponent', () => {
   it('shows the empty project import state', async () => {
     const { fixture } = await setup();
     expect(fixture.nativeElement.querySelector('[data-testid="data-empty-state"]')).toBeTruthy();
-    expect(fixture.nativeElement.textContent).toContain('Import CSV');
-    expect(fixture.nativeElement.textContent).toContain('Import Excel');
-    expect(fixture.nativeElement.textContent).toContain('Import API');
+    expect(fixture.nativeElement.textContent).toContain('CSV file, an Excel worksheet, or records from a JSON API');
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="empty-import-dataset"]')).toHaveLength(1);
   });
 
   it('imports one non-empty CSV, previews it, and selects it in the query parameter', async () => {
@@ -204,10 +204,10 @@ describe('DataSourcesComponent', () => {
     const form = api['uploadDataset'].mock.calls[0][1] as FormData;
     expect(form.get('sourceType')).toBe('csv');
     expect(form.get('file')).toBe(file);
-    expect(component.selectedDatasetId()).toBe(9);
+    expect(component.service.selectedDatasetId()).toBe(9);
     expect(api['getDatasetPreview']).toHaveBeenCalledWith(9);
     expect(fixture.nativeElement.querySelector('[data-testid="dataset-preview"]')?.textContent).toContain('Ahmed');
-    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { datasetId: 9 } }));
+    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { datasetId: '9' } }));
     expect(api['getProjectWorkflow']).toHaveBeenCalledTimes(2);
   });
 
@@ -230,14 +230,19 @@ describe('DataSourcesComponent', () => {
     const form = api['uploadDataset'].mock.calls[0][1] as FormData;
     expect(form.get('sourceType')).toBe('excel');
     expect(form.get('worksheetName')).toBe('Customers');
-    expect(component.selectedDatasetId()).toBe(11);
+    expect(component.service.selectedDatasetId()).toBe(11);
   });
 
   it('tests, previews, and imports API data', async () => {
     const { fixture, component, api } = await setup();
     component.openImport('api');
-    component.updateApiUrl(remotePreview.url);
-    component.updateApiArrayPath('result.items');
+    fixture.detectChanges();
+    const urlInput = fixture.nativeElement.querySelector('[data-testid="api-url-input"]') as HTMLInputElement;
+    urlInput.value = remotePreview.url;
+    urlInput.dispatchEvent(new Event('input'));
+    const pathInput = fixture.nativeElement.querySelector('[data-testid="api-array-path-input"]') as HTMLInputElement;
+    pathInput.value = 'result.items';
+    pathInput.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     (fixture.nativeElement.querySelector('[data-testid="test-api-connection-button"]') as HTMLButtonElement).click();
     (fixture.nativeElement.querySelector('[data-testid="preview-api-button"]') as HTMLButtonElement).click();
@@ -248,34 +253,36 @@ describe('DataSourcesComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="api-preview"]').textContent).toContain('Not available');
     (fixture.nativeElement.querySelector('[data-testid="import-dataset-button"]') as HTMLButtonElement).click();
     expect(api['importApi']).toHaveBeenCalledWith(10, { apiUrl: remotePreview.url, arrayPath: 'result.items' });
-    expect(component.selectedDatasetId()).toBe(12);
+    expect(component.service.selectedDatasetId()).toBe(12);
     expect(api['getProjectWorkflow']).toHaveBeenCalledTimes(2);
   });
 
   it('selects a deep-linked dataset through datasetId', async () => {
     const { component, api } = await setup([firstDataset, secondDataset], '8');
-    expect(component.selectedDatasetId()).toBe(8);
+    expect(component.service.selectedDatasetId()).toBe(8);
     expect(api['getDatasetPreview']).toHaveBeenCalledWith(8);
   });
 
   it('recovers an invalid datasetId to the deterministic first dataset with one notice', async () => {
     const { fixture, component, router } = await setup([secondDataset, firstDataset], '999');
-    expect(component.selectedDatasetId()).toBe(7);
-    expect(component.selectionNotice()).toContain('not in this project');
+    expect(component.service.selectedDatasetId()).toBe(7);
+    expect(component.service.selectionNotice()).toContain('not in this project');
     expect(fixture.nativeElement.textContent.match(/not in this project/g)).toHaveLength(1);
-    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { datasetId: 7 }, replaceUrl: true }));
+    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { datasetId: '7' }, replaceUrl: true }));
   });
 
   it('shows active-version metadata, backend analysis state, and active preview rows', async () => {
     const { fixture } = await setup([firstDataset], '7', workflow([firstDataset], { version: 3, analyzed: true }));
-    expect(fixture.nativeElement.querySelector('[data-testid="active-version-number"]').textContent).toContain('v3');
-    expect(fixture.nativeElement.querySelector('[data-testid="dataset-analysis-status"]').textContent).toContain('Analyzed');
+    const pageText = fixture.nativeElement.textContent as string;
+    expect(pageText).toContain('Active version');
+    expect(pageText).toContain('v3');
+    expect(pageText).toContain('Analyzed');
     expect(fixture.nativeElement.querySelector('[data-testid="dataset-preview"]').textContent).toContain('Ahmed');
   });
 
   it('replaces the source, keeps the dataset selected, and refreshes workflow state', async () => {
     const { fixture, component, api } = await setup([firstDataset], '7');
-    component.openReplace();
+    component.replaceOpen.set(true);
     fixture.detectChanges();
     const input = fixture.nativeElement.querySelector('[data-testid="replace-file-input"]') as HTMLInputElement;
     const file = new File(['id\n2'], 'replacement.csv', { type: 'text/csv' });
@@ -286,35 +293,40 @@ describe('DataSourcesComponent', () => {
     fixture.detectChanges();
 
     expect(api['replaceDataset']).toHaveBeenCalledWith(7, expect.any(FormData));
-    expect(component.selectedDatasetId()).toBe(7);
-    expect(component.successMessage()).toContain('previous versions remain in history');
-    expect(component.selectedWorkflowDataset()?.activeVersionNumber).toBe(2);
+    expect(component.service.selectedDatasetId()).toBe(7);
+    expect(component.service.successMessage()).toContain('previous versions remain in history');
+    expect(component.service.selectedWorkflowDataset()?.activeVersionNumber).toBe(2);
     expect(api['getProjectWorkflow']).toHaveBeenCalledTimes(2);
   });
 
   it('deletes the selection, selects the next valid dataset, and refreshes workflow state', async () => {
     const { fixture, component, api, router } = await setup([firstDataset, secondDataset], '7');
-    component.requestDelete();
+    component.confirmingDelete.set(true);
     fixture.detectChanges();
     (fixture.nativeElement.querySelector('[data-testid="confirm-delete-dataset"]') as HTMLButtonElement).click();
     fixture.detectChanges();
 
     expect(api['deleteDataset']).toHaveBeenCalledWith(7);
-    expect(component.selectedDatasetId()).toBe(8);
-    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { datasetId: 8 } }));
+    expect(component.service.selectedDatasetId()).toBe(8);
+    expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { datasetId: '8' } }));
     expect(api['getProjectWorkflow']).toHaveBeenCalledTimes(2);
   });
 
-  it('refreshes workflow context after editing the project name', async () => {
+  it('refreshes workflow context after the project dialog saves a new name', async () => {
     const { component, api, context } = await setup([firstDataset]);
-    component.openProjectEdit();
-    component.editName.set('Renamed imports');
-    component.editDescription.set('Updated description');
-    component.saveProject();
+    api['getProjectWorkflow'].mockReturnValue(of({
+      ...workflow([firstDataset]),
+      projectName: 'Renamed imports',
+    }));
+    component.onProjectSaved({
+      ...project,
+      name: 'Renamed imports',
+      description: 'Updated description',
+    });
 
-    expect(api['updateProject']).toHaveBeenCalledWith(10, { name: 'Renamed imports', description: 'Updated description' });
     expect(api['getProjectWorkflow']).toHaveBeenCalledTimes(2);
     expect(context.workflow()?.projectName).toBe('Renamed imports');
+    expect(component.service.project()?.name).toBe('Renamed imports');
   });
 
   it('uses workflow permission for Continue to Analyze and preserves datasetId', async () => {

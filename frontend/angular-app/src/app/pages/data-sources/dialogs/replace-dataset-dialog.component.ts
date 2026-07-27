@@ -1,4 +1,17 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, inject, Input, Output, signal, OnChanges, SimpleChanges } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  EventEmitter,
+  HostListener,
+  inject,
+  Input,
+  OnChanges,
+  Output,
+  signal,
+  SimpleChanges,
+  viewChild,
+} from '@angular/core';
 import { finalize } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DatasetResponse } from '../../../services/api.models';
@@ -13,6 +26,8 @@ import { isCsvFile, formatFileSize } from '../../../shared/utils/file-import.uti
 })
 export class ReplaceDatasetDialogComponent implements OnChanges {
   private readonly api = inject(ForgeApiService);
+  private readonly initialFocus = viewChild<ElementRef<HTMLInputElement>>('initialFocus');
+  private previouslyFocused: HTMLElement | null = null;
 
   @Input() isOpen = false;
   @Input() dataset: DatasetResponse | null = null;
@@ -26,14 +41,25 @@ export class ReplaceDatasetDialogComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['isOpen'] && this.isOpen) {
+      this.previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       this.replaceFile.set(null);
       this.replaceError.set('');
+      setTimeout(() => this.initialFocus()?.nativeElement.focus());
     }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.isOpen) this.close();
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) this.close();
   }
 
   close(): void {
     if (!this.replacing()) {
-      this.closeDialog.emit();
+      this.finishClose();
     }
   }
 
@@ -46,7 +72,7 @@ export class ReplaceDatasetDialogComponent implements OnChanges {
     
     if (!isCsvFile(file)) {
       this.replaceFile.set(null);
-      this.replaceError.set('Choose one non-empty CSV file.');
+      this.replaceError.set('Choose one non-empty CSV file no larger than 10 MB.');
       return;
     }
     this.replaceFile.set(file);
@@ -68,7 +94,7 @@ export class ReplaceDatasetDialogComponent implements OnChanges {
     this.api.replaceDataset(dataset.id, formData).pipe(finalize(() => this.replacing.set(false))).subscribe({
       next: (updated) => {
         this.replaced.emit(updated);
-        this.closeDialog.emit();
+        this.finishClose();
       },
       error: (error: unknown) => this.replaceError.set(this.errorText(error, 'Unable to replace this dataset.')),
     });
@@ -84,5 +110,12 @@ export class ReplaceDatasetDialogComponent implements OnChanges {
       if (typeof message === 'string' && message.trim()) return message;
     }
     return fallback;
+  }
+
+  private finishClose(): void {
+    this.closeDialog.emit();
+    const focusTarget = this.previouslyFocused;
+    this.previouslyFocused = null;
+    setTimeout(() => focusTarget?.focus());
   }
 }

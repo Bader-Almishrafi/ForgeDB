@@ -80,10 +80,8 @@ export class DataSourcesComponent implements OnInit {
     this.importOpen.set(true);
   }
 
-  onDatasetImported(dataset: DatasetResponse): void {
-    this.importOpen.set(false);
-    this.importSource.set(null);
-    this.service.onDatasetImported(dataset);
+  onDatasetsImported(datasets: DatasetResponse[]): void {
+    this.service.onDatasetsImported(datasets);
   }
 
   onDatasetReplaced(updated: DatasetResponse): void {
