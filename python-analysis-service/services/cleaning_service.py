@@ -16,6 +16,7 @@ from models.cleaning import (
     CleaningRequest,
     CleaningResponse,
     ConversionFailure,
+    INTERNAL_ROW_MARKER,
 )
 
 
@@ -76,8 +77,8 @@ class CleaningService:
             warnings.extend(result.warnings)
             operation_results.append(result)
 
-        before_by_number = {row["__rowNumber"]: self._strip_tag(row) for row in original_rows}
-        after_by_number = {row["__rowNumber"]: self._strip_tag(row) for row in rows}
+        before_by_number = {row[INTERNAL_ROW_MARKER]: self._strip_tag(row) for row in original_rows}
+        after_by_number = {row[INTERNAL_ROW_MARKER]: self._strip_tag(row) for row in rows}
         changed_numbers = sorted(
             number
             for number in set(before_by_number) | set(after_by_number)
@@ -139,6 +140,8 @@ class CleaningService:
         new = str(operation.parameters.get("newName", "")).strip()
         if not new or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_ ]{0,127}", new):
             raise CleaningValidationError("New column name is invalid.")
+        if new.casefold() == INTERNAL_ROW_MARKER.casefold():
+            raise CleaningValidationError(f"Column name '{INTERNAL_ROW_MARKER}' is reserved for internal use.")
         if any(column.name.lower() == new.lower() and column.name.lower() != old.lower() for column in columns):
             raise CleaningValidationError(f"Column '{new}' already exists.")
         for row in rows:
@@ -210,10 +213,19 @@ class CleaningService:
                 text = text.replace(",", "")
             try:
                 number = Decimal(text.strip())
+                if not number.is_finite():
+                    raise ValueError("Value is not finite.")
                 if percentage or has_percent: number /= Decimal(100)
-                converted: Any = int(number) if target_type == "integer" and number == number.to_integral_value() else float(number)
                 if target_type == "integer" and number != number.to_integral_value():
                     raise ValueError("Value is not a whole number.")
+                if target_type == "integer":
+                    if number.adjusted() > 1_000:
+                        raise ValueError("Value is too large to serialize safely.")
+                    converted: Any = int(number)
+                else:
+                    converted = float(number)
+                    if not math.isfinite(converted):
+                        raise ValueError("Value is too large to serialize safely.")
             except (InvalidOperation, ValueError):
                 failures.append(self._failure(row, column, value, "Numeric normalization failed."))
                 continue
@@ -407,7 +419,7 @@ class CleaningService:
         if not isinstance(numbers, list) or not all(isinstance(value, int) and value > 0 for value in numbers):
             raise CleaningValidationError("rowNumbers must contain positive integers.")
         selected = set(numbers)
-        kept = [row for row in rows if row["__rowNumber"] not in selected]
+        kept = [row for row in rows if row[INTERNAL_ROW_MARKER] not in selected]
         result.rowsRemoved = len(rows) - len(kept)
         result.affectedRows = result.rowsRemoved
         result.destructive = result.rowsRemoved > 0
@@ -451,12 +463,12 @@ class CleaningService:
     @staticmethod
     def _tag_row(row: dict[str, Any], number: int) -> dict[str, Any]:
         tagged = dict(row)
-        tagged["__rowNumber"] = number
+        tagged[INTERNAL_ROW_MARKER] = number
         return tagged
 
     @staticmethod
     def _strip_tag(row: dict[str, Any]) -> dict[str, Any]:
-        return {key: value for key, value in row.items() if key != "__rowNumber"}
+        return {key: value for key, value in row.items() if key != INTERNAL_ROW_MARKER}
 
     @staticmethod
     def _is_missing(value: Any) -> bool:
@@ -466,9 +478,9 @@ class CleaningService:
     def _is_decimal(value: Any) -> bool:
         if isinstance(value, bool) or value is None: return False
         try:
-            Decimal(str(value).strip())
-            return True
-        except (InvalidOperation, ValueError):
+            number = Decimal(str(value).strip())
+            return number.is_finite() and math.isfinite(float(number))
+        except (InvalidOperation, OverflowError, ValueError):
             return False
 
     @staticmethod
@@ -498,7 +510,7 @@ class CleaningService:
 
     @staticmethod
     def _failure(row: dict[str, Any], column: str, value: Any, reason: str) -> ConversionFailure:
-        return ConversionFailure(rowNumber=row["__rowNumber"], column=column, value=value, reason=reason)
+        return ConversionFailure(rowNumber=row[INTERNAL_ROW_MARKER], column=column, value=value, reason=reason)
 
     def _parse_datetime(self, value: str, format_name: str) -> datetime:
         value = value.strip()
@@ -511,9 +523,16 @@ class CleaningService:
         if target == "string": return str(value)
         if target == "integer":
             number = Decimal(text)
+            if not number.is_finite(): raise ValueError("Value is not a finite number.")
             if number != number.to_integral_value(): raise ValueError("Value is not a whole number.")
+            if number.adjusted() > 1_000: raise ValueError("Value is too large to serialize safely.")
             return int(number)
-        if target == "decimal": return float(Decimal(text))
+        if target == "decimal":
+            number = Decimal(text)
+            if not number.is_finite(): raise ValueError("Value is not a finite number.")
+            converted = float(number)
+            if not math.isfinite(converted): raise ValueError("Value is too large to serialize safely.")
+            return converted
         if target == "boolean":
             normalized = text.lower()
             if normalized in {"true", "yes", "1"}: return True

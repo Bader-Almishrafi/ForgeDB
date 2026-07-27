@@ -1,11 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from models.analysis_request import AnalyzeRequest
 from models.analysis_response import AnalyzeResponse
 from models.cleaning import CleaningRequest, CleaningResponse
 from routers.analysis_router import router as legacy_analysis_router
 from services.analysis_service import AnalysisService
-from services.cleaning_service import CleaningService
+from services.cleaning_service import CleaningService, CleaningValidationError
 
 app = FastAPI(
     title="ForgeDB Python Analysis Service",
@@ -14,6 +15,20 @@ app = FastAPI(
 
 analysis_service = AnalysisService()
 cleaning_service = CleaningService()
+
+
+@app.exception_handler(CleaningValidationError)
+async def cleaning_validation_error(
+    _request: Request,
+    exception: CleaningValidationError,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=400,
+        content={
+            "code": "cleaning_validation_error",
+            "message": str(exception),
+        },
+    )
 
 
 @app.get("/health")

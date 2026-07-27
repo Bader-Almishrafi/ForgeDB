@@ -1,8 +1,25 @@
 from __future__ import annotations
 
+import math
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+INTERNAL_ROW_MARKER = "__rowNumber"
+
+
+def _contains_non_finite_number(value: Any) -> bool:
+    if isinstance(value, float):
+        return not math.isfinite(value)
+    if isinstance(value, Decimal):
+        return not value.is_finite()
+    if isinstance(value, dict):
+        return any(_contains_non_finite_number(item) for item in value.values())
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return any(_contains_non_finite_number(item) for item in value)
+    return False
 
 
 class CleaningColumn(BaseModel):
@@ -15,6 +32,8 @@ class CleaningColumn(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("Column name is required.")
+        if value.casefold() == INTERNAL_ROW_MARKER.casefold():
+            raise ValueError(f"Column name '{INTERNAL_ROW_MARKER}' is reserved for internal use.")
         return value
 
 
@@ -36,6 +55,13 @@ class CleaningOperation(BaseModel):
     @classmethod
     def normalize_column(cls, value: str | None) -> str | None:
         return value.strip() if value and value.strip() else None
+
+    @field_validator("parameters")
+    @classmethod
+    def validate_parameters_are_finite(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if _contains_non_finite_number(value):
+            raise ValueError("Cleaning parameters must not contain non-finite numeric values.")
+        return value
 
 
 class CleaningRequest(BaseModel):
@@ -63,6 +89,14 @@ class CleaningRequest(BaseModel):
         names = [column.name.lower() for column in self.columns]
         if len(names) != len(set(names)):
             raise ValueError("Duplicate column names are not allowed.")
+        if any(
+            key.casefold() == INTERNAL_ROW_MARKER.casefold()
+            for row in self.rows
+            for key in row
+        ):
+            raise ValueError(f"Row field '{INTERNAL_ROW_MARKER}' is reserved for internal use.")
+        if _contains_non_finite_number(self.rows):
+            raise ValueError("Cleaning rows must not contain non-finite numeric values.")
         return self
 
 

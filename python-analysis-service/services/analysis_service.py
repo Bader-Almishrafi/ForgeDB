@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import Counter
+import math
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -40,8 +40,17 @@ class AnalysisService:
         present_values = [value for value in raw_values if not self._is_missing(value)]
         detected_type = self._detect_type(present_values, column.dataType)
         normalized_values = [self._normalize_value(value) for value in present_values]
-        unique_values = set(normalized_values)
-        sample_values = list(dict.fromkeys(normalized_values))[: self.sample_value_limit]
+        unique_values = {self._stable_value_key(value) for value in normalized_values}
+        sample_values: list[Any] = []
+        sampled_keys: set[tuple[Any, ...]] = set()
+        for value in normalized_values:
+            value_key = self._stable_value_key(value)
+            if value_key in sampled_keys:
+                continue
+            sampled_keys.add(value_key)
+            sample_values.append(value)
+            if len(sample_values) == self.sample_value_limit:
+                break
 
         numeric_stats = self._numeric_stats(present_values) if detected_type in {"integer", "decimal"} else None
         top_values = self._top_values(normalized_values) if detected_type == "string" else []
@@ -79,20 +88,29 @@ class AnalysisService:
         if not numbers:
             return None
 
-        average = sum(numbers) / Decimal(len(numbers))
-
-        return NumericStats(
-            min=self._decimal_to_number(min(numbers)),
-            max=self._decimal_to_number(max(numbers)),
-            average=self._decimal_to_number(average),
-        )
+        try:
+            average = sum(numbers) / Decimal(len(numbers))
+            return NumericStats(
+                min=self._decimal_to_number(min(numbers)),
+                max=self._decimal_to_number(max(numbers)),
+                average=self._decimal_to_number(average),
+            )
+        except (ArithmeticError, OverflowError, ValueError):
+            return None
 
     def _top_values(self, values: list[Any]) -> list[TopValueSummary]:
-        counts = Counter(values)
+        counts: dict[tuple[Any, ...], tuple[Any, int]] = {}
+        for value in values:
+            value_key = self._stable_value_key(value)
+            first_value, count = counts.get(value_key, (value, 0))
+            counts[value_key] = (first_value, count + 1)
 
         return [
             TopValueSummary(value=value, count=count)
-            for value, count in sorted(counts.items(), key=lambda item: (-item[1], str(item[0])))[: self.top_value_limit]
+            for _, (value, count) in sorted(
+                counts.items(),
+                key=lambda item: (-item[1][1], repr(item[0])),
+            )[: self.top_value_limit]
         ]
 
     def _suggest_relationships(self, table_name: str, columns: list[ColumnInput]) -> list[RelationshipSuggestion]:
@@ -201,7 +219,10 @@ class AnalysisService:
         duplicate_count = 0
 
         for row in rows:
-            row_key = tuple(self._normalize_value(row.get(column.name)) for column in columns)
+            row_key = tuple(
+                self._stable_value_key(self._normalize_value(row.get(column.name)))
+                for column in columns
+            )
             if row_key in seen_rows:
                 duplicate_count += 1
             else:
@@ -213,12 +234,72 @@ class AnalysisService:
     def _is_missing(value: Any) -> bool:
         return value is None or (isinstance(value, str) and not value.strip())
 
-    @staticmethod
-    def _normalize_value(value: Any) -> Any:
+    @classmethod
+    def _normalize_value(cls, value: Any) -> Any:
         if isinstance(value, str):
             return value.strip()
 
-        return value
+        if isinstance(value, float):
+            if math.isnan(value):
+                return "NaN"
+            if math.isinf(value):
+                return "Infinity" if value > 0 else "-Infinity"
+            return value
+
+        if isinstance(value, Decimal):
+            if not value.is_finite():
+                return str(value)
+            if value == value.to_integral_value() and value.adjusted() <= 1_000:
+                return int(value)
+            converted = float(value)
+            return converted if math.isfinite(converted) else str(value)
+
+        if isinstance(value, dict):
+            return {
+                str(key): cls._normalize_value(nested_value)
+                for key, nested_value in sorted(
+                    value.items(),
+                    key=lambda item: (type(item[0]).__name__, str(item[0])),
+                )
+            }
+
+        if isinstance(value, (list, tuple)):
+            return [cls._normalize_value(item) for item in value]
+
+        if isinstance(value, (set, frozenset)):
+            normalized_items = [cls._normalize_value(item) for item in value]
+            return sorted(normalized_items, key=lambda item: repr(cls._stable_value_key(item)))
+
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+
+        if value is None or isinstance(value, (bool, int)):
+            return value
+
+        return str(value)
+
+    @classmethod
+    def _stable_value_key(cls, value: Any) -> tuple[Any, ...]:
+        normalized = cls._normalize_value(value)
+
+        if normalized is None:
+            return ("null",)
+        if isinstance(normalized, (bool, int, float)):
+            return ("number", normalized)
+        if isinstance(normalized, str):
+            return ("string", normalized)
+        if isinstance(normalized, dict):
+            return (
+                "object",
+                tuple(
+                    (key, cls._stable_value_key(nested_value))
+                    for key, nested_value in normalized.items()
+                ),
+            )
+        if isinstance(normalized, list):
+            return ("array", tuple(cls._stable_value_key(item) for item in normalized))
+
+        return ("other", repr(normalized))
 
     @staticmethod
     def _normalize_declared_type(value: str | None) -> str | None:
@@ -256,8 +337,8 @@ class AnalysisService:
             return False
 
         try:
-            Decimal(str(value).strip())
-            return True
+            number = Decimal(str(value).strip())
+            return number.is_finite()
         except (InvalidOperation, ValueError):
             return False
 
@@ -282,10 +363,19 @@ class AnalysisService:
 
     @staticmethod
     def _decimal_to_number(value: Decimal) -> float | int:
+        if not value.is_finite():
+            raise ValueError("Non-finite numeric values are not supported.")
+
         if value == value.to_integral_value():
+            if value.adjusted() > 1_000:
+                raise OverflowError("Numeric value is too large to serialize safely.")
             return int(value)
 
-        return float(value)
+        converted = float(value)
+        if not math.isfinite(converted):
+            raise OverflowError("Numeric value is too large to serialize safely.")
+
+        return converted
 
     @staticmethod
     def _pluralize(value: str) -> str:

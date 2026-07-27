@@ -836,18 +836,18 @@ docker compose down -v
 
 cd python-analysis-service
 
-python -m venv venv
+python -m venv .venv
 
 Activate venv:
 
 Windows:
-venv\Scripts\activate
+.venv\Scripts\activate
 
 Linux/macOS:
-source venv/bin/activate
+source .venv/bin/activate
 
 Install requirements:
 pip install -r requirements.txt
 
 Run:
-python main.py
+uvicorn app.main:app --reload --port 8002

@@ -121,3 +121,43 @@ def test_cannot_delete_every_column_and_rejects_invalid_requests():
         CleaningService().execute(request([{"only": 1}], [operation("delete_column", "only")], columns))
     with pytest.raises(ValidationError):
         request([], [])
+
+
+def test_rejects_reserved_internal_row_marker_in_columns_rows_and_renames():
+    with pytest.raises(ValidationError, match="reserved for internal use"):
+        CleaningColumn(name="__ROWNUMBER")
+
+    with pytest.raises(ValidationError, match="reserved for internal use"):
+        request(
+            [{"name": "A", "amount": 1, "__rowNumber": 99}],
+            [operation("fill_missing", "amount", strategy="zero")],
+        )
+
+    cleaning_request = request(
+        [{"name": "A", "amount": 1}],
+        [operation("rename_column", "name", newName="__rowNumber")],
+    )
+    with pytest.raises(CleaningValidationError, match="reserved for internal use"):
+        CleaningService().execute(cleaning_request)
+
+
+def test_non_finite_cleaning_values_are_rejected_or_reported_safely():
+    with pytest.raises(ValidationError, match="non-finite numeric values"):
+        request(
+            [{"name": "A", "amount": float("nan")}],
+            [operation("fill_missing", "amount", strategy="zero")],
+        )
+
+    with pytest.raises(ValidationError, match="non-finite numeric values"):
+        operation("fill_missing", "amount", strategy="custom", value=float("inf"))
+
+    result = CleaningService().execute(
+        request(
+            [{"name": "A", "amount": "NaN"}, {"name": "B", "amount": "Infinity"}],
+            [operation("normalize_numeric", "amount", targetType="decimal")],
+        )
+    )
+    assert result.resultRows[0]["amount"] == "NaN"
+    assert result.resultRows[1]["amount"] == "Infinity"
+    assert len(result.conversionFailures) == 2
+    assert "NaN" in result.model_dump_json()
