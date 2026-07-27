@@ -13,6 +13,8 @@ import { CleaningOperationRequest, CleaningPreviewResponse, CleaningSuggestion, 
 })
 export class CleaningPreviewDialogComponent implements OnChanges {
   private readonly dialog = viewChild<ElementRef<HTMLDialogElement>>('dialog');
+  private readonly closeButton = viewChild<ElementRef<HTMLButtonElement>>('closeButton');
+  private returnFocusElement: HTMLElement | null = null;
 
   @Input() result: CleaningPreviewResponse | null = null;
   @Input() operations: CleaningOperationRequest[] = [];
@@ -36,11 +38,18 @@ export class CleaningPreviewDialogComponent implements OnChanges {
 
   open(): void {
     const dialog = this.dialog()?.nativeElement;
-    if (dialog && !dialog.open) dialog.showModal();
+    if (!dialog || dialog.open) return;
+    this.returnFocusElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialog.showModal();
+    setTimeout(() => this.closeButton()?.nativeElement.focus());
   }
 
   close(): void {
-    this.dialog()?.nativeElement.close();
+    const dialog = this.dialog()?.nativeElement;
+    if (dialog?.open) dialog.close();
+    const returnFocusElement = this.returnFocusElement;
+    this.returnFocusElement = null;
+    setTimeout(() => returnFocusElement?.focus());
   }
 
   previewColumns(dataset: DatasetCleaningPreview): string[] {

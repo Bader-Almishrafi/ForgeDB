@@ -1,18 +1,18 @@
 <section class="mx-auto max-w-[1600px] space-y-6 overflow-x-hidden" data-testid="clean-page">
-  <header class="relative flex flex-col gap-5 overflow-hidden rounded-3xl border border-slate-200 bg-white/80 px-5 py-6 shadow-sm shadow-slate-200/50 backdrop-blur-xl sm:px-7 sm:py-8 lg:flex-row lg:items-end lg:justify-between dark:border-white/10 dark:bg-[#161b22]/80 dark:shadow-black/20 animate-fade-in-up">
+  <header class="page-header flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
     <div>
-      <p class="eyebrow">{{ apiService.projectName() }}</p>
-      <h1 class="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl dark:text-white">Clean</h1>
+      <p class="eyebrow">{{ apiService.projectName() }} · Step 3 of 5</p>
+      <h1 class="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl dark:text-white">Data Cleaning</h1>
       <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
         @if (apiService.summary()?.qualityConfirmed) { Quality confirmed for the current active versions. }
-        @else if (apiService.datasetsRequiringAnalysis().length) { Analysis is required before cleaning. }
-        @else { Review issues, preview changes, and create immutable cleaned versions. }
+        @else if (apiService.datasetsRequiringAnalysis().length) { Finish analysis before reviewing cleaning recommendations. }
+        @else { Review detected issues, safely preview every change, then confirm the quality of the active dataset versions. }
       </p>
     </div>
     @if (!apiService.loading() && apiService.datasets().length) {
       <label class="block min-w-64">
         <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cleaning scope</span>
-        <select class="input-field mt-2" data-testid="cleaning-scope-selector" [ngModel]="stateService.scope()" (ngModelChange)="stateService.changeScope($event)" [disabled]="apiService.previewLoading() || apiService.applyLoading() || apiService.reanalyzing()">
+        <select class="input-field mt-2" data-testid="cleaning-scope-selector" [ngModel]="stateService.scope()" (ngModelChange)="changeScope($event)" [disabled]="apiService.previewLoading() || apiService.applyLoading() || apiService.reanalyzing()">
           <option [ngValue]="'project'">All datasets</option>
           @for (dataset of apiService.datasets(); track dataset.datasetId) {
             <option [ngValue]="dataset.datasetId">{{ dataset.datasetName }}</option>
@@ -64,8 +64,8 @@
     @if (!apiService.datasets().length) {
       <div class="rounded-3xl border border-dashed border-slate-300 bg-white/60 px-6 py-14 text-center shadow-sm backdrop-blur dark:border-[#30363d] dark:bg-[#161b22]/60" data-testid="cleaning-empty-state">
         <h2 class="text-xl font-bold text-slate-950 dark:text-white">No datasets to clean</h2>
-        <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Add a dataset in Data before opening Clean.</p>
-        <a class="btn-primary mt-5" [routerLink]="['/projects', projectId, 'data']">Go to Data</a>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Import a dataset before opening Data Cleaning.</p>
+        <a class="btn-primary mt-5" [routerLink]="['/projects', projectId, 'data']">Go to Data Sources</a>
       </div>
     } @else if (apiService.datasetsRequiringAnalysis().length) {
       <section class="rounded-2xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900/50 dark:bg-amber-950/20" data-testid="analysis-required-state">
@@ -79,16 +79,16 @@
         @if (apiService.reanalyzing()) {
           <p class="mt-5 text-sm font-semibold text-amber-800 dark:text-amber-300">Re-analyzing in progress...</p>
         } @else {
-          <a class="btn-primary mt-5" [routerLink]="['/projects', projectId, 'analyze']" [queryParams]="navigationQuery()">Back to Analyze</a>
+          <a class="btn-primary mt-5" [routerLink]="['/projects', projectId, 'analyze']" [queryParams]="navigationQuery()">Go to Analysis</a>
         }
       </section>
     } @else {
       @if (stateService.scope() === 'project') {
-        <section class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-100" data-testid="cleaning-dataset-status">
+        <section class="workspace-panel p-5 sm:p-6" data-testid="cleaning-dataset-status">
           <h2 class="text-lg font-bold text-slate-950 dark:text-white">Dataset status</h2>
-          <div class="mt-4 flex gap-4 overflow-x-auto pb-4 snap-x">
+          <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             @for (dataset of apiService.datasets(); track dataset.datasetId) {
-              <div class="min-w-[320px] shrink-0 snap-start flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white/50 p-4 dark:border-slate-800 dark:bg-black/20">
+              <div class="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white/50 p-4 dark:border-slate-800 dark:bg-black/20">
                 <div class="min-w-0 flex-1">
                   <p class="truncate font-semibold text-slate-900 dark:text-white">{{ dataset.datasetName }}</p>
                   <p class="mt-1 text-xs text-slate-500">Active v{{ dataset.versionNumber }} · {{ apiService.datasetVersionKind(dataset) }} · {{ dataset.rowCount | number }} rows</p>
@@ -105,17 +105,18 @@
         </section>
       }
 
-      <section class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-100" data-testid="cleaning-issues">
+      <section class="workspace-panel p-5 sm:p-6" data-testid="cleaning-issues">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h2 class="text-xl font-bold text-slate-950 dark:text-white">Issues</h2>
-            <p class="mt-1 text-sm text-slate-500">Select a strategy and preview every operation before applying.</p>
+            <h2 class="text-xl font-bold text-slate-950 dark:text-white">Recommended changes</h2>
+            <p class="mt-1 text-sm text-slate-500">Previewing never changes saved data. Applying an approved preview creates a new version.</p>
           </div>
           <div class="text-left lg:text-right">
-            <button type="button" class="btn-primary" data-testid="preview-recommended" (click)="previewRecommendedFixes()" [disabled]="apiService.previewLoading() || apiService.applyLoading() || apiService.reanalyzing()">
-              Preview Recommended Fixes
-            </button>
-            @if (!stateService.safeRecommendations().length) {
+            @if (stateService.safeRecommendations().length) {
+              <button type="button" class="btn-primary" data-testid="preview-recommended" (click)="previewRecommendedFixes()" [disabled]="apiService.previewLoading() || apiService.applyLoading() || apiService.reanalyzing()">
+                Preview safe recommended fixes
+              </button>
+            } @else {
               <p class="mt-2 max-w-sm text-xs text-slate-500">No safe recommendations are available; review issues individually.</p>
             }
           </div>
@@ -180,7 +181,7 @@
         </section>
       }
 
-      <section class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-200" data-testid="quality-confirmation">
+      <section class="workspace-panel p-5 sm:p-6" data-testid="quality-confirmation">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 class="text-lg font-bold text-slate-950 dark:text-white">Data quality</h2>
@@ -188,13 +189,15 @@
             @else { <p class="mt-1 text-sm text-slate-500">Confirm only after reviewing the current analyzed versions.</p> }
           </div>
           @if (!apiService.summary()?.qualityConfirmed) {
-            <button type="button" class="btn-primary" data-testid="confirm-quality" (click)="confirmQuality()" [disabled]="!apiService.canConfirmQuality() || apiService.applyLoading() || apiService.reanalyzing()">Confirm Data Quality</button>
+            <button type="button" [class]="stateService.scopeSuggestions().length ? 'btn-secondary' : 'btn-primary'" data-testid="confirm-quality" (click)="confirmQuality()" [disabled]="!apiService.canConfirmQuality() || apiService.applyLoading() || apiService.reanalyzing()">
+              {{ stateService.scopeSuggestions().length ? 'Confirm quality without changes' : 'Confirm Data Quality' }}
+            </button>
           }
         </div>
       </section>
 
-      <details class="workspace-panel p-5 animate-fade-in-up delay-300" data-testid="cleaning-history">
-        <summary class="cursor-pointer font-bold text-slate-950 dark:text-white">Cleaning history ({{ apiService.history().length }})</summary>
+      <details class="workspace-panel p-5" data-testid="cleaning-history">
+        <summary class="cursor-pointer font-semibold text-slate-700 dark:text-slate-200">View cleaning history ({{ apiService.history().length }})</summary>
         @if (apiService.history().length) {
           <div class="mt-4 divide-y divide-slate-100 dark:divide-slate-800">
             @for (entry of apiService.history(); track entry.batchId) {
@@ -211,7 +214,7 @@
 
       @if (stateService.selectedDataset(); as dataset) {
         <details class="workspace-panel p-5" data-testid="dataset-version-history">
-          <summary class="cursor-pointer font-bold text-slate-950 dark:text-white">Dataset versions ({{ apiService.datasetVersions(dataset.datasetId).length }})</summary>
+          <summary class="cursor-pointer font-semibold text-slate-700 dark:text-slate-200">View {{ dataset.datasetName }} version details ({{ apiService.datasetVersions(dataset.datasetId).length }})</summary>
           <div class="mt-4 divide-y divide-slate-100 dark:divide-slate-800">
             @for (version of apiService.datasetVersions(dataset.datasetId); track version.id) {
               <div class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -223,11 +226,15 @@
         </details>
       }
 
-      <footer class="flex flex-col-reverse gap-3 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm backdrop-blur-xl dark:border-slate-700 dark:bg-[#161b22]/80 sm:flex-row sm:items-center sm:justify-between animate-fade-in-up delay-300">
-        <a class="btn-secondary justify-center" [routerLink]="['/projects', projectId, 'analyze']" [queryParams]="navigationQuery()">Back to Analyze</a>
-        <div class="text-right">
-          <button type="button" class="btn-primary justify-center" data-testid="continue-to-schema" (click)="continueToSchema()" [disabled]="!apiService.canContinueToSchema()" [title]="apiService.canContinueToSchema() ? '' : apiService.schemaBlockingReason()">Continue to Schema</button>
-          @if (!apiService.canContinueToSchema()) { <p class="mt-2 max-w-md text-xs text-slate-500">{{ apiService.schemaBlockingReason() }}</p> }
+      <footer class="workflow-page-footer">
+        <a class="btn-secondary justify-center" [routerLink]="['/projects', projectId, 'analyze']" [queryParams]="navigationQuery()">Back to Analysis</a>
+        <div class="sm:text-right">
+          <button type="button" class="btn-primary justify-center" data-testid="continue-to-schema" (click)="continueToSchema()" [disabled]="!apiService.canContinueToSchema()">Continue to Schema Design</button>
+          @if (apiService.canContinueToSchema()) {
+            <p class="mt-2 max-w-md text-xs text-slate-500">Next: define tables and relationships in Schema Design.</p>
+          } @else {
+            <p class="mt-2 max-w-md text-xs font-medium text-amber-700 dark:text-amber-300" role="status"><strong>Before continuing:</strong> {{ apiService.schemaBlockingReason() }}</p>
+          }
         </div>
       </footer>
     }
@@ -246,10 +253,10 @@
     (removeRequested)="removePreviewOperation($event)"
     (applyRequested)="applyPreview()" />
 
-  <dialog #confirmDialog class="w-[min(94vw,34rem)] rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-[#161b22] dark:text-white" (cancel)="closeConfirmDialog()" data-testid="version-confirmation-dialog">
+  <dialog #confirmDialog class="w-[min(94vw,34rem)] rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-[#161b22] dark:text-white" aria-labelledby="version-confirmation-title" aria-describedby="version-confirmation-description" (cancel)="$event.preventDefault(); closeConfirmDialog()" data-testid="version-confirmation-dialog">
     @if (apiService.confirmAction(); as action) {
-      <div class="p-6"><h2 class="text-xl font-bold">{{ action.kind === 'undo' ? 'Undo as new active version?' : 'Restore as new active version?' }}</h2><p class="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">@if (action.kind === 'undo') { ForgeDB will copy the persisted source snapshots into new active versions. } @else { ForgeDB will copy historical v{{ action.version.versionNumber }} into a new active version. } Existing versions remain unchanged and visible in history.</p></div>
-      <div class="flex justify-end gap-3 border-t border-slate-200 p-5 dark:border-slate-800"><button type="button" class="btn-secondary" (click)="closeConfirmDialog()" [disabled]="apiService.applyLoading()">Cancel</button><button type="button" class="btn-primary" (click)="confirmUndoOrRestore()" [disabled]="apiService.applyLoading()">{{ action.kind === 'undo' ? 'Undo as new active version' : 'Restore as new active version' }}</button></div>
+      <div class="p-6"><h2 id="version-confirmation-title" class="text-xl font-bold">{{ action.kind === 'undo' ? 'Undo as new active version?' : 'Restore as new active version?' }}</h2><p id="version-confirmation-description" class="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">@if (action.kind === 'undo') { ForgeDB will copy the persisted source snapshots into new active versions. } @else { ForgeDB will copy historical v{{ action.version.versionNumber }} into a new active version. } Existing versions remain unchanged and visible in history.</p></div>
+      <div class="flex justify-end gap-3 border-t border-slate-200 p-5 dark:border-slate-800"><button #confirmCancelButton type="button" class="btn-secondary" (click)="closeConfirmDialog()" [disabled]="apiService.applyLoading()">Cancel</button><button type="button" class="btn-primary" (click)="confirmUndoOrRestore()" [disabled]="apiService.applyLoading()">{{ action.kind === 'undo' ? 'Undo as new active version' : 'Restore as new active version' }}</button></div>
     }
   </dialog>
 </section>

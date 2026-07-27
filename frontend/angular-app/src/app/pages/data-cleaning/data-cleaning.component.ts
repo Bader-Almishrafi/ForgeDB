@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, OnInit, viewChild, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, effect, inject, OnInit, signal, viewChild, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -30,10 +30,18 @@ export class DataCleaningComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  private queryDatasetValue: string | null = null;
+  private readonly queryDatasetValue = signal<string | null | undefined>(undefined);
+
+  private readonly applyRouteScopeWhenReady = effect(() => {
+    const queryDatasetValue = this.queryDatasetValue();
+    if (queryDatasetValue === undefined || !this.apiService.summary()) return;
+    this.applyRouteScope(queryDatasetValue);
+  });
 
   readonly previewDialog = viewChild(CleaningPreviewDialogComponent);
   readonly confirmDialog = viewChild<ElementRef<HTMLDialogElement>>('confirmDialog');
+  readonly confirmCancelButton = viewChild<ElementRef<HTMLButtonElement>>('confirmCancelButton');
+  private returnFocusElement: HTMLElement | null = null;
 
   readonly bulkStrategyOptions = computed(() => {
     const selected = this.stateService.selectedSuggestions();
@@ -60,25 +68,39 @@ export class DataCleaningComponent implements OnInit {
     }
 
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
-      this.queryDatasetValue = params.get('datasetId');
+      this.queryDatasetValue.set(params.get('datasetId'));
       if (params.has('issueType') || params.has('column') || params.has('search')) this.removeLegacyFilterParams();
-      if (this.apiService.summary()) this.applyRouteScope();
     });
     this.apiService.loadWorkspace(this.projectId);
   }
 
   openDataset(datasetId: number): void {
-    this.stateService.changeScope(datasetId);
+    this.changeScope(datasetId);
+  }
+
+  changeScope(value: 'project' | number): void {
+    const nextScope = value === 'project' ? 'project' : Number(value);
+    if (nextScope !== 'project' && (!Number.isInteger(nextScope) || !this.apiService.datasets().some((dataset) => dataset.datasetId === nextScope))) {
+      return;
+    }
+
+    this.apiService.invalidatePreview();
+    this.apiService.clearVersions();
+    this.stateService.changeScope(nextScope);
+    this.updateDatasetQuery(nextScope === 'project' ? null : nextScope, false);
+    if (nextScope !== 'project') void this.apiService.loadVersions(nextScope);
   }
 
   async previewSuggestion(suggestion: CleaningSuggestion): Promise<void> {
     await this.apiService.previewOperationsRequest([this.stateService.buildOperation(suggestion)]);
+    if (!this.apiService.preview()) this.stateService.resetIssueSelection();
   }
 
   async previewSelected(): Promise<void> {
     const selected = this.stateService.selectedSuggestions();
     if (!selected.length) return;
     await this.apiService.previewOperationsRequest(this.stateService.buildOperations(selected));
+    if (!this.apiService.preview()) this.stateService.resetIssueSelection();
   }
 
   applyBulkStrategy(strategyKey: string): void {
@@ -100,6 +122,7 @@ export class DataCleaningComponent implements OnInit {
     }
     this.stateService.selectedIds.set(new Set(safe.map((s) => s.id)));
     await this.apiService.previewOperationsRequest(this.stateService.buildOperations(safe));
+    if (!this.apiService.preview()) this.stateService.resetIssueSelection();
   }
 
   closePreview(force = false): void {
@@ -123,18 +146,19 @@ export class DataCleaningComponent implements OnInit {
       return;
     }
     await this.apiService.previewOperationsRequest(remaining);
+    if (!this.apiService.preview()) this.stateService.resetIssueSelection();
   }
 
   requestUndo(): void {
     if (!this.apiService.latestUndoable()) return;
     this.apiService.confirmAction.set({ kind: 'undo' });
-    this.confirmDialog()?.nativeElement.showModal();
+    this.openConfirmDialog();
   }
 
   requestRestore(datasetId: number, version: DatasetVersion): void {
     if (version.isActive) return;
     this.apiService.confirmAction.set({ kind: 'restore', datasetId, version });
-    this.confirmDialog()?.nativeElement.showModal();
+    this.openConfirmDialog();
   }
 
   closeConfirmDialog(): void {
@@ -143,7 +167,10 @@ export class DataCleaningComponent implements OnInit {
   }
 
   async confirmUndoOrRestore(): Promise<void> {
-    await this.apiService.confirmUndoOrRestore(() => this.dismissConfirmDialog());
+    await this.apiService.confirmUndoOrRestore(() => {
+      this.dismissConfirmDialog();
+      this.stateService.resetIssueSelection();
+    });
   }
 
   async retryAnalysis(): Promise<void> {
@@ -167,30 +194,41 @@ export class DataCleaningComponent implements OnInit {
 
   private dismissConfirmDialog(): void {
     this.apiService.confirmAction.set(null);
-    this.confirmDialog()?.nativeElement.close();
+    const dialog = this.confirmDialog()?.nativeElement;
+    if (dialog?.open) dialog.close();
+    const returnFocusElement = this.returnFocusElement;
+    this.returnFocusElement = null;
+    setTimeout(() => returnFocusElement?.focus());
   }
 
-  private applyRouteScope(): void {
-    if (this.queryDatasetValue === null) {
-      this.stateService.scope.set('project');
-      this.workflowContext.setDatasetFromQuery(null);
+  private openConfirmDialog(): void {
+    this.returnFocusElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = this.confirmDialog()?.nativeElement;
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
+    setTimeout(() => this.confirmCancelButton()?.nativeElement.focus());
+  }
+
+  private applyRouteScope(queryDatasetValue: string | null): void {
+    if (queryDatasetValue === null) {
+      if (this.stateService.scope() !== 'project') this.stateService.changeScope('project');
+      else this.workflowContext.setDatasetFromQuery(null);
+      this.apiService.clearVersions();
       return;
     }
-    const datasetId = Number(this.queryDatasetValue);
+    const datasetId = Number(queryDatasetValue);
     if (Number.isInteger(datasetId) && datasetId > 0 && this.apiService.datasets().some((d) => d.datasetId === datasetId)) {
-      this.stateService.scope.set(datasetId);
-      this.workflowContext.setDatasetFromQuery(datasetId);
+      this.stateService.changeScope(datasetId);
       void this.apiService.loadVersions(datasetId);
       return;
     }
-    this.stateService.scope.set('project');
-    this.workflowContext.setDatasetFromQuery(null);
+    this.stateService.changeScope('project');
+    this.apiService.clearVersions();
     this.stateService.scopeNotice.set('The selected dataset is not in this project. Showing all datasets.');
     this.updateDatasetQuery(null, true);
   }
 
   private updateDatasetQuery(datasetId: number | null, replaceUrl: boolean): void {
-    this.queryDatasetValue = datasetId === null ? null : String(datasetId);
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParamsHandling: 'merge',

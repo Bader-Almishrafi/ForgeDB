@@ -44,6 +44,8 @@ export class DataCleaningApiService {
 
   projectId = 0;
   private loadVersion = 0;
+  private versionCacheGeneration = 0;
+  private readonly versionRequests = new Map<number, { token: symbol; promise: Promise<void> }>();
 
   readonly loading = signal(true);
   readonly loadError = signal('');
@@ -145,12 +147,41 @@ export class DataCleaningApiService {
   }
 
   async loadVersions(datasetId: number): Promise<void> {
-    try {
-      const versions = await firstValueFrom(this.forgeApi.getDatasetVersions(this.projectId, datasetId));
-      this.versions.update((current) => ({ ...current, [datasetId]: versions }));
-    } catch {
-      this.versions.update((current) => ({ ...current, [datasetId]: [] }));
+    const existing = this.versionRequests.get(datasetId);
+    if (existing) return existing.promise;
+
+    const generation = this.versionCacheGeneration;
+    const token = Symbol();
+    const request = (async () => {
+      try {
+        const versions = await firstValueFrom(this.forgeApi.getDatasetVersions(this.projectId, datasetId));
+        if (generation === this.versionCacheGeneration) {
+          this.versions.update((current) => ({ ...current, [datasetId]: versions }));
+        }
+      } catch {
+        if (generation === this.versionCacheGeneration) {
+          this.versions.update((current) => ({ ...current, [datasetId]: [] }));
+        }
+      } finally {
+        if (this.versionRequests.get(datasetId)?.token === token) this.versionRequests.delete(datasetId);
+      }
+    })();
+    this.versionRequests.set(datasetId, { token, promise: request });
+    return request;
+  }
+
+  clearVersions(datasetIds?: number[]): void {
+    if (datasetIds?.length === 0) return;
+    this.versionCacheGeneration++;
+    this.versionRequests.clear();
+    if (!datasetIds) {
+      this.versions.set({});
+      return;
     }
+    const ids = new Set(datasetIds);
+    this.versions.update((current) => Object.fromEntries(
+      Object.entries(current).filter(([datasetId]) => !ids.has(Number(datasetId)))
+    ));
   }
 
   datasetWorkflow(datasetId: number): ProjectWorkflowDataset | null {
@@ -194,12 +225,17 @@ export class DataCleaningApiService {
 
   async previewOperationsRequest(operations: CleaningOperationRequest[]): Promise<void> {
     if (!operations.length || this.previewLoading() || this.applyLoading() || !this.cleaningReady()) return;
+    this.invalidatePreview();
     this.previewLoading.set(true);
     this.feedback.set(null);
     try {
       const preview = await firstValueFrom(this.forgeApi.previewCleaning(this.projectId, { operations }));
       if (!this.previewMatchesExpectedVersions(preview, operations)) {
-        await this.recoverFromStaleVersion();
+        await this.recoverFromStaleVersion({
+          kind: 'warning',
+          title: 'Preview incomplete',
+          message: 'The preview did not cover every selected dataset at its expected active version. Nothing was changed; review the refreshed recommendations and preview again.',
+        });
         return;
       }
       this.preview.set(preview);
@@ -209,30 +245,41 @@ export class DataCleaningApiService {
     } catch (error: unknown) {
       if (this.isActiveVersionConflict(error)) await this.recoverFromStaleVersion();
       else this.feedback.set({ kind: 'error', title: 'Preview failed', message: this.errorMessage(error, 'The selected changes could not be previewed.') });
-      throw error;
     } finally {
       this.previewLoading.set(false);
     }
   }
 
   private previewMatchesExpectedVersions(preview: CleaningPreviewResponse, operations: CleaningOperationRequest[]): boolean {
-    return preview.datasets.every((dataset) => operations
-      .filter((operation) => operation.datasetId === dataset.datasetId)
-      .every((operation) => operation.expectedSourceVersionId === dataset.sourceVersionId));
+    const operationsByDataset = new Map<number, CleaningOperationRequest[]>();
+    for (const operation of operations) {
+      const datasetOperations = operationsByDataset.get(operation.datasetId) ?? [];
+      datasetOperations.push(operation);
+      operationsByDataset.set(operation.datasetId, datasetOperations);
+    }
+
+    if (preview.datasets.length !== operationsByDataset.size) return false;
+    return [...operationsByDataset.entries()].every(([datasetId, datasetOperations]) => {
+      const matchingPreviews = preview.datasets.filter((dataset) => dataset.datasetId === datasetId);
+      return matchingPreviews.length === 1
+        && datasetOperations.every((operation) => operation.expectedSourceVersionId === matchingPreviews[0].sourceVersionId);
+    });
   }
 
-  async recoverFromStaleVersion(): Promise<void> {
+  async recoverFromStaleVersion(message: FeedbackMessage = {
+    kind: 'warning',
+    title: 'Preview expired',
+    message: 'The active dataset version changed. Review the latest suggestions and preview again.',
+  }): Promise<void> {
     this.invalidatePreview();
+    this.history.set([]);
+    this.clearVersions();
     try {
       await this.reloadWorkspace(true);
     } catch (error: unknown) {
       this.loadError.set(this.errorMessage(error, 'The cleaning workspace could not be refreshed.'));
     } finally {
-      this.feedback.set({
-        kind: 'warning',
-        title: 'Preview expired',
-        message: 'The active dataset version changed. Review the latest suggestions and preview again.',
-      });
+      this.feedback.set(message);
     }
   }
 
@@ -324,6 +371,10 @@ export class DataCleaningApiService {
   async processVersionResult(result: CleaningApplyResponse, successTitle: string): Promise<void> {
     const successful = result.datasets.filter((dataset) => dataset.success && dataset.versionId != null);
     const cleaningFailures = result.datasets.filter((dataset) => !dataset.success);
+    const changedDatasetIds = successful.map((dataset) => dataset.datasetId);
+    this.invalidatePreview();
+    this.history.set([]);
+    this.clearVersions(changedDatasetIds);
     try {
       await this.reloadWorkspace(true);
     } catch (error: unknown) {
@@ -348,6 +399,7 @@ export class DataCleaningApiService {
       expectedVersionId: dataset.versionId ?? null,
     }));
     const analysisFailures = await this.analyzeTargets(targets);
+    await Promise.all(changedDatasetIds.map((datasetId) => this.loadVersions(datasetId)));
 
     if (analysisFailures.length) {
       this.feedback.set({

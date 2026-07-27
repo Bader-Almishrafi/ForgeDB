@@ -234,21 +234,42 @@ describe('DataCleaningComponent', () => {
 
   it('uses project scope when datasetId is absent', async () => {
     const { component } = await setup();
-    expect(component.scope()).toBe('project');
-    expect(component.filteredSuggestions()).toHaveLength(2);
+    expect(component.stateService.scope()).toBe('project');
+    expect(component.stateService.filteredSuggestions()).toHaveLength(2);
   });
 
   it('uses a valid dataset scope and loads its version history', async () => {
     const { component, api } = await setup({ datasetId: '1' });
-    expect(component.scope()).toBe(1);
-    expect(component.filteredSuggestions().map((suggestion) => suggestion.id)).toEqual(['missing']);
+    expect(component.stateService.scope()).toBe(1);
+    expect(component.stateService.filteredSuggestions().map((suggestion) => suggestion.id)).toEqual(['missing']);
     expect(api['getDatasetVersions']).toHaveBeenCalledWith(10, 1);
+  });
+
+  it('updates the URL and version history when the user changes cleaning scope', async () => {
+    const { component, api, navigate } = await setup();
+
+    component.changeScope(1);
+    await Promise.resolve();
+    expect(component.stateService.scope()).toBe(1);
+    expect(api['getDatasetVersions']).toHaveBeenCalledWith(10, 1);
+    expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({
+      replaceUrl: false,
+      queryParams: expect.objectContaining({ datasetId: 1 }),
+    }));
+
+    component.changeScope('project');
+    expect(component.stateService.scope()).toBe('project');
+    expect(component.apiService.versions()).toEqual({});
+    expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({
+      replaceUrl: false,
+      queryParams: expect.objectContaining({ datasetId: null }),
+    }));
   });
 
   it('removes an invalid datasetId and returns to project scope with one notice', async () => {
     const { component, navigate } = await setup({ datasetId: '999' });
-    expect(component.scope()).toBe('project');
-    expect(component.scopeNotice()).toContain('not in this project');
+    expect(component.stateService.scope()).toBe('project');
+    expect(component.stateService.scopeNotice()).toContain('not in this project');
     expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ replaceUrl: true, queryParams: expect.objectContaining({ datasetId: null }) }));
   });
 
@@ -277,17 +298,17 @@ describe('DataCleaningComponent', () => {
 
   it('supports quality confirmation when analysis finds no issues without creating a version', async () => {
     const { component, api } = await setup({ summary: makeSummary({ totalIssues: 0, canConfirmQuality: true }), suggestions: [] });
-    expect(component.canConfirmQuality()).toBe(true);
+    expect(component.apiService.canConfirmQuality()).toBe(true);
     await component.confirmQuality();
     expect(api['confirmCleaningQuality']).toHaveBeenCalledWith(10);
     expect(api['applyCleaning']).not.toHaveBeenCalled();
-    expect(component.summary()?.qualityConfirmed).toBe(true);
+    expect(component.apiService.summary()?.qualityConfirmed).toBe(true);
   });
 
   it('uses the selected custom-value strategy and carries the expected source version', async () => {
     const { component, api } = await setup();
-    component.updateStrategy(baseSuggestions[0], 'custom');
-    component.updateCustomValue('missing', 'Unknown');
+    component.stateService.updateStrategy(baseSuggestions[0], 'custom');
+    component.stateService.updateCustomValue('missing', 'Unknown');
     await component.previewSuggestion(baseSuggestions[0]);
     expect(api['previewCleaning']).toHaveBeenCalledWith(10, { operations: [expect.objectContaining({ expectedSourceVersionId: 11, parameters: { strategy: 'custom', value: 'Unknown' } })] });
   });
@@ -295,7 +316,7 @@ describe('DataCleaningComponent', () => {
   it('passes duplicate identifying columns only for the duplicate strategy', async () => {
     const preview = makePreview(2, 12, true);
     const { component, api } = await setup({ preview });
-    component.updateDuplicateColumns('duplicates', 'id, created_at');
+    component.stateService.updateDuplicateColumns('duplicates', 'id, created_at');
     await component.previewSuggestion(baseSuggestions[1]);
     expect(api['previewCleaning'].mock.calls[0][1].operations[0].parameters.columns).toEqual(['id', 'created_at']);
   });
@@ -305,7 +326,7 @@ describe('DataCleaningComponent', () => {
     await component.previewRecommendedFixes();
     const operations = api['previewCleaning'].mock.calls[0][1].operations;
     expect(operations.map((operation: { suggestionId: string }) => operation.suggestionId)).toEqual(['missing']);
-    expect(component.selectedIds().has('duplicates')).toBe(false);
+    expect(component.stateService.selectedIds().has('duplicates')).toBe(false);
   });
 
   it('previews selected issues together', async () => {
@@ -313,10 +334,36 @@ describe('DataCleaningComponent', () => {
     combined.datasets.push(makePreview(2, 12, true).datasets[0]);
     combined.destructive = true;
     const { component, api } = await setup({ preview: combined });
-    component.toggleSuggestion(baseSuggestions[0]);
-    component.toggleSuggestion(baseSuggestions[1]);
+    component.stateService.toggleSuggestion(baseSuggestions[0]);
+    component.stateService.toggleSuggestion(baseSuggestions[1]);
     await component.previewSelected();
     expect(api['previewCleaning'].mock.calls[0][1].operations).toHaveLength(2);
+  });
+
+  it('rejects a preview response that omits one of the requested datasets', async () => {
+    const { component } = await setup({ preview: makePreview(1, 11) });
+    component.stateService.toggleSuggestion(baseSuggestions[0]);
+    component.stateService.toggleSuggestion(baseSuggestions[1]);
+
+    await component.previewSelected();
+
+    expect(component.apiService.preview()).toBeNull();
+    expect(component.apiService.feedback()?.title).toBe('Preview incomplete');
+    expect(component.stateService.selectedIds().size).toBe(0);
+  });
+
+  it('surfaces preview HTTP failures without rejecting the UI action', async () => {
+    const { component, state } = await setup();
+    state.previewError = new HttpErrorResponse({ status: 502, error: { detail: 'Preview service unavailable.' } });
+
+    await expect(component.previewSuggestion(baseSuggestions[0])).resolves.toBeUndefined();
+
+    expect(component.apiService.preview()).toBeNull();
+    expect(component.apiService.feedback()).toEqual(expect.objectContaining({
+      kind: 'error',
+      title: 'Preview failed',
+      message: 'Preview service unavailable.',
+    }));
   });
 
   it('requires explicit confirmation before applying destructive operations', async () => {
@@ -324,7 +371,7 @@ describe('DataCleaningComponent', () => {
     await component.previewSuggestion(baseSuggestions[1]);
     await component.applyPreview();
     expect(api['applyCleaning']).not.toHaveBeenCalled();
-    component.destructiveConfirmed.set(true);
+    component.apiService.destructiveConfirmed.set(true);
     await component.applyPreview();
     expect(api['applyCleaning']).toHaveBeenCalled();
     expect(state.versions[2]).toHaveLength(1);
@@ -333,11 +380,11 @@ describe('DataCleaningComponent', () => {
   it('invalidates selection and refreshes workflow after a stale-preview conflict', async () => {
     const { component, api, state } = await setup();
     state.previewError = new HttpErrorResponse({ status: 409, error: { code: 'active_version_changed', message: 'changed' } });
-    component.toggleSuggestion(baseSuggestions[0]);
+    component.stateService.toggleSuggestion(baseSuggestions[0]);
     await component.previewSelected();
-    expect(component.preview()).toBeNull();
-    expect(component.selectedIds().size).toBe(0);
-    expect(component.feedback()?.message).toContain('preview again');
+    expect(component.apiService.preview()).toBeNull();
+    expect(component.stateService.selectedIds().size).toBe(0);
+    expect(component.apiService.feedback()?.message).toContain('preview again');
     expect(api['getProjectWorkflow'].mock.calls.length).toBeGreaterThan(1);
   });
 
@@ -345,10 +392,12 @@ describe('DataCleaningComponent', () => {
     const { component, api, state } = await setup();
     await component.previewSuggestion(baseSuggestions[0]);
     await component.applyPreview();
-    expect(component.datasets().find((dataset) => dataset.datasetId === 1)?.versionNumber).toBe(2);
+    expect(component.apiService.datasets().find((dataset) => dataset.datasetId === 1)?.versionNumber).toBe(2);
     expect(state.versions[1][0].isActive).toBe(true);
     expect(api['analyzeDataset']).toHaveBeenCalledWith(1, { analysisType: 'profile' });
     expect(api['getDatasetAnalysis']).toHaveBeenCalledWith(1);
+    expect(api['getDatasetVersions']).toHaveBeenCalledWith(10, 1);
+    expect(api['getCleaningHistory'].mock.calls.length).toBeGreaterThan(1);
   });
 
   it('automatically analyzes only datasets that successfully created versions', async () => {
@@ -368,8 +417,8 @@ describe('DataCleaningComponent', () => {
     state.analysisFailIds.add(1);
     await component.previewSuggestion(baseSuggestions[0]);
     await component.applyPreview();
-    expect(component.analysisFailures().map((failure) => failure.datasetId)).toEqual([1]);
-    expect(component.feedback()?.title).toContain('re-analysis incomplete');
+    expect(component.apiService.analysisFailures().map((failure) => failure.datasetId)).toEqual([1]);
+    expect(component.apiService.feedback()?.title).toContain('re-analysis incomplete');
     expect(state.versions[1][0].versionNumber).toBe(2);
   });
 
@@ -383,7 +432,7 @@ describe('DataCleaningComponent', () => {
     await component.retryAnalysis();
     expect(api['analyzeDataset']).toHaveBeenCalledTimes(1);
     expect(api['analyzeDataset']).toHaveBeenCalledWith(1, { analysisType: 'profile' });
-    expect(component.analysisFailures()).toEqual([]);
+    expect(component.apiService.analysisFailures()).toEqual([]);
   });
 
   it('handles active-version conflict during automatic analysis without marking success', async () => {
@@ -391,8 +440,8 @@ describe('DataCleaningComponent', () => {
     state.analysisConflictIds.add(1);
     await component.previewSuggestion(baseSuggestions[0]);
     await component.applyPreview();
-    expect(component.analysisFailures()[0]?.conflict).toBe(true);
-    expect(component.feedback()?.kind).toBe('warning');
+    expect(component.apiService.analysisFailures()[0]?.conflict).toBe(true);
+    expect(component.apiService.feedback()?.kind).toBe('warning');
   });
 
   it('force-refreshes workflow after apply and analysis', async () => {
@@ -408,6 +457,7 @@ describe('DataCleaningComponent', () => {
     await component.confirmUndoOrRestore();
     expect(api['undoLatestCleaning']).toHaveBeenCalledWith(10);
     expect(api['analyzeDataset']).toHaveBeenCalledWith(1, { analysisType: 'profile' });
+    expect(api['getDatasetVersions']).toHaveBeenCalledWith(10, 1);
   });
 
   it('restores a historical version as a new active version and analyzes it', async () => {
@@ -418,6 +468,7 @@ describe('DataCleaningComponent', () => {
     await component.confirmUndoOrRestore();
     expect(api['restoreDatasetVersion']).toHaveBeenCalledWith(10, 1, 11);
     expect(api['analyzeDataset']).toHaveBeenCalledWith(1, { analysisType: 'profile' });
+    expect(api['getDatasetVersions'].mock.calls.filter((call) => call[1] === 1).length).toBeGreaterThanOrEqual(2);
   });
 
   it('refreshes workflow after quality confirmation', async () => {
@@ -425,7 +476,7 @@ describe('DataCleaningComponent', () => {
     const before = api['getProjectWorkflow'].mock.calls.length;
     await component.confirmQuality();
     expect(api['getProjectWorkflow'].mock.calls.length).toBeGreaterThan(before);
-    expect(component.canContinueToSchema()).toBe(true);
+    expect(component.apiService.canContinueToSchema()).toBe(true);
   });
 
   it('uses workflow canBuildSchema and preserves datasetId when continuing', async () => {
