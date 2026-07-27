@@ -46,9 +46,9 @@ const exportPackage: ProjectExportPackage = {
   sourceDatasetVersions: [
     { datasetId: 2, datasetName: 'customers', versionId: 12, versionNumber: 2, versionKind: 'Cleaned' },
   ],
-  availableArtifactNames: ['schema.sql', 'schema.json', 'relationship-report.json', 'data-quality-report.json'],
+  availableArtifactNames: ['schema.sql', 'schema.dbml', 'schema.json', 'relationship-report.json', 'data-quality-report.json'],
   sql: 'CREATE TABLE customers (id INTEGER PRIMARY KEY);',
-  dbml: 'compatibility-only',
+  dbml: 'Table customers {\n  id integer [pk]\n}',
   jsonSchema: '{"tables":[]}',
   relationshipReportJson: '{"persistedRelationships":[],"suggestionAudit":[]}',
   dataQualityReportJson: '{"datasets":[]}',
@@ -177,6 +177,7 @@ describe('ExportDeployComponent', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Sales Warehouse');
     expect(text).toContain('schema.sql');
+    expect(text).toContain('schema.dbml');
     expect(text).toContain('schema.json');
     expect(text).toContain('relationship-report.json');
     expect(text).toContain('data-quality-report.json');
@@ -184,21 +185,56 @@ describe('ExportDeployComponent', () => {
     expect(text).toContain('forgedb_project_10');
     expect(text).toContain('125');
     expect(fixture.nativeElement.querySelectorAll('[role="tab"]').length).toBe(0);
-    expect(text).not.toContain('compatibility-only');
+    expect(text).not.toContain(exportPackage.dbml);
   });
 
-  it('downloads export artifacts and only backend-reported deployment files', () => {
+  it('downloads backend-reported DBML and deployment files with the correct content types', () => {
     getDeploymentHistory.mockReturnValue(of([completedDeployment()]));
     const fixture = TestBed.createComponent(ExportDeployComponent);
     fixture.detectChanges();
 
-    fixture.componentInstance.downloadArtifact(fixture.componentInstance.artifacts[1]);
+    const dbmlArtifact = fixture.componentInstance.artifacts.find((artifact) => artifact.name === 'schema.dbml');
+    expect(dbmlArtifact).toBeDefined();
+    fixture.componentInstance.downloadArtifact(dbmlArtifact!);
     fixture.componentInstance.downloadDeploymentFile('seed.sql');
 
     expect(getExportPackage).toHaveBeenCalledWith(10);
-    expect(downloadText).toHaveBeenCalledWith('schema.json', exportPackage.jsonSchema, 'application/json;charset=utf-8');
+    expect(downloadText).toHaveBeenCalledWith('schema.dbml', exportPackage.dbml, 'text/plain;charset=utf-8');
     expect(downloadDeploymentSql).toHaveBeenCalledWith(10, 91, 'seed.sql');
     expect(downloadText).toHaveBeenCalledWith('seed.sql', 'SELECT 1;', 'application/sql;charset=utf-8');
+  });
+
+  it('does not expose DBML when the backend omits it from available artifacts', () => {
+    getExportPackage.mockReturnValue(of({
+      ...exportPackage,
+      availableArtifactNames: exportPackage.availableArtifactNames.filter((name) => name !== 'schema.dbml'),
+    }));
+    const fixture = TestBed.createComponent(ExportDeployComponent);
+    fixture.detectChanges();
+
+    const dbmlArtifact = fixture.componentInstance.artifacts.find((artifact) => artifact.name === 'schema.dbml');
+    fixture.componentInstance.downloadArtifact(dbmlArtifact!);
+
+    expect(fixture.nativeElement.textContent).not.toContain('schema.dbml');
+    expect(downloadText).not.toHaveBeenCalled();
+  });
+
+  it('dismisses deployment confirmation with Escape or a backdrop click', () => {
+    const fixture = TestBed.createComponent(ExportDeployComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.openConfirmation();
+    expect(fixture.componentInstance.confirmingDeploy()).toBe(true);
+    fixture.componentInstance.onEscape();
+    expect(fixture.componentInstance.confirmingDeploy()).toBe(false);
+
+    fixture.componentInstance.openConfirmation();
+    const backdrop = document.createElement('div');
+    fixture.componentInstance.onConfirmationBackdrop({
+      target: backdrop,
+      currentTarget: backdrop,
+    } as unknown as MouseEvent);
+    expect(fixture.componentInstance.confirmingDeploy()).toBe(false);
   });
 
   it('shows first-deployment confirmation and prevents duplicate submissions', () => {
@@ -226,7 +262,7 @@ describe('ExportDeployComponent', () => {
 
     fixture.componentInstance.openConfirmation();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Redeploying will replace the project-dedicated PostgreSQL schema');
+    expect(fixture.nativeElement.textContent).toContain('Redeployment replaces the existing project schema');
     fixture.componentInstance.confirmDeployment();
     expect(deployProject).not.toHaveBeenCalled();
 
@@ -289,6 +325,6 @@ describe('ExportDeployComponent', () => {
 
     expect(fixture.componentInstance.history().map(item => item.deploymentId)).toEqual([92, 91]);
     expect(fixture.componentInstance.latestDeployment()?.deploymentId).toBe(92);
-    expect(fixture.nativeElement.textContent).toContain('Rolled back');
+    expect(fixture.nativeElement.textContent).toContain('was rolled back');
   });
 });

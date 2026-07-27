@@ -1,6 +1,16 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, computed, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  HostListener,
+  OnInit,
+  computed,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Meta, Title } from '@angular/platform-browser';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 import {
   ApiErrorBody,
@@ -16,7 +26,7 @@ import { ProjectWorkflowContextService } from '../../services/project-workflow-c
 import { ToastService } from '../../services/toast.service';
 import { routeParameter } from '../../services/route-context';
 
-type ExportArtifactName = 'schema.sql' | 'schema.json' | 'relationship-report.json' | 'data-quality-report.json';
+type ExportArtifactName = 'schema.sql' | 'schema.dbml' | 'schema.json' | 'relationship-report.json' | 'data-quality-report.json';
 type DeploymentFileName = 'schema.sql' | 'seed.sql' | 'deploy.sql';
 
 interface ExportArtifact {
@@ -33,6 +43,8 @@ interface ExportArtifact {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExportDeployComponent implements OnInit {
+  private readonly confirmationFocus = viewChild<ElementRef<HTMLButtonElement>>('confirmationFocus');
+  private previouslyFocused: HTMLElement | null = null;
   readonly workflow = computed(() => this.workflowContext.workflow());
   readonly workflowError = computed(() => this.workflowContext.error());
   readonly exportPackage = signal<ProjectExportPackage | null>(null);
@@ -51,6 +63,7 @@ export class ExportDeployComponent implements OnInit {
 
   readonly artifacts: ExportArtifact[] = [
     { name: 'schema.sql', description: 'Validated PostgreSQL schema definition.', mimeType: 'application/sql;charset=utf-8' },
+    { name: 'schema.dbml', description: 'Portable DBML for visualization and compatible modeling tools.', mimeType: 'text/plain;charset=utf-8' },
     { name: 'schema.json', description: 'Structured representation of the validated schema.', mimeType: 'application/json;charset=utf-8' },
     { name: 'relationship-report.json', description: 'Persisted relationships and suggestion audit.', mimeType: 'application/json;charset=utf-8' },
     { name: 'data-quality-report.json', description: 'Quality metrics for the exact active source versions.', mimeType: 'application/json;charset=utf-8' },
@@ -65,10 +78,14 @@ export class ExportDeployComponent implements OnInit {
     private readonly designApi: DesignApiService,
     private readonly fileDownload: FileDownloadService,
     private readonly toast: ToastService,
+    private readonly titleService: Title,
+    private readonly metaService: Meta,
     readonly workflowContext: ProjectWorkflowContextService,
   ) { }
 
   ngOnInit(): void {
+    this.titleService.setTitle('Export and Deploy - ForgeDB');
+    this.metaService.updateTag({ name: 'description', content: 'Download validated schema artifacts and deploy a ForgeDB project.' });
     this.projectId = routeParameter(this.route, 'projectId') ?? 0;
     if (this.projectId <= 0) {
       this.router.navigate(['/projects']);
@@ -134,13 +151,25 @@ export class ExportDeployComponent implements OnInit {
 
   openConfirmation(): void {
     if (!this.workflow()?.canDeploy || !this.deploymentPreview() || this.deploying()) return;
+    this.previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.redeploymentAcknowledged.set(false);
     this.confirmingDeploy.set(true);
+    setTimeout(() => this.confirmationFocus()?.nativeElement.focus());
   }
 
   closeConfirmation(): void {
     if (this.deploying()) return;
     this.confirmingDeploy.set(false);
+    this.restoreConfirmationFocus();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.confirmingDeploy()) this.closeConfirmation();
+  }
+
+  onConfirmationBackdrop(event: MouseEvent): void {
+    if (event.target === event.currentTarget) this.closeConfirmation();
   }
 
   confirmDeployment(): void {
@@ -155,6 +184,7 @@ export class ExportDeployComponent implements OnInit {
       .subscribe({
         next: (deployment) => {
           this.confirmingDeploy.set(false);
+          this.restoreConfirmationFocus();
           this.toast.showSuccess('Project deployed and schema applied successfully!');
           this.latestDeployment.set(deployment);
           this.selectedDeployment.set(deployment);
@@ -162,6 +192,7 @@ export class ExportDeployComponent implements OnInit {
         },
         error: (error: unknown) => {
           this.confirmingDeploy.set(false);
+          this.restoreConfirmationFocus();
           const body = this.errorBody(error);
           const message = body?.code === 'deployment_in_progress'
             ? 'Another deployment is already running. Wait for it to finish, then refresh.'
@@ -261,6 +292,7 @@ export class ExportDeployComponent implements OnInit {
 
   private artifactContent(packageData: ProjectExportPackage, name: ExportArtifactName): string {
     if (name === 'schema.sql') return packageData.sql;
+    if (name === 'schema.dbml') return packageData.dbml;
     if (name === 'schema.json') return packageData.jsonSchema;
     if (name === 'relationship-report.json') return packageData.relationshipReportJson;
     return packageData.dataQualityReportJson;
@@ -273,5 +305,11 @@ export class ExportDeployComponent implements OnInit {
 
   private errorText(error: unknown, fallback: string): string {
     return this.errorBody(error)?.message?.trim() || fallback;
+  }
+
+  private restoreConfirmationFocus(): void {
+    const focusTarget = this.previouslyFocused;
+    this.previouslyFocused = null;
+    setTimeout(() => focusTarget?.focus());
   }
 }
