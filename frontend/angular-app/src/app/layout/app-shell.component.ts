@@ -1,5 +1,15 @@
 import { NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  ElementRef,
+  HostListener,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -25,6 +35,9 @@ export class AppShellComponent {
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly accountArea = viewChild<ElementRef<HTMLElement>>('accountArea');
+  private readonly accountTrigger = viewChild<ElementRef<HTMLButtonElement>>('accountTrigger');
+  private readonly firstAccountAction = viewChild<ElementRef<HTMLAnchorElement>>('firstAccountAction');
 
   readonly sidebarOpen = signal(false);
   readonly userMenuOpen = signal(false);
@@ -87,7 +100,12 @@ export class AppShellComponent {
   }
 
   toggleUserMenu(): void {
-    this.userMenuOpen.update((open) => !open);
+    if (this.userMenuOpen()) {
+      this.closeUserMenu(true);
+      return;
+    }
+    this.userMenuOpen.set(true);
+    setTimeout(() => this.firstAccountAction()?.nativeElement.focus());
   }
 
   toggleTheme(): void {
@@ -101,6 +119,23 @@ export class AppShellComponent {
 
   @HostListener('document:keydown.escape')
   closeOnEscape(): void {
-    this.closeNavigation();
+    if (this.userMenuOpen()) {
+      this.closeUserMenu(true);
+      return;
+    }
+    this.sidebarOpen.set(false);
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeAccountMenuOnOutsideClick(event: MouseEvent): void {
+    const target = event.target;
+    if (this.userMenuOpen() && target instanceof Node && !this.accountArea()?.nativeElement.contains(target)) {
+      this.closeUserMenu(false);
+    }
+  }
+
+  private closeUserMenu(restoreFocus: boolean): void {
+    this.userMenuOpen.set(false);
+    if (restoreFocus) setTimeout(() => this.accountTrigger()?.nativeElement.focus());
   }
 }
