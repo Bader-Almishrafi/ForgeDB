@@ -156,10 +156,10 @@ export class ProjectSchemaDesignerService {
     });
   }
 
-  generateSchema(): void {
+  generateSchema(forceConfirm = false): void {
     const current = this.design();
     if (!this.canGenerate()) return;
-    if (current && !window.confirm('Regenerate Schema from the current confirmed active versions? Unsaved edits will be lost and existing relationships may require review.')) return;
+    if (current && !forceConfirm && !window.confirm('Regenerate Schema from the current confirmed active versions? Unsaved edits will be lost and existing relationships may require review.')) return;
     this.generating.set(true);
     this.feedback.set(null);
     this.schemaApi.generateSchema(this.projectId, current?.revision).pipe(

@@ -54,6 +54,7 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
   private leaveDecision: Subject<boolean> | null = null;
 
   readonly stayButton = viewChild<ElementRef<HTMLButtonElement>>('stayButton');
+  readonly regenerateDialog = viewChild<ElementRef<HTMLDialogElement>>('regenerateDialog');
   readonly leaveDialogOpen = signal(false);
   readonly activeTab = signal<'tables' | 'relationships' | 'validation'>('tables');
 
@@ -86,12 +87,11 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
     );
   }
 
-  canDeactivate(): boolean | Observable<boolean> {
+  canDeactivate(): Observable<boolean> | boolean {
     if (this.allowNavigation || !this.service.dirty()) return true;
-    if (this.leaveDecision) return this.leaveDecision.asObservable().pipe(take(1));
     this.leaveDecision = new Subject<boolean>();
     this.leaveDialogOpen.set(true);
-    queueMicrotask(() => this.stayButton()?.nativeElement.focus());
+    setTimeout(() => this.stayButton()?.nativeElement.focus(), 50);
     return this.leaveDecision.asObservable().pipe(take(1));
   }
 
@@ -116,5 +116,23 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
   @HostListener('document:keydown.escape')
   onEscapeKey(): void {
     if (this.leaveDialogOpen()) this.resolveLeaveDialog(false);
+  }
+
+  requestRegenerate(): void {
+    if (!this.service.canGenerate()) return;
+    if (this.service.design()) {
+      this.regenerateDialog()?.nativeElement.showModal();
+    } else {
+      this.service.generateSchema();
+    }
+  }
+
+  confirmRegenerate(): void {
+    this.regenerateDialog()?.nativeElement.close();
+    this.service.generateSchema(true);
+  }
+
+  closeRegenerateDialog(): void {
+    this.regenerateDialog()?.nativeElement.close();
   }
 }
