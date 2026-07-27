@@ -43,7 +43,7 @@ body {
   margin: 0;
   background: var(--fg-bg);
   color: var(--fg-text-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 button, input, select, textarea { font: inherit; }
 button:not(:disabled) { cursor: pointer; }
@@ -55,39 +55,71 @@ button:disabled { cursor: not-allowed; }
 .page-subtitle { @apply mt-1 max-w-3xl text-sm leading-6 text-slate-600 dark:text-[#8a99ad]; }
 .section-title { @apply text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-[#8a99ad]; }
 .eyebrow { @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-400; }
+h1.section-heading,
+h2.section-heading,
+h3.section-heading { @apply text-xl font-semibold tracking-tight text-slate-950 dark:text-white; }
+.section-description { @apply mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400; }
 
 /* ---- Surfaces ---- */
 .card {
   @apply rounded-xl border border-[#e2e8f0] bg-white p-5 shadow-sm sm:p-6 dark:border-[#30363d] dark:bg-[#161b22];
 }
 .glass-card {
-  @apply rounded-2xl border border-white/40 bg-white/70 p-6 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/70;
+  @apply rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-[#30363d] dark:bg-[#161b22];
 }
 .metric-card {
-  @apply rounded-2xl border border-white/40 bg-white/70 p-4 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/70;
+  @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#30363d] dark:bg-[#161b22];
 }
 .workspace-panel {
-  @apply rounded-2xl border border-slate-200/70 bg-white/70 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/70;
+  @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#30363d] dark:bg-[#161b22];
 }
-.page-glow {
-  background-image: radial-gradient(ellipse at top right, rgb(99 102 241 / 10%), transparent 60%);
+.page-glow { background-image: none; }
+.page-header {
+  @apply flex flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6 dark:border-[#30363d] dark:bg-[#161b22];
+}
+.section-header {
+  @apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between;
+}
+.empty-state {
+  @apply rounded-xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center shadow-sm sm:px-8 dark:border-[#30363d] dark:bg-[#161b22];
+}
+.dialog-panel {
+  @apply w-full max-w-lg rounded-xl border border-slate-200 bg-white p-5 shadow-xl sm:p-6 dark:border-[#30363d] dark:bg-[#161b22];
+}
+.workflow-page-footer {
+  @apply flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5 dark:border-[#30363d] dark:bg-[#161b22];
 }
 
 /* ---- Buttons ---- */
 .btn-primary {
-  @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-600 hover:to-indigo-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:from-indigo-500 disabled:hover:to-indigo-600;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-indigo-600;
 }
 .btn-secondary {
-  @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#30363d] dark:bg-transparent dark:text-slate-300 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-500/10;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#30363d] dark:bg-transparent dark:text-slate-300 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-500/10;
 }
 .btn-danger {
-  @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-400 dark:hover:bg-rose-950/40;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-400 dark:hover:bg-rose-950/40;
 }
 .btn-ghost {
-  @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-400 dark:hover:bg-[#21262d] dark:hover:text-slate-100;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-400 dark:hover:bg-[#21262d] dark:hover:text-slate-100;
 }
 .icon-button {
-  @apply grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-35 dark:text-slate-400 dark:hover:bg-[#21262d] dark:hover:text-white;
+  @apply grid h-11 w-11 shrink-0 place-items-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-35 dark:text-slate-400 dark:hover:bg-[#21262d] dark:hover:text-white;
+}
+.back-link {
+  @apply inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-indigo-700 dark:text-slate-300 dark:hover:bg-[#21262d] dark:hover:text-indigo-300;
+}
+.menu-item {
+  @apply flex min-h-11 w-full items-center rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-[#21262d] dark:hover:text-white;
+}
+.menu-item-danger {
+  @apply text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:text-rose-400 dark:hover:bg-rose-950/30 dark:hover:text-rose-300;
+}
+.dataset-list-item {
+  @apply min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50/60 dark:border-[#30363d] dark:bg-[#161b22] dark:text-slate-300 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10;
+}
+.dataset-list-item-active {
+  @apply border-indigo-500 bg-indigo-50 text-indigo-950 ring-1 ring-indigo-500 dark:border-indigo-400 dark:bg-indigo-500/15 dark:text-indigo-100 dark:ring-indigo-400;
 }
 
 /* ---- Badges ---- */
@@ -99,6 +131,23 @@ button:disabled { cursor: not-allowed; }
 /* ---- Forms ---- */
 .input-field {
   @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20;
+}
+
+/* ---- Feedback and loading ---- */
+.alert {
+  @apply flex flex-col gap-3 rounded-xl border px-4 py-3 text-sm leading-6 sm:flex-row sm:items-center sm:justify-between;
+}
+.alert-error {
+  @apply border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/25 dark:text-rose-300;
+}
+.alert-warning {
+  @apply border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/25 dark:text-amber-300;
+}
+.alert-success {
+  @apply border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/25 dark:text-emerald-300;
+}
+.skeleton {
+  @apply animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700;
 }
 
 /* ---- Tables ---- */
@@ -140,24 +189,23 @@ html.dark .scrollbar-thin { scrollbar-color: #30363d transparent; }
 
 /* ---- Animations ---- */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0.92; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in-up {
-  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
+  animation: fadeInUp 0.18s ease-out both;
 }
 
 @keyframes dialogFadeIn {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0.92; transform: scale(0.985); }
   to { opacity: 1; transform: scale(1); }
 }
 .animate-dialog {
-  animation: dialogFadeIn 0.2s ease-out forwards;
+  animation: dialogFadeIn 0.16s ease-out both;
 }
 
-.delay-100 { animation-delay: 100ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-.delay-400 { animation-delay: 400ms; }
-.delay-500 { animation-delay: 500ms; }
+.delay-100,
+.delay-200,
+.delay-300,
+.delay-400,
+.delay-500 { animation-delay: 0ms; }

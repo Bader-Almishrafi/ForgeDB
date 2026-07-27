@@ -1,132 +1,131 @@
-<div class="min-h-screen overflow-x-hidden bg-[#f1f5f9] text-[#0f172a] transition-colors duration-300 dark:bg-[#0d1117] dark:text-[#e6edf3]" data-testid="simple-app-shell">
+<div class="min-h-screen bg-slate-100 text-slate-950 dark:bg-[#0d1117] dark:text-slate-100" data-testid="simple-app-shell">
+  <a href="#main-content"
+    class="fixed left-3 top-3 z-[100] -translate-y-20 rounded-lg bg-white px-4 py-2 text-sm font-semibold shadow-lg transition focus:translate-y-0 dark:bg-[#161b22]">
+    Skip to main content
+  </a>
+
   @if (sidebarOpen()) {
-    <button type="button" aria-label="Close navigation" class="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[1px] lg:hidden" (click)="closeSidebar()"></button>
+    <button type="button" aria-label="Close navigation"
+      class="fixed inset-0 z-40 bg-slate-950/50 lg:hidden" (click)="closeNavigation()"></button>
   }
 
   <aside id="app-sidebar" data-testid="app-sidebar"
-    class="fixed inset-y-0 left-0 z-50 flex w-[290px] flex-col overflow-x-hidden border-r border-slate-200/50 bg-white/70 shadow-xl shadow-slate-950/5 backdrop-blur-xl transition-transform duration-300 lg:translate-x-0 lg:shadow-none dark:border-white/10 dark:bg-[#161b22]/70"
-    [ngClass]="[sidebarOpen() ? 'translate-x-0' : '-translate-x-full', sidebarCollapsed() ? 'lg:w-[85px]' : 'lg:w-[290px]']">
-    <div class="flex h-20 shrink-0 items-center gap-3 border-b border-slate-200/50 px-[22px] dark:border-white/10">
-      <a routerLink="/home" class="flex min-w-0 items-center gap-3" (click)="closeSidebar()">
-        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md">
-          <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="2" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="7" ry="3"></ellipse><path d="M5 5.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6M5 11.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6"></path></svg>
+    class="fixed inset-y-0 left-0 z-50 flex w-[17rem] flex-col border-r border-slate-200 bg-white shadow-xl transition-transform duration-200 lg:translate-x-0 lg:shadow-none dark:border-[#30363d] dark:bg-[#161b22]"
+    [ngClass]="sidebarOpen() ? 'translate-x-0' : '-translate-x-full'">
+    <div class="flex h-18 shrink-0 items-center gap-2 border-b border-slate-200 px-5 dark:border-[#30363d]">
+      <a routerLink="/home" class="flex min-w-0 flex-1 items-center gap-3 rounded-lg" (click)="closeNavigation()"
+        aria-label="ForgeDB workspace">
+        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white">
+          <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="2" aria-hidden="true">
+            <ellipse cx="12" cy="5.5" rx="7" ry="3"></ellipse>
+            <path d="M5 5.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6M5 11.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6"></path>
+          </svg>
         </span>
-        <span class="min-w-0 transition-opacity duration-200" [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">
-          <strong class="block truncate text-xl tracking-tight text-slate-900 dark:text-white">ForgeDB</strong>
-          <span class="block truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-[#8a99ad]">Data engineering</span>
+        <span class="min-w-0">
+          <strong class="block truncate text-lg font-bold tracking-tight">ForgeDB</strong>
+          <span class="block truncate text-xs text-slate-500 dark:text-slate-400">Data workspace</span>
         </span>
       </a>
+      <button type="button" class="icon-button lg:hidden" aria-label="Close navigation" (click)="closeNavigation()">
+        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="2" aria-hidden="true">
+          <path d="m6 6 12 12M18 6 6 18"></path>
+        </svg>
+      </button>
     </div>
 
-    <div class="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
+    <div class="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
       <nav aria-label="Workspace navigation">
-        <h2 class="mb-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-slate-400 transition-opacity dark:text-[#8a99ad]" [ngClass]="sidebarCollapsed() ? 'lg:opacity-0' : 'opacity-100'">Workspace</h2>
-        <ul class="space-y-1.5">
+        <h2 class="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Workspace</h2>
+        <ul class="space-y-1">
           @for (item of workspaceItems; track item.route) {
             <li>
-              <a [routerLink]="item.route" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="border-indigo-200 bg-indigo-50 font-bold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-400"
-                class="group flex min-h-11 items-center gap-4 overflow-hidden rounded-xl border border-transparent px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-[#21262d] dark:hover:text-white"
-                (click)="closeSidebar()" [attr.title]="sidebarCollapsed() ? item.label : null">
-                <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="item.icon"></path></svg>
-                <span class="truncate transition-opacity" [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">{{ item.label }}</span>
+              <a [routerLink]="item.route" (click)="closeNavigation()"
+                class="flex min-h-11 items-center gap-3 rounded-xl border border-transparent px-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-[#21262d] dark:hover:text-white"
+                [ngClass]="isNavItemActive(item) ? 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300' : ''"
+                [attr.aria-current]="isNavItemActive(item) ? 'page' : null">
+                <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path [attr.d]="item.icon"></path>
+                </svg>
+                <span>{{ item.label }}</span>
               </a>
             </li>
           }
         </ul>
       </nav>
 
-      <div class="mt-auto shrink-0 border-t border-slate-200/70 p-3 dark:border-white/10 relative">
+      <div class="mt-auto border-t border-slate-200 pt-4 dark:border-[#30363d]">
         <button type="button" (click)="toggleTheme()"
-          class="mb-2 flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-slate-100 dark:hover:bg-white/5"
-          title="Toggle Theme">
-          <div
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+          class="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#21262d]"
+          [attr.aria-label]="themeActionLabel()">
+          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 dark:bg-[#21262d]">
             @if (theme() === 'dark') {
-            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="1.8">
-              <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path>
-            </svg>
+              <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true">
+                <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path>
+              </svg>
             } @else {
-            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="1.8">
-              <circle cx="12" cy="12" r="5"></circle>
-              <path
-                d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42">
-              </path>
-            </svg>
+              <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="1.8" aria-hidden="true">
+                <circle cx="12" cy="12" r="5"></circle>
+                <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+              </svg>
             }
-          </div>
-          <div class="min-w-0 flex-1" [ngClass]="sidebarCollapsed() ? 'lg:hidden' : ''">
-            <div class="truncate text-sm font-medium text-slate-700 dark:text-slate-300">Theme</div>
-          </div>
+          </span>
+          <span>{{ themeActionLabel() }}</span>
         </button>
 
-        @if (userMenuOpen()) {
-          <div class="absolute bottom-16 left-3 right-3 z-50 mb-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-200 dark:border-[#30363d] dark:bg-[#1f242c]">
-            <div class="border-b border-slate-100 px-3 py-2 text-xs text-slate-500 dark:border-white/10 dark:text-[#8a99ad]">
-              Signed in as <strong class="block truncate font-bold text-slate-800 dark:text-slate-200">{{ user()?.email || displayName() }}</strong>
+        <div class="relative mt-1">
+          @if (userMenuOpen()) {
+            <div id="account-menu"
+              class="absolute bottom-14 left-0 right-0 z-10 rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-[#30363d] dark:bg-[#21262d]"
+              role="menu" aria-label="Account actions">
+              <p class="border-b border-slate-100 px-3 py-2 text-xs text-slate-500 dark:border-[#30363d] dark:text-slate-400">
+                Signed in as <strong class="mt-0.5 block truncate text-slate-800 dark:text-slate-200">{{ user()?.email || displayName() }}</strong>
+              </p>
+              <a routerLink="/change-password" role="menuitem" (click)="closeNavigation()"
+                class="mt-1 flex min-h-11 items-center rounded-lg px-3 text-sm font-medium hover:bg-slate-100 dark:hover:bg-[#30363d]">
+                Change password
+              </a>
+              <button type="button" role="menuitem" (click)="logout()"
+                class="flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
+                Log out
+              </button>
             </div>
-            <ul class="mt-1 space-y-1">
-              <li>
-                <a routerLink="/change-password" (click)="closeUserMenu(); closeSidebar();" class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#282f3a] dark:hover:text-white">
-                  <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="1.8"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5V10Zm7 4v3"></path></svg>
-                  <span>Change Password</span>
-                </a>
-              </li>
-              <li class="border-t border-slate-100 pt-1 dark:border-white/10">
-                <button type="button" (click)="logout()" class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300">
-                  <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="1.8"><path d="M10 5H5v14h5m4-3 4-4-4-4m4 4H9"></path></svg>
-                  <span>Log out</span>
-                </button>
-              </li>
-            </ul>
-          </div>
-        }
-        <button type="button" (click)="toggleUserMenu()" class="flex w-full min-w-0 items-center gap-3 rounded-xl p-2 text-left transition hover:bg-slate-100 dark:hover:bg-white/5" [attr.aria-expanded]="userMenuOpen()">
-          <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-xs font-bold text-white shadow-sm">{{ initials() }}</span>
-          <span class="hidden min-w-0 flex-1 sm:block transition-opacity" [ngClass]="sidebarCollapsed() ? 'lg:hidden' : 'block'">
-            <strong class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{{ displayName() }}</strong>
-            <span class="block truncate text-[11px] text-slate-500 dark:text-[#8a99ad]">{{ user()?.role || 'User' }}</span>
-          </span>
-          <svg class="h-4 w-4 shrink-0 text-slate-400 dark:text-[#8a99ad] transition-transform duration-200" [ngClass]="{'rotate-180': userMenuOpen(), 'lg:hidden': sidebarCollapsed()}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-        </button>
+          }
+
+          <button type="button" (click)="toggleUserMenu()"
+            class="flex min-h-12 w-full min-w-0 items-center gap-3 rounded-xl px-3 text-left transition-colors hover:bg-slate-100 dark:hover:bg-[#21262d]"
+            aria-haspopup="menu" aria-controls="account-menu" [attr.aria-expanded]="userMenuOpen()">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-indigo-600 text-xs font-bold text-white">{{ initials() }}</span>
+            <span class="min-w-0 flex-1">
+              <strong class="block truncate text-sm font-semibold">{{ displayName() }}</strong>
+              <span class="block truncate text-xs text-slate-500 dark:text-slate-400">{{ user()?.role || 'User' }}</span>
+            </span>
+            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current text-slate-400" stroke-width="2" aria-hidden="true">
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   </aside>
 
-
-
-  <div class="min-h-screen min-w-0 transition-padding duration-300 lg:transition-none" [ngClass]="sidebarCollapsed() ? 'lg:pl-[85px]' : 'lg:pl-[290px]'">
-    <header class="sticky top-0 z-30 flex h-20 items-center gap-3 border-b border-[#e2e8f0] bg-white/95 px-4 shadow-sm backdrop-blur-lg sm:px-6 lg:px-8 dark:border-[#30363d] dark:bg-[#161b22]/95 transition-transform duration-300"
-            [class.-translate-y-full]="isHeaderHidden()">
-      <div class="lg:hidden">
-        <button type="button" class="icon-button" (click)="toggleSidebar()" aria-label="Open navigation" aria-controls="app-sidebar" [attr.aria-expanded]="sidebarOpen()">
-          <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
-        </button>
+  <div class="min-h-screen min-w-0 lg:pl-[17rem]">
+    <header data-testid="app-header"
+      class="sticky top-0 z-30 flex h-18 items-center gap-3 border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8 dark:border-[#30363d] dark:bg-[#161b22]">
+      <button type="button" class="icon-button lg:hidden" (click)="toggleSidebar()" aria-label="Open navigation"
+        aria-controls="app-sidebar" [attr.aria-expanded]="sidebarOpen()">
+        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8" aria-hidden="true">
+          <path d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+      </button>
+      <div class="min-w-0">
+        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">ForgeDB workspace</p>
+        <p class="truncate text-base font-semibold" data-testid="current-page-title">{{ pageTitle() }}</p>
       </div>
-      <div class="hidden lg:block">
-        <button type="button" class="icon-button" (click)="toggleCollapsed()" aria-label="Toggle navigation">
-          <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
-        </button>
-      </div>
-      <nav class="min-w-0 flex-1" aria-label="Breadcrumb">
-        <ol class="flex min-w-0 items-center gap-2 text-sm">
-          <li><a routerLink="/home" class="text-slate-500 transition-colors hover:text-indigo-600 dark:text-[#8a99ad] dark:hover:text-indigo-400">Workspace</a></li>
-          <li class="text-slate-300 dark:text-slate-600" aria-hidden="true">/</li>
-          <li class="truncate font-semibold text-slate-900 dark:text-white" data-testid="current-page-title" aria-current="page">{{ pageTitle() }}</li>
-        </ol>
-      </nav>
     </header>
-    <main class="min-w-0 p-4 sm:p-6 lg:p-8">
+
+    <main id="main-content" class="min-w-0 p-4 sm:p-6 lg:p-8" tabindex="-1">
       <router-outlet />
     </main>
-
-    <!-- Global scroll buttons -->
-    <div class="fixed bottom-8 right-8 z-50 flex flex-col gap-3 animate-fade-in-up delay-300">
-      <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 dark:hover:border-indigo-500/30 transition-all shadow-xl border border-slate-200 dark:border-slate-700" (click)="scrollToTop()" aria-label="Scroll to top" title="Scroll to top">
-        <svg viewBox="0 0 24 24" class="h-6 w-6 shrink-0 fill-none stroke-current" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"></path></svg>
-      </button>
-      <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 dark:hover:border-indigo-500/30 transition-all shadow-xl border border-slate-200 dark:border-slate-700" (click)="scrollToBottom()" aria-label="Scroll to bottom" title="Scroll to bottom">
-        <svg viewBox="0 0 24 24" class="h-6 w-6 shrink-0 fill-none stroke-current" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-      </button>
-    </div>
   </div>
 </div>

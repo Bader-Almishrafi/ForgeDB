@@ -1,245 +1,105 @@
-<div
-  class="min-h-screen overflow-x-hidden bg-[#f1f5f9] text-[#0f172a] transition-colors duration-300 dark:bg-[#0d1117] dark:text-[#e6edf3]"
-  data-testid="project-workflow-shell">
-  @if (sidebarOpen()) {
-  <button type="button" aria-label="Close workflow navigation"
-    class="fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[1px] lg:hidden" (click)="closeSidebar()"></button>
-  }
-
-  <aside id="workflow-sidebar" data-testid="workflow-sidebar"
-    class="fixed inset-y-0 left-0 z-50 flex w-[290px] flex-col overflow-x-hidden border-r border-slate-200/50 bg-white/70 shadow-xl shadow-slate-950/5 backdrop-blur-xl transition-transform duration-300 lg:translate-x-0 lg:shadow-none dark:border-white/10 dark:bg-[#161b22]/70"
-    [ngClass]="[sidebarOpen() ? 'translate-x-0' : '-translate-x-full', sidebarCollapsed() ? 'lg:w-[85px]' : 'lg:w-[290px]']">
-    <div class="flex h-20 shrink-0 items-center gap-3 border-b border-slate-200/50 px-[22px] dark:border-white/10">
-      <a routerLink="/projects" class="flex min-w-0 items-center gap-3" (click)="closeSidebar()">
-        <span
-          class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md">
-          <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="2" aria-hidden="true">
-            <ellipse cx="12" cy="5.5" rx="7" ry="3"></ellipse>
-            <path d="M5 5.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6M5 11.5v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6"></path>
-          </svg>
-        </span>
-        <span class="min-w-0 transition-opacity"
-          [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">
-          <strong class="block truncate text-xl tracking-tight text-slate-900 dark:text-white">ForgeDB</strong>
-          <span
-            class="block truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-[#8a99ad]">Data
-            engineering</span>
-        </span>
-      </a>
-    </div>
-
-    <div class="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
-      <nav aria-label="Workspace navigation">
-        <h2
-          class="mb-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-slate-400 transition-opacity dark:text-[#8a99ad]"
-          [ngClass]="sidebarCollapsed() ? 'lg:opacity-0' : 'opacity-100'">Workspace</h2>
-        <ul class="space-y-1.5">
-          <li><a routerLink="/projects"
-              class="flex min-h-11 items-center gap-4 overflow-hidden rounded-xl border border-transparent px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-[#21262d]"
-              (click)="closeSidebar()" title="Projects"><svg viewBox="0 0 24 24"
-                class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="1.7">
-                <path d="M3.5 7.5h6l2-2h9v14h-17v-12Z"></path>
-              </svg><span class="truncate transition-opacity"
-                [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">Projects</span></a>
-          </li>
-          <li><a routerLink="/projects/new"
-              class="flex min-h-11 items-center gap-4 overflow-hidden rounded-xl border border-transparent px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-[#21262d]"
-              (click)="closeSidebar()" title="Create Project"><svg viewBox="0 0 24 24"
-                class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="1.7">
-                <path d="M12 5v14M5 12h14"></path>
-              </svg><span class="truncate transition-opacity"
-                [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">Create
-                Project</span></a></li>
-        </ul>
-      </nav>
-
-      <nav class="mt-7" aria-label="Project workflow">
-        <div class="mb-3 min-w-0 px-4 transition-opacity"
-          [ngClass]="sidebarCollapsed() ? 'lg:opacity-0' : 'opacity-100'">
-          <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-[#8a99ad]">Current
-            project workflow</h2>
-          <p class="mt-1 truncate text-sm font-bold text-slate-900 dark:text-white" data-testid="current-project-name"
-            [title]="projectName()">{{ projectName() || (context.loading() ? 'Loading project...' : 'Project') }}</p>
-        </div>
-        <ul class="space-y-1.5 font-medium">
-          @for (step of enrichedSteps(); track step.path) {
-          <li>
-            @if (step.allowed) {
-            <a [routerLink]="['/projects', context.workflow()!.projectId, step.path]"
-              [queryParams]="context.datasetId() ? { datasetId: context.datasetId() } : {}"
-              [routerLinkActiveOptions]="{ exact: true }"
-              routerLinkActive="border-indigo-200 bg-indigo-50 font-bold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-400"
-              class="flex min-h-11 items-center gap-4 overflow-hidden rounded-xl border border-transparent px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-[#21262d] dark:hover:text-white"
-              (click)="closeSidebar()" [attr.title]="sidebarCollapsed() ? step.label : null">
-              <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="1.7"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path [attr.d]="stepIcons[step.path]"></path>
-              </svg>
-              <span class="truncate transition-opacity"
-                [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">{{
-                step.label }}</span>
-            </a>
-            } @else {
-            <button type="button" disabled
-              class="group flex min-h-11 w-full cursor-not-allowed items-center gap-4 overflow-hidden rounded-xl border border-transparent px-4 py-2 text-sm text-slate-400 opacity-50 dark:text-slate-500"
-              [title]="disabledReason()" aria-disabled="true">
-              <svg viewBox="0 0 24 24" class="h-5 w-5 shrink-0 fill-none stroke-current" stroke-width="1.7">
-                <path stroke-linecap="round" stroke-linejoin="round" [attr.d]="stepIcons[step.path]"></path>
-              </svg>
-              <span class="truncate transition-opacity"
-                [ngClass]="sidebarCollapsed() ? 'lg:pointer-events-none lg:w-0 lg:opacity-0' : 'lg:opacity-100'">{{
-                step.label }}</span>
-            </button>
-            }
-          </li>
-          }
-        </ul>
-        @if (context.workflow(); as workflow) {
-        <p class="mx-4 mt-4 truncate text-xs text-slate-500 transition-opacity dark:text-[#8a99ad]"
-          [ngClass]="sidebarCollapsed() ? 'lg:opacity-0' : 'opacity-100'">{{ workflow.workflowState }} · Current: {{
-          workflow.currentStep }}</p>
+<div class="mx-auto max-w-[1600px] space-y-5" data-testid="project-workflow-shell">
+  @if (context.loading()) {
+    <section class="space-y-4" aria-live="polite" aria-busy="true" data-testid="workflow-loading">
+      <div class="skeleton h-28"></div>
+      <div class="skeleton h-24"></div>
+    </section>
+  } @else if (context.error(); as error) {
+    <section class="alert alert-error mx-auto max-w-2xl text-center" role="alert" data-testid="workflow-error">
+      <div>
+        <h1 class="text-lg font-semibold">{{ error.message }}</h1>
+        <p class="mt-1 text-sm">The project workspace could not be opened.</p>
+      </div>
+      <div class="mt-4 flex flex-wrap justify-center gap-3">
+        @if (error.kind === 'unavailable') {
+          <button type="button" class="btn-primary" (click)="retry()">Try again</button>
         }
-      </nav>
-    </div>
-
-    <div class="mt-auto shrink-0 border-t border-slate-200/70 p-3 dark:border-white/10 relative">      <button type="button" (click)="toggleTheme()"
-        class="mb-2 flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-slate-100 dark:hover:bg-white/5"
-        title="Toggle Theme">
-          <div
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-            @if (theme() === 'dark') {
-            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="1.8">
-              <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path>
-            </svg>
-            } @else {
-            <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="1.8">
-              <circle cx="12" cy="12" r="5"></circle>
-              <path
-                d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42">
-              </path>
-            </svg>
-            }
-          </div>
-          <div class="min-w-0 flex-1" [ngClass]="sidebarCollapsed() ? 'lg:hidden' : ''">
-            <div class="truncate text-sm font-medium text-slate-700 dark:text-slate-300">Theme</div>
-          </div>
-        </button>
-
-        @if (userMenuOpen()) {
-        <div
-          class="absolute bottom-28 left-3 right-3 z-50 mb-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-200 dark:border-[#30363d] dark:bg-[#1f242c]">
-          <div
-            class="border-b border-slate-100 px-3 py-2 text-xs text-slate-500 dark:border-white/10 dark:text-[#8a99ad]">
-            Signed in as <strong class="block truncate font-bold text-slate-800 dark:text-slate-200">{{ user()?.email ||
-              displayName() }}</strong>
-          </div>
-          <ul class="mt-1 space-y-1">
-            <li>
-              <a routerLink="/change-password" (click)="closeUserMenu(); closeSidebar();"
-                class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#282f3a] dark:hover:text-white">
-                <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="1.8">
-                  <path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5V10Zm7 4v3"></path>
-                </svg>
-                <span>Change Password</span>
-              </a>
-            </li>
-            <li class="border-t border-slate-100 pt-1 dark:border-white/10">
-              <button type="button" (click)="logout()"
-                class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300">
-                <svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-current" stroke-width="1.8">
-                  <path d="M10 5H5v14h5m4-3 4-4-4-4m4 4H9"></path>
-                </svg>
-                <span>Log out</span>
-              </button>
-            </li>
-          </ul>
-        </div>
-        }
-        <button type="button" (click)="toggleUserMenu()"
-          class="flex w-full min-w-0 items-center gap-3 rounded-xl p-2 text-left transition hover:bg-slate-100 dark:hover:bg-white/5"
-          [attr.aria-expanded]="userMenuOpen()">
-          <span
-            class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-xs font-bold text-white shadow-sm">{{
-            initials() }}</span>
-          <span class="hidden min-w-0 flex-1 sm:block transition-opacity"
-            [ngClass]="sidebarCollapsed() ? 'lg:hidden' : 'block'">
-            <strong class="block truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{{ displayName()
-              }}</strong>
-            <span class="block truncate text-[11px] text-slate-500 dark:text-[#8a99ad]">{{ user()?.role || 'User'
-              }}</span>
-          </span>
-          <svg class="h-4 w-4 shrink-0 text-slate-400 dark:text-[#8a99ad] transition-transform duration-200"
-            [ngClass]="{'rotate-180': userMenuOpen(), 'lg:hidden': sidebarCollapsed()}" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path>
+        <a routerLink="/projects" class="btn-secondary">Back to projects</a>
+      </div>
+    </section>
+  } @else if (context.workflow(); as workflow) {
+    <header class="page-header" data-testid="project-context-header">
+      <div class="min-w-0">
+        <a routerLink="/projects"
+          class="back-link"
+          aria-label="Back to all projects">
+          <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true">
+            <path d="m15 19-7-7 7-7"></path>
           </svg>
-        </button>
+          All projects
+        </a>
+        <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Current project</p>
+        <h1 class="mt-1 truncate text-2xl font-bold tracking-tight sm:text-3xl" data-testid="current-project-name"
+          [title]="projectName()">{{ projectName() || 'Project' }}</h1>
+        <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{{ pageTitle() }}</p>
       </div>
-  </aside>
-
-
-
-  <div class="min-h-screen min-w-0 transition-padding duration-300 lg:transition-none"
-    [ngClass]="sidebarCollapsed() ? 'lg:pl-[85px]' : 'lg:pl-[290px]'">
-    <header
-      class="sticky top-0 z-30 flex h-20 items-center gap-3 border-b border-[#e2e8f0] bg-white/95 px-4 shadow-sm backdrop-blur-lg sm:px-6 lg:px-8 dark:border-[#30363d] dark:bg-[#161b22]/95 transition-transform duration-300"
-      [class.-translate-y-full]="isHeaderHidden()">
-      <div class="lg:hidden">
-        <button type="button" class="icon-button" (click)="toggleSidebar()" aria-label="Open workflow navigation"
-          aria-controls="workflow-sidebar" [attr.aria-expanded]="sidebarOpen()"><svg viewBox="0 0 24 24"
-            class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
-            <path d="M4 6h16M4 12h16M4 18h16"></path>
-          </svg></button>
-      </div>
-      <div class="hidden lg:block">
-        <button type="button" class="icon-button" (click)="toggleCollapsed()" aria-label="Toggle navigation"><svg
-            viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
-            <path d="M4 6h16M4 12h16M4 18h16"></path>
-          </svg></button>
-      </div>
-      <nav class="min-w-0 flex-1" aria-label="Breadcrumb">
-        <ol class="flex min-w-0 items-center gap-2 text-sm">
-          <li><a routerLink="/projects"
-              class="max-w-44 truncate text-slate-500 transition-colors hover:text-indigo-600 dark:text-[#8a99ad] dark:hover:text-indigo-400">{{
-              projectName() || 'Project workflow' }}</a></li>
-          <li class="text-slate-300 dark:text-slate-600" aria-hidden="true">/</li>
-          <li class="truncate font-semibold text-slate-900 dark:text-white" aria-current="page">{{ pageTitle() }}</li>
-        </ol>
-      </nav>
     </header>
 
-    @if (context.loading()) {
-    <main class="min-w-0 p-4 sm:p-6 lg:p-8" aria-live="polite">
-      <div class="animate-pulse space-y-6">
-        <div class="h-8 w-1/4 rounded bg-slate-200 dark:bg-slate-700/50"></div>
-        <div class="h-64 rounded-xl bg-slate-200 dark:bg-slate-700/50"></div>
-        <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
-          <div class="h-32 rounded-xl bg-slate-200 dark:bg-slate-700/50"></div>
-          <div class="h-32 rounded-xl bg-slate-200 dark:bg-slate-700/50"></div>
-          <div class="h-32 rounded-xl bg-slate-200 dark:bg-slate-700/50"></div>
+    <nav class="rounded-2xl border border-slate-200 bg-white p-3 dark:border-[#30363d] dark:bg-[#161b22]"
+      aria-label="Project workflow progress" data-testid="workflow-progress">
+      <ol class="flex snap-x gap-2 overflow-x-auto pb-1">
+        @for (step of progressSteps(); track step.path) {
+          <li class="min-w-[10.5rem] flex-1 snap-start" data-testid="workflow-step" [attr.data-state]="step.state">
+            @if (step.allowed) {
+              <a [routerLink]="['/projects', workflow.projectId, step.path]"
+                [queryParams]="context.datasetId() ? { datasetId: context.datasetId() } : {}"
+                class="flex min-h-20 h-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition-colors"
+                [ngClass]="{
+                  'border-indigo-300 bg-indigo-50 text-indigo-900 dark:border-indigo-500/50 dark:bg-indigo-500/10 dark:text-indigo-100': step.state === 'current',
+                  'border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200': step.state === 'complete',
+                  'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/20 dark:text-amber-200': step.state === 'needs-attention',
+                  'border-slate-200 bg-white text-slate-800 hover:border-indigo-300 hover:bg-indigo-50/50 dark:border-[#30363d] dark:bg-[#161b22] dark:text-slate-200 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-500/5': step.state === 'available'
+                }"
+                [attr.aria-current]="step.active ? 'step' : null">
+                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-current text-xs font-bold"
+                  aria-hidden="true">
+                  @if (step.state === 'complete') { ✓ } @else { {{ step.index + 1 }} }
+                </span>
+                <span class="min-w-0">
+                  <strong class="block text-sm">{{ step.label }}</strong>
+                  <span class="mt-1 block text-xs font-medium opacity-75" data-testid="workflow-step-status">{{ step.stateLabel }}</span>
+                </span>
+              </a>
+            } @else {
+              <button type="button" disabled
+                class="flex min-h-20 h-full w-full cursor-not-allowed items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-left text-slate-500 dark:border-[#30363d] dark:bg-[#0d1117] dark:text-slate-500"
+                [class.border-amber-300]="step.state === 'needs-attention'"
+                [class.bg-amber-50]="step.state === 'needs-attention'"
+                [class.text-amber-900]="step.state === 'needs-attention'"
+                [title]="blockedReason(step)" aria-disabled="true">
+                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-current text-xs font-bold"
+                  aria-hidden="true">{{ step.index + 1 }}</span>
+                <span class="min-w-0">
+                  <strong class="block text-sm">{{ step.label }}</strong>
+                  <span class="mt-1 block text-xs font-medium" data-testid="workflow-step-status">{{ step.stateLabel }}</span>
+                </span>
+              </button>
+            }
+          </li>
+        }
+      </ol>
+    </nav>
+
+    @if (guidance(); as next) {
+      <aside class="flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+        [ngClass]="next.positive
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-200'
+          : 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200'"
+        role="status" aria-live="polite" data-testid="workflow-guidance">
+        <div>
+          <h2 class="text-sm font-semibold">{{ next.title }}</h2>
+          <p class="mt-0.5 text-sm">{{ next.message }}</p>
         </div>
-      </div>
-    </main>
-    } @else if (context.error(); as error) {
-    <main class="grid min-h-[calc(100vh-5rem)] place-items-center px-6">
-      <section class="glass-card max-w-lg text-center" role="alert">
-        <h2 class="text-xl font-bold">{{ error.message }}</h2>@if (error.kind === 'unavailable') { <button type="button"
-          class="btn-primary mt-5" (click)="retry()">Try again</button> } @else { <a routerLink="/projects"
-          class="btn-primary mt-5">Back to Projects</a> }
-      </section>
-    </main>
-    } @else if (context.workflow()) {
-    <main class="min-w-0 p-4 sm:p-6 lg:p-8"><router-outlet /></main>
+        @if (showGuidanceLink(next) && next.targetPath) {
+          <a [routerLink]="['/projects', workflow.projectId, next.targetPath]"
+            [queryParams]="context.datasetId() ? { datasetId: context.datasetId() } : {}"
+            class="btn-secondary shrink-0">
+            Open {{ next.targetLabel }}
+          </a>
+        }
+      </aside>
     }
 
-    <!-- Global scroll buttons -->
-    <div class="fixed bottom-8 right-8 z-50 flex flex-col gap-3 animate-fade-in-up delay-300">
-      <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 dark:hover:border-indigo-500/30 transition-all shadow-xl border border-slate-200 dark:border-slate-700" (click)="scrollToTop()" aria-label="Scroll to top" title="Scroll to top">
-        <svg viewBox="0 0 24 24" class="h-6 w-6 shrink-0 fill-none stroke-current" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"></path></svg>
-      </button>
-      <button type="button" class="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 dark:hover:border-indigo-500/30 transition-all shadow-xl border border-slate-200 dark:border-slate-700" (click)="scrollToBottom()" aria-label="Scroll to bottom" title="Scroll to bottom">
-        <svg viewBox="0 0 24 24" class="h-6 w-6 shrink-0 fill-none stroke-current" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-      </button>
-    </div>
-  </div>
+    <router-outlet />
+  }
 </div>

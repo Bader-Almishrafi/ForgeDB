@@ -1,13 +1,10 @@
-import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject, of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProjectWorkflow } from '../services/api.models';
-import { AuthService } from '../services/auth.service';
 import { ForgeApiService } from '../services/forge-api.service';
 import { ProjectWorkflowContextService } from '../services/project-workflow-context.service';
-import { ThemeService } from '../services/theme.service';
 import { ProjectWorkflowShellComponent } from './project-workflow-shell.component';
 
 function workflow(projectId: number): ProjectWorkflow {
@@ -35,7 +32,12 @@ describe('ProjectWorkflowShellComponent', () => {
   let fixture: ComponentFixture<ProjectWorkflowShellComponent>;
   let params: BehaviorSubject<ParamMap>;
   let query: BehaviorSubject<ParamMap>;
-  const getProjectWorkflow = vi.fn((projectId: number) => of(workflow(projectId)));
+  let workflowOverrides: Partial<ProjectWorkflow>;
+  const getProjectWorkflow = vi.fn((projectId: number) => of({
+    ...workflow(projectId),
+    ...workflowOverrides,
+    projectId,
+  }));
 
   beforeEach(async () => {
     localStorage.setItem('forgedb.currentProjectId', '999');
@@ -43,6 +45,7 @@ describe('ProjectWorkflowShellComponent', () => {
     localStorage.setItem('forgedb.currentDatasetId', '888');
     params = new BehaviorSubject(convertToParamMap({ projectId: '10' }));
     query = new BehaviorSubject(convertToParamMap({ datasetId: '42' }));
+    workflowOverrides = {};
     getProjectWorkflow.mockClear();
 
     await TestBed.configureTestingModule({
@@ -55,11 +58,6 @@ describe('ProjectWorkflowShellComponent', () => {
           snapshot: { paramMap: params.value, queryParamMap: query.value },
         } },
         { provide: ForgeApiService, useValue: { getProjectWorkflow } },
-        { provide: AuthService, useValue: {
-          user: signal({ id: 1, firstName: 'Test', lastName: 'User', email: 'test@example.com', role: 'user', createdAt: '' }).asReadonly(),
-          logout: vi.fn(),
-        } },
-        { provide: ThemeService, useValue: { theme: signal<'light' | 'dark'>('light').asReadonly(), toggle: vi.fn() } },
       ],
     }).compileComponents();
 
@@ -77,17 +75,35 @@ describe('ProjectWorkflowShellComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Stored project');
   });
 
-  it('renders five workflow sidebar steps and disables future steps from backend permissions', () => {
-    const sidebar = fixture.nativeElement.querySelector('[data-testid="workflow-sidebar"]') as HTMLElement;
-    expect(sidebar).toBeTruthy();
-    expect(sidebar.querySelectorAll('[data-testid="workflow-step"]')).toHaveLength(5);
-    expect(sidebar.textContent).toContain('Export & Deploy');
-    expect(sidebar.querySelectorAll('[data-testid="workflow-step"] button:disabled')).toHaveLength(3);
-    expect((sidebar.querySelector('[data-testid="workflow-step"] button:disabled') as HTMLButtonElement).title).toBe('Analyze every active dataset version first.');
+  it('renders an accessible five-step progress navigator using backend permissions', () => {
+    const progress = fixture.nativeElement.querySelector('[data-testid="workflow-progress"]') as HTMLElement;
+    const steps = Array.from(progress.querySelectorAll<HTMLElement>('[data-testid="workflow-step"]'));
+
+    expect(progress.getAttribute('aria-label')).toBe('Project workflow progress');
+    expect(steps).toHaveLength(5);
+    expect(steps.map((step) => step.querySelector('strong')?.textContent?.trim())).toEqual([
+      'Data Sources',
+      'Analysis',
+      'Data Cleaning',
+      'Schema Design',
+      'Export and Deploy',
+    ]);
+    expect(steps.map((step) => step.dataset['state'])).toEqual([
+      'complete',
+      'needs-attention',
+      'blocked',
+      'blocked',
+      'blocked',
+    ]);
+    expect(progress.querySelectorAll('button:disabled')).toHaveLength(3);
+    expect((progress.querySelector('[data-state="blocked"] button') as HTMLButtonElement).title)
+      .toBe('Complete Analysis before opening Data Cleaning.');
   });
 
-  it('uses the simplified workflow sidebar without duplicate top navigation', () => {
-    expect(fixture.nativeElement.querySelector('[data-testid="workflow-sidebar"]')).toBeTruthy();
+  it('leaves global application navigation to AppShell', () => {
+    expect(fixture.nativeElement.querySelector('[data-testid="workflow-progress"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="workflow-sidebar"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="app-sidebar"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="workflow-top-navigation"]')).toBeNull();
   });
 
@@ -95,6 +111,38 @@ describe('ProjectWorkflowShellComponent', () => {
     const links = Array.from(fixture.nativeElement.querySelectorAll('[data-testid="workflow-step"] a')) as HTMLAnchorElement[];
     expect(links).toHaveLength(2);
     expect(links.every((link) => link.getAttribute('href')?.includes('datasetId=42'))).toBe(true);
+  });
+
+  it('shows a visible needs-attention state and a plain-language next action', () => {
+    const attentionStep = fixture.nativeElement.querySelector('[data-state="needs-attention"]') as HTMLElement;
+    const guidance = fixture.nativeElement.querySelector('[data-testid="workflow-guidance"]') as HTMLElement;
+
+    expect(attentionStep.textContent).toContain('Current');
+    expect(attentionStep.textContent).toContain('Needs attention');
+    expect(guidance.textContent).toContain('Next action');
+    expect(guidance.textContent).toContain('Run analysis for every active data source before continuing.');
+    expect(fixture.nativeElement.textContent).not.toContain('NeedsAnalysis');
+  });
+
+  it('distinguishes current, complete, available, and blocked progress states', () => {
+    workflowOverrides = {
+      workflowState: 'NeedsCleaning',
+      currentStep: 'Clean',
+      nextStep: 'Schema',
+      recommendedRoute: '/projects/10/clean',
+      canClean: true,
+      blockerCodes: [],
+      blockingReasons: [],
+    };
+    TestBed.inject(ProjectWorkflowContextService).load(10, true).subscribe();
+    fixture.componentInstance.currentUrl.set('/projects/10/data?datasetId=42');
+    fixture.detectChanges();
+
+    const progress = fixture.nativeElement.querySelector('[data-testid="workflow-progress"]') as HTMLElement;
+    const states = Array.from(progress.querySelectorAll<HTMLElement>('[data-testid="workflow-step"]'))
+      .map((step) => step.dataset['state']);
+    expect(states).toEqual(['current', 'complete', 'available', 'blocked', 'blocked']);
+    expect(progress.querySelector('[data-state="current"] a')?.getAttribute('aria-current')).toBe('step');
   });
 
   it('clears the previous project name and selected dataset when project route parameters change', () => {

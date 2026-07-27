@@ -14,11 +14,11 @@ export interface ProjectWorkflowStepDefinition {
 }
 
 export const PROJECT_WORKFLOW_STEPS: readonly ProjectWorkflowStepDefinition[] = [
-  { path: 'data', label: 'Data', permission: 'canImport' },
-  { path: 'analyze', label: 'Analyze', permission: 'canAnalyze' },
-  { path: 'clean', label: 'Clean', permission: 'canClean' },
-  { path: 'schema', label: 'Schema', permission: 'canBuildSchema' },
-  { path: 'export-deploy', label: 'Export & Deploy', permission: 'canExport' },
+  { path: 'data', label: 'Data Sources', permission: 'canImport' },
+  { path: 'analyze', label: 'Analysis', permission: 'canAnalyze' },
+  { path: 'clean', label: 'Data Cleaning', permission: 'canClean' },
+  { path: 'schema', label: 'Schema Design', permission: 'canBuildSchema' },
+  { path: 'export-deploy', label: 'Export and Deploy', permission: 'canExport' },
 ];
 
 export function isWorkflowStepAllowed(workflow: ProjectWorkflow, path: string): boolean {

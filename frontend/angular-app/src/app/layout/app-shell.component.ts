@@ -1,7 +1,7 @@
 import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
@@ -10,12 +10,13 @@ interface ShellNavItem {
   label: string;
   route: string;
   icon: string;
+  match: 'home' | 'projects' | 'create';
 }
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [NgClass, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [NgClass, RouterLink, RouterOutlet],
   templateUrl: './app-shell.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -25,31 +26,35 @@ export class AppShellComponent {
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly isHeaderHidden = signal(false);
-  private lastScrollTop = 0;
-
   readonly sidebarOpen = signal(false);
-  readonly sidebarCollapsed = signal(false);
   readonly userMenuOpen = signal(false);
   readonly currentUrl = signal(this.router.url);
   readonly user = this.auth.user;
   readonly theme = this.themeService.theme;
+
+  readonly currentPath = computed(() => this.currentUrl().split('?')[0].replace(/\/$/, '') || '/');
   readonly displayName = computed(() => {
     const current = this.user();
     return current ? `${current.firstName} ${current.lastName}`.trim() : 'ForgeDB user';
   });
+  readonly initials = computed(() => {
+    const current = this.user();
+    return current ? `${current.firstName[0] ?? ''}${current.lastName[0] ?? ''}`.toUpperCase() : 'FD';
+  });
   readonly pageTitle = computed(() => {
-    const path = this.currentUrl().split('?')[0];
+    const path = this.currentPath();
     if (path === '/home') return 'Home';
-    if (path === '/projects/new') return 'Create Project';
-    if (path === '/change-password') return 'Change Password';
+    if (path === '/projects/new') return 'Create project';
+    if (path === '/change-password') return 'Change password';
+    if (/^\/projects\/\d+(\/|$)/.test(path)) return 'Project workflow';
     return 'Projects';
   });
+  readonly themeActionLabel = computed(() => this.theme() === 'dark' ? 'Use light theme' : 'Use dark theme');
 
   readonly workspaceItems: readonly ShellNavItem[] = [
-    { label: 'Home', route: '/home', icon: 'M3.5 11 12 4l8.5 7M5.5 9.5V20h5v-6h3v6h5V9.5' },
-    { label: 'Projects', route: '/projects', icon: 'M3.5 7.5h6l2-2h9v14h-17v-12Z' },
-    { label: 'Create Project', route: '/projects/new', icon: 'M12 5v14M5 12h14' },
+    { label: 'Home', route: '/home', match: 'home', icon: 'M3.5 11 12 4l8.5 7M5.5 9.5V20h5v-6h3v6h5V9.5' },
+    { label: 'Projects', route: '/projects', match: 'projects', icon: 'M3.5 7.5h6l2-2h9v14h-17v-12Z' },
+    { label: 'Create project', route: '/projects/new', match: 'create', icon: 'M12 5v14M5 12h14' },
   ];
 
   constructor() {
@@ -60,30 +65,29 @@ export class AppShellComponent {
       )
       .subscribe((event) => {
         this.currentUrl.set(event.urlAfterRedirects);
-        this.sidebarOpen.set(false);
-        this.userMenuOpen.set(false);
+        this.closeNavigation();
       });
+  }
+
+  isNavItemActive(item: ShellNavItem): boolean {
+    const path = this.currentPath();
+    if (item.match === 'home') return path === '/home';
+    if (item.match === 'create') return path === '/projects/new';
+    return path === '/projects' || (/^\/projects\/\d+(\/|$)/.test(path));
   }
 
   toggleSidebar(): void {
     this.sidebarOpen.update((open) => !open);
+    this.userMenuOpen.set(false);
   }
 
-  closeSidebar(): void {
+  closeNavigation(): void {
     this.sidebarOpen.set(false);
     this.userMenuOpen.set(false);
   }
 
   toggleUserMenu(): void {
     this.userMenuOpen.update((open) => !open);
-  }
-
-  closeUserMenu(): void {
-    this.userMenuOpen.set(false);
-  }
-
-  toggleCollapsed(): void {
-    this.sidebarCollapsed.update((collapsed) => !collapsed);
   }
 
   toggleTheme(): void {
@@ -95,33 +99,8 @@ export class AppShellComponent {
     void this.router.navigate(['/']);
   }
 
-  scrollToTop(): void {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  scrollToBottom(): void {
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-  }
-
-  readonly initials = computed(() => {
-    const current = this.user();
-    return current ? `${current.firstName[0] ?? ''}${current.lastName[0] ?? ''}`.toUpperCase() : 'FD';
-  });
-
   @HostListener('document:keydown.escape')
-  closeSidebarOnEscape(): void {
-    this.sidebarOpen.set(false);
-    this.userMenuOpen.set(false);
-  }
-
-  @HostListener('window:scroll', [])
-  onWindowScroll(): void {
-    const currentScroll = window.scrollY || document.documentElement.scrollTop;
-    if (currentScroll > this.lastScrollTop && currentScroll > 80) {
-      this.isHeaderHidden.set(true);
-    } else if (currentScroll < this.lastScrollTop) {
-      this.isHeaderHidden.set(false);
-    }
-    this.lastScrollTop = currentScroll;
+  closeOnEscape(): void {
+    this.closeNavigation();
   }
 }

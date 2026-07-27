@@ -1,6 +1,7 @@
 import { ActivatedRouteSnapshot, RedirectFunction, Route, Routes } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 import { routes } from './app.routes';
+import { authGuard } from './services/auth.guard';
 
 function flatten(items: Routes, parent = ''): Array<{ fullPath: string; route: Route }> {
   return items.flatMap((route) => {
@@ -28,6 +29,18 @@ describe('simplified application routes', () => {
     const projectRoute = allRoutes.find((item) => item.fullPath === 'projects/:projectId')?.route;
     const canonicalSteps = projectRoute?.children?.filter((route) => route.loadComponent) ?? [];
     expect(canonicalSteps.map((route) => route.path)).toEqual(['data', 'analyze', 'clean', 'schema', 'export-deploy']);
+  });
+
+  it('keeps project workflow routes inside the authenticated global application shell', () => {
+    const appShellRoute = routes.find((route) =>
+      route.path === '' && route.children?.some((child) => child.path === 'home'));
+    const projectRoute = appShellRoute?.children?.find((route) => route.path === 'projects/:projectId');
+
+    expect(appShellRoute?.loadComponent).toBeTypeOf('function');
+    expect(appShellRoute?.canActivateChild).toEqual([authGuard]);
+    expect(projectRoute?.loadComponent).toBeTypeOf('function');
+    expect(projectRoute?.children?.some((route) => route.path === 'data')).toBe(true);
+    expect(routes.some((route) => route.path === 'projects/:projectId')).toBe(false);
   });
 
   it('has no ER Diagram route', () => {

@@ -32,7 +32,10 @@ function childRoute(step: string, datasetId?: string): ActivatedRouteSnapshot {
     queryParamMap: convertToParamMap(datasetId ? { datasetId } : {}),
     parent: {
       paramMap: convertToParamMap({ projectId: '10' }),
-      parent: null,
+      parent: {
+        paramMap: convertToParamMap({}),
+        parent: null,
+      },
     },
   } as unknown as ActivatedRouteSnapshot;
 }
@@ -55,7 +58,7 @@ describe('projectWorkflowGuard', () => {
 
   it('defines exactly the five visible workflow steps', () => {
     expect(PROJECT_WORKFLOW_STEPS.map((step) => step.label)).toEqual([
-      'Data', 'Analyze', 'Clean', 'Schema', 'Export & Deploy',
+      'Data Sources', 'Analysis', 'Data Cleaning', 'Schema Design', 'Export and Deploy',
     ]);
   });
 

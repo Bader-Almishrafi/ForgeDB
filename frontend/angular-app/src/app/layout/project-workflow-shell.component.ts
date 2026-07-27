@@ -1,61 +1,152 @@
 import { NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, HostListener, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { combineLatest, filter } from 'rxjs';
-import { AuthService } from '../services/auth.service';
+import { ProjectWorkflow } from '../services/api.models';
 import { ProjectWorkflowContextService } from '../services/project-workflow-context.service';
-import { isWorkflowStepAllowed, PROJECT_WORKFLOW_STEPS, ProjectWorkflowStep, ProjectWorkflowStepDefinition } from '../services/project-workflow.guard';
-import { ThemeService } from '../services/theme.service';
+import {
+  isWorkflowStepAllowed,
+  PROJECT_WORKFLOW_STEPS,
+  ProjectWorkflowStep,
+  ProjectWorkflowStepDefinition,
+} from '../services/project-workflow.guard';
+
+type WorkflowProgressState = 'complete' | 'current' | 'available' | 'blocked' | 'needs-attention';
+
+interface WorkflowProgressStep extends ProjectWorkflowStepDefinition {
+  index: number;
+  allowed: boolean;
+  active: boolean;
+  state: WorkflowProgressState;
+  stateLabel: string;
+}
+
+interface WorkflowGuidance {
+  title: string;
+  message: string;
+  targetPath: ProjectWorkflowStep | null;
+  targetLabel: string | null;
+  positive: boolean;
+}
 
 @Component({
   selector: 'app-project-workflow-shell',
   standalone: true,
-  imports: [NgClass, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [NgClass, RouterLink, RouterOutlet],
   templateUrl: './project-workflow-shell.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProjectWorkflowShellComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly themeService = inject(ThemeService);
-
-  readonly isHeaderHidden = signal(false);
-  private lastScrollTop = 0;
   private readonly destroyRef = inject(DestroyRef);
 
   readonly context = inject(ProjectWorkflowContextService);
-  readonly sidebarOpen = signal(false);
-  readonly sidebarCollapsed = signal(false);
-  readonly userMenuOpen = signal(false);
   readonly currentUrl = signal(this.router.url);
-  readonly user = this.auth.user;
-  readonly theme = this.themeService.theme;
   readonly steps = PROJECT_WORKFLOW_STEPS;
   readonly projectName = computed(() => this.context.workflow()?.projectName ?? '');
+  readonly activeStepPath = computed<ProjectWorkflowStep | null>(() => {
+    const path = this.currentUrl().split('?')[0].split('/').filter(Boolean).at(-1);
+    return this.isStepPath(path) ? path : null;
+  });
   readonly pageTitle = computed(() => {
-    const path = this.currentUrl().split('?')[0].split('/').at(-1) as ProjectWorkflowStep | undefined;
-    return PROJECT_WORKFLOW_STEPS.find((step) => step.path === path)?.label ?? this.context.workflow()?.currentStep ?? 'Project';
+    const active = this.activeStepPath();
+    return this.steps.find((step) => step.path === active)?.label ?? 'Project workflow';
   });
-  readonly displayName = computed(() => {
-    const current = this.user();
-    return current ? `${current.firstName} ${current.lastName}`.trim() : 'ForgeDB user';
-  });
-  readonly stepIcons: Record<ProjectWorkflowStep, string> = {
-    data: 'M4 6h16v5H4V6Zm0 7h16v5H4v-5Zm3-4h.01M7 16h.01',
-    analyze: 'M4 19V9m5 10V5m5 14v-7m5 7V3',
-    clean: 'm4 20 5-5m0 0 8-8 2 2-8 8m-2-2-4-4m9-6 2-2',
-    schema: 'M4 5h6v6H4V5Zm10 0h6v6H14V5ZM4 15h6v4H4v-4Zm10 0h6v4h-6v-4Z',
-    'export-deploy': 'M12 3v12m0 0 4-4m-4 4-4-4M5 17v4h14v-4',
-  };
-
-  readonly enrichedSteps = computed(() => {
+  readonly progressSteps = computed<WorkflowProgressStep[]>(() => {
     const workflow = this.context.workflow();
-    return this.steps.map((step) => ({
+    if (!workflow) return this.steps.map((step, index) => ({
       ...step,
-      allowed: workflow ? isWorkflowStepAllowed(workflow, step.path) : false,
+      index,
+      allowed: false,
+      active: false,
+      state: 'blocked',
+      stateLabel: 'Blocked',
     }));
+
+    const recommended = this.recommendedStep(workflow);
+    const recommendedIndex = recommended
+      ? this.steps.findIndex((step) => step.path === recommended)
+      : -1;
+    const active = this.activeStepPath() ?? recommended;
+    const attention = this.attentionStep(workflow);
+
+    return this.steps.map((step, index) => {
+      const allowed = isWorkflowStepAllowed(workflow, step.path);
+      const isActive = active === step.path;
+      let state: WorkflowProgressState;
+
+      if (attention === step.path) state = 'needs-attention';
+      else if (isActive && allowed) state = 'current';
+      else if (allowed && recommendedIndex >= 0 && index < recommendedIndex) state = 'complete';
+      else if (allowed) state = 'available';
+      else state = 'blocked';
+
+      return {
+        ...step,
+        index,
+        allowed,
+        active: isActive,
+        state,
+        stateLabel: state === 'needs-attention' && isActive
+          ? 'Current · Needs attention'
+          : this.stateLabel(state),
+      };
+    });
+  });
+  readonly guidance = computed<WorkflowGuidance>(() => {
+    const workflow = this.context.workflow();
+    if (!workflow) {
+      return {
+        title: 'Project workflow',
+        message: 'Loading the next recommended action.',
+        targetPath: null,
+        targetLabel: null,
+        positive: false,
+      };
+    }
+
+    const blocker = this.plainLanguageBlocker(workflow);
+    const targetPath = this.attentionStep(workflow) ?? this.recommendedStep(workflow);
+    const target = this.steps.find((step) => step.path === targetPath) ?? null;
+    if (blocker) {
+      return {
+        title: 'Next action',
+        message: blocker,
+        targetPath: target && isWorkflowStepAllowed(workflow, target.path) ? target.path : null,
+        targetLabel: target?.label ?? null,
+        positive: false,
+      };
+    }
+
+    if (workflow.canDeploy) {
+      return {
+        title: 'Ready to deploy',
+        message: 'Your validated schema and current data versions are ready for deployment.',
+        targetPath: 'export-deploy',
+        targetLabel: 'Export and Deploy',
+        positive: true,
+      };
+    }
+
+    if (workflow.canExport) {
+      return {
+        title: 'Ready to export',
+        message: 'Your schema is validated. Review the generated files or deployment plan.',
+        targetPath: 'export-deploy',
+        targetLabel: 'Export and Deploy',
+        positive: true,
+      };
+    }
+
+    return {
+      title: 'Continue the workflow',
+      message: target ? `Continue with ${target.label}.` : 'Continue with the next available step.',
+      targetPath: target && isWorkflowStepAllowed(workflow, target.path) ? target.path : null,
+      targetLabel: target?.label ?? null,
+      positive: true,
+    };
   });
 
   constructor() {
@@ -64,11 +155,7 @@ export class ProjectWorkflowShellComponent implements OnInit {
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((event) => {
-        this.currentUrl.set(event.urlAfterRedirects);
-        this.sidebarOpen.set(false);
-        this.userMenuOpen.set(false);
-      });
+      .subscribe((event) => this.currentUrl.set(event.urlAfterRedirects));
   }
 
   ngOnInit(): void {
@@ -84,75 +171,81 @@ export class ProjectWorkflowShellComponent implements OnInit {
       });
   }
 
-
-
-  readonly disabledReason = computed(() => {
-    return this.context.workflow()?.blockingReasons[0] ?? 'Complete the current workflow step first.';
-  });
-
-  toggleSidebar(): void {
-    this.sidebarOpen.update((open) => !open);
-  }
-
-  closeSidebar(): void {
-    this.sidebarOpen.set(false);
-    this.userMenuOpen.set(false);
-  }
-
-  toggleUserMenu(): void {
-    this.userMenuOpen.update((open) => !open);
-  }
-
-  closeUserMenu(): void {
-    this.userMenuOpen.set(false);
-  }
-
-  toggleCollapsed(): void {
-    this.sidebarCollapsed.update((collapsed) => !collapsed);
-  }
-
   retry(): void {
     const projectId = this.context.projectId();
     if (projectId) this.context.load(projectId, true).subscribe();
   }
 
-  toggleTheme(): void {
-    this.themeService.toggle();
+  blockedReason(step: WorkflowProgressStep): string {
+    if (step.state === 'needs-attention') return this.guidance().message;
+    const previous = step.index > 0 ? this.steps[step.index - 1] : null;
+    return previous
+      ? `Complete ${previous.label} before opening ${step.label}.`
+      : 'Complete the current project action first.';
   }
 
-  logout(): void {
-    this.context.clear();
-    this.auth.logout();
-    void this.router.navigate(['/']);
+  showGuidanceLink(guidance: WorkflowGuidance): boolean {
+    return Boolean(guidance.targetPath && guidance.targetPath !== this.activeStepPath());
   }
 
-  scrollToTop(): void {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  private recommendedStep(workflow: ProjectWorkflow): ProjectWorkflowStep | null {
+    const routeStep = workflow.recommendedRoute.split('?')[0].split('/').filter(Boolean).at(-1);
+    if (this.isStepPath(routeStep)) return routeStep;
+
+    const normalized = workflow.currentStep.trim().toLocaleLowerCase().replaceAll('&', 'and');
+    const aliases: Record<string, ProjectWorkflowStep> = {
+      data: 'data',
+      'data sources': 'data',
+      analyze: 'analyze',
+      analysis: 'analyze',
+      clean: 'clean',
+      'data cleaning': 'clean',
+      schema: 'schema',
+      'schema design': 'schema',
+      'export and deploy': 'export-deploy',
+      'export deploy': 'export-deploy',
+    };
+    return aliases[normalized] ?? null;
   }
 
-  scrollToBottom(): void {
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  private attentionStep(workflow: ProjectWorkflow): ProjectWorkflowStep | null {
+    const code = workflow.blockerCodes[0]?.toLocaleLowerCase() ?? '';
+    if (code === 'no_data') return 'data';
+    if (code.startsWith('analysis_')) return 'analyze';
+    if (code === 'quality_confirmation_required') return 'clean';
+    if (code.startsWith('schema_')) return 'schema';
+    if (code.startsWith('deployment_')) return 'export-deploy';
+
+    const schemaStatus = workflow.schemaStatus.toLocaleLowerCase();
+    if (schemaStatus === 'invalid' || schemaStatus === 'stale') return 'schema';
+    if (workflow.latestDeploymentStatus?.toLocaleLowerCase() === 'failed') return 'export-deploy';
+
+    const recommended = this.recommendedStep(workflow);
+    return recommended && !isWorkflowStepAllowed(workflow, recommended) ? recommended : null;
   }
 
-  readonly initials = computed(() => {
-    const current = this.user();
-    return current ? `${current.firstName[0] ?? ''}${current.lastName[0] ?? ''}`.toUpperCase() : 'FD';
-  });
-
-  @HostListener('document:keydown.escape')
-  closeSidebarOnEscape(): void {
-    this.sidebarOpen.set(false);
-    this.userMenuOpen.set(false);
+  private plainLanguageBlocker(workflow: ProjectWorkflow): string {
+    const code = workflow.blockerCodes[0]?.toLocaleLowerCase() ?? '';
+    const messages: Record<string, string> = {
+      no_data: 'Import at least one data source to begin this project.',
+      analysis_required: 'Run analysis for every active data source before continuing.',
+      analysis_stale: 'A data source changed. Run analysis again for its current version.',
+      quality_confirmation_required: 'Review the cleaning results, then confirm data quality.',
+      schema_required: 'Generate a schema from the confirmed data versions.',
+      schema_invalid: 'Fix the schema issues and validate the schema before exporting.',
+      schema_stale: 'Your data changed after the schema was generated. Regenerate and validate it.',
+      deployment_in_progress: 'A deployment is already running. Wait for it to finish, then refresh.',
+      deployment_not_ready: 'Review the deployment requirements before trying again.',
+    };
+    return messages[code] ?? workflow.blockingReasons[0] ?? '';
   }
 
-  @HostListener('window:scroll', [])
-  onWindowScroll(): void {
-    const currentScroll = window.scrollY || document.documentElement.scrollTop;
-    if (currentScroll > this.lastScrollTop && currentScroll > 80) {
-      this.isHeaderHidden.set(true);
-    } else if (currentScroll < this.lastScrollTop) {
-      this.isHeaderHidden.set(false);
-    }
-    this.lastScrollTop = currentScroll;
+  private stateLabel(state: WorkflowProgressState): string {
+    if (state === 'needs-attention') return 'Needs attention';
+    return state.charAt(0).toUpperCase() + state.slice(1);
+  }
+
+  private isStepPath(value: string | undefined): value is ProjectWorkflowStep {
+    return this.steps.some((step) => step.path === value);
   }
 }
