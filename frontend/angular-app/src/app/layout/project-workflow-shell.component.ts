@@ -17,9 +17,12 @@ import { ThemeService } from '../services/theme.service';
 })
 export class ProjectWorkflowShellComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
+
+  readonly isHeaderHidden = signal(false);
+  private lastScrollTop = 0;
   private readonly destroyRef = inject(DestroyRef);
 
   readonly context = inject(ProjectWorkflowContextService);
@@ -140,5 +143,16 @@ export class ProjectWorkflowShellComponent implements OnInit {
   closeSidebarOnEscape(): void {
     this.sidebarOpen.set(false);
     this.userMenuOpen.set(false);
+  }
+
+  @HostListener('window:scroll', [])
+  onWindowScroll(): void {
+    const currentScroll = window.scrollY || document.documentElement.scrollTop;
+    if (currentScroll > this.lastScrollTop && currentScroll > 80) {
+      this.isHeaderHidden.set(true);
+    } else if (currentScroll < this.lastScrollTop) {
+      this.isHeaderHidden.set(false);
+    }
+    this.lastScrollTop = currentScroll;
   }
 }
