@@ -2,6 +2,13 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { CleaningOperationRequest, CleaningStrategy, CleaningSuggestion } from '../../../services/api.models';
 import { ProjectWorkflowContextService } from '../../../services/project-workflow-context.service';
 import { DataCleaningApiService } from './data-cleaning-api.service';
+import {
+  buildCleaningOperation,
+  extractColumns,
+  extractIssueTypes,
+  filterSafeRecommendations,
+  filterSuggestions,
+} from './cleaning-transformations';
 
 export type CleaningScope = 'project' | number;
 
@@ -30,25 +37,17 @@ export class DataCleaningStateService {
     return scope === 'project' ? this.api.suggestions() : this.api.suggestions().filter((suggestion) => suggestion.datasetId === scope);
   });
 
-  readonly issueTypes = computed(() => [...new Set(this.scopeSuggestions().map((suggestion) => suggestion.issueType))].sort());
+  readonly issueTypes = computed(() => extractIssueTypes(this.scopeSuggestions()));
 
-  readonly columns = computed(() => [...new Set(this.scopeSuggestions()
-    .map((suggestion) => suggestion.column)
-    .filter((column): column is string => !!column))].sort());
+  readonly columns = computed(() => extractColumns(this.scopeSuggestions()));
 
-  readonly filteredSuggestions = computed(() => {
-    const query = this.search().trim().toLocaleLowerCase();
-    return this.scopeSuggestions().filter((suggestion) => {
-      if (this.issueType() !== 'all' && suggestion.issueType !== this.issueType()) return false;
-      if (this.columnFilter() !== 'all' && suggestion.column !== this.columnFilter()) return false;
-      return !query || `${suggestion.datasetName} ${suggestion.issueType} ${suggestion.column ?? ''} ${suggestion.description}`.toLocaleLowerCase().includes(query);
-    });
-  });
+  readonly filteredSuggestions = computed(() =>
+    filterSuggestions(this.scopeSuggestions(), this.search(), this.issueType(), this.columnFilter())
+  );
 
   readonly selectedSuggestions = computed(() => this.scopeSuggestions().filter((suggestion) => this.selectedIds().has(suggestion.id)));
 
-  readonly safeRecommendations = computed(() => this.scopeSuggestions().filter((suggestion) =>
-    suggestion.recommendedStrategy.isSafeRecommended && !suggestion.recommendedStrategy.isDestructive));
+  readonly safeRecommendations = computed(() => filterSafeRecommendations(this.scopeSuggestions()));
 
   readonly allVisibleSelected = computed(() => this.filteredSuggestions().length > 0
     && this.filteredSuggestions().every((suggestion) => this.selectedIds().has(suggestion.id)));
@@ -116,23 +115,12 @@ export class DataCleaningStateService {
 
   buildOperation(suggestion: CleaningSuggestion): CleaningOperationRequest {
     const strategy = this.selectedStrategy(suggestion);
-    const parameters = { ...strategy.parameters };
-    if (parameters['strategy'] === 'custom' || parameters['invalidAction'] === 'replace') {
-      parameters['value'] = this.customValues()[suggestion.id] ?? '';
-    }
-    if (strategy.operationType === 'remove_duplicates') {
-      const columns = this.duplicateColumns()[suggestion.id]?.split(',').map((col) => col.trim()).filter(Boolean);
-      if (columns?.length) parameters['columns'] = columns;
-    }
-    return {
-      operationId: suggestion.id,
-      suggestionId: suggestion.id,
-      datasetId: suggestion.datasetId,
-      expectedSourceVersionId: suggestion.versionId,
-      operationType: strategy.operationType,
-      column: suggestion.column,
-      parameters,
-    };
+    return buildCleaningOperation(
+      suggestion,
+      strategy,
+      this.customValues()[suggestion.id],
+      this.duplicateColumns()[suggestion.id]
+    );
   }
 
   buildOperations(suggestions: CleaningSuggestion[]): CleaningOperationRequest[] {

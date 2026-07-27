@@ -12,6 +12,7 @@ import {
 import { DesignApiService } from './design-api.service';
 import { ForgeApiService } from '../../../services/forge-api.service';
 import { ProjectWorkflowContextService } from '../../../services/project-workflow-context.service';
+import { ToastService } from '../../../services/toast.service';
 import {
   ColumnDraft,
   baseDataType as getBaseDataType,
@@ -30,6 +31,7 @@ export class ProjectSchemaDesignerService {
   private readonly schemaApi = inject(DesignApiService);
   private readonly api = inject(ForgeApiService);
   readonly workflowContext = inject(ProjectWorkflowContextService);
+  private readonly toast = inject(ToastService);
 
   projectId = 0;
   
@@ -163,7 +165,10 @@ export class ProjectSchemaDesignerService {
     ).subscribe({
       next: (workspace) => {
         this.applyWorkspace(workspace);
-        this.feedback.set({ kind: 'success', title: current ? 'Schema regenerated' : 'Schema generated', message: `${workspace.design?.tables.length ?? 0} active dataset version(s) are represented as tables.` });
+        const title = current ? 'Schema regenerated' : 'Schema generated';
+        const msg = `${workspace.design?.tables.length ?? 0} active dataset version(s) are represented as tables.`;
+        this.feedback.set({ kind: 'success', title, message: msg });
+        this.toast.showSuccess(`${title}! ${msg}`);
       },
       error: (error) => this.handleMutationError(error, 'Generation failed', 'Schema could not be generated.'),
     });
@@ -193,6 +198,7 @@ export class ProjectSchemaDesignerService {
       next: (workspace) => {
         this.applyWorkspace(workspace);
         this.feedback.set({ kind: 'success', title: 'Changes saved', message: 'The persisted schema and backend SQL preview are up to date.' });
+        this.toast.showSuccess('Schema design saved successfully!');
       },
       error: (error) => this.handleMutationError(error, 'Save failed', 'The schema changes could not be saved.'),
     });
@@ -211,9 +217,13 @@ export class ProjectSchemaDesignerService {
         this.applyWorkspace(workspace);
         const errors = workspace.design?.validationIssues.filter((issue) => issue.severity === 'error').length ?? 0;
         const warnings = (workspace.design?.validationIssues.length ?? 0) - errors;
-        this.feedback.set(errors
-          ? { kind: 'error', title: 'Schema is invalid', message: `${errors} blocking error(s) and ${warnings} warning(s) were reported.` }
-          : { kind: 'success', title: 'Schema validated', message: warnings ? `${warnings} non-blocking warning(s) were reported.` : 'Export & Deploy availability was refreshed.' });
+        if (errors > 0) {
+          this.feedback.set({ kind: 'error', title: 'Schema is invalid', message: `${errors} blocking error(s) and ${warnings} warning(s) were reported.` });
+          this.toast.showError(`Validation found ${errors} error(s). Please review highlighted columns.`);
+        } else {
+          this.feedback.set({ kind: 'success', title: 'Schema validated', message: warnings ? `${warnings} non-blocking warning(s) were reported.` : 'Export & Deploy availability was refreshed.' });
+          this.toast.showSuccess('Schema validated successfully! Ready for export and deployment.');
+        }
       },
       error: (error) => this.handleMutationError(error, 'Validation failed', 'Schema validation could not be completed.'),
     });
@@ -431,10 +441,14 @@ export class ProjectSchemaDesignerService {
   private handleMutationError(error: unknown, title: string, fallback: string): void {
     if (this.isConflict(error)) {
       this.conflict.set(true);
-      this.feedback.set({ kind: 'error', title: 'Schema changed elsewhere', message: 'Reload the latest schema. Local unsaved edits will be discarded.' });
+      const conflictMsg = 'Reload the latest schema. Local unsaved edits will be discarded.';
+      this.feedback.set({ kind: 'error', title: 'Schema changed elsewhere', message: conflictMsg });
+      this.toast.showError(`Conflict: ${conflictMsg}`);
       return;
     }
-    this.feedback.set({ kind: 'error', title, message: this.errorMessage(error, fallback) });
+    const errText = this.errorMessage(error, fallback);
+    this.feedback.set({ kind: 'error', title, message: errText });
+    this.toast.showError(`${title}: ${errText}`);
   }
 
   private patchColumn(columnId: number, patch: Partial<ColumnDraft>): void {
