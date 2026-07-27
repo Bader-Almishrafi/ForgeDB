@@ -10,6 +10,7 @@ import { CleaningIssueCardComponent } from './cleaning-issue-card.component';
 import { CleaningPreviewDialogComponent } from './cleaning-preview-dialog.component';
 import { DataCleaningApiService } from './services/data-cleaning-api.service';
 import { DataCleaningStateService } from './services/data-cleaning-state.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-data-cleaning',
@@ -24,6 +25,7 @@ export class DataCleaningComponent implements OnInit {
   readonly apiService = inject(DataCleaningApiService);
   readonly stateService = inject(DataCleaningStateService);
   readonly workflowContext = inject(ProjectWorkflowContextService);
+  private readonly toastService = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -67,11 +69,7 @@ export class DataCleaningComponent implements OnInit {
   async previewRecommendedFixes(): Promise<void> {
     const safe = this.stateService.safeRecommendations();
     if (!safe.length) {
-      this.apiService.feedback.set({
-        kind: 'warning',
-        title: 'No safe recommendations',
-        message: 'The current issues require individual review or a destructive-operation confirmation.',
-      });
+      this.toastService.showWarning('No safe recommendations found. The current issues require individual review or destructive-operation confirmation.');
       return;
     }
     this.stateService.selectedIds.set(new Set(safe.map((s) => s.id)));

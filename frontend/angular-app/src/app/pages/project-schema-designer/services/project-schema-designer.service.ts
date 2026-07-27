@@ -53,6 +53,9 @@ export class ProjectSchemaDesignerService {
   readonly datasetId = signal<number | null>(null);
   readonly selectedTableId = signal<number | null>(null);
 
+  private readonly history = signal<{ tableNames: Record<number, string>; columnDrafts: Record<number, ColumnDraft> }[]>([]);
+  readonly canUndo = computed(() => this.history().length > 0);
+
   readonly projectName = computed(() => this.workflow()?.projectName ?? '');
   readonly schemaStatus = computed(() => this.workflow()?.schemaStatus ?? this.design()?.status ?? 'None');
   readonly isStale = computed(() => this.design()?.isStale === true || this.schemaStatus() === 'Stale');
@@ -235,6 +238,22 @@ export class ProjectSchemaDesignerService {
     this.loadWorkspace(true);
   }
 
+  undoChange(): void {
+    const h = this.history();
+    if (h.length === 0) return;
+    const last = h[h.length - 1];
+    this.tableNames.set(last.tableNames);
+    this.columnDrafts.set(last.columnDrafts);
+    this.history.set(h.slice(0, -1));
+  }
+
+  private pushHistory(): void {
+    this.history.update((h) => {
+      const next = [...h, { tableNames: { ...this.tableNames() }, columnDrafts: { ...this.columnDrafts() } }];
+      return next.slice(-50);
+    });
+  }
+
   refreshSqlPreview(): void {
     this.loadSqlPreview();
   }
@@ -251,6 +270,8 @@ export class ProjectSchemaDesignerService {
   }
 
   updateTableName(tableId: number, value: string): void {
+    if (this.tableNames()[tableId] === value) return;
+    this.pushHistory();
     this.tableNames.update((current) => ({ ...current, [tableId]: value }));
   }
 
@@ -405,6 +426,7 @@ export class ProjectSchemaDesignerService {
 
   private applyDesign(design: DesignModelResponse | null): void {
     this.conflict.set(false);
+    this.history.set([]);
     this.design.set(design);
     this.tableNames.set(Object.fromEntries((design?.tables ?? []).map((table) => [table.id, table.name])));
     this.columnDrafts.set(Object.fromEntries((design?.tables ?? []).flatMap((table) => table.columns.map((column) => [column.id, {
@@ -452,6 +474,14 @@ export class ProjectSchemaDesignerService {
   }
 
   private patchColumn(columnId: number, patch: Partial<ColumnDraft>): void {
+    const currentDraft = this.columnDrafts()[columnId];
+    if (!currentDraft) return;
+    let changed = false;
+    for (const key of Object.keys(patch) as (keyof ColumnDraft)[]) {
+      if (currentDraft[key] !== patch[key]) changed = true;
+    }
+    if (!changed) return;
+    this.pushHistory();
     this.columnDrafts.update((current) => current[columnId]
       ? { ...current, [columnId]: { ...current[columnId], ...patch } }
       : current);

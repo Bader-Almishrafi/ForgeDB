@@ -24,23 +24,45 @@
           <p class="metadata-line">Revision {{ schema.revision }} · {{ service.tableCount() }} tables · {{ service.columnCount() }} columns @if (schema.generatedAt) { · Generated {{ schema.generatedAt | date:'medium' }} }</p>
         }
       </div>
-      <div class="header-actions">
-        <button data-testid="generate-schema" type="button" class="btn-secondary" (click)="service.generateSchema()" [disabled]="!service.canGenerate()">
-          <svg lucideRefreshCw [class.animate-spin]="service.generating()" [size]="16"></svg>{{ service.generating() ? 'Generating…' : service.design() ? 'Regenerate Schema' : 'Generate Schema' }}
+      @if (!service.dirty()) {
+        <div class="header-actions">
+          <button data-testid="generate-schema" type="button" class="btn-secondary" (click)="service.generateSchema()" [disabled]="!service.canGenerate()">
+            <svg lucideRefreshCw [class.animate-spin]="service.generating()" [size]="16"></svg>{{ service.generating() ? 'Generating…' : service.design() ? 'Regenerate Schema' : 'Generate Schema' }}
+          </button>
+          <button data-testid="save-schema" type="button" class="btn-secondary" (click)="service.saveDraft()" [disabled]="!service.canSave()">
+            <svg lucideSave [size]="16"></svg>{{ service.saving() ? 'Saving…' : 'Save Changes' }}
+          </button>
+          <div class="flex items-center gap-2">
+            <button data-testid="validate-schema" type="button" class="btn-primary" (click)="service.validateSchema()" [disabled]="!service.canValidate()">
+              <svg lucideFileCheck2 [size]="16"></svg>{{ service.validating() ? 'Validating…' : 'Validate Schema' }}
+            </button>
+            @if (service.blockingIssues().length || service.warningIssues().length) {
+              <span class="rounded-full px-2.5 py-1 text-xs font-semibold" [class.bg-rose-100]="service.blockingIssues().length" [class.text-rose-700]="service.blockingIssues().length" [class.bg-amber-100]="!service.blockingIssues().length" [class.text-amber-800]="!service.blockingIssues().length">{{ service.blockingIssues().length + service.warningIssues().length }} Issues</span>
+            }
+          </div>
+        </div>
+      }
+    </header>
+
+    @if (service.dirty()) {
+      <div class="fixed bottom-24 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-3 rounded-full border border-slate-200/50 bg-white/90 p-2.5 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-[#161b22]/90 animate-fade-in-up">
+        <div class="flex items-center gap-2 pl-3 pr-2">
+          <span class="relative flex h-2.5 w-2.5"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span><span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"></span></span>
+          <span class="text-sm font-bold text-slate-800 dark:text-slate-200">Unsaved changes</span>
+        </div>
+        <div class="h-6 w-px bg-slate-200 dark:bg-white/10"></div>
+        <button type="button" class="btn-secondary rounded-full border-0 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700" (click)="service.undoChange()" [disabled]="!service.canUndo()">Undo Edit</button>
+        <button data-testid="generate-schema-floating" type="button" class="btn-secondary rounded-full" (click)="service.generateSchema()" [disabled]="!service.canGenerate()">
+          <svg lucideRefreshCw [class.animate-spin]="service.generating()" [size]="16"></svg>{{ service.generating() ? 'Generating…' : 'Regenerate' }}
         </button>
-        <button data-testid="save-schema" type="button" class="btn-secondary" (click)="service.saveDraft()" [disabled]="!service.canSave()">
+        <button data-testid="save-schema-floating" type="button" class="btn-primary rounded-full px-5 shadow-indigo-500/25" (click)="service.saveDraft()" [disabled]="!service.canSave()">
           <svg lucideSave [size]="16"></svg>{{ service.saving() ? 'Saving…' : 'Save Changes' }}
         </button>
-        <div class="flex items-center gap-2">
-          <button data-testid="validate-schema" type="button" class="btn-primary" (click)="service.validateSchema()" [disabled]="!service.canValidate()">
-            <svg lucideFileCheck2 [size]="16"></svg>{{ service.validating() ? 'Validating…' : 'Validate Schema' }}
-          </button>
-          @if (service.blockingIssues().length || service.warningIssues().length) {
-            <span class="rounded-full px-2.5 py-1 text-xs font-semibold" [class.bg-rose-100]="service.blockingIssues().length" [class.text-rose-700]="service.blockingIssues().length" [class.bg-amber-100]="!service.blockingIssues().length" [class.text-amber-800]="!service.blockingIssues().length">{{ service.blockingIssues().length + service.warningIssues().length }} Issues</span>
-          }
-        </div>
+        <button data-testid="validate-schema-floating" type="button" class="btn-secondary rounded-full" (click)="service.validateSchema()" [disabled]="!service.canValidate()">
+          <svg lucideFileCheck2 [size]="16"></svg>{{ service.validating() ? 'Validating…' : 'Validate' }}
+        </button>
       </div>
-    </header>
+    }
 
     @if (service.feedback(); as message) {
       <section class="feedback" [ngClass]="'feedback-' + message.kind" [attr.role]="message.kind === 'error' ? 'alert' : 'status'" aria-live="polite">
@@ -62,9 +84,9 @@
     @if (service.sourceRows().length) {
       <section data-testid="schema-source-versions" class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-100">
         <div class="section-heading"><div><h2>Source versions</h2><p>The schema is tied to these quality-confirmed active dataset versions.</p></div></div>
-        <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div class="mt-4 flex gap-4 overflow-x-auto pb-4 snap-x">
           @for (source of service.sourceRows(); track source.dataset.datasetId) {
-            <article class="source-card" [class.source-stale]="!source.usesCurrentVersion">
+            <article class="source-card min-w-[320px] shrink-0 snap-start" [class.source-stale]="!source.usesCurrentVersion">
               <div class="flex items-start justify-between gap-2"><strong>{{ source.dataset.datasetName }}</strong><span class="badge-neutral">v{{ source.dataset.activeVersionNumber ?? '?' }}</span></div>
               <p class="mt-2 text-sm text-slate-600">Active version ID {{ source.dataset.activeVersionId ?? 'unavailable' }} · {{ service.versionKind(source.activeVersion) }}</p>
               <div class="mt-3 flex flex-wrap gap-2 text-xs">

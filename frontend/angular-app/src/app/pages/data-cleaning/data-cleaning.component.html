@@ -82,17 +82,19 @@
       @if (stateService.scope() === 'project') {
         <section class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-100" data-testid="cleaning-dataset-status">
           <h2 class="text-lg font-bold text-slate-950 dark:text-white">Dataset status</h2>
-          <div class="mt-4 divide-y divide-slate-100 dark:divide-slate-800">
+          <div class="mt-4 flex gap-4 overflow-x-auto pb-4 snap-x">
             @for (dataset of apiService.datasets(); track dataset.datasetId) {
-              <div class="grid gap-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
-                <div class="min-w-0">
+              <div class="min-w-[320px] shrink-0 snap-start flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white/50 p-4 dark:border-slate-800 dark:bg-black/20">
+                <div class="min-w-0 flex-1">
                   <p class="truncate font-semibold text-slate-900 dark:text-white">{{ dataset.datasetName }}</p>
                   <p class="mt-1 text-xs text-slate-500">Active v{{ dataset.versionNumber }} · {{ apiService.datasetVersionKind(dataset) }} · {{ dataset.rowCount | number }} rows</p>
                 </div>
-                <div class="text-sm text-slate-600 dark:text-slate-300">
-                  {{ apiService.issueCountByDataset()[dataset.datasetId] || 0 }} issues · {{ apiService.datasetStatus(dataset) }}
+                <div class="mt-auto flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <div class="text-xs font-medium text-slate-600 dark:text-slate-300">
+                    {{ apiService.issueCountByDataset()[dataset.datasetId] || 0 }} issues · {{ apiService.datasetStatus(dataset) }}
+                  </div>
+                  <button type="button" class="btn-secondary text-xs py-1 px-3 min-h-0 h-7" (click)="openDataset(dataset.datasetId)">Open</button>
                 </div>
-                <button type="button" class="btn-secondary" (click)="openDataset(dataset.datasetId)">Open</button>
               </div>
             }
           </div>
@@ -204,7 +206,7 @@
         </details>
       }
 
-      <footer class="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+      <footer class="flex flex-col-reverse gap-3 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-2xl backdrop-blur-xl dark:border-slate-700 dark:bg-[#161b22]/80 sm:flex-row sm:items-center sm:justify-between sticky bottom-6 z-50 animate-fade-in-up delay-300">
         <a class="btn-secondary justify-center" [routerLink]="['/projects', projectId, 'analyze']" [queryParams]="navigationQuery()">Back to Analyze</a>
         <div class="text-right">
           <button type="button" class="btn-primary justify-center" data-testid="continue-to-schema" (click)="continueToSchema()" [disabled]="!apiService.canContinueToSchema()" [title]="apiService.canContinueToSchema() ? '' : apiService.schemaBlockingReason()">Continue to Schema</button>
