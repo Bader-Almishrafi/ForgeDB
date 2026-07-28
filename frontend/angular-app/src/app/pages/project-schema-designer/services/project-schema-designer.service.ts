@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
+import { Observable, catchError, finalize, forkJoin, map, of, switchMap, throwError } from 'rxjs';
 import {
   DatasetVersion,
   DesignModelResponse,
@@ -26,12 +26,15 @@ import {
 } from './schema-draft';
 import { Feedback, SchemaSourceRow, SchemaWorkspace } from './project-schema-designer.models';
 
+class SchemaWorkspaceRefreshError extends Error {}
+
 @Injectable()
 export class ProjectSchemaDesignerService {
   private readonly schemaApi = inject(DesignApiService);
   private readonly api = inject(ForgeApiService);
   readonly workflowContext = inject(ProjectWorkflowContextService);
   private readonly toast = inject(ToastService);
+  private sqlRequestToken = 0;
 
   projectId = 0;
   
@@ -42,6 +45,7 @@ export class ProjectSchemaDesignerService {
   readonly generating = signal(false);
   readonly saving = signal(false);
   readonly validating = signal(false);
+  readonly relationshipMutationBusy = signal(false);
   readonly sqlLoading = signal(false);
   readonly sqlPreview = signal('');
   readonly sqlRevision = signal<number | null>(null);
@@ -54,7 +58,6 @@ export class ProjectSchemaDesignerService {
   readonly selectedTableId = signal<number | null>(null);
 
   private readonly history = signal<{ tableNames: Record<number, string>; columnDrafts: Record<number, ColumnDraft> }[]>([]);
-  readonly canUndo = computed(() => this.history().length > 0);
 
   readonly projectName = computed(() => this.workflow()?.projectName ?? '');
   readonly schemaStatus = computed(() => this.workflow()?.schemaStatus ?? this.design()?.status ?? 'None');
@@ -126,15 +129,19 @@ export class ProjectSchemaDesignerService {
     return map;
   });
 
-  readonly canGenerate = computed(() => !this.schemaBlocked() && !this.conflict() && !this.generating() && !this.saving() && !this.validating());
+  readonly mutationInProgress = computed(() => this.generating() || this.saving() || this.validating() || this.relationshipMutationBusy());
+  readonly draftEditingDisabled = computed(() => this.loading() || this.schemaBlocked() || this.isStale() || this.conflict()
+    || !this.design() || this.mutationInProgress());
+  readonly canUndo = computed(() => this.history().length > 0 && !this.draftEditingDisabled());
+  readonly canGenerate = computed(() => !this.schemaBlocked() && !this.conflict() && !this.mutationInProgress());
   readonly canSave = computed(() => !this.schemaBlocked() && !this.isStale() && !this.conflict() && Boolean(this.design())
-    && this.dirty() && !this.hasDraftErrors() && !this.saving() && !this.validating());
+    && this.dirty() && !this.hasDraftErrors() && !this.mutationInProgress());
   readonly canValidate = computed(() => !this.schemaBlocked() && !this.isStale() && !this.conflict() && Boolean(this.design())
-    && !this.dirty() && !this.saving() && !this.validating());
+    && !this.dirty() && !this.mutationInProgress());
   readonly canMutateRelationships = computed(() => !this.schemaBlocked() && !this.isStale() && !this.conflict()
-    && Boolean(this.design()) && !this.dirty() && !this.saving() && !this.validating());
+    && Boolean(this.design()) && !this.dirty() && !this.mutationInProgress());
   readonly canContinue = computed(() => this.workflow()?.canExport === true && this.design()?.status === 'Valid'
-    && !this.dirty() && !this.isStale() && !this.conflict());
+    && !this.dirty() && !this.isStale() && !this.conflict() && !this.mutationInProgress());
   
   readonly continueBlockingReason = computed(() => {
     if (this.dirty()) return 'Save your schema changes before continuing.';
@@ -181,7 +188,7 @@ export class ProjectSchemaDesignerService {
     this.generating.set(true);
     this.feedback.set(null);
     this.schemaApi.generateSchema(this.projectId, current?.revision).pipe(
-      switchMap(() => this.fetchWorkspace(true)),
+      switchMap(() => this.fetchWorkspace(true, true)),
       finalize(() => this.generating.set(false)),
     ).subscribe({
       next: (workspace) => {
@@ -191,7 +198,12 @@ export class ProjectSchemaDesignerService {
         this.feedback.set({ kind: 'success', title, message: msg });
         this.toast.showSuccess(`${title}! ${msg}`);
       },
-      error: (error) => this.handleMutationError(error, 'Generation failed', 'Schema could not be generated.'),
+      error: (error) => this.handleMutationError(
+        error,
+        'Generation failed',
+        'Schema could not be generated.',
+        current ? 'Schema regenerated' : 'Schema generated',
+      ),
     });
   }
 
@@ -213,7 +225,7 @@ export class ProjectSchemaDesignerService {
         isAutoIncrement: Boolean(column.isAutoIncrement),
       }))),
     }).pipe(
-      switchMap(() => this.fetchWorkspace(true)),
+      switchMap(() => this.fetchWorkspace(true, true)),
       finalize(() => this.saving.set(false)),
     ).subscribe({
       next: (workspace) => {
@@ -221,7 +233,7 @@ export class ProjectSchemaDesignerService {
         this.feedback.set({ kind: 'success', title: 'Changes saved', message: 'The persisted schema and backend SQL preview are up to date.' });
         this.toast.showSuccess('Schema design saved successfully!');
       },
-      error: (error) => this.handleMutationError(error, 'Save failed', 'The schema changes could not be saved.'),
+      error: (error) => this.handleMutationError(error, 'Save failed', 'The schema changes could not be saved.', 'Changes saved'),
     });
   }
 
@@ -231,7 +243,7 @@ export class ProjectSchemaDesignerService {
     this.validating.set(true);
     this.feedback.set(null);
     this.schemaApi.validateSchema(this.projectId, design.revision).pipe(
-      switchMap(() => this.fetchWorkspace(true)),
+      switchMap(() => this.fetchWorkspace(true, true)),
       finalize(() => this.validating.set(false)),
     ).subscribe({
       next: (workspace) => {
@@ -246,7 +258,12 @@ export class ProjectSchemaDesignerService {
           this.toast.showSuccess('Schema validated successfully! Ready for export and deployment.');
         }
       },
-      error: (error) => this.handleMutationError(error, 'Validation failed', 'Schema validation could not be completed.'),
+      error: (error) => this.handleMutationError(
+        error,
+        'Validation failed',
+        'Schema validation could not be completed.',
+        'Validation completed',
+      ),
     });
   }
 
@@ -257,6 +274,7 @@ export class ProjectSchemaDesignerService {
   }
 
   undoChange(): void {
+    if (this.draftEditingDisabled()) return;
     const h = this.history();
     if (h.length === 0) return;
     const last = h[h.length - 1];
@@ -288,6 +306,7 @@ export class ProjectSchemaDesignerService {
   }
 
   updateTableName(tableId: number, value: string): void {
+    if (this.draftEditingDisabled()) return;
     if (this.tableNames()[tableId] === value) return;
     this.pushHistory();
     this.tableNames.update((current) => ({ ...current, [tableId]: value }));
@@ -298,6 +317,7 @@ export class ProjectSchemaDesignerService {
   }
 
   updateColumnDataType(columnId: number, baseType: string): void {
+    if (this.draftEditingDisabled()) return;
     const draft = this.columnDrafts()[columnId];
     if (!draft) return;
     const normalized = baseType.trim().toUpperCase();
@@ -310,31 +330,37 @@ export class ProjectSchemaDesignerService {
   }
 
   updateVarcharLength(columnId: number, rawLength: string | number): void {
+    if (this.draftEditingDisabled()) return;
     if (this.columnDrafts()[columnId] && this.isVarchar(this.columnDrafts()[columnId].sqlType)) {
       this.patchColumn(columnId, { sqlType: `VARCHAR(${String(rawLength).trim()})` });
     }
   }
 
   updateNullable(columnId: number, value: boolean): void {
+    if (this.draftEditingDisabled()) return;
     const column = this.columnDrafts()[columnId];
     if (column && !column.isPrimaryKey && !column.isAutoIncrement) this.patchColumn(columnId, { isNullable: value });
   }
 
   updatePrimaryKey(columnId: number, value: boolean): void {
+    if (this.draftEditingDisabled()) return;
     this.patchColumn(columnId, value
       ? { isPrimaryKey: true, isNullable: false, isUnique: false }
       : { isPrimaryKey: false });
   }
 
   updateUnique(columnId: number, value: boolean): void {
+    if (this.draftEditingDisabled()) return;
     if (!this.columnDrafts()[columnId]?.isPrimaryKey) this.patchColumn(columnId, { isUnique: value });
   }
 
   updateDefaultValue(columnId: number, value: string): void {
+    if (this.draftEditingDisabled()) return;
     this.patchColumn(columnId, { defaultValue: value });
   }
 
   updateAutoIncrement(columnId: number, value: boolean): void {
+    if (this.draftEditingDisabled()) return;
     const column = this.columnDrafts()[columnId];
     if (!column) return;
     if (value && !this.isIdentityCompatible(column.sqlType)) {
@@ -407,15 +433,25 @@ export class ProjectSchemaDesignerService {
     return issue.columnId ? `${table} / ${this.columnName(issue.columnId)}` : table;
   }
 
-  private fetchWorkspace(forceWorkflow: boolean): Observable<SchemaWorkspace> {
-    return this.workflowContext.load(this.projectId, forceWorkflow).pipe(switchMap((workflow) => {
-      if (!workflow) return of({ workflow: null, design: null, versions: {} });
+  private fetchWorkspace(forceWorkflow: boolean, requireWorkflow = false): Observable<SchemaWorkspace> {
+    const workspace = this.workflowContext.load(this.projectId, forceWorkflow).pipe(switchMap((workflow) => {
+      if (!workflow) {
+        return requireWorkflow
+          ? throwError(() => new SchemaWorkspaceRefreshError('The schema mutation completed, but its refreshed workspace could not be loaded.'))
+          : of({ workflow: null, design: null, versions: {} });
+      }
       return forkJoin({
         workflow: of(workflow),
         design: this.schemaApi.getSchema(this.projectId),
         versions: this.loadVersions(workflow),
       });
     }));
+    if (!requireWorkflow) return workspace;
+    return workspace.pipe(catchError((error: unknown) => throwError(
+      () => error instanceof SchemaWorkspaceRefreshError
+        ? error
+        : new SchemaWorkspaceRefreshError('The schema mutation completed, but its refreshed workspace could not be loaded.'),
+    )));
   }
 
   private loadVersions(workflow: ProjectWorkflow): Observable<Record<number, DatasetVersion[]>> {
@@ -448,6 +484,10 @@ export class ProjectSchemaDesignerService {
     this.loadSqlPreview();
   }
 
+  setRelationshipMutationBusy(busy: boolean): void {
+    this.relationshipMutationBusy.set(busy);
+  }
+
   private applyDesign(design: DesignModelResponse | null): void {
     this.conflict.set(false);
     this.history.set([]);
@@ -467,24 +507,40 @@ export class ProjectSchemaDesignerService {
   }
 
   private loadSqlPreview(): void {
+    const requestToken = ++this.sqlRequestToken;
     if (!this.design()) {
       this.sqlPreview.set('');
       this.sqlRevision.set(null);
       this.sqlError.set('');
+      this.sqlLoading.set(false);
       return;
     }
     this.sqlLoading.set(true);
     this.sqlError.set('');
-    this.schemaApi.getSchemaSql(this.projectId).pipe(finalize(() => this.sqlLoading.set(false))).subscribe({
+    this.schemaApi.getSchemaSql(this.projectId).pipe(finalize(() => {
+      if (requestToken === this.sqlRequestToken) this.sqlLoading.set(false);
+    })).subscribe({
       next: (preview) => {
+        if (requestToken !== this.sqlRequestToken) return;
         this.sqlPreview.set(preview.sql);
         this.sqlRevision.set(preview.revision);
       },
-      error: (error) => this.sqlError.set(this.errorMessage(error, 'Backend SQL preview could not be loaded.')),
+      error: (error) => {
+        if (requestToken === this.sqlRequestToken) {
+          this.sqlError.set(this.errorMessage(error, 'Backend SQL preview could not be loaded.'));
+        }
+      },
     });
   }
 
-  private handleMutationError(error: unknown, title: string, fallback: string): void {
+  private handleMutationError(error: unknown, title: string, fallback: string, completedTitle: string): void {
+    if (error instanceof SchemaWorkspaceRefreshError) {
+      this.conflict.set(true);
+      const message = 'The change was accepted, but the latest schema could not be reloaded. Reload before making another change.';
+      this.feedback.set({ kind: 'warning', title: `${completedTitle}; refresh required`, message });
+      this.toast.showWarning(message);
+      return;
+    }
     if (this.isConflict(error)) {
       this.conflict.set(true);
       const conflictMsg = 'Reload the latest schema. Local unsaved edits will be discarded.';
@@ -498,6 +554,7 @@ export class ProjectSchemaDesignerService {
   }
 
   private patchColumn(columnId: number, patch: Partial<ColumnDraft>): void {
+    if (this.draftEditingDisabled()) return;
     const currentDraft = this.columnDrafts()[columnId];
     if (!currentDraft) return;
     let changed = false;
@@ -512,7 +569,7 @@ export class ProjectSchemaDesignerService {
   }
 
   private isConflict(error: unknown): boolean {
-    return error instanceof HttpErrorResponse && error.status === 409;
+    return this.schemaApi.isRevisionConflict(error);
   }
 
   private errorMessage(error: unknown, fallback: string): string {

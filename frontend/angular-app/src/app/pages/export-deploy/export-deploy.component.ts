@@ -25,6 +25,7 @@ import { ForgeApiService } from '../../services/forge-api.service';
 import { ProjectWorkflowContextService } from '../../services/project-workflow-context.service';
 import { ToastService } from '../../services/toast.service';
 import { routeParameter } from '../../services/route-context';
+import { DialogFocusTrapDirective } from '../../shared/dialog-focus-trap.directive';
 
 type ExportArtifactName = 'schema.sql' | 'schema.dbml' | 'schema.json' | 'relationship-report.json' | 'data-quality-report.json';
 type DeploymentFileName = 'schema.sql' | 'seed.sql' | 'deploy.sql';
@@ -38,12 +39,14 @@ interface ExportArtifact {
 @Component({
   selector: 'app-export-deploy',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, RouterLink],
+  imports: [DatePipe, DecimalPipe, RouterLink, DialogFocusTrapDirective],
   templateUrl: './export-deploy.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExportDeployComponent implements OnInit {
   private readonly confirmationFocus = viewChild<ElementRef<HTMLButtonElement>>('confirmationFocus');
+  private readonly deploymentDialog = viewChild<ElementRef<HTMLElement>>('deploymentDialog');
+  private readonly deploymentSummaryHeading = viewChild<ElementRef<HTMLHeadingElement>>('deploymentSummaryHeading');
   private previouslyFocused: HTMLElement | null = null;
   readonly workflow = computed(() => this.workflowContext.workflow());
   readonly workflowError = computed(() => this.workflowContext.error());
@@ -58,8 +61,10 @@ export class ExportDeployComponent implements OnInit {
   readonly redeploymentAcknowledged = signal(false);
   readonly sqlExpanded = signal(false);
   readonly copiedSql = signal(false);
+  readonly sqlRefreshing = signal(false);
   readonly downloadingFile = signal<string | null>(null);
   readonly errorMessage = signal('');
+  private exportRefreshToken = 0;
 
   readonly artifacts: ExportArtifact[] = [
     { name: 'schema.sql', description: 'Validated PostgreSQL schema definition.', mimeType: 'application/sql;charset=utf-8' },
@@ -141,11 +146,21 @@ export class ExportDeployComponent implements OnInit {
 
   refreshSql(): void {
     const workflow = this.workflow();
-    if (!workflow?.canExport || this.loading()) return;
+    if (!workflow?.canExport || this.loading() || this.sqlRefreshing()) return;
+    const requestToken = ++this.exportRefreshToken;
+    this.sqlRefreshing.set(true);
     this.errorMessage.set('');
-    this.api.getProjectExportPackage(this.projectId).subscribe({
-      next: (packageData) => this.exportPackage.set(packageData),
-      error: (error: unknown) => this.errorMessage.set(this.errorText(error, 'Unable to refresh the export artifacts.')),
+    this.api.getProjectExportPackage(this.projectId).pipe(finalize(() => {
+      if (requestToken === this.exportRefreshToken) this.sqlRefreshing.set(false);
+    })).subscribe({
+      next: (packageData) => {
+        if (requestToken === this.exportRefreshToken) this.exportPackage.set(packageData);
+      },
+      error: (error: unknown) => {
+        if (requestToken === this.exportRefreshToken) {
+          this.errorMessage.set(this.errorText(error, 'Unable to refresh the export artifacts.'));
+        }
+      },
     });
   }
 
@@ -179,20 +194,28 @@ export class ExportDeployComponent implements OnInit {
 
     this.deploying.set(true);
     this.errorMessage.set('');
+    setTimeout(() => {
+      if (this.confirmingDeploy() && this.deploying()) this.deploymentDialog()?.nativeElement.focus();
+    });
     this.designApi.deployProject(this.projectId, preview.designRevision)
       .pipe(finalize(() => this.deploying.set(false)))
       .subscribe({
         next: (deployment) => {
-          this.confirmingDeploy.set(false);
-          this.restoreConfirmationFocus();
-          this.toast.showSuccess('Project deployed and schema applied successfully!');
+          this.finishDeploymentConfirmation();
           this.latestDeployment.set(deployment);
           this.selectedDeployment.set(deployment);
-          this.loadPage(true);
+          if (this.isSuccessful(deployment)) {
+            this.toast.showSuccess('Project deployed and schema applied successfully!');
+            this.loadPage(true);
+          } else {
+            const message = deployment.errorMessage?.trim()
+              || 'Deployment failed and was rolled back. No database changes were kept.';
+            this.toast.showError(message);
+            this.loadPage(true, message);
+          }
         },
         error: (error: unknown) => {
-          this.confirmingDeploy.set(false);
-          this.restoreConfirmationFocus();
+          this.finishDeploymentConfirmation();
           const body = this.errorBody(error);
           const message = body?.code === 'deployment_in_progress'
             ? 'Another deployment is already running. Wait for it to finish, then refresh.'
@@ -240,6 +263,8 @@ export class ExportDeployComponent implements OnInit {
   }
 
   private loadPage(forceWorkflow: boolean, preservedMessage = ''): void {
+    this.exportRefreshToken++;
+    this.sqlRefreshing.set(false);
     this.loading.set(true);
     this.errorMessage.set(preservedMessage);
     this.exportPackage.set(null);
@@ -311,5 +336,11 @@ export class ExportDeployComponent implements OnInit {
     const focusTarget = this.previouslyFocused;
     this.previouslyFocused = null;
     setTimeout(() => focusTarget?.focus());
+  }
+
+  private finishDeploymentConfirmation(): void {
+    this.confirmingDeploy.set(false);
+    this.previouslyFocused = null;
+    setTimeout(() => this.deploymentSummaryHeading()?.nativeElement.focus());
   }
 }

@@ -61,13 +61,14 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
   readonly leaveButton = viewChild<ElementRef<HTMLButtonElement>>('leaveButton');
   readonly regenerateDialog = viewChild<ElementRef<HTMLDialogElement>>('regenerateDialog');
   readonly regenerateCancelButton = viewChild<ElementRef<HTMLButtonElement>>('regenerateCancelButton');
+  readonly schemaHeading = viewChild<ElementRef<HTMLHeadingElement>>('schemaHeading');
   readonly leaveDialogOpen = signal(false);
   readonly activeTab = signal<SchemaTab>('tables');
   private regenerateTrigger: HTMLElement | null = null;
 
   constructor() {
     effect(() => {
-      if (this.service.tableCount() <= 1 && this.activeTab() === 'relationships') {
+      if (this.service.tableCount() === 0 && this.activeTab() === 'relationships') {
         this.activeTab.set('tables');
       }
     }, { allowSignalWrites: true });
@@ -178,16 +179,17 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
   }
 
   confirmRegenerate(): void {
-    this.closeRegenerateDialog();
+    this.closeRegenerateDialog(false);
     this.service.generateSchema(true);
+    setTimeout(() => this.schemaHeading()?.nativeElement.focus(), 0);
   }
 
-  closeRegenerateDialog(): void {
+  closeRegenerateDialog(restoreFocus = true): void {
     const dialog = this.regenerateDialog()?.nativeElement;
     if (dialog?.open) dialog.close();
     const trigger = this.regenerateTrigger;
     this.regenerateTrigger = null;
-    setTimeout(() => trigger?.focus(), 0);
+    if (restoreFocus) setTimeout(() => trigger?.focus(), 0);
   }
 
   onRegenerateCancel(event: Event): void {
@@ -206,7 +208,11 @@ export class ProjectSchemaDesignerComponent implements OnInit, UnsavedChangesAwa
 
   onTabKeydown(event: KeyboardEvent): void {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    const tabs: SchemaTab[] = this.service.tableCount() > 1
+    if (this.service.relationshipMutationBusy()) {
+      event.preventDefault();
+      return;
+    }
+    const tabs: SchemaTab[] = this.service.tableCount() > 0
       ? ['tables', 'relationships', 'validation', 'sql']
       : ['tables', 'validation', 'sql'];
     const currentIndex = Math.max(0, tabs.indexOf(this.activeTab()));

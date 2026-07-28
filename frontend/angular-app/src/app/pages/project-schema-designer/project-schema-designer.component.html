@@ -13,7 +13,7 @@
         <div class="min-w-0">
           <p class="project-name">{{ service.projectName() }} &middot; Step 4 of 5</p>
           <div class="flex flex-wrap items-center gap-2">
-            <h1>Schema Design</h1>
+            <h1 #schemaHeading tabindex="-1">Schema Design</h1>
             <span class="status-badge" [ngClass]="'status-' + service.schemaStatus().toLowerCase()">
               {{ service.schemaStatus() }}
             </span>
@@ -200,6 +200,7 @@
           [attr.aria-selected]="activeTab() === 'tables'"
           [attr.tabindex]="activeTab() === 'tables' ? 0 : -1"
           aria-controls="schema-panel-tables"
+          [disabled]="service.relationshipMutationBusy()"
           [class.active]="activeTab() === 'tables'"
           (click)="activeTab.set('tables')"
         >
@@ -213,8 +214,8 @@
           [attr.aria-selected]="activeTab() === 'relationships'"
           [attr.tabindex]="activeTab() === 'relationships' ? 0 : -1"
           aria-controls="schema-panel-relationships"
-          [attr.aria-disabled]="service.tableCount() <= 1"
-          [disabled]="service.tableCount() <= 1"
+          [attr.aria-disabled]="service.tableCount() === 0"
+          [disabled]="service.tableCount() === 0"
           [class.active]="activeTab() === 'relationships'"
           (click)="activeTab.set('relationships')"
         >
@@ -228,6 +229,7 @@
           [attr.aria-selected]="activeTab() === 'validation'"
           [attr.tabindex]="activeTab() === 'validation' ? 0 : -1"
           aria-controls="schema-panel-validation"
+          [disabled]="service.relationshipMutationBusy()"
           [class.active]="activeTab() === 'validation'"
           (click)="activeTab.set('validation')"
         >
@@ -243,6 +245,7 @@
           [attr.aria-selected]="activeTab() === 'sql'"
           [attr.tabindex]="activeTab() === 'sql' ? 0 : -1"
           aria-controls="schema-panel-sql"
+          [disabled]="service.relationshipMutationBusy()"
           [class.active]="activeTab() === 'sql'"
           (click)="activeTab.set('sql')"
         >
@@ -254,7 +257,7 @@
         <div id="schema-panel-tables" role="tabpanel" aria-labelledby="schema-tab-tables">
           <app-schema-designer-tables />
         </div>
-      } @else if (activeTab() === 'relationships' && service.tableCount() > 1) {
+      } @else if (activeTab() === 'relationships' && service.tableCount() > 0) {
         <div id="schema-panel-relationships" role="tabpanel" aria-labelledby="schema-tab-relationships">
           <app-schema-relationships
             [projectId]="service.projectId"
@@ -262,6 +265,7 @@
             [disabled]="!service.canMutateRelationships()"
             (designChanged)="service.handleRelationshipChanged($event)"
             (revisionConflict)="service.handleRelationshipConflict()"
+            (mutationBusyChange)="service.setRelationshipMutationBusy($event)"
           />
         </div>
       } @else if (activeTab() === 'validation') {

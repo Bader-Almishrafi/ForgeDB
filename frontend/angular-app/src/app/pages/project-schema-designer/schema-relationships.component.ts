@@ -1,7 +1,8 @@
 import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, ElementRef, HostListener, OnInit, computed, input, output, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Observable, finalize, forkJoin, switchMap } from 'rxjs';
+import { LucideTriangleAlert } from '@lucide/angular';
+import { Observable, catchError, finalize, forkJoin, switchMap, throwError } from 'rxjs';
 import {
   AcceptSuggestionRequest,
   ApiErrorBody,
@@ -40,7 +41,7 @@ const emptyDraft = (): RelationshipDraft => ({
   onDelete: 'no-action',
 });
 
-import { LucideTriangleAlert } from '@lucide/angular';
+class RelationshipRefreshError extends Error {}
 
 @Component({
   selector: 'app-schema-relationships',
@@ -55,6 +56,7 @@ export class SchemaRelationshipsComponent implements OnInit {
   readonly disabled = input(false);
   readonly designChanged = output<DesignModelResponse>();
   readonly revisionConflict = output<void>();
+  readonly mutationBusyChange = output<boolean>();
 
   readonly suggestions = signal<RelationshipSuggestion[]>([]);
   readonly loading = signal(true);
@@ -66,6 +68,8 @@ export class SchemaRelationshipsComponent implements OnInit {
   readonly editingRelationshipId = signal<number | null>(null);
   readonly relationshipDraft = signal<{ cardinality: string; onDelete: string } | null>(null);
   readonly deleteTarget = signal<DesignRelationship | null>(null);
+  readonly relationshipsHeading = viewChild<ElementRef<HTMLHeadingElement>>('relationshipsHeading');
+  readonly deleteDialog = viewChild<ElementRef<HTMLElement>>('deleteDialog');
   readonly deleteCancelButton = viewChild<ElementRef<HTMLButtonElement>>('deleteCancelButton');
   readonly deleteConfirmButton = viewChild<ElementRef<HTMLButtonElement>>('deleteConfirmButton');
   private deleteTrigger: HTMLElement | null = null;
@@ -73,6 +77,7 @@ export class SchemaRelationshipsComponent implements OnInit {
   readonly pendingSuggestions = computed(() => this.suggestions().filter((item) => item.status === 'suggested'));
   readonly tables = computed(() => this.design().tables);
   readonly persistedRelationships = computed(() => this.design().relationships);
+  readonly formControlsDisabled = computed(() => this.disabled() || this.busyAction() !== null);
   readonly relationshipIssues = computed(() => {
     const map = new Map<number, ValidationIssue[]>();
     for (const issue of this.design()?.validationIssues ?? []) {
@@ -129,6 +134,7 @@ export class SchemaRelationshipsComponent implements OnInit {
   }
 
   updateSuggestionDraft(patch: Partial<RelationshipDraft>): void {
+    if (this.formControlsDisabled()) return;
     const current = this.suggestionDraft();
     if (current) this.suggestionDraft.set(this.applyDraftPatch(current, patch));
   }
@@ -155,6 +161,7 @@ export class SchemaRelationshipsComponent implements OnInit {
   }
 
   updateManualDraft(patch: Partial<RelationshipDraft>): void {
+    if (this.formControlsDisabled()) return;
     this.manualDraft.set(this.applyDraftPatch(this.manualDraft(), patch));
     this.feedback.set(null);
   }
@@ -192,6 +199,7 @@ export class SchemaRelationshipsComponent implements OnInit {
   }
 
   updateRelationshipDraft(patch: Partial<{ cardinality: string; onDelete: string }>): void {
+    if (this.formControlsDisabled()) return;
     const current = this.relationshipDraft();
     if (current) this.relationshipDraft.set({ ...current, ...patch });
   }
@@ -237,24 +245,34 @@ export class SchemaRelationshipsComponent implements OnInit {
       'Relationship deleted',
       'The backend SQL preview has been refreshed. Validate the schema again.',
       () => {
-        this.dismissDeleteConfirmation();
+        this.dismissDeleteConfirmation(false);
         this.cancelRelationshipEdit();
       },
     );
+    setTimeout(() => {
+      if (this.deleteTarget() && this.busyAction()?.startsWith('delete:')) {
+        this.deleteDialog()?.nativeElement.focus();
+      }
+    }, 0);
   }
 
   @HostListener('document:keydown', ['$event'])
   handleDeleteDialogKeydown(event: KeyboardEvent): void {
-    if (!this.deleteTarget() || this.isBusy()) return;
+    if (!this.deleteTarget()) return;
     if (event.key === 'Escape') {
       event.preventDefault();
-      this.cancelDelete();
+      if (!this.busyAction()?.startsWith('delete:')) this.cancelDelete();
       return;
     }
     if (event.key !== 'Tab') return;
     const first = this.deleteCancelButton()?.nativeElement;
     const last = this.deleteConfirmButton()?.nativeElement;
     if (!first || !last) return;
+    if (first.disabled && last.disabled) {
+      event.preventDefault();
+      this.deleteDialog()?.nativeElement.focus();
+      return;
+    }
     if (event.shiftKey && (document.activeElement === first || !first.closest('[role="alertdialog"]')?.contains(document.activeElement))) {
       event.preventDefault();
       last.focus();
@@ -343,12 +361,18 @@ export class SchemaRelationshipsComponent implements OnInit {
     if (this.disabled() || this.busyAction()) return;
     this.feedback.set(null);
     this.busyAction.set(key);
+    this.mutationBusyChange.emit(true);
     request().pipe(
       switchMap(() => forkJoin({
         design: this.designApi.getSchema(this.projectId()),
         suggestions: this.designApi.getSuggestions(this.projectId()),
-      })),
-      finalize(() => this.busyAction.set(null)),
+      }).pipe(catchError(() => throwError(
+        () => new RelationshipRefreshError('The relationship changed, but its refreshed schema could not be loaded.'),
+      )))),
+      finalize(() => {
+        this.busyAction.set(null);
+        this.mutationBusyChange.emit(false);
+      }),
     ).subscribe({
       next: ({ design, suggestions }) => {
         this.suggestions.set(suggestions);
@@ -357,6 +381,15 @@ export class SchemaRelationshipsComponent implements OnInit {
         this.feedback.set({ kind: 'success', title, message });
       },
       error: (error) => {
+        if (error instanceof RelationshipRefreshError) {
+          this.revisionConflict.emit();
+          this.feedback.set({
+            kind: 'warning',
+            title: `${title}; refresh required`,
+            message: 'The change was accepted, but the latest schema could not be reloaded. Reload before changing relationships again.',
+          });
+          return;
+        }
         if (this.designApi.isRevisionConflict(error)) {
           this.revisionConflict.emit();
           this.feedback.set({ kind: 'error', title: 'Schema changed elsewhere', message: 'Reload the latest schema before changing relationships.' });
@@ -431,11 +464,11 @@ export class SchemaRelationshipsComponent implements OnInit {
     return normalize(left) === normalize(right);
   }
 
-  private dismissDeleteConfirmation(): void {
+  private dismissDeleteConfirmation(restoreTrigger = true): void {
     this.deleteTarget.set(null);
-    const trigger = this.deleteTrigger;
+    const focusTarget = restoreTrigger ? this.deleteTrigger : this.relationshipsHeading()?.nativeElement;
     this.deleteTrigger = null;
-    setTimeout(() => trigger?.focus(), 0);
+    setTimeout(() => focusTarget?.focus(), 0);
   }
 
   private showError(error: unknown, fallback: string): void {

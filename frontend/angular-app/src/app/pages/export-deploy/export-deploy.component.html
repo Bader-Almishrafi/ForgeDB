@@ -89,7 +89,9 @@
               </button>
               <div class="flex flex-wrap gap-2">
                 <button type="button" class="btn-secondary" (click)="copySql()">{{ copiedSql() ? 'Copied' : 'Copy SQL' }}</button>
-                <button type="button" class="btn-secondary" (click)="refreshSql()">Regenerate preview</button>
+                <button type="button" class="btn-secondary" (click)="refreshSql()" [disabled]="sqlRefreshing()">
+                  {{ sqlRefreshing() ? 'Regenerating preview…' : 'Regenerate preview' }}
+                </button>
               </div>
             </div>
             @if (sqlExpanded()) {
@@ -118,7 +120,7 @@
         <div class="section-header">
           <div>
             <p class="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Database action</p>
-            <h2 id="deployment-summary-heading" class="section-heading mt-1">Deploy to PostgreSQL</h2>
+            <h2 #deploymentSummaryHeading id="deployment-summary-heading" class="section-heading mt-1" tabindex="-1">Deploy to PostgreSQL</h2>
             <p class="section-description">
               Deployment applies the current validated schema and finalized rows to this project’s PostgreSQL schema.
             </p>
@@ -267,7 +269,10 @@
       class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-[2px]"
       (click)="onConfirmationBackdrop($event)">
       <section
+        #deploymentDialog
         class="dialog-panel w-full max-w-lg p-6"
+        appDialogFocusTrap
+        tabindex="-1"
         role="dialog"
         aria-modal="true"
         aria-labelledby="deploy-confirmation-title"
@@ -294,6 +299,7 @@
               type="checkbox"
               class="mt-1"
               [checked]="redeploymentAcknowledged()"
+              [disabled]="deploying()"
               (change)="redeploymentAcknowledged.set($any($event.target).checked)">
             <span>I understand that this replaces the existing project schema.</span>
           </label>

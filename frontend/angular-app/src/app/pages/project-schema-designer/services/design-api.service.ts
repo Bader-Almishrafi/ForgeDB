@@ -185,7 +185,12 @@ export class DesignApiService {
 
   /** True when an error response is a 409 revision conflict (stale If-Match). */
   isRevisionConflict(error: unknown): boolean {
-    return typeof error === 'object' && error !== null && (error as { status?: number }).status === 409;
+    if (typeof error !== 'object' || error === null || (error as { status?: number }).status !== 409) return false;
+    const body = (error as { error?: unknown }).error;
+    if (typeof body !== 'object' || body === null) return false;
+    const revision = (body as { currentRevision?: unknown; CurrentRevision?: unknown }).currentRevision
+      ?? (body as { CurrentRevision?: unknown }).CurrentRevision;
+    return typeof revision === 'number' && Number.isInteger(revision);
   }
 
   /** Executes the validated design against real PostgreSQL: creates a project-scoped schema,

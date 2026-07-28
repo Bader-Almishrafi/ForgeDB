@@ -14,6 +14,7 @@ import { DesignApiService } from '../project-schema-designer/services/design-api
 import { FileDownloadService } from '../../services/file-download.service';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { ProjectWorkflowContextService } from '../../services/project-workflow-context.service';
+import { ToastService } from '../../services/toast.service';
 import { ExportDeployComponent } from './export-deploy.component';
 
 const readyWorkflow = (): ProjectWorkflow => ({
@@ -97,6 +98,8 @@ describe('ExportDeployComponent', () => {
   const deployProject = vi.fn(() => of(completedDeployment()));
   const downloadDeploymentSql = vi.fn(() => of('SELECT 1;'));
   const downloadText = vi.fn();
+  const showSuccess = vi.fn();
+  const showError = vi.fn();
 
   beforeEach(async () => {
     workflowSignal.set(readyWorkflow());
@@ -107,6 +110,8 @@ describe('ExportDeployComponent', () => {
     deployProject.mockClear();
     downloadDeploymentSql.mockClear();
     downloadText.mockClear();
+    showSuccess.mockClear();
+    showError.mockClear();
     getExportPackage.mockReturnValue(of(exportPackage));
     getDeploymentPreview.mockReturnValue(of(preview()));
     getDeploymentHistory.mockReturnValue(of([]));
@@ -123,6 +128,7 @@ describe('ExportDeployComponent', () => {
           useValue: { getDeploymentPreview, getDeploymentHistory, deployProject, downloadDeploymentSql },
         },
         { provide: FileDownloadService, useValue: { downloadText } },
+        { provide: ToastService, useValue: { showSuccess, showError } },
         {
           provide: ProjectWorkflowContextService,
           useValue: { workflow: workflowSignal, error: workflowErrorSignal, load: loadWorkflow },
@@ -186,6 +192,27 @@ describe('ExportDeployComponent', () => {
     expect(text).toContain('125');
     expect(fixture.nativeElement.querySelectorAll('[role="tab"]').length).toBe(0);
     expect(text).not.toContain(exportPackage.dbml);
+  });
+
+  it('prevents overlapping export preview refreshes and shows their loading state', () => {
+    const pending = new Subject<ProjectExportPackage>();
+    const fixture = TestBed.createComponent(ExportDeployComponent);
+    fixture.detectChanges();
+    getExportPackage.mockReturnValue(pending);
+
+    fixture.componentInstance.refreshSql();
+    fixture.componentInstance.refreshSql();
+    fixture.detectChanges();
+
+    expect(getExportPackage).toHaveBeenCalledTimes(2);
+    expect(fixture.componentInstance.sqlRefreshing()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Regenerating preview');
+
+    pending.next({ ...exportPackage, sql: 'CREATE TABLE refreshed ();' });
+    pending.complete();
+
+    expect(fixture.componentInstance.exportPackage()?.sql).toBe('CREATE TABLE refreshed ();');
+    expect(fixture.componentInstance.sqlRefreshing()).toBe(false);
   });
 
   it('downloads backend-reported DBML and deployment files with the correct content types', () => {
@@ -255,6 +282,20 @@ describe('ExportDeployComponent', () => {
     expect(loadWorkflow).toHaveBeenLastCalledWith(10, true);
   });
 
+  it('moves focus to the persistent deployment summary after deployment completes', async () => {
+    const fixture = TestBed.createComponent(ExportDeployComponent);
+    fixture.detectChanges();
+    fixture.componentInstance.openConfirmation();
+    fixture.detectChanges();
+
+    fixture.componentInstance.confirmDeployment();
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(fixture.componentInstance.confirmingDeploy()).toBe(false);
+    expect(document.activeElement?.textContent).toBe('Deploy to PostgreSQL');
+  });
+
   it('requires explicit acknowledgement before redeployment', () => {
     getDeploymentPreview.mockReturnValue(of(preview(true)));
     const fixture = TestBed.createComponent(ExportDeployComponent);
@@ -278,9 +319,13 @@ describe('ExportDeployComponent', () => {
 
     fixture.componentInstance.openConfirmation();
     fixture.componentInstance.confirmDeployment();
+    fixture.detectChanges();
 
     expect(loadWorkflow).toHaveBeenCalledTimes(2);
     expect(loadWorkflow).toHaveBeenLastCalledWith(10, true);
+    expect(showSuccess).not.toHaveBeenCalled();
+    expect(showError).toHaveBeenCalledWith('Deployment failed safely. The transaction rolled back.');
+    expect(fixture.nativeElement.textContent).toContain('Deployment failed safely. The transaction rolled back.');
   });
 
   it('handles deployment conflicts without displaying a stale result and refreshes workflow', () => {

@@ -3,7 +3,7 @@
     class="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between dark:border-[#30363d]">
     <div>
       <p class="eyebrow">Schema design</p>
-      <h2 id="relationships-heading" class="mt-1 text-xl font-semibold text-slate-950 dark:text-white">Relationships
+      <h2 #relationshipsHeading id="relationships-heading" class="mt-1 text-xl font-semibold text-slate-950 dark:text-white" tabindex="-1">Relationships
       </h2>
       <p class="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">Review suggestions, add a relationship
         manually, and manage the relationships accepted into this schema revision.</p>
@@ -74,34 +74,36 @@
           @if (editingSuggestionId() === suggestion.id && suggestionDraft(); as draft) {
           <div data-testid="suggestion-editor"
             class="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-500/30 dark:bg-indigo-500/10">
+            <fieldset class="contents" [disabled]="formControlsDisabled()">
             <div class="grid gap-3 sm:grid-cols-2">
               <label class="text-sm font-medium">Source Table<select class="input-field mt-1"
-                  [ngModel]="draft.fromTableId" (ngModelChange)="updateSuggestionDraft({ fromTableId: $event })">
+                  [disabled]="formControlsDisabled()" [ngModel]="draft.fromTableId" (ngModelChange)="updateSuggestionDraft({ fromTableId: $event })">
                   <option [ngValue]="null">Select source table</option>@for (table of tables(); track table.id) {
                   <option [ngValue]="table.id">{{ table.name }}</option> }
                 </select></label>
               <label class="text-sm font-medium">Source Column<select class="input-field mt-1"
-                  [ngModel]="draft.fromColumnId" (ngModelChange)="updateSuggestionDraft({ fromColumnId: $event })">
+                  [disabled]="formControlsDisabled()" [ngModel]="draft.fromColumnId" (ngModelChange)="updateSuggestionDraft({ fromColumnId: $event })">
                   <option [ngValue]="null">Select source column</option>@for (column of columnsFor(draft.fromTableId);
                   track column.id) { <option [ngValue]="column.id">{{ column.name }} · {{ column.sqlType }}</option> }
                 </select></label>
               <label class="text-sm font-medium">Target Table<select class="input-field mt-1"
-                  [ngModel]="draft.toTableId" (ngModelChange)="updateSuggestionDraft({ toTableId: $event })">
+                  [disabled]="formControlsDisabled()" [ngModel]="draft.toTableId" (ngModelChange)="updateSuggestionDraft({ toTableId: $event })">
                   <option [ngValue]="null">Select target table</option>@for (table of tables(); track table.id) {
                   <option [ngValue]="table.id">{{ table.name }}</option> }
                 </select></label>
               <label class="text-sm font-medium">Target Column<select class="input-field mt-1"
-                  [ngModel]="draft.toColumnId" (ngModelChange)="updateSuggestionDraft({ toColumnId: $event })">
+                  [disabled]="formControlsDisabled()" [ngModel]="draft.toColumnId" (ngModelChange)="updateSuggestionDraft({ toColumnId: $event })">
                   <option [ngValue]="null">Select PK or Unique target</option>@for (column of
                   columnsFor(draft.toTableId); track column.id) { <option [ngValue]="column.id"
                     [disabled]="targetColumnDisabled(draft, column)">{{ column.name }} · {{ column.sqlType }}</option> }
                 </select></label>
               <label class="text-sm font-medium">Cardinality<select class="input-field mt-1"
-                  [ngModel]="draft.cardinality" (ngModelChange)="updateSuggestionDraft({ cardinality: $event })">
+                  [disabled]="formControlsDisabled()" [ngModel]="draft.cardinality" (ngModelChange)="updateSuggestionDraft({ cardinality: $event })">
                   <option value="many-to-one">Many to one</option>
                   <option value="one-to-one">One to one</option>
                 </select></label>
               <label class="text-sm font-medium">On Delete<select class="input-field mt-1" [ngModel]="draft.onDelete"
+                  [disabled]="formControlsDisabled()"
                   (ngModelChange)="updateSuggestionDraft({ onDelete: $event })">
                   <option value="no-action">No action</option>
                   <option value="cascade">Cascade</option>
@@ -115,6 +117,7 @@
                 [disabled]="disabled() || isBusy() || !!suggestionValidationMessage()">{{ isBusy('accept:' +
                 suggestion.id) ? 'Accepting...' : 'Accept Edited' }}</button><button type="button" class="btn-secondary"
                 (click)="closeSuggestionEditor()" [disabled]="isBusy()">Cancel</button></div>
+            </fieldset>
           </div>
           } @else {
           <div class="mt-4 flex flex-wrap gap-2"><button [attr.data-testid]="'accept-suggestion-' + suggestion.id"
@@ -145,39 +148,40 @@
           relationships cannot be submitted.</p>
       </div>
       @if (manualDraft(); as draft) {
+      <fieldset class="contents" [disabled]="formControlsDisabled()">
       <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <label class="text-sm font-medium">Source Table<select data-testid="manual-source-table"
-            class="input-field mt-1" [ngModel]="draft.fromTableId"
+            class="input-field mt-1" [disabled]="formControlsDisabled()" [ngModel]="draft.fromTableId"
             (ngModelChange)="updateManualDraft({ fromTableId: $event })">
             <option [ngValue]="null">Select source table</option>@for (table of tables(); track table.id) { <option
               [ngValue]="table.id">{{ table.name }}</option> }
           </select></label>
         <label class="text-sm font-medium">Source Column<select data-testid="manual-source-column"
-            class="input-field mt-1" [ngModel]="draft.fromColumnId"
+            class="input-field mt-1" [disabled]="formControlsDisabled()" [ngModel]="draft.fromColumnId"
             (ngModelChange)="updateManualDraft({ fromColumnId: $event })">
             <option [ngValue]="null">Select source column</option>@for (column of columnsFor(draft.fromTableId); track
             column.id) { <option [ngValue]="column.id">{{ column.name }} · {{ column.sqlType }}</option> }
           </select></label>
         <label class="text-sm font-medium">Target Table<select data-testid="manual-target-table"
-            class="input-field mt-1" [ngModel]="draft.toTableId"
+            class="input-field mt-1" [disabled]="formControlsDisabled()" [ngModel]="draft.toTableId"
             (ngModelChange)="updateManualDraft({ toTableId: $event })">
             <option [ngValue]="null">Select target table</option>@for (table of tables(); track table.id) { <option
               [ngValue]="table.id">{{ table.name }}</option> }
           </select></label>
         <label class="text-sm font-medium">Target Column<select data-testid="manual-target-column"
-            class="input-field mt-1" [ngModel]="draft.toColumnId"
+            class="input-field mt-1" [disabled]="formControlsDisabled()" [ngModel]="draft.toColumnId"
             (ngModelChange)="updateManualDraft({ toColumnId: $event })">
             <option [ngValue]="null">Select PK or Unique target</option>@for (column of columnsFor(draft.toTableId);
             track column.id) { <option [ngValue]="column.id" [disabled]="targetColumnDisabled(draft, column)">{{
               column.name }} · {{ column.sqlType }}</option> }
           </select></label>
         <label class="text-sm font-medium">Cardinality<select data-testid="manual-cardinality" class="input-field mt-1"
-            [ngModel]="draft.cardinality" (ngModelChange)="updateManualDraft({ cardinality: $event })">
+            [disabled]="formControlsDisabled()" [ngModel]="draft.cardinality" (ngModelChange)="updateManualDraft({ cardinality: $event })">
             <option value="many-to-one">Many to one</option>
             <option value="one-to-one">One to one</option>
           </select></label>
         <label class="text-sm font-medium">On Delete<select data-testid="manual-on-delete" class="input-field mt-1"
-            [ngModel]="draft.onDelete" (ngModelChange)="updateManualDraft({ onDelete: $event })">
+            [disabled]="formControlsDisabled()" [ngModel]="draft.onDelete" (ngModelChange)="updateManualDraft({ onDelete: $event })">
             <option value="no-action">No action</option>
             <option value="cascade">Cascade</option>
             <option value="set-null">Set null</option>
@@ -190,6 +194,7 @@
           [disabled]="disabled() || isBusy() || !!manualValidationMessage()">{{ isBusy('create') ? 'Adding...' : 'Add
           Relationship' }}</button><button type="button" class="btn-secondary" (click)="clearManualForm()"
           [disabled]="isBusy()">Clear</button></div>
+      </fieldset>
       }
     </section>
 
@@ -219,17 +224,18 @@
               </td>
               <td class="font-mono font-semibold">{{ relationship.toTableName }}.{{ relationship.toColumnName }}</td>
               @if (editingRelationshipId() === relationship.id && relationshipDraft(); as edit) {
-              <td><select data-testid="persisted-edit-cardinality" class="input-field min-w-40"
-                  [ngModel]="edit.cardinality" (ngModelChange)="updateRelationshipDraft({ cardinality: $event })">
+              <td><fieldset class="contents" [disabled]="formControlsDisabled()"><select data-testid="persisted-edit-cardinality" class="input-field min-w-40"
+                  [disabled]="formControlsDisabled()" [ngModel]="edit.cardinality" (ngModelChange)="updateRelationshipDraft({ cardinality: $event })">
                   <option value="many-to-one">Many to one</option>
                   <option value="one-to-one">One to one</option>
-                </select></td>
-              <td><select data-testid="persisted-edit-on-delete" class="input-field min-w-36" [ngModel]="edit.onDelete"
+                </select></fieldset></td>
+              <td><fieldset class="contents" [disabled]="formControlsDisabled()"><select data-testid="persisted-edit-on-delete" class="input-field min-w-36" [ngModel]="edit.onDelete"
+                  [disabled]="formControlsDisabled()"
                   (ngModelChange)="updateRelationshipDraft({ onDelete: $event })">
                   <option value="no-action">No action</option>
                   <option value="cascade">Cascade</option>
                   <option value="set-null">Set null</option>
-                </select></td>
+                </select></fieldset></td>
               <td>
                 <div class="flex gap-2"><button data-testid="save-relationship" type="button"
                     class="btn-primary min-h-9 px-3 py-1.5" (click)="saveRelationshipEdit(relationship)"
@@ -273,8 +279,9 @@
 </section>
 
 @if (deleteTarget(); as relationship) {
-<div class="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[2px]" role="alertdialog"
-  aria-modal="true" aria-labelledby="delete-relationship-title" aria-describedby="delete-relationship-description">
+<div #deleteDialog class="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[2px]" role="alertdialog"
+  tabindex="-1" aria-modal="true" aria-labelledby="delete-relationship-title" aria-describedby="delete-relationship-description"
+  [attr.aria-busy]="isBusy('delete:' + relationship.id)">
   <div
     class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-[#30363d] dark:bg-[#161b22]">
     <h2 id="delete-relationship-title" class="text-xl font-semibold">Delete relationship?</h2>
@@ -283,7 +290,7 @@
       exports, and future deployments.</p>
     <div class="mt-5 flex justify-end gap-2"><button #deleteCancelButton type="button" class="btn-secondary" (click)="cancelDelete()"
         [disabled]="isBusy()">Cancel</button><button #deleteConfirmButton data-testid="confirm-delete-relationship" type="button"
-        class="btn-danger" (click)="confirmDelete()" [disabled]="isBusy()">{{ isBusy('delete:' + relationship.id) ?
+        class="btn-danger" (click)="confirmDelete()" [disabled]="disabled() || isBusy()">{{ isBusy('delete:' + relationship.id) ?
         'Deleting...' : 'Delete' }}</button></div>
   </div>
 </div>
