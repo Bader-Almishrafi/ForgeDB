@@ -14,7 +14,10 @@ namespace ForgeDB.API.Controllers;
 [Route("api")]
 public class DatasetsController : ControllerBase
 {
-    private const long MaximumImportRequestBytes = 10 * 1024 * 1024;
+    // The service enforces the 10 MiB file limit. The HTTP ceiling also has to accommodate
+    // multipart boundaries and the source metadata fields, otherwise a valid 10 MiB file is
+    // rejected by ASP.NET before file validation runs.
+    private const long MaximumImportRequestBytes = ExcelWorkbookReader.MaximumFileBytes + (64 * 1024);
     private readonly IDatasetImportService _datasetImportService;
     private readonly IDashboardService _dashboardService;
     private readonly IProjectRepository _projectRepository;
