@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -20,7 +20,7 @@ export class SignupComponent {
   isLoading = false;
   errorMessage = '';
 
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(private authService: AuthService, private router: Router, private cdr: ChangeDetectorRef) {}
 
   onRegister(): void {
     this.errorMessage = '';
@@ -39,11 +39,15 @@ export class SignupComponent {
       lastName,
       email: this.email,
       password: this.password,
-    }).pipe(finalize(() => this.isLoading = false))
+    }).pipe(finalize(() => {
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      }))
       .subscribe({
         next: () => this.router.navigate(['/home']),
         error: (error: { error?: ApiErrorBody }) => {
           this.errorMessage = error.error?.message ?? 'Unable to register. Check the backend and try again.';
+          this.cdr.markForCheck();
         },
       });
   }
