@@ -35,21 +35,6 @@ export class DataCleaningComponent implements OnInit {
   readonly previewDialog = viewChild(CleaningPreviewDialogComponent);
   readonly confirmDialog = viewChild<ElementRef<HTMLDialogElement>>('confirmDialog');
 
-  readonly bulkStrategyOptions = computed(() => {
-    const selected = this.stateService.selectedSuggestions();
-    if (!selected.length) return [];
-    
-    const strategyMap = new Map<string, { key: string; label: string }>();
-    selected.forEach(suggestion => {
-      suggestion.availableStrategies.forEach(strategy => {
-        if (!strategyMap.has(strategy.key)) {
-          strategyMap.set(strategy.key, { key: strategy.key, label: strategy.label });
-        }
-      });
-    });
-    return Array.from(strategyMap.values());
-  });
-
   projectId = 0;
 
   ngOnInit(): void {
@@ -81,16 +66,6 @@ export class DataCleaningComponent implements OnInit {
     await this.apiService.previewOperationsRequest(this.stateService.buildOperations(selected));
   }
 
-  applyBulkStrategy(strategyKey: string): void {
-    if (!strategyKey) return;
-    const selected = this.stateService.selectedSuggestions();
-    selected.forEach(suggestion => {
-      const strategy = suggestion.availableStrategies.find(s => s.key === strategyKey);
-      if (strategy) {
-        this.stateService.updateStrategy(suggestion, strategy.key);
-      }
-    });
-  }
 
   async previewRecommendedFixes(): Promise<void> {
     const safe = this.stateService.safeRecommendations();

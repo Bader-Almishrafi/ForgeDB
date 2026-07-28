@@ -133,14 +133,6 @@
             <div class="flex items-center gap-3">
               <span class="text-xs text-slate-500">{{ stateService.selectedSuggestions().length }} selected</span>
               
-              @if (stateService.selectedSuggestions().length) {
-                <select class="input-field max-w-xs text-sm" (change)="applyBulkStrategy($any($event.target).value); $any($event.target).value = ''">
-                  <option value="" disabled selected>Apply bulk strategy...</option>
-                  @for (option of bulkStrategyOptions(); track option.key) {
-                    <option [value]="option.key">{{ option.label }}</option>
-                  }
-                </select>
-              }
 
               <button type="button" class="btn-secondary" (click)="previewSelected()" [disabled]="!stateService.selectedSuggestions().length || apiService.previewLoading()">Preview selected issues</button>
             </div>
