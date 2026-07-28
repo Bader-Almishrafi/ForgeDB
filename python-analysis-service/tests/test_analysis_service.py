@@ -65,3 +65,39 @@ def test_finite_decimal_values_keep_numeric_statistics():
     assert profile.numericStats.min == 10.5
     assert profile.numericStats.max == 30.5
     assert profile.numericStats.average == 20.5
+
+
+def test_dotnet_decimal_boundaries_keep_exact_numeric_statistics():
+    boundaries = (
+        "79228162514264337593543950335",
+        "-79228162514264337593543950335",
+    )
+
+    for boundary in boundaries:
+        result = analyze([{"payload": boundary}])
+        profile = result.columns[0]
+        expected = int(boundary)
+
+        assert profile.numericStats is not None
+        assert profile.numericStats.min == expected
+        assert profile.numericStats.max == expected
+        assert profile.numericStats.average == expected
+        assert f'"min":{boundary}' in result.model_dump_json()
+
+
+def test_finite_values_outside_dotnet_decimal_range_omit_numeric_statistics():
+    result = analyze(
+        [
+            {"payload": "79228162514264337593543950336"},
+            {"payload": "1"},
+        ]
+    )
+
+    profile = result.columns[0]
+    assert profile.detectedType == "integer"
+    assert profile.numericStats is None
+    assert '"numericStats":null' in result.model_dump_json()
+    assert profile.sampleValues == [
+        "79228162514264337593543950336",
+        "1",
+    ]

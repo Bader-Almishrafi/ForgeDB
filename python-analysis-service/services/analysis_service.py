@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 from typing import Any
 
 from models.analysis_request import AnalyzeRequest, ColumnInput
@@ -14,6 +14,9 @@ from models.analysis_response import (
     RelationshipSuggestion,
     TopValueSummary,
 )
+
+DOTNET_DECIMAL_MAX = Decimal("79228162514264337593543950335")
+DOTNET_DECIMAL_MIN = -DOTNET_DECIMAL_MAX
 
 
 class AnalysisService:
@@ -89,10 +92,16 @@ class AnalysisService:
             return None
 
         try:
-            average = sum(numbers) / Decimal(len(numbers))
+            minimum = min(numbers)
+            maximum = max(numbers)
+            if minimum < DOTNET_DECIMAL_MIN or maximum > DOTNET_DECIMAL_MAX:
+                return None
+            with localcontext() as context:
+                context.prec = 64
+                average = sum(numbers, Decimal(0)) / Decimal(len(numbers))
             return NumericStats(
-                min=self._decimal_to_number(min(numbers)),
-                max=self._decimal_to_number(max(numbers)),
+                min=self._decimal_to_number(minimum),
+                max=self._decimal_to_number(maximum),
                 average=self._decimal_to_number(average),
             )
         except (ArithmeticError, OverflowError, ValueError):
@@ -365,15 +374,18 @@ class AnalysisService:
     def _decimal_to_number(value: Decimal) -> float | int:
         if not value.is_finite():
             raise ValueError("Non-finite numeric values are not supported.")
+        if value < DOTNET_DECIMAL_MIN or value > DOTNET_DECIMAL_MAX:
+            raise OverflowError("Numeric value is outside the .NET decimal range.")
 
         if value == value.to_integral_value():
-            if value.adjusted() > 1_000:
-                raise OverflowError("Numeric value is too large to serialize safely.")
             return int(value)
 
         converted = float(value)
         if not math.isfinite(converted):
             raise OverflowError("Numeric value is too large to serialize safely.")
+        converted_decimal = Decimal(str(converted))
+        if converted_decimal < DOTNET_DECIMAL_MIN or converted_decimal > DOTNET_DECIMAL_MAX:
+            raise OverflowError("Serialized numeric value is outside the .NET decimal range.")
 
         return converted
 
