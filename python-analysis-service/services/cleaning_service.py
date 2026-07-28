@@ -313,7 +313,7 @@ class CleaningService:
         elif strategy == "zero": fill_value = 0
         elif strategy == "empty": fill_value = ""
         elif strategy in {"mean", "median"}:
-            numbers = [float(Decimal(str(value).strip())) for value in present if self._is_decimal(value)]
+            numbers = [float(Decimal(str(value).strip().replace(",", ""))) for value in present if self._is_decimal(value)]
             if not numbers: raise CleaningValidationError(f"Cannot calculate {strategy} without numeric values.")
             fill_value = statistics.mean(numbers) if strategy == "mean" else statistics.median(numbers)
         elif strategy == "mode":
@@ -351,7 +351,7 @@ class CleaningService:
         multiplier = float(operation.parameters.get("iqrMultiplier", 1.5))
         if not 0.5 <= multiplier <= 5:
             raise CleaningValidationError("IQR multiplier must be between 0.5 and 5.")
-        numeric = sorted(float(Decimal(str(row.get(column)))) for row in rows if self._is_decimal(row.get(column)))
+        numeric = sorted(float(Decimal(str(row.get(column)).strip().replace(",", ""))) for row in rows if self._is_decimal(row.get(column)))
         if len(numeric) < 4:
             raise CleaningValidationError("At least four numeric values are required for IQR outlier handling.")
         q1, q3 = self._percentile(numeric, 0.25), self._percentile(numeric, 0.75)
@@ -363,7 +363,7 @@ class CleaningService:
             if not self._is_decimal(value):
                 kept.append(row)
                 continue
-            number = float(Decimal(str(value)))
+            number = float(Decimal(str(value).strip().replace(",", "")))
             if lower <= number <= upper:
                 kept.append(row)
                 continue
@@ -376,6 +376,7 @@ class CleaningService:
             row[column] = replacement
             result.affectedCells += 1
             kept.append(row)
+        result.warnings.append(f"DEBUG PARAMETERS: {operation.parameters}")
         result.warnings.append(f"IQR rule used multiplier {multiplier:g} with bounds {lower:g} to {upper:g}.")
         return kept, columns
 
@@ -427,7 +428,7 @@ class CleaningService:
             if operator == "contains": return str(expected) in str(value)
             if operator in {"greater_than", "less_than"}:
                 if not self._is_decimal(value) or not self._is_decimal(expected): return False
-                return Decimal(str(value)) > Decimal(str(expected)) if operator == "greater_than" else Decimal(str(value)) < Decimal(str(expected))
+                return Decimal(str(value).strip().replace(",", "")) > Decimal(str(expected).strip().replace(",", "")) if operator == "greater_than" else Decimal(str(value).strip().replace(",", "")) < Decimal(str(expected).strip().replace(",", ""))
             return False
         kept = [row for row in rows if not matches(row.get(column))]
         result.rowsRemoved = len(rows) - len(kept)
@@ -466,7 +467,7 @@ class CleaningService:
     def _is_decimal(value: Any) -> bool:
         if isinstance(value, bool) or value is None: return False
         try:
-            Decimal(str(value).strip())
+            Decimal(str(value).strip().replace(",", ""))
             return True
         except (InvalidOperation, ValueError):
             return False
