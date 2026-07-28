@@ -1,12 +1,12 @@
 @if (isOpen && dataset) {
   <div class="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[2px]" (click)="onBackdropClick($event)">
-    <section class="dialog-panel w-full max-w-lg p-6" role="dialog" aria-modal="true" aria-labelledby="replace-title" aria-describedby="replace-description">
+    <section class="dialog-panel w-full max-w-lg p-6" appDialogFocusTrap role="dialog" aria-modal="true" aria-labelledby="replace-title" aria-describedby="replace-description">
       <h2 id="replace-title" class="text-xl font-bold">Replace {{ dataset.tableName }} source</h2>
       <p id="replace-description" class="mt-2 text-sm text-slate-500">
         Choose one non-empty CSV up to 10 MB. ForgeDB creates a new active version and keeps the earlier versions in history.
       </p>
       <label class="mt-5 block text-sm font-semibold" for="replace-file-input">Replacement CSV file</label>
-      <input #initialFocus id="replace-file-input" data-testid="replace-file-input" type="file" accept=".csv,text/csv" class="mt-2 block w-full text-sm" (change)="onReplaceFileSelected($event)">
+      <input #initialFocus id="replace-file-input" data-testid="replace-file-input" type="file" accept=".csv,text/csv" class="mt-2 block w-full text-sm" [disabled]="replacing()" (change)="onReplaceFileSelected($event)">
       @if (replaceFile(); as file) { <p class="mt-2 text-sm">{{ file.name }} · {{ formatSize(file.size) }}</p> }
       @if (replaceError()) { <p class="alert alert-error mt-4" role="alert">{{ replaceError() }}</p> }
       <div class="mt-6 flex justify-end gap-3">

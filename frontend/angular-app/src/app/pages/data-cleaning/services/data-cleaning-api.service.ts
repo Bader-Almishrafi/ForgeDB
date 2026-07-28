@@ -15,6 +15,7 @@ import {
 } from '../../../services/api.models';
 import { ForgeApiService } from '../../../services/forge-api.service';
 import { ProjectWorkflowContextService } from '../../../services/project-workflow-context.service';
+import { validateCleaningOperation } from './cleaning-transformations';
 
 export interface FeedbackMessage {
   kind: 'success' | 'warning' | 'error';
@@ -45,6 +46,7 @@ export class DataCleaningApiService {
   projectId = 0;
   private loadVersion = 0;
   private versionCacheGeneration = 0;
+  private previewRequestToken = 0;
   private readonly versionRequests = new Map<number, { token: symbol; promise: Promise<void> }>();
 
   readonly loading = signal(true);
@@ -224,12 +226,26 @@ export class DataCleaningApiService {
   }
 
   async previewOperationsRequest(operations: CleaningOperationRequest[]): Promise<void> {
-    if (!operations.length || this.previewLoading() || this.applyLoading() || !this.cleaningReady()) return;
+    if (!operations.length || this.previewLoading() || this.applyLoading() || this.reanalyzing() || !this.cleaningReady()) return;
+    const invalidOperation = operations
+      .map((operation) => validateCleaningOperation(operation))
+      .find((validation) => !validation.valid);
+    if (invalidOperation) {
+      this.invalidatePreview();
+      this.feedback.set({
+        kind: 'error',
+        title: 'Complete the cleaning strategy',
+        message: invalidOperation.error ?? 'Review the selected cleaning values before previewing.',
+      });
+      return;
+    }
     this.invalidatePreview();
+    const requestToken = this.previewRequestToken;
     this.previewLoading.set(true);
     this.feedback.set(null);
     try {
       const preview = await firstValueFrom(this.forgeApi.previewCleaning(this.projectId, { operations }));
+      if (requestToken !== this.previewRequestToken) return;
       if (!this.previewMatchesExpectedVersions(preview, operations)) {
         await this.recoverFromStaleVersion({
           kind: 'warning',
@@ -243,10 +259,11 @@ export class DataCleaningApiService {
       this.destructiveConfirmed.set(false);
       return Promise.resolve();
     } catch (error: unknown) {
+      if (requestToken !== this.previewRequestToken) return;
       if (this.isActiveVersionConflict(error)) await this.recoverFromStaleVersion();
       else this.feedback.set({ kind: 'error', title: 'Preview failed', message: this.errorMessage(error, 'The selected changes could not be previewed.') });
     } finally {
-      this.previewLoading.set(false);
+      if (requestToken === this.previewRequestToken) this.previewLoading.set(false);
     }
   }
 
@@ -284,14 +301,28 @@ export class DataCleaningApiService {
   }
 
   invalidatePreview(): void {
+    this.previewRequestToken++;
     this.preview.set(null);
     this.previewOperations.set([]);
     this.destructiveConfirmed.set(false);
+    this.previewLoading.set(false);
   }
 
   async applyPreview(onSuccess?: () => void): Promise<void> {
     const preview = this.preview();
-    if (!preview || this.applyLoading() || (preview.destructive && !this.destructiveConfirmed())) return;
+    if (!preview || this.previewLoading() || this.applyLoading() || this.reanalyzing()
+      || (preview.destructive && !this.destructiveConfirmed())) return;
+    const invalidOperation = this.previewOperations()
+      .map((operation) => validateCleaningOperation(operation))
+      .find((validation) => !validation.valid);
+    if (invalidOperation) {
+      this.feedback.set({
+        kind: 'error',
+        title: 'Complete the cleaning strategy',
+        message: invalidOperation.error ?? 'Review the selected cleaning values before applying.',
+      });
+      return;
+    }
     
     this.applyLoading.set(true);
     try {
@@ -314,7 +345,7 @@ export class DataCleaningApiService {
 
   async confirmUndoOrRestore(onSuccess?: () => void): Promise<void> {
     const action = this.confirmAction();
-    if (!action || this.applyLoading()) return;
+    if (!action || this.previewLoading() || this.applyLoading() || this.reanalyzing()) return;
     this.applyLoading.set(true);
     try {
       const result = action.kind === 'undo'
@@ -355,7 +386,7 @@ export class DataCleaningApiService {
   }
 
   async confirmQuality(): Promise<void> {
-    if (!this.canConfirmQuality() || this.applyLoading()) return;
+    if (!this.canConfirmQuality() || this.previewLoading() || this.applyLoading() || this.reanalyzing()) return;
     this.applyLoading.set(true);
     try {
       await firstValueFrom(this.forgeApi.confirmCleaningQuality(this.projectId));
@@ -387,8 +418,13 @@ export class DataCleaningApiService {
       this.analysisFailures.set(failures);
       this.feedback.set({
         kind: 'warning',
-        title: 'Cleaning saved; refresh required',
-        message: this.errorMessage(error, 'New active versions were saved, but the workspace could not be refreshed.'),
+        title: cleaningFailures.length ? 'Cleaning partially applied; refresh required' : 'Cleaning saved; refresh required',
+        message: [
+          this.errorMessage(error, 'New active versions were saved, but the workspace could not be refreshed.'),
+          cleaningFailures.length
+            ? `Cleaning failed for: ${this.cleaningFailureDetails(cleaningFailures)}`
+            : '',
+        ].filter(Boolean).join(' '),
       });
       return;
     }
@@ -401,7 +437,13 @@ export class DataCleaningApiService {
     const analysisFailures = await this.analyzeTargets(targets);
     await Promise.all(changedDatasetIds.map((datasetId) => this.loadVersions(datasetId)));
 
-    if (analysisFailures.length) {
+    if (analysisFailures.length && cleaningFailures.length) {
+      this.feedback.set({
+        kind: 'warning',
+        title: 'Cleaning partially applied; re-analysis incomplete',
+        message: `${successful.length} dataset${successful.length === 1 ? '' : 's'} succeeded; cleaning failed for: ${this.cleaningFailureDetails(cleaningFailures)} New active versions remain preserved; analysis failed for: ${analysisFailures.map((failure) => failure.datasetName).join(', ')}.`,
+      });
+    } else if (analysisFailures.length) {
       this.feedback.set({
         kind: 'warning',
         title: 'Cleaning saved; re-analysis incomplete',
@@ -411,11 +453,22 @@ export class DataCleaningApiService {
       this.feedback.set({
         kind: 'warning',
         title: 'Cleaning partially applied',
-        message: `${successful.length} succeeded; failed datasets: ${cleaningFailures.map((failure) => failure.datasetName).join(', ')}.`,
+        message: `${successful.length} succeeded; failed datasets: ${this.cleaningFailureDetails(cleaningFailures)}`,
       });
     } else {
       this.feedback.set({ kind: 'success', title: successTitle, message: 'The new active versions were analyzed successfully. Review quality before continuing.' });
     }
+  }
+
+  private cleaningFailureDetails(failures: CleaningApplyResponse['datasets']): string {
+    const details = [...new Set(failures.map((failure) => {
+      const reason = failure.error?.replace(/\s+/g, ' ').trim().slice(0, 180)
+        || 'The server rejected this dataset operation.';
+      return `${failure.datasetName}: ${reason.replace(/[.;:]+$/g, '')}.`;
+    }))];
+    const visible = details.slice(0, 4);
+    const omitted = details.length - visible.length;
+    return `${visible.join(' ')}${omitted ? ` ${omitted} additional failure(s) omitted.` : ''}`;
   }
 
   async analyzeTargets(targets: AnalysisTarget[]): Promise<AnalysisFailure[]> {

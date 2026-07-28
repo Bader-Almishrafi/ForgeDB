@@ -31,4 +31,8 @@ export class CleaningIssueCardComponent {
   get needsDuplicateColumns(): boolean {
     return this.strategy.operationType === 'remove_duplicates';
   }
+
+  get selectedRiskLabel(): string {
+    return this.strategy.isDestructive ? 'High — destructive' : this.suggestion.riskLabel;
+  }
 }

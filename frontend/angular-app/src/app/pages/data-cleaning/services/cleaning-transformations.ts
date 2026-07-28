@@ -39,9 +39,10 @@ export function filterSafeRecommendations(suggestions: CleaningSuggestion[]): Cl
 
 export function parseDuplicateColumns(input?: string): string[] {
   if (!input) return [];
-  return input.split(',')
+  const columns = input.split(',')
     .map((col) => col.trim())
     .filter(Boolean);
+  return columns.some((column) => column.toLocaleLowerCase() === 'all') ? [] : columns;
 }
 
 export function buildCleaningOperation(
@@ -78,7 +79,12 @@ export function validateCleaningOperation(operation: CleaningOperationRequest): 
   if (!operation.suggestionId || !operation.operationType) {
     return { valid: false, error: 'Operation missing required identifiers or strategy type.' };
   }
-  if (operation.parameters['strategy'] === 'custom' && !operation.parameters['value']) {
+  const replacement = operation.parameters['value'];
+  const needsReplacement = operation.parameters['strategy'] === 'custom'
+    || operation.parameters['invalidAction'] === 'replace';
+  if (needsReplacement && (replacement === null
+    || replacement === undefined
+    || (typeof replacement === 'string' && !replacement.trim()))) {
     return { valid: false, error: 'Custom strategy requires a replacement value.' };
   }
   return { valid: true };

@@ -2,7 +2,7 @@
   <header class="page-header flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
     <div>
       <p class="eyebrow">{{ apiService.projectName() }} · Step 3 of 5</p>
-      <h1 class="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl dark:text-white">Data Cleaning</h1>
+      <h1 #pageHeading class="mt-1 text-3xl font-semibold tracking-[-0.035em] text-slate-950 sm:text-4xl dark:text-white" tabindex="-1">Data Cleaning</h1>
       <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
         @if (apiService.summary()?.qualityConfirmed) { Quality confirmed for the current active versions. }
         @else if (apiService.datasetsRequiringAnalysis().length) { Finish analysis before reviewing cleaning recommendations. }
@@ -12,7 +12,7 @@
     @if (!apiService.loading() && apiService.datasets().length) {
       <label class="block min-w-64">
         <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cleaning scope</span>
-        <select class="input-field mt-2" data-testid="cleaning-scope-selector" [ngModel]="stateService.scope()" (ngModelChange)="changeScope($event)" [disabled]="apiService.previewLoading() || apiService.applyLoading() || apiService.reanalyzing()">
+        <select class="input-field mt-2" data-testid="cleaning-scope-selector" [ngModel]="stateService.scope()" (ngModelChange)="changeScope($event)" [disabled]="planLocked()">
           <option [ngValue]="'project'">All datasets</option>
           @for (dataset of apiService.datasets(); track dataset.datasetId) {
             <option [ngValue]="dataset.datasetId">{{ dataset.datasetName }}</option>
@@ -97,7 +97,7 @@
                   <div class="text-xs font-medium text-slate-600 dark:text-slate-300">
                     {{ apiService.issueCountByDataset()[dataset.datasetId] || 0 }} issues · {{ apiService.datasetStatus(dataset) }}
                   </div>
-                  <button type="button" class="btn-secondary text-xs py-1 px-3 min-h-0 h-7" (click)="openDataset(dataset.datasetId)">Open</button>
+                  <button type="button" class="btn-secondary text-xs py-1 px-3 min-h-0 h-7" (click)="openDataset(dataset.datasetId)" [disabled]="planLocked()">Open</button>
                 </div>
               </div>
             }
@@ -113,7 +113,7 @@
           </div>
           <div class="text-left lg:text-right">
             @if (stateService.safeRecommendations().length) {
-              <button type="button" class="btn-primary" data-testid="preview-recommended" (click)="previewRecommendedFixes()" [disabled]="apiService.previewLoading() || apiService.applyLoading() || apiService.reanalyzing()">
+              <button type="button" class="btn-primary" data-testid="preview-recommended" (click)="previewRecommendedFixes()" [disabled]="planLocked()">
                 Preview safe recommended fixes
               </button>
             } @else {
@@ -130,12 +130,12 @@
           </div>
 
           <div class="mt-4 flex flex-col gap-3 rounded-xl border border-slate-200/70 bg-slate-50/80 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-[#30363d] dark:bg-[#21262d]/60">
-            <label class="inline-flex items-center gap-2 text-sm font-medium"><input type="checkbox" [checked]="stateService.allVisibleSelected()" (change)="stateService.toggleAllVisible()"> Select visible issues</label>
+            <label class="inline-flex items-center gap-2 text-sm font-medium"><input type="checkbox" data-testid="select-visible-issues" [checked]="stateService.allVisibleSelected()" (change)="stateService.toggleAllVisible()" [disabled]="planLocked()"> Select visible issues</label>
             <div class="flex items-center gap-3">
               <span class="text-xs text-slate-500">{{ stateService.selectedSuggestions().length }} selected</span>
               
               @if (stateService.selectedSuggestions().length) {
-                <select class="input-field max-w-xs text-sm" (change)="applyBulkStrategy($any($event.target).value); $any($event.target).value = ''">
+                <select class="input-field max-w-xs text-sm" data-testid="bulk-strategy" (change)="applyBulkStrategy($any($event.target).value); $any($event.target).value = ''" [disabled]="planLocked()">
                   <option value="" disabled selected>Apply bulk strategy...</option>
                   @for (option of bulkStrategyOptions(); track option.key) {
                     <option [value]="option.key">{{ option.label }}</option>
@@ -143,7 +143,7 @@
                 </select>
               }
 
-              <button type="button" class="btn-secondary" (click)="previewSelected()" [disabled]="!stateService.selectedSuggestions().length || apiService.previewLoading()">Preview selected issues</button>
+              <button type="button" class="btn-secondary" data-testid="preview-selected-issues" (click)="previewSelected()" [disabled]="!stateService.selectedSuggestions().length || planLocked()">Preview selected issues</button>
             </div>
           </div>
 
@@ -155,7 +155,7 @@
                 [selected]="stateService.selectedIds().has(suggestion.id)"
                 [customValue]="stateService.customValues()[suggestion.id] || ''"
                 [duplicateColumns]="stateService.duplicateColumns()[suggestion.id] || ''"
-                [busy]="apiService.previewLoading() || apiService.applyLoading()"
+                [busy]="planLocked()"
                 (selectionChange)="stateService.toggleSuggestion(suggestion)"
                 (strategyChange)="stateService.updateStrategy(suggestion, $event)"
                 (customValueChange)="stateService.updateCustomValue(suggestion.id, $event)"
@@ -168,7 +168,11 @@
         } @else {
           <div class="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center dark:border-emerald-900/50 dark:bg-emerald-950/20" data-testid="no-cleaning-required">
             <h3 class="text-lg font-bold text-emerald-900 dark:text-emerald-200">No cleaning changes required</h3>
-            <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-300">The analyzed active versions have no actionable suggestions in this scope. Confirm quality without creating an unnecessary version.</p>
+            @if (stateService.scope() === 'project') {
+              <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-300">The analyzed active versions have no actionable suggestions. Confirm project data quality without creating an unnecessary version.</p>
+            } @else {
+              <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-300">This dataset has no actionable suggestions. Return to all datasets to review and confirm project-wide data quality.</p>
+            }
           </div>
         }
       </section>
@@ -184,13 +188,26 @@
       <section class="workspace-panel p-5 sm:p-6" data-testid="quality-confirmation">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 class="text-lg font-bold text-slate-950 dark:text-white">Data quality</h2>
-            @if (apiService.summary()?.qualityConfirmed) { <p class="mt-1 text-sm text-emerald-700 dark:text-emerald-300">Quality confirmed for the current active versions.</p> }
-            @else { <p class="mt-1 text-sm text-slate-500">Confirm only after reviewing the current analyzed versions.</p> }
+            <h2 class="text-lg font-bold text-slate-950 dark:text-white">Project data quality</h2>
+            @if (apiService.summary()?.qualityConfirmed) {
+              <p class="mt-1 text-sm text-emerald-700 dark:text-emerald-300">Quality confirmed for every current active dataset version.</p>
+            } @else if (stateService.scope() !== 'project') {
+              <p class="mt-1 text-sm text-slate-500">Confirmation applies to every active dataset version. Review the all-datasets scope before confirming.</p>
+            } @else if (apiService.suggestions().length && !apiService.summary()?.hasCleaningBatches) {
+              <p class="mt-1 text-sm text-slate-500">Review, preview, and apply at least one suggested cleaning action before confirming the current project versions.</p>
+            } @else if (apiService.suggestions().length) {
+              <p class="mt-1 text-sm text-slate-500">{{ apiService.suggestions().length }} project-wide suggested changes remain. Confirmation accepts the current active versions without applying them.</p>
+            } @else {
+              <p class="mt-1 text-sm text-slate-500">All active dataset versions are analyzed and have no actionable suggestions.</p>
+            }
           </div>
-          @if (!apiService.summary()?.qualityConfirmed) {
-            <button type="button" [class]="stateService.scopeSuggestions().length ? 'btn-secondary' : 'btn-primary'" data-testid="confirm-quality" (click)="confirmQuality()" [disabled]="!apiService.canConfirmQuality() || apiService.applyLoading() || apiService.reanalyzing()">
-              {{ stateService.scopeSuggestions().length ? 'Confirm quality without changes' : 'Confirm Data Quality' }}
+          @if (!apiService.summary()?.qualityConfirmed && stateService.scope() === 'project') {
+            <button type="button" [class]="apiService.suggestions().length ? 'btn-secondary' : 'btn-primary'" data-testid="confirm-quality" (click)="confirmQuality()" [disabled]="!apiService.canConfirmQuality() || planLocked()">
+              {{ apiService.suggestions().length ? 'Confirm project quality without changes' : 'Confirm project data quality' }}
+            </button>
+          } @else if (!apiService.summary()?.qualityConfirmed) {
+            <button type="button" class="btn-secondary" data-testid="review-project-quality" (click)="changeScope('project')" [disabled]="planLocked()">
+              Review all datasets
             </button>
           }
         </div>
@@ -204,7 +221,7 @@
               <article class="py-4">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div><h3 class="font-semibold">{{ entry.name }}</h3><p class="mt-1 text-xs text-slate-500">{{ entry.createdAt | date:'medium' }} · {{ entry.status }}</p><p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{{ entry.operationCount }} operations · Datasets: {{ apiService.affectedDatasetNames(entry) }}</p></div>
-                  @if (entry.canUndo) { <button type="button" class="btn-secondary shrink-0" (click)="requestUndo()" [disabled]="apiService.applyLoading()">Undo as new active version</button> }
+                  @if (entry.canUndo) { <button type="button" class="btn-secondary shrink-0" (click)="requestUndo()" [disabled]="planLocked()">Undo as new active version</button> }
                 </div>
               </article>
             }
@@ -219,7 +236,7 @@
             @for (version of apiService.datasetVersions(dataset.datasetId); track version.id) {
               <div class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div><p class="font-semibold">v{{ version.versionNumber }} · {{ apiService.versionKind(version) }} @if (version.isActive) { <span class="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Active</span> }</p><p class="mt-1 text-xs text-slate-500">{{ version.createdAt | date:'medium' }} · {{ version.operationSummary || 'Imported dataset' }} · {{ version.analyzedAt ? 'Analyzed' : 'Analysis required' }}</p></div>
-                @if (!version.isActive) { <button type="button" class="btn-secondary shrink-0" (click)="requestRestore(dataset.datasetId, version)" [disabled]="apiService.applyLoading()">Restore as new active version</button> }
+                @if (!version.isActive) { <button type="button" class="btn-secondary shrink-0" (click)="requestRestore(dataset.datasetId, version)" [disabled]="planLocked()">Restore as new active version</button> }
               </div>
             } @empty { <p class="py-4 text-sm text-slate-500">Version history could not be loaded.</p> }
           </div>
@@ -229,7 +246,7 @@
       <footer class="workflow-page-footer">
         <a class="btn-secondary justify-center" [routerLink]="['/projects', projectId, 'analyze']" [queryParams]="navigationQuery()">Back to Analysis</a>
         <div class="sm:text-right">
-          <button type="button" class="btn-primary justify-center" data-testid="continue-to-schema" (click)="continueToSchema()" [disabled]="!apiService.canContinueToSchema()">Continue to Schema Design</button>
+          <button type="button" class="btn-primary justify-center" data-testid="continue-to-schema" (click)="continueToSchema()" [disabled]="!apiService.canContinueToSchema() || planLocked()">Continue to Schema Design</button>
           @if (apiService.canContinueToSchema()) {
             <p class="mt-2 max-w-md text-xs text-slate-500">Next: define tables and relationships in Schema Design.</p>
           } @else {

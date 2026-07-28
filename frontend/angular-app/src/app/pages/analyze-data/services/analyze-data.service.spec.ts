@@ -244,6 +244,34 @@ describe('AnalyzeDataService', () => {
     ]);
   });
 
+  it('blocks scope changes and new runs until saved analyses finish loading', () => {
+    const savedAnalysis = new Subject<DatasetAnalysisResponse>();
+    const currentWorkflow = workflow([datasets[0]], [7], 2);
+    const { service, api } = setup({
+      getProjectDatasets: vi.fn(() => of([datasets[0]])),
+      getProjectWorkflow: vi.fn(() => of(currentWorkflow)),
+      getDatasetAnalysis: vi.fn(() => savedAnalysis.asObservable()),
+    });
+
+    service.loadWorkspace(10, 7);
+
+    expect(service.loading()).toBe(false);
+    expect(service.resultsLoading()).toBe(true);
+    expect(service.analysisActionLabel()).toBe('Loading saved analysis…');
+
+    service.setScope('project');
+    service.runAnalysis();
+
+    expect(service.scope()).toBe(7);
+    expect(api.analyzeDataset).not.toHaveBeenCalled();
+
+    savedAnalysis.next(analysis(datasets[0], 2));
+    savedAnalysis.complete();
+
+    expect(service.resultsLoading()).toBe(false);
+    expect(service.analyses()).toEqual({ 7: analysis(datasets[0], 2) });
+  });
+
   it('analyzes only the selected dataset, but targets every dataset in project scope', () => {
     const beforeAnalysis = workflow(datasets);
     const afterAnalysis = workflow(datasets, [7, 8]);

@@ -93,6 +93,13 @@ export class DataCleaningStateService {
     this.strategyOverrides.update((current) => ({ ...current, [suggestion.id]: key }));
   }
 
+  useRecommendedStrategies(suggestions: CleaningSuggestion[]): void {
+    this.strategyOverrides.update((current) => ({
+      ...current,
+      ...Object.fromEntries(suggestions.map((suggestion) => [suggestion.id, suggestion.recommendedStrategy.key])),
+    }));
+  }
+
   selectedStrategy(suggestion: CleaningSuggestion): CleaningStrategy {
     const key = this.strategyOverrides()[suggestion.id] ?? suggestion.recommendedStrategy.key;
     return suggestion.availableStrategies.find((strategy) => strategy.key === key) ?? suggestion.recommendedStrategy;
@@ -125,5 +132,12 @@ export class DataCleaningStateService {
 
   buildOperations(suggestions: CleaningSuggestion[]): CleaningOperationRequest[] {
     return suggestions.map((suggestion) => this.buildOperation(suggestion));
+  }
+
+  buildRecommendedOperations(suggestions: CleaningSuggestion[]): CleaningOperationRequest[] {
+    return suggestions.map((suggestion) => buildCleaningOperation(
+      suggestion,
+      suggestion.recommendedStrategy,
+    ));
   }
 }

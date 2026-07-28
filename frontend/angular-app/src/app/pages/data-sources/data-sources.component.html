@@ -2,14 +2,16 @@
   <header class="page-header">
     <div class="min-w-0">
       <p class="eyebrow">Step 1 of 5</p>
-      <h1 class="page-title mt-1">Data Sources</h1>
+      <h1 #pageHeading class="page-title mt-1" tabindex="-1">Data Sources</h1>
       <p class="page-subtitle">Import source data, choose a dataset, and inspect its active version.</p>
     </div>
     <div class="flex flex-wrap gap-2">
       @if (service.project()) {
         <button type="button" class="btn-ghost" (click)="editOpen.set(true)">Edit Project Details</button>
       }
-      <button type="button" class="btn-primary" data-testid="open-import-button" (click)="openImport()">Import Dataset</button>
+      @if (service.datasets().length) {
+        <button type="button" class="btn-primary" data-testid="open-import-button" (click)="openImport()">Import Dataset</button>
+      }
     </div>
   </header>
 
@@ -153,7 +155,7 @@
   [projectId]="service.projectId"
   [projectName]="service.projectName()"
   [initialSource]="importSource()"
-  (closeDialog)="importOpen.set(false); importSource.set(null)"
+  (closeDialog)="onImportDialogClosed()"
   (imported)="onDatasetsImported($event)" />
 <app-replace-dataset-dialog
   [isOpen]="replaceOpen()"

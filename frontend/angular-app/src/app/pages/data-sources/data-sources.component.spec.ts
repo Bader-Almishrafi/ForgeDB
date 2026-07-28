@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject, of, Subject } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DatasetResponse, ExcelWorkbookPreview, ProjectResponse, ProjectWorkflow } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
@@ -209,6 +209,8 @@ describe('DataSourcesComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="dataset-preview"]')?.textContent).toContain('Ahmed');
     expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { datasetId: '9' } }));
     expect(api['getProjectWorkflow']).toHaveBeenCalledTimes(2);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(document.activeElement?.textContent).toContain('Data Sources');
   });
 
   it('loads worksheets, previews the selected sheet, and imports Excel', async () => {
@@ -263,6 +265,32 @@ describe('DataSourcesComponent', () => {
     expect(api['getDatasetPreview']).toHaveBeenCalledWith(8);
   });
 
+  it('ignores an older dataset refresh that finishes after the latest request', async () => {
+    const { component, api } = await setup([firstDataset]);
+    const olderRequest = new Subject<DatasetResponse[]>();
+    const latestRequest = new Subject<DatasetResponse[]>();
+    api['getProjectDatasets']
+      .mockReturnValueOnce(olderRequest.asObservable())
+      .mockReturnValueOnce(latestRequest.asObservable());
+
+    component.service.loadDatasets(firstDataset.id);
+    component.service.loadDatasets(secondDataset.id);
+    latestRequest.next([secondDataset]);
+    latestRequest.complete();
+
+    expect(component.service.datasets()).toEqual([secondDataset]);
+    expect(component.service.selectedDatasetId()).toBe(secondDataset.id);
+    expect(component.service.datasetsLoading()).toBe(false);
+
+    olderRequest.next([firstDataset]);
+    olderRequest.complete();
+
+    expect(component.service.datasets()).toEqual([secondDataset]);
+    expect(component.service.selectedDatasetId()).toBe(secondDataset.id);
+    expect(component.service.datasetsError()).toBe('');
+    expect(component.service.datasetsLoading()).toBe(false);
+  });
+
   it('recovers an invalid datasetId to the deterministic first dataset with one notice', async () => {
     const { fixture, component, router } = await setup([secondDataset, firstDataset], '999');
     expect(component.service.selectedDatasetId()).toBe(7);
@@ -297,6 +325,29 @@ describe('DataSourcesComponent', () => {
     expect(component.service.successMessage()).toContain('previous versions remain in history');
     expect(component.service.selectedWorkflowDataset()?.activeVersionNumber).toBe(2);
     expect(api['getProjectWorkflow']).toHaveBeenCalledTimes(2);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(document.activeElement?.textContent).toContain('Data Sources');
+  });
+
+  it('locks replacement file selection to the submitted request', async () => {
+    const pending = new Subject<DatasetResponse>();
+    const { fixture, component, api } = await setup([firstDataset], '7');
+    api['replaceDataset'].mockReturnValue(pending);
+    component.replaceOpen.set(true);
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('[data-testid="replace-file-input"]') as HTMLInputElement;
+    const file = new File(['id\n2'], 'replacement.csv', { type: 'text/csv' });
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+    input.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('[data-testid="confirm-replace-button"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(input.disabled).toBe(true);
+    expect(api['replaceDataset']).toHaveBeenCalledOnce();
+    pending.next({ ...firstDataset, sourceName: 'replacement.csv' });
+    pending.complete();
   });
 
   it('deletes the selection, selects the next valid dataset, and refreshes workflow state', async () => {
@@ -308,8 +359,12 @@ describe('DataSourcesComponent', () => {
 
     expect(api['deleteDataset']).toHaveBeenCalledWith(7);
     expect(component.service.selectedDatasetId()).toBe(8);
+    expect(component.service.selectionNotice()).toBe('');
+    expect(fixture.nativeElement.textContent).not.toContain('selected dataset is not in this project');
     expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { datasetId: '8' } }));
     expect(api['getProjectWorkflow']).toHaveBeenCalledTimes(2);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(document.activeElement?.textContent).toContain('Data Sources');
   });
 
   it('refreshes workflow context after the project dialog saves a new name', async () => {

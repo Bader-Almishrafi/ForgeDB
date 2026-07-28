@@ -17,11 +17,12 @@ import { finalize } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ProjectResponse } from '../../../services/api.models';
 import { ForgeApiService } from '../../../services/forge-api.service';
+import { DialogFocusTrapDirective } from '../../../shared/dialog-focus-trap.directive';
 
 @Component({
   selector: 'app-edit-project-dialog',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DialogFocusTrapDirective],
   templateUrl: './edit-project-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

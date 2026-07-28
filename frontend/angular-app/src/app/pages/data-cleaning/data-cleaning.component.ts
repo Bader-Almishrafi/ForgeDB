@@ -41,6 +41,7 @@ export class DataCleaningComponent implements OnInit {
   readonly previewDialog = viewChild(CleaningPreviewDialogComponent);
   readonly confirmDialog = viewChild<ElementRef<HTMLDialogElement>>('confirmDialog');
   readonly confirmCancelButton = viewChild<ElementRef<HTMLButtonElement>>('confirmCancelButton');
+  readonly pageHeading = viewChild<ElementRef<HTMLHeadingElement>>('pageHeading');
   private returnFocusElement: HTMLElement | null = null;
 
   readonly bulkStrategyOptions = computed(() => {
@@ -57,6 +58,9 @@ export class DataCleaningComponent implements OnInit {
     });
     return Array.from(strategyMap.values());
   });
+
+  readonly planLocked = computed(() =>
+    this.apiService.previewLoading() || this.apiService.applyLoading() || this.apiService.reanalyzing());
 
   projectId = 0;
 
@@ -75,10 +79,12 @@ export class DataCleaningComponent implements OnInit {
   }
 
   openDataset(datasetId: number): void {
+    if (this.planLocked()) return;
     this.changeScope(datasetId);
   }
 
   changeScope(value: 'project' | number): void {
+    if (this.planLocked()) return;
     const nextScope = value === 'project' ? 'project' : Number(value);
     if (nextScope !== 'project' && (!Number.isInteger(nextScope) || !this.apiService.datasets().some((dataset) => dataset.datasetId === nextScope))) {
       return;
@@ -120,8 +126,9 @@ export class DataCleaningComponent implements OnInit {
       this.toastService.showWarning('No safe recommendations found. The current issues require individual review or destructive-operation confirmation.');
       return;
     }
+    this.stateService.useRecommendedStrategies(safe);
     this.stateService.selectedIds.set(new Set(safe.map((s) => s.id)));
-    await this.apiService.previewOperationsRequest(this.stateService.buildOperations(safe));
+    await this.apiService.previewOperationsRequest(this.stateService.buildRecommendedOperations(safe));
     if (!this.apiService.preview()) this.stateService.resetIssueSelection();
   }
 
@@ -129,6 +136,7 @@ export class DataCleaningComponent implements OnInit {
     if (this.apiService.applyLoading() && !force) return;
     this.previewDialog()?.close();
     this.apiService.invalidatePreview();
+    this.stateService.resetIssueSelection();
   }
 
   async applyPreview(): Promise<void> {
@@ -150,13 +158,13 @@ export class DataCleaningComponent implements OnInit {
   }
 
   requestUndo(): void {
-    if (!this.apiService.latestUndoable()) return;
+    if (this.planLocked() || !this.apiService.latestUndoable()) return;
     this.apiService.confirmAction.set({ kind: 'undo' });
     this.openConfirmDialog();
   }
 
   requestRestore(datasetId: number, version: DatasetVersion): void {
-    if (version.isActive) return;
+    if (this.planLocked() || version.isActive) return;
     this.apiService.confirmAction.set({ kind: 'restore', datasetId, version });
     this.openConfirmDialog();
   }
@@ -168,8 +176,9 @@ export class DataCleaningComponent implements OnInit {
 
   async confirmUndoOrRestore(): Promise<void> {
     await this.apiService.confirmUndoOrRestore(() => {
-      this.dismissConfirmDialog();
+      this.dismissConfirmDialog(false);
       this.stateService.resetIssueSelection();
+      this.focusPageHeading();
     });
   }
 
@@ -179,10 +188,11 @@ export class DataCleaningComponent implements OnInit {
 
   async confirmQuality(): Promise<void> {
     await this.apiService.confirmQuality();
+    if (this.apiService.summary()?.qualityConfirmed) this.focusPageHeading();
   }
 
   continueToSchema(): void {
-    if (!this.apiService.canContinueToSchema()) return;
+    if (this.planLocked() || !this.apiService.canContinueToSchema()) return;
     const datasetId = this.stateService.selectedDataset()?.datasetId;
     void this.router.navigate(['/projects', this.projectId, 'schema'], { queryParams: datasetId ? { datasetId } : {} });
   }
@@ -192,13 +202,17 @@ export class DataCleaningComponent implements OnInit {
     return datasetId ? { datasetId } : {};
   }
 
-  private dismissConfirmDialog(): void {
+  private dismissConfirmDialog(restoreFocus = true): void {
     this.apiService.confirmAction.set(null);
     const dialog = this.confirmDialog()?.nativeElement;
     if (dialog?.open) dialog.close();
     const returnFocusElement = this.returnFocusElement;
     this.returnFocusElement = null;
-    setTimeout(() => returnFocusElement?.focus());
+    if (restoreFocus) setTimeout(() => returnFocusElement?.focus());
+  }
+
+  private focusPageHeading(): void {
+    setTimeout(() => this.pageHeading()?.nativeElement.focus());
   }
 
   private openConfirmDialog(): void {

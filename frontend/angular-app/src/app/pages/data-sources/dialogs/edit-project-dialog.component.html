@@ -1,8 +1,9 @@
 @if (isOpen) {
   <div class="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[2px]" (click)="onBackdropClick($event)">
-    <section class="dialog-panel w-full max-w-lg p-6" role="dialog" aria-modal="true" aria-labelledby="edit-project-title" aria-describedby="edit-project-description">
+    <section class="dialog-panel w-full max-w-lg p-6" appDialogFocusTrap role="dialog" aria-modal="true" aria-labelledby="edit-project-title" aria-describedby="edit-project-description">
       <h2 id="edit-project-title" class="text-xl font-bold">Edit project</h2>
       <p id="edit-project-description" class="mt-2 text-sm text-slate-500">Update the name people see throughout this workflow.</p>
+      <fieldset class="contents" [disabled]="savingProject()">
       <label class="mt-5 block">
         <span class="text-sm font-semibold">Name</span>
         <input #initialFocus type="text" maxlength="100" class="input-field mt-2" [ngModel]="editName()" (ngModelChange)="editName.set($event)">
@@ -11,6 +12,7 @@
         <span class="text-sm font-semibold">Description</span>
         <textarea maxlength="500" class="input-field mt-2 min-h-28" [ngModel]="editDescription()" (ngModelChange)="editDescription.set($event)"></textarea>
       </label>
+      </fieldset>
       @if (editError()) { <p class="alert alert-error mt-4" role="alert">{{ editError() }}</p> }
       <div class="mt-6 flex justify-end gap-3">
         <button type="button" class="btn-secondary" (click)="close()" [disabled]="savingProject()">Cancel</button>

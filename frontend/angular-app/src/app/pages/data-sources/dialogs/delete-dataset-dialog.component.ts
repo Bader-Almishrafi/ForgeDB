@@ -16,10 +16,12 @@ import { finalize } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DatasetResponse } from '../../../services/api.models';
 import { ForgeApiService } from '../../../services/forge-api.service';
+import { DialogFocusTrapDirective } from '../../../shared/dialog-focus-trap.directive';
 
 @Component({
   selector: 'app-delete-dataset-dialog',
   standalone: true,
+  imports: [DialogFocusTrapDirective],
   templateUrl: './delete-dataset-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -69,7 +71,7 @@ export class DeleteDatasetDialogComponent implements OnChanges {
     this.api.deleteDataset(this.dataset.id).pipe(finalize(() => this.deleting.set(false))).subscribe({
       next: () => {
         this.deleted.emit();
-        this.finishClose();
+        this.finishClose(false);
       },
       error: (error: unknown) => this.deleteError.set(this.errorText(error, 'Unable to delete this dataset.')),
     });
@@ -83,10 +85,10 @@ export class DeleteDatasetDialogComponent implements OnChanges {
     return fallback;
   }
 
-  private finishClose(): void {
+  private finishClose(restoreFocus = true): void {
     this.closeDialog.emit();
     const focusTarget = this.previouslyFocused;
     this.previouslyFocused = null;
-    setTimeout(() => focusTarget?.focus());
+    if (restoreFocus) setTimeout(() => focusTarget?.focus());
   }
 }

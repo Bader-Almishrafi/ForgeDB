@@ -16,11 +16,13 @@ import { finalize } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DatasetResponse } from '../../../services/api.models';
 import { ForgeApiService } from '../../../services/forge-api.service';
+import { DialogFocusTrapDirective } from '../../../shared/dialog-focus-trap.directive';
 import { isCsvFile, formatFileSize } from '../../../shared/utils/file-import.utils';
 
 @Component({
   selector: 'app-replace-dataset-dialog',
   standalone: true,
+  imports: [DialogFocusTrapDirective],
   templateUrl: './replace-dataset-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -65,6 +67,10 @@ export class ReplaceDatasetDialogComponent implements OnChanges {
 
   onReplaceFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
+    if (this.replacing()) {
+      input.value = '';
+      return;
+    }
     const file = input.files?.[0] ?? null;
     input.value = '';
     this.replaceError.set('');
@@ -94,7 +100,7 @@ export class ReplaceDatasetDialogComponent implements OnChanges {
     this.api.replaceDataset(dataset.id, formData).pipe(finalize(() => this.replacing.set(false))).subscribe({
       next: (updated) => {
         this.replaced.emit(updated);
-        this.finishClose();
+        this.finishClose(false);
       },
       error: (error: unknown) => this.replaceError.set(this.errorText(error, 'Unable to replace this dataset.')),
     });
@@ -112,10 +118,10 @@ export class ReplaceDatasetDialogComponent implements OnChanges {
     return fallback;
   }
 
-  private finishClose(): void {
+  private finishClose(restoreFocus = true): void {
     this.closeDialog.emit();
     const focusTarget = this.previouslyFocused;
     this.previouslyFocused = null;
-    setTimeout(() => focusTarget?.focus());
+    if (restoreFocus) setTimeout(() => focusTarget?.focus());
   }
 }

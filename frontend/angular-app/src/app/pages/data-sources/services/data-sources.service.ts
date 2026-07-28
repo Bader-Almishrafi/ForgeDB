@@ -16,6 +16,7 @@ export class DataSourcesService {
   readonly workflowContext = inject(ProjectWorkflowContextService);
 
   private readonly previewRequests = new Subject<number>();
+  private datasetsLoadToken = 0;
   
   projectId = 0;
   private initialQueryDatasetId: number | null = null;
@@ -87,15 +88,23 @@ export class DataSourcesService {
   }
 
   loadDatasets(preferredId?: number): void {
+    const requestToken = ++this.datasetsLoadToken;
     this.datasetsLoading.set(true);
     this.datasetsError.set('');
-    this.api.getProjectDatasets(this.projectId).pipe(finalize(() => this.datasetsLoading.set(false))).subscribe({
+    this.api.getProjectDatasets(this.projectId).pipe(finalize(() => {
+      if (requestToken === this.datasetsLoadToken) this.datasetsLoading.set(false);
+    })).subscribe({
       next: (datasets) => {
+        if (requestToken !== this.datasetsLoadToken) return;
         const ordered = [...datasets].sort((left, right) => left.id - right.id);
         this.datasets.set(ordered);
         this.restoreSelection(ordered, preferredId);
       },
-      error: (error: unknown) => this.datasetsError.set(this.errorText(error, 'Unable to load datasets.')),
+      error: (error: unknown) => {
+        if (requestToken === this.datasetsLoadToken) {
+          this.datasetsError.set(this.errorText(error, 'Unable to load datasets.'));
+        }
+      },
     });
   }
 
@@ -136,6 +145,8 @@ export class DataSourcesService {
   onDatasetDeleted(): void {
     const dataset = this.selectedDataset();
     if (dataset) this.successMessage.set(`${this.displayName(dataset)} was deleted.`);
+    this.initialQueryDatasetId = null;
+    this.selectionNotice.set('');
     this.selectedDatasetId.set(null);
     this.loadDatasets();
     this.refreshWorkflow();

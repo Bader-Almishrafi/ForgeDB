@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -29,6 +29,8 @@ export class DataSourcesComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly titleService = inject(Title);
   private readonly metaService = inject(Meta);
+  private readonly pageHeading = viewChild<ElementRef<HTMLHeadingElement>>('pageHeading');
+  private focusAfterImport = false;
 
   readonly importOpen = signal(false);
   readonly importSource = signal<ImportSource | null>(null);
@@ -81,17 +83,28 @@ export class DataSourcesComponent implements OnInit {
   }
 
   onDatasetsImported(datasets: DatasetResponse[]): void {
+    if (datasets.length) this.focusAfterImport = true;
     this.service.onDatasetsImported(datasets);
+  }
+
+  onImportDialogClosed(): void {
+    this.importOpen.set(false);
+    this.importSource.set(null);
+    if (!this.focusAfterImport) return;
+    this.focusAfterImport = false;
+    setTimeout(() => this.pageHeading()?.nativeElement.focus());
   }
 
   onDatasetReplaced(updated: DatasetResponse): void {
     this.replaceOpen.set(false);
     this.service.onDatasetReplaced(updated);
+    setTimeout(() => this.pageHeading()?.nativeElement.focus());
   }
 
   onDatasetDeleted(): void {
     this.confirmingDelete.set(false);
     this.service.onDatasetDeleted();
+    setTimeout(() => this.pageHeading()?.nativeElement.focus());
   }
 
   onProjectSaved(updated: ProjectResponse): void {

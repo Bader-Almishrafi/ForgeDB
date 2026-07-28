@@ -78,6 +78,7 @@ export class AnalyzeDataService {
   );
   
   readonly analysisActionLabel = computed(() => {
+    if (this.resultsLoading()) return 'Loading saved analysis…';
     if (this.running()) return this.projectScope() ? 'Analyzing Project…' : 'Analyzing Dataset…';
     const prefix = this.scopeHasSavedAnalysis() ? 'Re-analyze' : 'Analyze';
     return `${prefix} ${this.projectScope() ? 'Project' : 'Dataset'}`;
@@ -111,6 +112,7 @@ export class AnalyzeDataService {
   }
 
   setScope(value: AnalysisScope): void {
+    if (this.resultsLoading() || this.running()) return;
     if (value === 'project') {
       this.scope.set('project');
       this.scopeNotice.set('');
@@ -142,7 +144,7 @@ export class AnalyzeDataService {
   }
 
   runAnalysis(): void {
-    if (this.running()) return;
+    if (this.running() || this.resultsLoading()) return;
     const targets = this.selectedDataset() ? [this.selectedDataset()!] : this.datasets();
     if (!targets.length) return;
 

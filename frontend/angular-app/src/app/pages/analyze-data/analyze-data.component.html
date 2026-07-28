@@ -16,7 +16,7 @@
             data-testid="analysis-scope-selector"
             [ngModel]="service.scope()"
             (ngModelChange)="changeScope($event)"
-            [disabled]="service.running()">
+            [disabled]="service.running() || service.resultsLoading()">
             <option [ngValue]="'project'">All datasets</option>
             @for (dataset of service.datasets(); track dataset.id) {
               <option [ngValue]="dataset.id">{{ dataset.tableName }}</option>
@@ -28,7 +28,7 @@
           class="btn-primary justify-center"
           data-testid="run-analysis"
           (click)="runAnalysis()"
-          [disabled]="service.running()">
+          [disabled]="service.running() || service.resultsLoading()">
           {{ service.analysisActionLabel() }}
         </button>
       </div>

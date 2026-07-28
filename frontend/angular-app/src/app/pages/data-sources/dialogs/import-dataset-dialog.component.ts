@@ -18,6 +18,7 @@ import { catchError, concatMap, finalize, from, map, of, toArray } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ApiConnectionTest, ApiJsonImportRequest, ApiJsonPreview, DatasetResponse, ExcelWorkbookPreview } from '../../../services/api.models';
 import { ForgeApiService } from '../../../services/forge-api.service';
+import { DialogFocusTrapDirective } from '../../../shared/dialog-focus-trap.directive';
 import { formatFileSize, isCsvFile, MAX_IMPORT_FILE_BYTES } from '../../../shared/utils/file-import.utils';
 
 type ImportSource = 'csv' | 'excel' | 'api';
@@ -28,10 +29,16 @@ interface CsvImportResult {
   error: unknown | null;
 }
 
+interface CsvImportProgress {
+  current: number;
+  total: number;
+  fileName: string;
+}
+
 @Component({
   selector: 'app-import-dataset-dialog',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DialogFocusTrapDirective],
   templateUrl: './import-dataset-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -48,6 +55,9 @@ export class ImportDatasetDialogComponent implements OnChanges {
 
   private readonly initialFocus = viewChild<ElementRef<HTMLButtonElement>>('initialFocus');
   private previouslyFocused: HTMLElement | null = null;
+  private excelPreviewRequestToken = 0;
+  private apiConnectionRequestToken = 0;
+  private apiPreviewRequestToken = 0;
   readonly importSource = signal<ImportSource | null>(null);
   readonly importFiles = signal<File[]>([]);
   readonly excelPreview = signal<ExcelWorkbookPreview | null>(null);
@@ -59,6 +69,7 @@ export class ImportDatasetDialogComponent implements OnChanges {
   readonly apiTesting = signal(false);
   readonly apiPreviewLoading = signal(false);
   readonly importing = signal(false);
+  readonly csvImportProgress = signal<CsvImportProgress | null>(null);
   readonly importError = signal('');
 
   readonly excelPreviewRows = computed(() => (this.excelPreview()?.rows ?? []).slice(0, 5));
@@ -98,18 +109,24 @@ export class ImportDatasetDialogComponent implements OnChanges {
   }
 
   selectImportSource(source: ImportSource): void {
-    if (this.importing() || source === this.importSource()) return;
+    if (this.importing() || this.excelPreviewLoading() || this.apiTesting() || this.apiPreviewLoading() || source === this.importSource()) return;
     this.resetImport();
     this.importSource.set(source);
   }
 
   onImportFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
+    if (this.importing() || this.excelPreviewLoading()) {
+      input.value = '';
+      return;
+    }
     this.acceptImportFile(input.files);
     input.value = '';
   }
 
   removeFile(index: number): void {
+    if (this.importing() || this.excelPreviewLoading()) return;
+    this.excelPreviewRequestToken++;
     this.importFiles.update(files => files.filter((_, i) => i !== index));
     if (this.importFiles().length === 0) {
        this.excelPreview.set(null);
@@ -117,6 +134,7 @@ export class ImportDatasetDialogComponent implements OnChanges {
   }
 
   onWorksheetSelected(event: Event): void {
+    if (this.importing() || this.excelPreviewLoading()) return;
     const worksheet = (event.target as HTMLSelectElement).value;
     if (worksheet) this.loadExcelPreview(worksheet);
   }
@@ -134,11 +152,18 @@ export class ImportDatasetDialogComponent implements OnChanges {
     if (!source) return;
 
     this.importing.set(true);
+    this.csvImportProgress.set(null);
     this.importError.set('');
 
     if (source === 'csv') {
+      let fileIndex = 0;
       from(files).pipe(
         concatMap(file => {
+          this.csvImportProgress.set({
+            current: ++fileIndex,
+            total: files.length,
+            fileName: file.name,
+          });
           const formData = new FormData();
           formData.append('file', file);
           formData.append('sourceType', 'csv');
@@ -150,7 +175,10 @@ export class ImportDatasetDialogComponent implements OnChanges {
           );
         }),
         toArray(),
-        finalize(() => this.importing.set(false))
+        finalize(() => {
+          this.importing.set(false);
+          this.csvImportProgress.set(null);
+        })
       ).subscribe({
         next: (results) => {
           const datasets = results
@@ -167,12 +195,12 @@ export class ImportDatasetDialogComponent implements OnChanges {
               ? `Imported ${importedCount} of ${results.length} files. `
               : '';
             this.importError.set(
-              `${importedPrefix}Could not import ${failed.map((result) => result.file.name).join(', ')}. Review the files and try again.`,
+              `${importedPrefix}Could not import: ${this.csvFailureDetails(failed)} Correct the listed issue(s) and try again.`,
             );
             return;
           }
 
-          this.finishClose();
+          this.finishClose(false);
         },
       });
     } else {
@@ -188,7 +216,7 @@ export class ImportDatasetDialogComponent implements OnChanges {
       this.api.uploadDataset(this.projectId, formData).pipe(finalize(() => this.importing.set(false))).subscribe({
         next: (dataset) => {
           this.imported.emit([dataset]);
-          this.finishClose();
+          this.finishClose(false);
         },
         error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to import this Excel workbook.')),
       });
@@ -196,6 +224,7 @@ export class ImportDatasetDialogComponent implements OnChanges {
   }
 
   updateApiUrl(value: string): void {
+    this.invalidateApiRequests();
     this.apiUrl.set(value);
     this.apiConnection.set(null);
     this.apiPreview.set(null);
@@ -203,6 +232,7 @@ export class ImportDatasetDialogComponent implements OnChanges {
   }
 
   updateApiArrayPath(value: string): void {
+    this.invalidateApiRequests();
     this.apiArrayPath.set(value);
     this.apiConnection.set(null);
     this.apiPreview.set(null);
@@ -211,23 +241,43 @@ export class ImportDatasetDialogComponent implements OnChanges {
 
   testApiConnection(): void {
     if (!this.apiUrl().trim() || this.apiTesting()) return;
+    const requestToken = ++this.apiConnectionRequestToken;
+    const request = this.apiRequest();
     this.apiTesting.set(true);
     this.importError.set('');
     this.apiConnection.set(null);
-    this.api.testApiConnection(this.apiRequest()).pipe(finalize(() => this.apiTesting.set(false))).subscribe({
-      next: (result) => this.apiConnection.set(result),
-      error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to connect to this API.')),
+    this.api.testApiConnection(request).pipe(finalize(() => {
+      if (requestToken === this.apiConnectionRequestToken) this.apiTesting.set(false);
+    })).subscribe({
+      next: (result) => {
+        if (requestToken === this.apiConnectionRequestToken) this.apiConnection.set(result);
+      },
+      error: (error: unknown) => {
+        if (requestToken === this.apiConnectionRequestToken) {
+          this.importError.set(this.errorText(error, 'Unable to connect to this API.'));
+        }
+      },
     });
   }
 
   previewApiData(): void {
     if (!this.apiUrl().trim() || this.apiPreviewLoading()) return;
+    const requestToken = ++this.apiPreviewRequestToken;
+    const request = this.apiRequest();
     this.apiPreviewLoading.set(true);
     this.importError.set('');
     this.apiPreview.set(null);
-    this.api.previewApi(this.apiRequest()).pipe(finalize(() => this.apiPreviewLoading.set(false))).subscribe({
-      next: (preview) => this.apiPreview.set(preview),
-      error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to preview data from this API.')),
+    this.api.previewApi(request).pipe(finalize(() => {
+      if (requestToken === this.apiPreviewRequestToken) this.apiPreviewLoading.set(false);
+    })).subscribe({
+      next: (preview) => {
+        if (requestToken === this.apiPreviewRequestToken) this.apiPreview.set(preview);
+      },
+      error: (error: unknown) => {
+        if (requestToken === this.apiPreviewRequestToken) {
+          this.importError.set(this.errorText(error, 'Unable to preview data from this API.'));
+        }
+      },
     });
   }
 
@@ -283,14 +333,26 @@ export class ImportDatasetDialogComponent implements OnChanges {
     const files = this.importFiles();
     if (!files.length || this.importSource() !== 'excel') return;
     const file = files[0];
+    const requestToken = ++this.excelPreviewRequestToken;
     const formData = new FormData();
     formData.append('file', file);
     if (worksheetName) formData.append('worksheetName', worksheetName);
     this.excelPreviewLoading.set(true);
+    this.excelPreview.set(null);
     this.importError.set('');
-    this.api.previewExcel(formData).pipe(finalize(() => this.excelPreviewLoading.set(false))).subscribe({
-      next: (preview) => this.excelPreview.set(preview),
-      error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to read this Excel workbook.')),
+    this.api.previewExcel(formData).pipe(finalize(() => {
+      if (requestToken === this.excelPreviewRequestToken) this.excelPreviewLoading.set(false);
+    })).subscribe({
+      next: (preview) => {
+        if (requestToken === this.excelPreviewRequestToken && this.importFiles()[0] === file) {
+          this.excelPreview.set(preview);
+        }
+      },
+      error: (error: unknown) => {
+        if (requestToken === this.excelPreviewRequestToken && this.importFiles()[0] === file) {
+          this.importError.set(this.errorText(error, 'Unable to read this Excel workbook.'));
+        }
+      },
     });
   }
 
@@ -300,13 +362,16 @@ export class ImportDatasetDialogComponent implements OnChanges {
     this.api.importApi(this.projectId, this.apiRequest()).pipe(finalize(() => this.importing.set(false))).subscribe({
       next: (dataset) => {
         this.imported.emit([dataset]);
-        this.finishClose();
+        this.finishClose(false);
       },
       error: (error: unknown) => this.importError.set(this.errorText(error, 'Unable to import data from this API.')),
     });
   }
 
   private resetImport(): void {
+    this.excelPreviewRequestToken++;
+    this.invalidateApiRequests();
+    this.excelPreviewLoading.set(false);
     this.importSource.set(null);
     this.importFiles.set([]);
     this.excelPreview.set(null);
@@ -314,15 +379,23 @@ export class ImportDatasetDialogComponent implements OnChanges {
     this.apiArrayPath.set('');
     this.apiConnection.set(null);
     this.apiPreview.set(null);
+    this.csvImportProgress.set(null);
     this.importError.set('');
   }
 
-  private finishClose(): void {
+  private invalidateApiRequests(): void {
+    this.apiConnectionRequestToken++;
+    this.apiPreviewRequestToken++;
+    this.apiTesting.set(false);
+    this.apiPreviewLoading.set(false);
+  }
+
+  private finishClose(restoreFocus = true): void {
     this.resetImport();
     this.closeDialog.emit();
     const focusTarget = this.previouslyFocused;
     this.previouslyFocused = null;
-    setTimeout(() => focusTarget?.focus());
+    if (restoreFocus) setTimeout(() => focusTarget?.focus());
   }
 
   private apiRequest(): ApiJsonImportRequest {
@@ -338,10 +411,39 @@ export class ImportDatasetDialogComponent implements OnChanges {
     return candidate.replace(/[^a-zA-Z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'dataset';
   }
 
+  private csvFailureDetails(failed: CsvImportResult[]): string {
+    const grouped = new Map<string, string[]>();
+    for (const result of failed) {
+      const reason = this.errorText(result.error, 'The server rejected this file.')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 180);
+      const names = grouped.get(reason) ?? [];
+      if (!names.includes(result.file.name)) names.push(result.file.name);
+      grouped.set(reason, names);
+    }
+
+    const groups = Array.from(grouped.entries());
+    const visible = groups.slice(0, 4).map(([reason, names]) => {
+      const visibleNames = names.slice(0, 3);
+      const omittedNames = names.length - visibleNames.length;
+      const normalizedReason = reason.replace(/[.;:]+$/g, '');
+      return `${visibleNames.join(', ')}${omittedNames ? ` (+${omittedNames} more)` : ''}: ${normalizedReason}.`;
+    });
+    const omittedGroups = groups.length - visible.length;
+    return `${visible.join(' ')}${omittedGroups ? ` ${omittedGroups} additional error type(s) omitted.` : ''}`;
+  }
+
   private errorText(error: unknown, fallback: string): string {
-    if (error instanceof HttpErrorResponse && error.error && typeof error.error === 'object' && 'message' in error.error) {
-      const message = (error.error as { message?: unknown }).message;
-      if (typeof message === 'string' && message.trim()) return message;
+    if (error instanceof HttpErrorResponse) {
+      if (typeof error.error === 'string' && error.error.trim()) return error.error;
+      if (error.error && typeof error.error === 'object') {
+        const body = error.error as { message?: unknown; detail?: unknown };
+        const message = typeof body.message === 'string' && body.message.trim()
+          ? body.message
+          : body.detail;
+        if (typeof message === 'string' && message.trim()) return message;
+      }
     }
     return fallback;
   }

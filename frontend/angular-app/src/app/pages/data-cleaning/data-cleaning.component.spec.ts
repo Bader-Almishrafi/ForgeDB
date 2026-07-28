@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, of, Subject, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CleaningApplyResponse,
@@ -305,12 +305,40 @@ describe('DataCleaningComponent', () => {
     expect(component.apiService.summary()?.qualityConfirmed).toBe(true);
   });
 
+  it('only offers project-wide quality confirmation from the all-datasets scope', async () => {
+    const { fixture } = await setup({
+      datasetId: '1',
+      summary: makeSummary({ canConfirmQuality: true }),
+    });
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('[data-testid="confirm-quality"]')).toBeNull();
+    expect(element.querySelector('[data-testid="review-project-quality"]')).toBeTruthy();
+    expect(element.querySelector('[data-testid="quality-confirmation"]')?.textContent)
+      .toContain('Confirmation applies to every active dataset version');
+  });
+
   it('uses the selected custom-value strategy and carries the expected source version', async () => {
     const { component, api } = await setup();
     component.stateService.updateStrategy(baseSuggestions[0], 'custom');
     component.stateService.updateCustomValue('missing', 'Unknown');
     await component.previewSuggestion(baseSuggestions[0]);
     expect(api['previewCleaning']).toHaveBeenCalledWith(10, { operations: [expect.objectContaining({ expectedSourceVersionId: 11, parameters: { strategy: 'custom', value: 'Unknown' } })] });
+  });
+
+  it('blocks a custom replacement until a non-blank value is provided', async () => {
+    const { component, api } = await setup();
+    component.stateService.updateStrategy(baseSuggestions[0], 'custom');
+    component.stateService.updateCustomValue('missing', '   ');
+
+    await component.previewSuggestion(baseSuggestions[0]);
+
+    expect(api['previewCleaning']).not.toHaveBeenCalled();
+    expect(component.apiService.feedback()).toEqual({
+      kind: 'error',
+      title: 'Complete the cleaning strategy',
+      message: 'Custom strategy requires a replacement value.',
+    });
   });
 
   it('passes duplicate identifying columns only for the duplicate strategy', async () => {
@@ -321,12 +349,76 @@ describe('DataCleaningComponent', () => {
     expect(api['previewCleaning'].mock.calls[0][1].operations[0].parameters.columns).toEqual(['id', 'created_at']);
   });
 
+  it('treats the duplicate-columns value All as all columns', async () => {
+    const { component, api } = await setup({ preview: makePreview(2, 12, true) });
+    component.stateService.updateDuplicateColumns('duplicates', 'All');
+
+    await component.previewSuggestion(baseSuggestions[1]);
+
+    expect(api['previewCleaning'].mock.calls[0][1].operations[0].parameters.columns).toEqual([]);
+  });
+
   it('previews only safe non-destructive recommended fixes', async () => {
     const { component, api } = await setup();
     await component.previewRecommendedFixes();
     const operations = api['previewCleaning'].mock.calls[0][1].operations;
     expect(operations.map((operation: { suggestionId: string }) => operation.suggestionId)).toEqual(['missing']);
     expect(component.stateService.selectedIds().has('duplicates')).toBe(false);
+  });
+
+  it('ignores a destructive override when previewing safe recommendations', async () => {
+    const suggestion = structuredClone(baseSuggestions[0]);
+    suggestion.riskLabel = 'Low — deterministic';
+    suggestion.availableStrategies.push({
+      key: 'delete',
+      label: 'Delete affected rows',
+      operationType: 'fill_missing',
+      parameters: { strategy: 'delete_rows' },
+      isSafeRecommended: false,
+      isDestructive: true,
+    });
+    const { component, api } = await setup({ suggestions: [suggestion] });
+    component.stateService.updateStrategy(suggestion, 'delete');
+
+    await component.previewRecommendedFixes();
+
+    expect(api['previewCleaning'].mock.calls[0][1].operations[0]).toEqual(expect.objectContaining({
+      operationType: 'fill_missing',
+      parameters: { strategy: 'mode' },
+    }));
+    expect(component.stateService.selectedStrategy(suggestion).key).toBe(suggestion.recommendedStrategy.key);
+  });
+
+  it('clears preview selections when the user cancels the preview', async () => {
+    const { component } = await setup();
+    await component.previewRecommendedFixes();
+    expect(component.stateService.selectedIds().size).toBeGreaterThan(0);
+
+    component.closePreview();
+
+    expect(component.stateService.selectedIds().size).toBe(0);
+    expect(component.stateService.strategyOverrides()).toEqual({});
+  });
+
+  it('labels the currently selected destructive strategy as high risk', async () => {
+    const suggestion = structuredClone(baseSuggestions[0]);
+    suggestion.riskLabel = 'Low — deterministic';
+    suggestion.availableStrategies.push({
+      key: 'delete',
+      label: 'Delete affected rows',
+      operationType: 'fill_missing',
+      parameters: { strategy: 'delete_rows' },
+      isSafeRecommended: false,
+      isDestructive: true,
+    });
+    const { component, fixture } = await setup({ suggestions: [suggestion] });
+
+    component.stateService.updateStrategy(suggestion, 'delete');
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('[data-testid="cleaning-issue-card"]') as HTMLElement;
+    expect(card.textContent).toContain('High — destructive');
+    expect(card.textContent).not.toContain('Low — deterministic');
   });
 
   it('previews selected issues together', async () => {
@@ -338,6 +430,99 @@ describe('DataCleaningComponent', () => {
     component.stateService.toggleSuggestion(baseSuggestions[1]);
     await component.previewSelected();
     expect(api['previewCleaning'].mock.calls[0][1].operations).toHaveLength(2);
+  });
+
+  it('locks issue-card and bulk plan controls during preview, apply, and re-analysis', async () => {
+    const { component, fixture } = await setup();
+    component.stateService.toggleSuggestion(baseSuggestions[0]);
+    component.stateService.updateStrategy(baseSuggestions[0], 'custom');
+    fixture.detectChanges();
+
+    const planControls = () => Array.from(fixture.nativeElement.querySelectorAll(
+      '[data-testid="issue-selection"], [data-testid="issue-strategy"], [data-testid="issue-custom-value"], '
+      + '[data-testid="issue-duplicate-columns"], [data-testid="select-visible-issues"], '
+      + '[data-testid="bulk-strategy"], [data-testid="preview-selected-issues"]',
+    )) as Array<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>;
+    const busySignals = [
+      component.apiService.previewLoading,
+      component.apiService.applyLoading,
+      component.apiService.reanalyzing,
+    ];
+
+    expect(planControls()).toHaveLength(8);
+    for (const busy of busySignals) {
+      busy.set(true);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const states = planControls().map((control) => ({
+        control: control.dataset['testid'],
+        disabled: control.disabled,
+      }));
+      expect(states).toEqual(states.map((state) => ({ ...state, disabled: true })));
+      busy.set(false);
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+
+    fixture.detectChanges();
+    expect(planControls().every((control) => !control.disabled)).toBe(true);
+  });
+
+  it('locks preview operation removal and destructive confirmation while preview refreshes or applies', async () => {
+    const combined = makePreview();
+    combined.datasets.push(makePreview(2, 12, true).datasets[0]);
+    combined.destructive = true;
+    const { component, fixture } = await setup({ preview: combined });
+    component.stateService.toggleSuggestion(baseSuggestions[0]);
+    component.stateService.toggleSuggestion(baseSuggestions[1]);
+    await component.previewSelected();
+    fixture.detectChanges();
+
+    const modalControls = () => Array.from(fixture.nativeElement.querySelectorAll(
+      '[data-testid="remove-preview-operation"], [data-testid="destructive-confirmation-checkbox"]',
+    )) as Array<HTMLInputElement | HTMLButtonElement>;
+
+    expect(modalControls()).toHaveLength(3);
+    for (const busy of [component.apiService.previewLoading, component.apiService.applyLoading]) {
+      busy.set(true);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const states = modalControls().map((control) => ({
+        control: control.dataset['testid'],
+        disabled: control.disabled,
+      }));
+      expect(states).toEqual(states.map((state) => ({ ...state, disabled: true })));
+      busy.set(false);
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+
+    fixture.detectChanges();
+    expect(modalControls().every((control) => !control.disabled)).toBe(true);
+  });
+
+  it('shows actionable conversion failures in the cleaning preview', async () => {
+    const preview = makePreview();
+    preview.datasets[0].conversionFailures = [{
+      rowNumber: 7,
+      column: 'amount',
+      value: 'not-a-number',
+      reason: 'Value is not a valid decimal.',
+    }];
+    const { component, fixture } = await setup({ preview });
+
+    await component.previewSuggestion(baseSuggestions[0]);
+    fixture.detectChanges();
+
+    const failures = fixture.nativeElement.querySelector('[data-testid="conversion-failures"]') as HTMLElement;
+    expect(failures.getAttribute('role')).toBe('alert');
+    expect(failures.textContent).toContain('1 value(s) could not be converted');
+    expect(failures.textContent).toContain('Row 7');
+    expect(failures.textContent).toContain('amount');
+    expect(failures.textContent).toContain('not-a-number');
+    expect(failures.textContent).toContain('Value is not a valid decimal.');
   });
 
   it('rejects a preview response that omits one of the requested datasets', async () => {
@@ -364,6 +549,23 @@ describe('DataCleaningComponent', () => {
       title: 'Preview failed',
       message: 'Preview service unavailable.',
     }));
+  });
+
+  it('ignores a preview response after the user abandons that pending plan', async () => {
+    const pending = new Subject<CleaningPreviewResponse>();
+    const { component, api } = await setup();
+    api['previewCleaning'].mockReturnValue(pending);
+
+    const request = component.previewSuggestion(baseSuggestions[0]);
+    expect(component.apiService.previewLoading()).toBe(true);
+    component.closePreview();
+    pending.next(makePreview());
+    pending.complete();
+    await request;
+
+    expect(component.apiService.preview()).toBeNull();
+    expect(component.apiService.previewOperations()).toEqual([]);
+    expect(component.apiService.previewLoading()).toBe(false);
   });
 
   it('requires explicit confirmation before applying destructive operations', async () => {
@@ -412,6 +614,26 @@ describe('DataCleaningComponent', () => {
     expect(api['analyzeDataset']).toHaveBeenCalledWith(1, { analysisType: 'profile' });
   });
 
+  it('reports cleaning and re-analysis failures together after a partial batch', async () => {
+    const partial: CleaningApplyResponse = {
+      ...makeApplyResponse(),
+      status: 'PartiallySucceeded',
+      datasets: [
+        makeApplyResponse().datasets[0],
+        { datasetId: 2, datasetName: 'orders', success: false, rowsAffected: 0, cellsAffected: 0, error: 'failed' },
+      ],
+    };
+    const { component, state } = await setup({ applyResponse: partial });
+    state.analysisFailIds.add(1);
+
+    await component.previewSuggestion(baseSuggestions[0]);
+    await component.applyPreview();
+
+    expect(component.apiService.feedback()?.title).toBe('Cleaning partially applied; re-analysis incomplete');
+    expect(component.apiService.feedback()?.message).toContain('cleaning failed for: orders: failed');
+    expect(component.apiService.feedback()?.message).toContain('analysis failed for: customers');
+  });
+
   it('preserves cleaned versions and exposes retry after partial automatic analysis failure', async () => {
     const { component, state } = await setup();
     state.analysisFailIds.add(1);
@@ -451,6 +673,49 @@ describe('DataCleaningComponent', () => {
     expect(api['getProjectWorkflow'].mock.calls.length).toBeGreaterThanOrEqual(4);
   });
 
+  it('locks dataset opening, Undo, and schema navigation during version work', async () => {
+    const { component, fixture, navigate } = await setup({
+      history: [historyEntry],
+      workflow: makeWorkflow({ canBuildSchema: true, blockingReasons: [] }),
+    });
+    component.apiService.applyLoading.set(true);
+    fixture.detectChanges();
+
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    const openButton = buttons.find((button) => button.textContent?.trim() === 'Open')!;
+    const undoButton = buttons.find((button) => button.textContent?.includes('Undo as new active version'))!;
+    const continueButton = fixture.nativeElement.querySelector('[data-testid="continue-to-schema"]') as HTMLButtonElement;
+    expect(openButton.disabled).toBe(true);
+    expect(undoButton.disabled).toBe(true);
+    expect(continueButton.disabled).toBe(true);
+
+    component.openDataset(1);
+    component.requestUndo();
+    component.continueToSchema();
+
+    expect(component.stateService.scope()).toBe('project');
+    expect(component.apiService.confirmAction()).toBeNull();
+    expect(navigate).not.toHaveBeenCalledWith(
+      ['/projects', 10, 'schema'],
+      expect.anything(),
+    );
+  });
+
+  it('locks Restore while preview or re-analysis owns the cleaning snapshot', async () => {
+    const old: DatasetVersion = { id: 11, datasetId: 1, parentVersionId: null, versionNumber: 1, isRawOriginal: true, isActive: false, rowCount: 10, columnCount: 3, operationSummary: 'Imported', createdAt: '2026-01-01T00:00:00Z', analyzedAt: '2026-01-01T00:00:00Z', createdBy: 'Owner' };
+    const active: DatasetVersion = { ...old, id: 20, versionNumber: 2, isRawOriginal: false, isActive: true, operationSummary: 'Cleaned' };
+    const { component, fixture } = await setup({ datasetId: '1', versions: { 1: [active, old] } });
+    component.apiService.reanalyzing.set(true);
+    fixture.detectChanges();
+
+    const restoreButton = (Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[])
+      .find((button) => button.textContent?.includes('Restore as new active version'))!;
+    expect(restoreButton.disabled).toBe(true);
+
+    component.requestRestore(1, old);
+    expect(component.apiService.confirmAction()).toBeNull();
+  });
+
   it('undoes the latest batch as a new active version and analyzes it', async () => {
     const { component, api } = await setup({ history: [historyEntry] });
     component.requestUndo();
@@ -458,6 +723,20 @@ describe('DataCleaningComponent', () => {
     expect(api['undoLatestCleaning']).toHaveBeenCalledWith(10);
     expect(api['analyzeDataset']).toHaveBeenCalledWith(1, { analysisType: 'profile' });
     expect(api['getDatasetVersions']).toHaveBeenCalledWith(10, 1);
+  });
+
+  it('moves focus to the stable page heading after a successful Undo', async () => {
+    const { component, fixture } = await setup({ history: [historyEntry] });
+    const undoButton = (Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[])
+      .find((button) => button.textContent?.includes('Undo as new active version'))!;
+    undoButton.focus();
+
+    component.requestUndo();
+    await component.confirmUndoOrRestore();
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(document.activeElement?.textContent).toBe('Data Cleaning');
   });
 
   it('restores a historical version as a new active version and analyzes it', async () => {
@@ -477,6 +756,21 @@ describe('DataCleaningComponent', () => {
     await component.confirmQuality();
     expect(api['getProjectWorkflow'].mock.calls.length).toBeGreaterThan(before);
     expect(component.apiService.canContinueToSchema()).toBe(true);
+  });
+
+  it('moves focus to the stable page heading after quality confirmation removes its action', async () => {
+    const { component, fixture } = await setup({
+      summary: makeSummary({ totalIssues: 0, canConfirmQuality: true }),
+      suggestions: [],
+    });
+    const confirm = fixture.nativeElement.querySelector('[data-testid="confirm-quality"]') as HTMLButtonElement;
+    confirm.focus();
+
+    await component.confirmQuality();
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(document.activeElement?.textContent).toBe('Data Cleaning');
   });
 
   it('uses workflow canBuildSchema and preserves datasetId when continuing', async () => {

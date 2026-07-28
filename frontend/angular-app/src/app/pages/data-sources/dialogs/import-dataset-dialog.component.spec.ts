@@ -1,8 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetResponse } from '../../../services/api.models';
+import { ApiJsonPreview, DatasetResponse, ExcelWorkbookPreview } from '../../../services/api.models';
 import { ForgeApiService } from '../../../services/forge-api.service';
 import { MAX_IMPORT_FILE_BYTES } from '../../../shared/utils/file-import.utils';
 import { ImportDatasetDialogComponent } from './import-dataset-dialog.component';
@@ -25,9 +25,13 @@ describe('ImportDatasetDialogComponent CSV batches', () => {
   let fixture: ComponentFixture<ImportDatasetDialogComponent>;
   let component: ImportDatasetDialogComponent;
   let uploadDataset: ReturnType<typeof vi.fn>;
+  let previewApi: ReturnType<typeof vi.fn>;
+  let previewExcel: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     uploadDataset = vi.fn();
+    previewApi = vi.fn();
+    previewExcel = vi.fn();
 
     await TestBed.configureTestingModule({
       imports: [ImportDatasetDialogComponent],
@@ -36,9 +40,9 @@ describe('ImportDatasetDialogComponent CSV batches', () => {
           provide: ForgeApiService,
           useValue: {
             uploadDataset,
-            previewExcel: vi.fn(),
+            previewExcel,
             testApiConnection: vi.fn(),
-            previewApi: vi.fn(),
+            previewApi,
             importApi: vi.fn(),
           },
         },
@@ -107,8 +111,45 @@ describe('ImportDatasetDialogComponent CSV batches', () => {
     expect(component.importFiles()).toEqual([broken]);
     expect(component.importError()).toContain('Imported 1 of 2 files');
     expect(component.importError()).toContain('broken.csv');
+    expect(component.importError()).toContain('CSV headers are invalid.');
     expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain('broken.csv');
+    expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain('CSV headers are invalid.');
     expect(fixture.nativeElement.querySelector('[data-testid="import-data-dialog"]')).not.toBeNull();
+  });
+
+  it('announces the current file and total throughout a sequential CSV batch', () => {
+    const customers = new File(['id,name\n1,Ada'], 'customers.csv', { type: 'text/csv' });
+    const orders = new File(['id,total\n1,42'], 'orders.csv', { type: 'text/csv' });
+    const first = new Subject<DatasetResponse>();
+    const second = new Subject<DatasetResponse>();
+    uploadDataset
+      .mockReturnValueOnce(first)
+      .mockReturnValueOnce(second);
+
+    chooseFiles([customers, orders]);
+    component.importData();
+    fixture.detectChanges();
+
+    let progress = fixture.nativeElement.querySelector('[data-testid="csv-import-progress"]') as HTMLElement;
+    expect(progress.getAttribute('role')).toBe('status');
+    expect(progress.getAttribute('aria-live')).toBe('polite');
+    expect(progress.textContent).toContain('Importing file 1 of 2');
+    expect(progress.textContent).toContain('customers.csv');
+
+    first.next(importedDataset(21, customers.name));
+    first.complete();
+    fixture.detectChanges();
+
+    progress = fixture.nativeElement.querySelector('[data-testid="csv-import-progress"]') as HTMLElement;
+    expect(progress.textContent).toContain('Importing file 2 of 2');
+    expect(progress.textContent).toContain('orders.csv');
+
+    second.next(importedDataset(22, orders.name));
+    second.complete();
+    fixture.detectChanges();
+
+    expect(component.csvImportProgress()).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="csv-import-progress"]')).toBeNull();
   });
 
   it('keeps one case-insensitive file name and reports oversized and duplicate selections', () => {
@@ -126,6 +167,60 @@ describe('ImportDatasetDialogComponent CSV batches', () => {
     expect(component.importError()).toContain('1 invalid, empty, or oversized file skipped');
     expect(component.importError()).toContain('1 duplicate file name skipped');
     expect(uploadDataset).not.toHaveBeenCalled();
+  });
+
+  it('does not accept an API preview produced for inputs that have since changed', () => {
+    const pending = new Subject<ApiJsonPreview>();
+    previewApi.mockReturnValue(pending);
+    component.selectImportSource('api');
+    component.updateApiUrl('https://api.example.com/first');
+
+    component.previewApiData();
+    component.updateApiUrl('https://api.example.com/second');
+    pending.next({
+      url: 'https://api.example.com/first',
+      arrayPath: null,
+      rowCount: 1,
+      columnCount: 1,
+      columns: ['id'],
+      rows: [{ id: 1 }],
+    });
+    pending.complete();
+
+    expect(component.apiPreview()).toBeNull();
+    expect(component.canImport()).toBe(false);
+  });
+
+  it('locks file editing and ignores a preview for a replaced Excel file', () => {
+    const pending = new Subject<ExcelWorkbookPreview>();
+    previewExcel.mockReturnValue(pending);
+    component.selectImportSource('excel');
+    fixture.detectChanges();
+    const first = new File(['first'], 'first.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const second = new File(['second'], 'second.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const input = fixture.nativeElement.querySelector('[data-testid="dataset-file-input"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { configurable: true, value: [first] });
+
+    input.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(input.disabled).toBe(true);
+    component.importFiles.set([second]);
+    pending.next({
+      fileName: first.name,
+      worksheets: ['Sheet1'],
+      selectedWorksheet: 'Sheet1',
+      rowCount: 1,
+      columnCount: 1,
+      columns: ['id'],
+      rows: [{ id: 1 }],
+    });
+    pending.complete();
+
+    expect(component.excelPreview()).toBeNull();
   });
 
   function chooseFiles(files: File[]): void {
