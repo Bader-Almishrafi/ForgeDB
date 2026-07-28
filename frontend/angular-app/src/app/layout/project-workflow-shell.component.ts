@@ -17,14 +17,18 @@ import { ThemeService } from '../services/theme.service';
 })
 export class ProjectWorkflowShellComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
+
+  readonly isHeaderHidden = signal(false);
+  private lastScrollTop = 0;
   private readonly destroyRef = inject(DestroyRef);
 
   readonly context = inject(ProjectWorkflowContextService);
   readonly sidebarOpen = signal(false);
   readonly sidebarCollapsed = signal(false);
+  readonly userMenuOpen = signal(false);
   readonly currentUrl = signal(this.router.url);
   readonly user = this.auth.user;
   readonly theme = this.themeService.theme;
@@ -46,6 +50,14 @@ export class ProjectWorkflowShellComponent implements OnInit {
     'export-deploy': 'M12 3v12m0 0 4-4m-4 4-4-4M5 17v4h14v-4',
   };
 
+  readonly enrichedSteps = computed(() => {
+    const workflow = this.context.workflow();
+    return this.steps.map((step) => ({
+      ...step,
+      allowed: workflow ? isWorkflowStepAllowed(workflow, step.path) : false,
+    }));
+  });
+
   constructor() {
     this.router.events
       .pipe(
@@ -55,6 +67,7 @@ export class ProjectWorkflowShellComponent implements OnInit {
       .subscribe((event) => {
         this.currentUrl.set(event.urlAfterRedirects);
         this.sidebarOpen.set(false);
+        this.userMenuOpen.set(false);
       });
   }
 
@@ -71,14 +84,11 @@ export class ProjectWorkflowShellComponent implements OnInit {
       });
   }
 
-  isAllowed(step: ProjectWorkflowStepDefinition): boolean {
-    const workflow = this.context.workflow();
-    return workflow ? isWorkflowStepAllowed(workflow, step.path) : false;
-  }
 
-  disabledReason(): string {
+
+  readonly disabledReason = computed(() => {
     return this.context.workflow()?.blockingReasons[0] ?? 'Complete the current workflow step first.';
-  }
+  });
 
   toggleSidebar(): void {
     this.sidebarOpen.update((open) => !open);
@@ -86,6 +96,15 @@ export class ProjectWorkflowShellComponent implements OnInit {
 
   closeSidebar(): void {
     this.sidebarOpen.set(false);
+    this.userMenuOpen.set(false);
+  }
+
+  toggleUserMenu(): void {
+    this.userMenuOpen.update((open) => !open);
+  }
+
+  closeUserMenu(): void {
+    this.userMenuOpen.set(false);
   }
 
   toggleCollapsed(): void {
@@ -107,13 +126,33 @@ export class ProjectWorkflowShellComponent implements OnInit {
     void this.router.navigate(['/']);
   }
 
-  initials(): string {
+  scrollToTop(): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  scrollToBottom(): void {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  }
+
+  readonly initials = computed(() => {
     const current = this.user();
     return current ? `${current.firstName[0] ?? ''}${current.lastName[0] ?? ''}`.toUpperCase() : 'FD';
-  }
+  });
 
   @HostListener('document:keydown.escape')
   closeSidebarOnEscape(): void {
     this.sidebarOpen.set(false);
+    this.userMenuOpen.set(false);
+  }
+
+  @HostListener('window:scroll', [])
+  onWindowScroll(): void {
+    const currentScroll = window.scrollY || document.documentElement.scrollTop;
+    if (currentScroll > this.lastScrollTop && currentScroll > 80) {
+      this.isHeaderHidden.set(true);
+    } else if (currentScroll < this.lastScrollTop) {
+      this.isHeaderHidden.set(false);
+    }
+    this.lastScrollTop = currentScroll;
   }
 }

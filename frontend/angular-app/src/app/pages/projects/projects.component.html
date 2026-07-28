@@ -1,5 +1,5 @@
 <div class="relative mx-auto max-w-[1480px]">
-  <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+  <div class="animate-fade-in-up flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
     <div>
       <p class="eyebrow">Workspace library</p>
       <h1 class="mt-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Projects</h1>
@@ -11,7 +11,7 @@
     </a>
   </div>
 
-  <section class="glass-card mt-7 p-4 sm:p-5" aria-label="Project filters">
+  <section class="animate-fade-in-up delay-200 glass-card mt-7 p-4 sm:p-5" aria-label="Project filters">
     <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto]">
       <label class="relative block">
         <span class="sr-only">Search projects by name</span>
@@ -40,7 +40,7 @@
     </div>
   </section>
 
-  <section class="mt-5" aria-live="polite">
+  <section class="animate-fade-in-up delay-400 mt-5" aria-live="polite">
     @if (loading()) {
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Loading projects" aria-busy="true">
         @for (item of [1, 2, 3, 4]; track item) {

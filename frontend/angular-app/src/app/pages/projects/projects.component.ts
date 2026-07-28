@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Meta, Title } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -20,6 +21,9 @@ type ProjectSort = 'modified' | 'created' | 'name';
 export class ProjectsComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly workflowContext = inject(ProjectWorkflowContextService);
+  private readonly titleService = inject(Title);
+  private readonly metaService = inject(Meta);
+
   readonly projects = signal<ProjectResponse[]>([]);
   readonly loading = signal(false);
   readonly loadError = signal('');
@@ -41,6 +45,9 @@ export class ProjectsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.titleService.setTitle('All Projects - ForgeDB');
+    this.metaService.updateTag({ name: 'description', content: 'Browse and continue your ForgeDB projects.' });
+
     this.route.queryParamMap
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((params) => this.searchQuery.set(params.get('search') ?? ''));

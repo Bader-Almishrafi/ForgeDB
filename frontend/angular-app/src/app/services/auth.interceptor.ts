@@ -1,18 +1,31 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { catchError, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 
 export const authTokenInterceptor: HttpInterceptorFn = (request, next) => {
-  const token = inject(AuthService).token();
+  const authService = inject(AuthService);
+  const router = inject(Router);
+  const token = authService.token();
 
-  if (!token) {
-    return next(request);
-  }
+  const authRequest = token
+    ? request.clone({
+        setHeaders: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    : request;
 
-  // Protected API calls receive the current JWT here, so components never build Authorization headers.
-  return next(request.clone({
-    setHeaders: {
-      Authorization: `Bearer ${token}`,
-    },
-  }));
+  return next(authRequest).pipe(
+    catchError((error: unknown) => {
+      // When the JWT token expires or is invalid (401 Unauthorized) during session usage,
+      // clear session state and redirect directly to login rather than showing cryptic error alerts.
+      if (error instanceof HttpErrorResponse && error.status === 401 && !router.url.startsWith('/login')) {
+        authService.logout();
+        void router.navigate(['/login']);
+      }
+      return throwError(() => error);
+    })
+  );
 };

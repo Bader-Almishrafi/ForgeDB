@@ -16,7 +16,7 @@
         <p class="page-subtitle">Sign in to continue building your ForgeDB projects.</p>
       </div>
 
-      <form #loginForm="ngForm" (ngSubmit)="loginForm.form.valid && onLogin()" class="flex flex-col gap-5">
+      <form #loginForm="ngForm" (ngSubmit)="loginForm.form.valid ? onLogin() : loginForm.form.markAllAsTouched()" class="flex flex-col gap-5">
         <label>
           <span class="mb-2 block text-sm font-semibold text-slate-800 dark:text-slate-200">Email Address</span>
           <input type="email" name="email" [(ngModel)]="email" #loginEmail="ngModel" class="input-field"
@@ -51,7 +51,7 @@
           </p>
         }
 
-        <button type="submit" [disabled]="!loginForm.form.valid || isLoading" class="btn-primary">
+        <button type="submit" [disabled]="isLoading" class="btn-primary">
           {{ isLoading ? 'Signing in...' : 'Sign in' }}
         </button>
 
@@ -66,7 +66,7 @@
         <p class="page-subtitle">Enter your account email to request a password reset.</p>
       </div>
 
-      <form #resetRequestForm="ngForm" (ngSubmit)="resetRequestForm.form.valid && onRequestPasswordReset()" class="flex flex-col gap-5">
+      <form #resetRequestForm="ngForm" (ngSubmit)="resetRequestForm.form.valid ? onRequestPasswordReset() : resetRequestForm.form.markAllAsTouched()" class="flex flex-col gap-5">
         <label>
           <span class="mb-2 block text-sm font-semibold text-slate-800 dark:text-slate-200">Email Address</span>
           <input type="email" name="resetRequestEmail" [(ngModel)]="resetEmail" #resetRequestEmail="ngModel"
@@ -82,7 +82,7 @@
           </p>
         }
 
-        <button type="submit" [disabled]="!resetRequestForm.form.valid || isLoading" class="btn-primary">
+        <button type="submit" [disabled]="isLoading" class="btn-primary">
           {{ isLoading ? 'Requesting reset...' : 'Request Reset' }}
         </button>
 
@@ -95,7 +95,7 @@
         <p class="page-subtitle">Enter the reset token and a new password for your account.</p>
       </div>
 
-      <form #resetPasswordForm="ngForm" (ngSubmit)="resetPasswordForm.form.valid && onResetPassword()" class="flex flex-col gap-5">
+      <form #resetPasswordForm="ngForm" (ngSubmit)="resetPasswordForm.form.valid ? onResetPassword() : resetPasswordForm.form.markAllAsTouched()" class="flex flex-col gap-5">
         @if (resetRequestMessage) {
           <p class="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 dark:border-indigo-900/30 dark:bg-indigo-900/10 dark:text-indigo-300">
             {{ resetRequestMessage }}
@@ -150,9 +150,7 @@
           </p>
         }
 
-        <button type="submit"
-          [disabled]="!resetPasswordForm.form.valid || newPassword !== confirmNewPassword || isLoading"
-          class="btn-primary">
+        <button type="submit" [disabled]="isLoading" class="btn-primary">
           {{ isLoading ? 'Resetting password...' : 'Reset Password' }}
         </button>
 

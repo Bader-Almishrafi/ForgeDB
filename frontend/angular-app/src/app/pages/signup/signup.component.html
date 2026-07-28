@@ -14,7 +14,7 @@
       <p class="page-subtitle">Create your ForgeDB account and start a data project.</p>
     </div>
 
-    <form #signupForm="ngForm" (ngSubmit)="signupForm.form.valid && onRegister()" class="flex flex-col gap-5">
+    <form #signupForm="ngForm" (ngSubmit)="signupForm.form.valid && password === confirmPassword ? onRegister() : signupForm.form.markAllAsTouched()" class="flex flex-col gap-5">
       <label>
         <span class="mb-2 block text-sm font-semibold text-slate-800 dark:text-slate-200">Full Name</span>
         <input type="text" name="fullName" [(ngModel)]="fullName" #nameInput="ngModel" class="input-field"
@@ -60,7 +60,7 @@
         </p>
       }
 
-      <button type="submit" [disabled]="!signupForm.form.valid || password !== confirmPassword || isLoading"
+      <button type="submit" [disabled]="isLoading"
         class="btn-primary">
         {{ isLoading ? 'Creating account...' : 'Register' }}
       </button>

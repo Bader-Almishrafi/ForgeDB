@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Meta, Title } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -23,6 +24,8 @@ export class HomeComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly workflowContext = inject(ProjectWorkflowContextService);
+  private readonly titleService = inject(Title);
+  private readonly metaService = inject(Meta);
 
   readonly projects = signal<ProjectResponse[]>([]);
   readonly loading = signal(false);
@@ -49,6 +52,8 @@ export class HomeComponent implements OnInit {
     && this.recentProjects().length === 0);
 
   ngOnInit(): void {
+    this.titleService.setTitle('Workspace - ForgeDB');
+    this.metaService.updateTag({ name: 'description', content: 'Manage your ForgeDB data projects.' });
     this.loadProjects();
   }
 

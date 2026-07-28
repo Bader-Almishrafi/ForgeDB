@@ -1,5 +1,5 @@
 <div class="relative mx-auto max-w-[1480px] space-y-8" data-testid="home-page">
-  <section class="glass-card page-glow relative overflow-hidden px-6 py-8 sm:px-8 sm:py-10 lg:px-10">
+  <section class="animate-fade-in-up glass-card page-glow relative overflow-hidden px-6 py-8 sm:px-8 sm:py-10 lg:px-10">
     <div class="relative max-w-3xl">
       <div class="mb-5 inline-flex items-center gap-2 rounded-full border border-indigo-200/50 bg-indigo-100/80 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/20 dark:text-indigo-300">
         <span class="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true"></span>
@@ -14,7 +14,7 @@
     </div>
   </section>
 
-  <section aria-labelledby="recent-projects-heading">
+  <section class="animate-fade-in-up delay-200" aria-labelledby="recent-projects-heading">
     <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
       <div><p class="eyebrow">Workspace</p><h2 id="recent-projects-heading" class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Recent Projects</h2><p class="mt-1 text-sm text-slate-500 dark:text-[#8a99ad]">Continue with up to four recent projects.</p></div>
       <div class="grid gap-3 sm:grid-cols-[minmax(16rem,1fr)_12rem] xl:w-[34rem]">
@@ -49,7 +49,7 @@
   </section>
 
   @if (recentActivity().length) {
-    <section class="glass-card sm:p-7" aria-labelledby="recent-activity-heading" data-testid="recent-activity">
+    <section class="animate-fade-in-up delay-400 glass-card sm:p-7" aria-labelledby="recent-activity-heading" data-testid="recent-activity">
       <p class="eyebrow">Timeline</p><h2 id="recent-activity-heading" class="mt-1 text-xl font-bold tracking-tight text-slate-900 dark:text-white">Recent Activity</h2>
       <div class="mt-4 divide-y divide-slate-100 dark:divide-[#30363d]">
         @for (project of recentActivity(); track project.id) {

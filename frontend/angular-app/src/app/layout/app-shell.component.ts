@@ -25,8 +25,12 @@ export class AppShellComponent {
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
 
+  readonly isHeaderHidden = signal(false);
+  private lastScrollTop = 0;
+
   readonly sidebarOpen = signal(false);
   readonly sidebarCollapsed = signal(false);
+  readonly userMenuOpen = signal(false);
   readonly currentUrl = signal(this.router.url);
   readonly user = this.auth.user;
   readonly theme = this.themeService.theme;
@@ -57,6 +61,7 @@ export class AppShellComponent {
       .subscribe((event) => {
         this.currentUrl.set(event.urlAfterRedirects);
         this.sidebarOpen.set(false);
+        this.userMenuOpen.set(false);
       });
   }
 
@@ -66,6 +71,15 @@ export class AppShellComponent {
 
   closeSidebar(): void {
     this.sidebarOpen.set(false);
+    this.userMenuOpen.set(false);
+  }
+
+  toggleUserMenu(): void {
+    this.userMenuOpen.update((open) => !open);
+  }
+
+  closeUserMenu(): void {
+    this.userMenuOpen.set(false);
   }
 
   toggleCollapsed(): void {
@@ -81,13 +95,33 @@ export class AppShellComponent {
     void this.router.navigate(['/']);
   }
 
-  initials(): string {
+  scrollToTop(): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  scrollToBottom(): void {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  }
+
+  readonly initials = computed(() => {
     const current = this.user();
     return current ? `${current.firstName[0] ?? ''}${current.lastName[0] ?? ''}`.toUpperCase() : 'FD';
-  }
+  });
 
   @HostListener('document:keydown.escape')
   closeSidebarOnEscape(): void {
     this.sidebarOpen.set(false);
+    this.userMenuOpen.set(false);
+  }
+
+  @HostListener('window:scroll', [])
+  onWindowScroll(): void {
+    const currentScroll = window.scrollY || document.documentElement.scrollTop;
+    if (currentScroll > this.lastScrollTop && currentScroll > 80) {
+      this.isHeaderHidden.set(true);
+    } else if (currentScroll < this.lastScrollTop) {
+      this.isHeaderHidden.set(false);
+    }
+    this.lastScrollTop = currentScroll;
   }
 }

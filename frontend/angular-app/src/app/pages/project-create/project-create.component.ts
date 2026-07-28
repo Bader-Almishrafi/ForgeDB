@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, inject, signal, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { Meta, Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ForgeApiService } from '../../services/forge-api.service';
@@ -20,10 +21,12 @@ function trimmedRequired(control: AbstractControl<string>): ValidationErrors | n
   templateUrl: './project-create.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ProjectCreateComponent implements UnsavedChangesAware {
+export class ProjectCreateComponent implements UnsavedChangesAware, OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly api = inject(ForgeApiService);
   private readonly router = inject(Router);
+  private readonly titleService = inject(Title);
+  private readonly metaService = inject(Meta);
   private allowNavigation = false;
 
   readonly submitting = signal(false);
@@ -32,6 +35,11 @@ export class ProjectCreateComponent implements UnsavedChangesAware {
     name: ['', [Validators.required, Validators.maxLength(PROJECT_NAME_MAX_LENGTH), trimmedRequired]],
     description: ['', Validators.maxLength(PROJECT_DESCRIPTION_MAX_LENGTH)],
   });
+
+  ngOnInit(): void {
+    this.titleService.setTitle('Create Project - ForgeDB');
+    this.metaService.updateTag({ name: 'description', content: 'Create a new ForgeDB project workspace.' });
+  }
 
   createProject(): void {
     if (this.submitting()) return;

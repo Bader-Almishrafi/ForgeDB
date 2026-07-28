@@ -1,6 +1,6 @@
 <div class="relative flex min-h-screen flex-col overflow-x-hidden bg-[#f8fafc] font-sans text-[#1c2434] transition-colors duration-300 dark:bg-[#1a222c] dark:text-[#aeb7c0]">
-  <div class="pointer-events-none fixed -left-40 -top-48 h-[34rem] w-[34rem] rounded-full bg-indigo-500/10 blur-[120px] dark:bg-indigo-500/5" aria-hidden="true"></div>
-  <div class="pointer-events-none fixed -right-48 top-1/4 h-[30rem] w-[30rem] rounded-full bg-violet-500/10 blur-[140px] dark:bg-violet-500/5" aria-hidden="true"></div>
+  <div class="pointer-events-none fixed -left-40 -top-48 h-[34rem] w-[34rem] transform-gpu rounded-full bg-indigo-500/10 blur-[120px] will-change-transform dark:bg-indigo-500/5" aria-hidden="true"></div>
+  <div class="pointer-events-none fixed -right-48 top-1/4 h-[30rem] w-[30rem] transform-gpu rounded-full bg-violet-500/10 blur-[140px] will-change-transform dark:bg-violet-500/5" aria-hidden="true"></div>
 
   <header class="sticky top-0 z-50 flex h-20 w-full items-center justify-between border-b border-slate-200/60 bg-white/80 px-4 backdrop-blur-xl sm:px-6 lg:px-12 dark:border-white/10 dark:bg-[#1a222c]/80">
     <a routerLink="/" class="flex items-center gap-3" aria-label="ForgeDB home">
@@ -25,23 +25,23 @@
 
   <main class="relative z-10 flex-1 px-5 pb-20 pt-16 sm:pt-20 lg:px-12 lg:pt-24">
     <section class="mx-auto max-w-4xl text-center">
-      <div class="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-indigo-600 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400">
+      <div class="animate-fade-in-up inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-indigo-600 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400">
         <span class="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true"></span>
         Data-to-database workflow
       </div>
-      <h1 class="mt-7 text-5xl font-extrabold leading-[1.08] tracking-tight text-[#1c2434] sm:text-6xl lg:text-7xl dark:text-white">
+      <h1 class="animate-fade-in-up delay-100 mt-7 text-5xl font-extrabold leading-[1.08] tracking-tight text-[#1c2434] sm:text-6xl lg:text-7xl dark:text-white">
         Forge reliable <span class="bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">databases</span> from raw data
       </h1>
-      <p class="mx-auto mt-7 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl dark:text-[#8a99ad]">
+      <p class="animate-fade-in-up delay-200 mx-auto mt-7 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl dark:text-[#8a99ad]">
         Import CSV, Excel, or JSON API data, analyze and clean it, design relationships, then export or deploy a validated PostgreSQL schema.
       </p>
-      <div class="mt-8 flex flex-wrap justify-center gap-3">
+      <div class="animate-fade-in-up delay-300 mt-8 flex flex-wrap justify-center gap-3">
         <a routerLink="/register" class="rounded-full bg-indigo-600 px-8 py-3.5 text-base font-semibold text-white shadow-xl shadow-indigo-600/25 transition hover:-translate-y-1 hover:bg-indigo-700">Start for Free</a>
         <a routerLink="/login" class="rounded-full border border-slate-300 bg-white/70 px-8 py-3.5 text-base font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 dark:border-white/15 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10">Sign In</a>
       </div>
     </section>
 
-    <section class="mx-auto mt-20 max-w-6xl" aria-label="ForgeDB product preview">
+    <section class="animate-fade-in-up delay-400 mx-auto mt-20 max-w-6xl" aria-label="ForgeDB product preview">
       <div class="overflow-hidden rounded-3xl border border-slate-200/80 bg-white/70 p-2 shadow-2xl shadow-indigo-950/10 backdrop-blur dark:border-white/10 dark:bg-[#1c2434]/70 dark:shadow-black/40">
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-[#2e3a47] dark:bg-[#161b22]">
           <div class="flex h-11 items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 dark:border-[#2e3a47] dark:bg-[#1a222c]" aria-hidden="true"><span class="h-3 w-3 rounded-full bg-rose-400"></span><span class="h-3 w-3 rounded-full bg-amber-400"></span><span class="h-3 w-3 rounded-full bg-emerald-400"></span><span class="ml-3 text-xs font-semibold text-slate-500 dark:text-slate-400">Customer data / Schema</span></div>
@@ -69,7 +69,7 @@
       </div>
     </section>
 
-    <section class="mx-auto mt-24 grid max-w-6xl gap-6 md:grid-cols-3" aria-label="ForgeDB features">
+    <section class="animate-fade-in-up delay-500 mx-auto mt-24 grid max-w-6xl gap-6 md:grid-cols-3" aria-label="ForgeDB features">
       <article class="rounded-3xl border border-slate-200 bg-white/60 p-7 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-[#1c2434]/60"><span class="grid h-12 w-12 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"><svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16v14H4V5Zm0 5h16M9 5v14"></path></svg></span><h2 class="mt-5 text-xl font-bold text-slate-950 dark:text-white">Schema Design</h2><p class="mt-2 leading-7 text-slate-600 dark:text-[#8a99ad]">Generate PostgreSQL tables from confirmed dataset versions, then review types, constraints, and validation results.</p></article>
       <article class="rounded-3xl border border-slate-200 bg-white/60 p-7 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-[#1c2434]/60"><span class="grid h-12 w-12 place-items-center rounded-2xl bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400"><svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M9 7H6a3 3 0 0 0 0 6h3m6-6h3a3 3 0 0 1 0 6h-3m-7-1h8"></path></svg></span><h2 class="mt-5 text-xl font-bold text-slate-950 dark:text-white">Relationship Suggestions</h2><p class="mt-2 leading-7 text-slate-600 dark:text-[#8a99ad]">Review confidence-scored foreign-key candidates, edit their behavior, or add valid relationships manually.</p></article>
       <article class="rounded-3xl border border-slate-200 bg-white/60 p-7 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-[#1c2434]/60"><span class="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"></path></svg></span><h2 class="mt-5 text-xl font-bold text-slate-950 dark:text-white">Export &amp; Deploy</h2><p class="mt-2 leading-7 text-slate-600 dark:text-[#8a99ad]">Download generated schema artifacts and deploy a validated design revision to PostgreSQL with clear history.</p></article>

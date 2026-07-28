@@ -9,10 +9,11 @@ import {
   ProjectExportPackage,
   ProjectWorkflow,
 } from '../../services/api.models';
-import { DesignApiService } from '../../services/design-api.service';
+import { DesignApiService } from '../project-schema-designer/services/design-api.service';
 import { FileDownloadService } from '../../services/file-download.service';
 import { ForgeApiService } from '../../services/forge-api.service';
 import { ProjectWorkflowContextService } from '../../services/project-workflow-context.service';
+import { ToastService } from '../../services/toast.service';
 import { routeParameter } from '../../services/route-context';
 
 type ExportArtifactName = 'schema.sql' | 'schema.json' | 'relationship-report.json' | 'data-quality-report.json';
@@ -63,8 +64,9 @@ export class ExportDeployComponent implements OnInit {
     private readonly api: ForgeApiService,
     private readonly designApi: DesignApiService,
     private readonly fileDownload: FileDownloadService,
+    private readonly toast: ToastService,
     readonly workflowContext: ProjectWorkflowContextService,
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.projectId = routeParameter(this.route, 'projectId') ?? 0;
@@ -86,7 +88,11 @@ export class ExportDeployComponent implements OnInit {
   }
 
   firstBlockingReason(): string {
-    return this.workflow()?.blockingReasons[0] ?? 'The project is not ready for this action.';
+    const reason = this.workflow()?.blockingReasons[0] ?? 'The project is not ready for this action.';
+    if (reason === 'Deployment requires analyzed active cleaned versions rather than raw imports.') {
+      return 'One or more of your active datasets are still raw imports or have unanalyzed changes. You must clean and analyze all datasets before deployment.';
+    }
+    return reason;
   }
 
   artifactAvailable(name: ExportArtifactName): boolean {
@@ -106,9 +112,14 @@ export class ExportDeployComponent implements OnInit {
     navigator.clipboard.writeText(sql)
       .then(() => {
         this.copiedSql.set(true);
+        this.toast.showSuccess('SQL definition copied to clipboard!');
         window.setTimeout(() => this.copiedSql.set(false), 2000);
       })
-      .catch(() => this.errorMessage.set('Unable to copy SQL in this browser.'));
+      .catch(() => {
+        const msg = 'Unable to copy SQL in this browser.';
+        this.errorMessage.set(msg);
+        this.toast.showError(msg);
+      });
   }
 
   refreshSql(): void {
@@ -144,6 +155,7 @@ export class ExportDeployComponent implements OnInit {
       .subscribe({
         next: (deployment) => {
           this.confirmingDeploy.set(false);
+          this.toast.showSuccess('Project deployed and schema applied successfully!');
           this.latestDeployment.set(deployment);
           this.selectedDeployment.set(deployment);
           this.loadPage(true);
@@ -158,6 +170,7 @@ export class ExportDeployComponent implements OnInit {
               : body?.currentRevision != null
                 ? 'The schema changed elsewhere. Refresh and review the latest validated revision.'
                 : this.errorText(error, 'Unable to deploy this project.');
+          this.toast.showError(message);
           this.loadPage(true, message);
         },
       });
@@ -221,19 +234,19 @@ export class ExportDeployComponent implements OnInit {
       ),
       packageData: workflow.canExport
         ? this.api.getProjectExportPackage(this.projectId).pipe(
-            catchError((error: unknown) => {
-              this.errorMessage.set(this.errorText(error, 'Unable to load export artifacts.'));
-              return of(null);
-            }),
-          )
+          catchError((error: unknown) => {
+            this.errorMessage.set(this.errorText(error, 'Unable to load export artifacts.'));
+            return of(null);
+          }),
+        )
         : of(null),
       preview: workflow.canDeploy
         ? this.designApi.getDeploymentPreview(this.projectId).pipe(
-            catchError((error: unknown) => {
-              this.errorMessage.set(this.errorText(error, 'Unable to load the deployment preview.'));
-              return of(null);
-            }),
-          )
+          catchError((error: unknown) => {
+            this.errorMessage.set(this.errorText(error, 'Unable to load the deployment preview.'));
+            return of(null);
+          }),
+        )
         : of(null),
     }).pipe(finalize(() => this.loading.set(false))).subscribe(({ history, packageData, preview }) => {
       this.history.set(history);

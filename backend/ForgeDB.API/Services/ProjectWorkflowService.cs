@@ -60,14 +60,7 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
             DeploymentRecoveryPolicy.AbandonedFailureMessage,
             cancellationToken);
 
-        var datasets = await _context.Datasets
-            .AsNoTracking()
-            .AsSplitQuery()
-            .Include(dataset => dataset.ActiveVersion)
-            .Include(dataset => dataset.Versions)
-            .Where(dataset => dataset.ProjectId == project.Id)
-            .OrderBy(dataset => dataset.Id)
-            .ToListAsync(cancellationToken);
+        var datasetsInfo = await GetProjectDatasetsInfoAsync(project.Id, cancellationToken);
         var cleaningState = await _context.ProjectCleaningStates
             .AsNoTracking()
             .FirstOrDefaultAsync(state => state.ProjectId == project.Id, cancellationToken);
@@ -83,7 +76,7 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
             .FirstOrDefaultAsync(cancellationToken);
 
         var confirmedVersions = ParseVersionMap(cleaningState?.ConfirmedVersionsJson);
-        var evaluations = datasets.Select(dataset => EvaluateDataset(dataset, confirmedVersions)).ToList();
+        var evaluations = datasetsInfo.Select(item => EvaluateDataset(item, confirmedVersions)).ToList();
         var summaries = evaluations.Select(item => item.Summary).ToList();
         var hasData = summaries.Count > 0;
         var allAnalyzed = hasData && summaries.All(dataset => dataset.HasCurrentAnalysis);
@@ -174,35 +167,81 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
             ?? throw new KeyNotFoundException("Project not found.");
     }
 
-    private static DatasetEvaluation EvaluateDataset(Dataset dataset, IReadOnlyDictionary<int, int> confirmedVersions)
+    private async Task<List<DatasetProjection>> GetProjectDatasetsInfoAsync(int projectId, CancellationToken cancellationToken)
     {
-        var active = dataset.ActiveVersion;
+        var items = await _context.Datasets
+            .AsNoTracking()
+            .Where(dataset => dataset.ProjectId == projectId)
+            .OrderBy(dataset => dataset.Id)
+            .Select(dataset => new
+            {
+                Id = dataset.Id,
+                TableName = dataset.TableName,
+                ActiveVersionId = dataset.ActiveVersionId,
+                RowCount = dataset.RowCount,
+                ColumnCount = dataset.ColumnCount,
+                ActiveVersion = dataset.ActiveVersion == null ? null : new
+                {
+                    Id = dataset.ActiveVersion.Id,
+                    IsActive = dataset.ActiveVersion.IsActive,
+                    AnalyzedAt = dataset.ActiveVersion.AnalyzedAt,
+                    HasAnalysis = dataset.ActiveVersion.AnalysisResultJson != null,
+                    IsRawOriginal = dataset.ActiveVersion.IsRawOriginal,
+                    VersionNumber = dataset.ActiveVersion.VersionNumber,
+                    RowCount = dataset.ActiveVersion.RowCount,
+                    ColumnCount = dataset.ActiveVersion.ColumnCount
+                },
+                ActiveVersionsCount = dataset.Versions.Count(v => v.IsActive),
+                WasAnalyzedBefore = dataset.Versions.Any(v => v.Id != dataset.ActiveVersionId && v.AnalyzedAt != null && v.AnalysisResultJson != null)
+            })
+            .ToListAsync(cancellationToken);
+
+        return items.Select(item => new DatasetProjection(
+            item.Id,
+            item.TableName,
+            item.ActiveVersionId,
+            item.RowCount,
+            item.ColumnCount,
+            item.ActiveVersion == null ? null : new ActiveVersionInfo(
+                item.ActiveVersion.Id,
+                item.ActiveVersion.IsActive,
+                item.ActiveVersion.AnalyzedAt,
+                item.ActiveVersion.HasAnalysis,
+                item.ActiveVersion.IsRawOriginal,
+                item.ActiveVersion.VersionNumber,
+                item.ActiveVersion.RowCount,
+                item.ActiveVersion.ColumnCount),
+            item.ActiveVersionsCount,
+            item.WasAnalyzedBefore
+        )).ToList();
+    }
+
+    private static DatasetEvaluation EvaluateDataset(DatasetProjection item, IReadOnlyDictionary<int, int> confirmedVersions)
+    {
+        var active = item.ActiveVersion;
         var activeStateIsConsistent = active is not null
-            && dataset.ActiveVersionId == active.Id
+            && item.ActiveVersionId == active.Id
             && active.IsActive
-            && dataset.Versions.Count(version => version.IsActive) == 1;
+            && item.ActiveVersionsCount == 1;
         var hasCurrentAnalysis = activeStateIsConsistent
             && active!.AnalyzedAt.HasValue
-            && !string.IsNullOrWhiteSpace(active.AnalysisResultJson);
-        var wasAnalyzedBefore = dataset.Versions.Any(version => version.Id != active?.Id
-            && version.AnalyzedAt.HasValue
-            && !string.IsNullOrWhiteSpace(version.AnalysisResultJson));
+            && active.HasAnalysis;
         var isStaleAnalysis = !hasCurrentAnalysis && active is not null
-            && (!active.IsRawOriginal || active.VersionNumber > 1 || wasAnalyzedBefore);
+            && (!active.IsRawOriginal || active.VersionNumber > 1 || item.WasAnalyzedBefore);
 
         return new DatasetEvaluation(
             new ProjectWorkflowDatasetDto
             {
-                DatasetId = dataset.Id,
-                DatasetName = dataset.TableName,
-                ActiveVersionId = activeStateIsConsistent ? active!.Id : dataset.ActiveVersionId,
+                DatasetId = item.Id,
+                DatasetName = item.TableName,
+                ActiveVersionId = activeStateIsConsistent ? active!.Id : item.ActiveVersionId,
                 ActiveVersionNumber = active?.VersionNumber,
-                RowCount = active?.RowCount ?? dataset.RowCount,
-                ColumnCount = active?.ColumnCount ?? dataset.ColumnCount,
+                RowCount = active?.RowCount ?? item.RowCount,
+                ColumnCount = active?.ColumnCount ?? item.ColumnCount,
                 HasCurrentAnalysis = hasCurrentAnalysis,
                 RequiresAnalysis = !hasCurrentAnalysis,
                 IsQualityConfirmed = activeStateIsConsistent
-                    && confirmedVersions.GetValueOrDefault(dataset.Id) == active!.Id
+                    && confirmedVersions.GetValueOrDefault(item.Id) == active!.Id
             },
             active,
             isStaleAnalysis);
@@ -353,8 +392,28 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
         if (!predicate(workflow)) throw new ProjectWorkflowBlockedException(actionName, workflow);
     }
 
+    private sealed record ActiveVersionInfo(
+        int Id,
+        bool IsActive,
+        DateTime? AnalyzedAt,
+        bool HasAnalysis,
+        bool IsRawOriginal,
+        int VersionNumber,
+        int RowCount,
+        int ColumnCount);
+
+    private sealed record DatasetProjection(
+        int Id,
+        string TableName,
+        int? ActiveVersionId,
+        int RowCount,
+        int ColumnCount,
+        ActiveVersionInfo? ActiveVersion,
+        int ActiveVersionsCount,
+        bool WasAnalyzedBefore);
+
     private sealed record DatasetEvaluation(
         ProjectWorkflowDatasetDto Summary,
-        DatasetVersion? ActiveVersion,
+        ActiveVersionInfo? ActiveVersion,
         bool IsStaleAnalysis);
 }

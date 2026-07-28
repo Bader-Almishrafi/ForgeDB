@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, Output, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CleaningOperationRequest, CleaningPreviewResponse, CleaningSuggestion, DatasetCleaningPreview, DatasetCleaningSummary } from '../../services/api.models';
 
@@ -11,7 +11,7 @@ import { CleaningOperationRequest, CleaningPreviewResponse, CleaningSuggestion, 
   styles: ['dialog::backdrop { background: rgb(15 23 42 / 55%); backdrop-filter: blur(2px); }'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CleaningPreviewDialogComponent {
+export class CleaningPreviewDialogComponent implements OnChanges {
   private readonly dialog = viewChild<ElementRef<HTMLDialogElement>>('dialog');
 
   @Input() result: CleaningPreviewResponse | null = null;
@@ -26,6 +26,13 @@ export class CleaningPreviewDialogComponent {
   @Output() applyRequested = new EventEmitter<void>();
   @Output() removeRequested = new EventEmitter<string | null | undefined>();
   @Output() destructiveConfirmedChange = new EventEmitter<boolean>();
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['result']) {
+      if (this.result) this.open();
+      else this.close();
+    }
+  }
 
   open(): void {
     const dialog = this.dialog()?.nativeElement;
