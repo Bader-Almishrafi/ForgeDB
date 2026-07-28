@@ -29,17 +29,19 @@
           <button data-testid="generate-schema" type="button" class="btn-secondary" (click)="requestRegenerate()" [disabled]="!service.canGenerate()">
             <svg lucideRefreshCw [class.animate-spin]="service.generating()" [size]="16"></svg>{{ service.generating() ? 'Generating…' : service.design() ? 'Regenerate Schema' : 'Generate Schema' }}
           </button>
-          <button data-testid="save-schema" type="button" class="btn-secondary" (click)="service.saveDraft()" [disabled]="!service.canSave()">
-            <svg lucideSave [size]="16"></svg>{{ service.saving() ? 'Saving…' : 'Save Changes' }}
-          </button>
-          <div class="flex items-center gap-2">
-            <button data-testid="validate-schema" type="button" class="btn-primary" (click)="service.validateSchema()" [disabled]="!service.canValidate()">
-              <svg lucideFileCheck2 [size]="16"></svg>{{ service.validating() ? 'Validating…' : 'Validate Schema' }}
+          @if (service.design()) {
+            <button data-testid="save-schema" type="button" class="btn-secondary" (click)="service.saveDraft()" [disabled]="!service.canSave()">
+              <svg lucideSave [size]="16"></svg>{{ service.saving() ? 'Saving…' : 'Save Changes' }}
             </button>
-            @if (service.blockingIssues().length || service.warningIssues().length) {
-              <span class="rounded-full px-2.5 py-1 text-xs font-semibold" [class.bg-rose-100]="service.blockingIssues().length" [class.text-rose-700]="service.blockingIssues().length" [class.bg-amber-100]="!service.blockingIssues().length" [class.text-amber-800]="!service.blockingIssues().length">{{ service.blockingIssues().length + service.warningIssues().length }} Issues</span>
-            }
-          </div>
+            <div class="flex items-center gap-2">
+              <button data-testid="validate-schema" type="button" class="btn-primary" (click)="service.validateSchema()" [disabled]="!service.canValidate()">
+                <svg lucideFileCheck2 [size]="16"></svg>{{ service.validating() ? 'Validating…' : 'Validate Schema' }}
+              </button>
+              @if (service.blockingIssues().length || service.warningIssues().length) {
+                <span class="rounded-full px-2.5 py-1 text-xs font-semibold" [class.bg-rose-100]="service.blockingIssues().length" [class.text-rose-700]="service.blockingIssues().length" [class.bg-amber-100]="!service.blockingIssues().length" [class.text-amber-800]="!service.blockingIssues().length">{{ service.blockingIssues().length + service.warningIssues().length }} Issues</span>
+              }
+            </div>
+          }
         </div>
       }
     </header>
@@ -81,7 +83,7 @@
       </section>
     }
 
-    @if (service.sourceRows().length) {
+    @if (service.design() && service.sourceRows().length) {
       <section data-testid="schema-source-versions" class="workspace-panel p-5 sm:p-6 animate-fade-in-up delay-100">
         <div class="section-heading"><div><h2>Source versions</h2><p>The schema is tied to these quality-confirmed active dataset versions.</p></div></div>
         <div class="mt-4 flex gap-4 overflow-x-auto pb-4 snap-x">

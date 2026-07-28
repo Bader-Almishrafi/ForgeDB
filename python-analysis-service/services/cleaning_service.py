@@ -376,7 +376,6 @@ class CleaningService:
             row[column] = replacement
             result.affectedCells += 1
             kept.append(row)
-        result.warnings.append(f"DEBUG PARAMETERS: {operation.parameters}")
         result.warnings.append(f"IQR rule used multiplier {multiplier:g} with bounds {lower:g} to {upper:g}.")
         return kept, columns
 
