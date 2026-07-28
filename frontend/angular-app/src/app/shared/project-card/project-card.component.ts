@@ -16,11 +16,12 @@ import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ProjectResponse } from '../../services/api.models';
 import { ForgeApiService } from '../../services/forge-api.service';
+import { DialogFocusTrapDirective } from '../dialog-focus-trap.directive';
 
 @Component({
   selector: 'app-project-card',
   standalone: true,
-  imports: [DatePipe, FormsModule],
+  imports: [DatePipe, FormsModule, DialogFocusTrapDirective],
   templateUrl: './project-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

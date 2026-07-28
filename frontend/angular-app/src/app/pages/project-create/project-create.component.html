@@ -1,5 +1,10 @@
 <div class="mx-auto max-w-3xl" data-testid="create-project-page">
-  <a routerLink="/projects" class="back-link">
+  <a
+    [routerLink]="submitting() ? null : '/projects'"
+    class="back-link"
+    [class.pointer-events-none]="submitting()"
+    [attr.aria-disabled]="submitting() ? 'true' : null"
+    [attr.tabindex]="submitting() ? -1 : null">
     <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="m15 19-7-7 7-7"></path></svg>
     Projects
   </a>
@@ -13,6 +18,7 @@
   </header>
 
   <form class="card mt-7 p-5 sm:p-7" [formGroup]="projectForm" (ngSubmit)="createProject()" novalidate>
+    <fieldset class="contents" [disabled]="submitting()">
     <div class="space-y-6">
       <div>
         <div class="mb-2 flex items-center justify-between gap-4">
@@ -70,13 +76,21 @@
         }
       </div>
     </div>
+    </fieldset>
 
     @if (errorMessage()) {
       <div class="alert alert-error mt-6" role="alert">{{ errorMessage() }}</div>
     }
 
     <div class="mt-8 flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end dark:border-slate-700">
-      <a routerLink="/projects" class="btn-secondary">Cancel</a>
+      <a
+        [routerLink]="submitting() ? null : '/projects'"
+        class="btn-secondary"
+        [class.pointer-events-none]="submitting()"
+        [attr.aria-disabled]="submitting() ? 'true' : null"
+        [attr.tabindex]="submitting() ? -1 : null">
+        Cancel
+      </a>
       <button data-testid="create-project-button" type="submit" class="btn-primary min-w-36" [disabled]="submitting()">
         {{ submitting() ? 'Creating…' : 'Create Project' }}
       </button>

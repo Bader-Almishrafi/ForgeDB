@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -22,6 +22,7 @@ export class HomeComponent implements OnInit {
   private readonly workflowContext = inject(ProjectWorkflowContextService);
   private readonly titleService = inject(Title);
   private readonly metaService = inject(Meta);
+  private readonly pageHeading = viewChild<ElementRef<HTMLHeadingElement>>('pageHeading');
 
   readonly projects = signal<ProjectResponse[]>([]);
   readonly loading = signal(false);
@@ -63,6 +64,7 @@ export class HomeComponent implements OnInit {
   onProjectDeleted(projectId: number): void {
     this.projects.update((projects) => projects.filter((project) => project.id !== projectId));
     if (this.workflowContext.projectId() === projectId) this.workflowContext.clear();
+    setTimeout(() => this.pageHeading()?.nativeElement.focus());
   }
 
   private timestamp(value: string): number {

@@ -2,13 +2,15 @@
   <header class="page-header">
     <div>
       <p class="eyebrow">Workspace</p>
-      <h1 class="page-title mt-1">Projects</h1>
+      <h1 #pageHeading class="page-title mt-1" tabindex="-1">Projects</h1>
       <p class="page-subtitle">Open a project or manage its details.</p>
     </div>
-    <a routerLink="/projects/new" class="btn-primary">
-      <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
-      Create Project
-    </a>
+    @if (projects().length) {
+      <a routerLink="/projects/new" class="btn-primary">
+        <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        Create Project
+      </a>
+    }
   </header>
 
   <section class="mt-7 border-b border-slate-200 pb-5 dark:border-slate-700" aria-label="Project filters">

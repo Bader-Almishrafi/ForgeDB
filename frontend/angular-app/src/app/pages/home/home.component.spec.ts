@@ -60,4 +60,13 @@ describe('HomeComponent', () => {
     fixture.componentInstance.openProject(projects[0]);
     expect(navigate).toHaveBeenCalledWith('/projects/1/analyze');
   });
+
+  it('moves focus to the persistent page heading after a recent project is deleted', async () => {
+    fixture.componentInstance.onProjectDeleted(projects[0].id);
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(fixture.componentInstance.projects().map((project) => project.id)).not.toContain(projects[0].id);
+    expect(document.activeElement?.textContent).toContain('Welcome, Mona');
+  });
 });

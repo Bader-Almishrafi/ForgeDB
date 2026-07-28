@@ -145,6 +145,34 @@ describe('ProjectWorkflowShellComponent', () => {
     expect(progress.querySelector('[data-state="current"] a')?.getAttribute('aria-current')).toBe('step');
   });
 
+  it('surfaces a failed deployment before otherwise-positive deployment readiness', () => {
+    workflowOverrides = {
+      workflowState: 'ReadyToDeploy',
+      currentStep: 'Export and Deploy',
+      nextStep: 'Export and Deploy',
+      recommendedRoute: '/projects/10/export-deploy',
+      canClean: true,
+      canBuildSchema: true,
+      canExport: true,
+      canDeploy: true,
+      blockerCodes: [],
+      blockingReasons: [],
+      schemaStatus: 'Valid',
+      latestDeploymentStatus: 'Failed',
+    };
+    TestBed.inject(ProjectWorkflowContextService).load(10, true).subscribe();
+    fixture.componentInstance.currentUrl.set('/projects/10/export-deploy');
+    fixture.detectChanges();
+
+    const guidance = fixture.nativeElement.querySelector('[data-testid="workflow-guidance"]') as HTMLElement;
+    const attention = fixture.nativeElement.querySelector('[data-state="needs-attention"]') as HTMLElement;
+
+    expect(guidance.textContent).toContain('Deployment needs attention');
+    expect(guidance.textContent).toContain('The latest deployment failed.');
+    expect(guidance.textContent).not.toContain('Ready to deploy');
+    expect(attention.textContent).toContain('Needs attention');
+  });
+
   it('clears the previous project name and selected dataset when project route parameters change', () => {
     const context = TestBed.inject(ProjectWorkflowContextService);
     params.next(convertToParamMap({ projectId: '11' }));

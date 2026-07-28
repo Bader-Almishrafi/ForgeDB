@@ -14,7 +14,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../services/auth.service';
+import { ProjectWorkflowContextService } from '../services/project-workflow-context.service';
 import { ThemeService } from '../services/theme.service';
+import { DialogFocusTrapDirective } from '../shared/dialog-focus-trap.directive';
 
 interface ShellNavItem {
   label: string;
@@ -26,20 +28,29 @@ interface ShellNavItem {
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [NgClass, RouterLink, RouterOutlet],
+  imports: [NgClass, RouterLink, RouterOutlet, DialogFocusTrapDirective],
   templateUrl: './app-shell.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppShellComponent {
   private readonly auth = inject(AuthService);
+  private readonly workflowContext = inject(ProjectWorkflowContextService);
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly accountArea = viewChild<ElementRef<HTMLElement>>('accountArea');
   private readonly accountTrigger = viewChild<ElementRef<HTMLButtonElement>>('accountTrigger');
   private readonly firstAccountAction = viewChild<ElementRef<HTMLAnchorElement>>('firstAccountAction');
+  private readonly navigationTrigger = viewChild<ElementRef<HTMLButtonElement>>('navigationTrigger');
+  private readonly sidebarClose = viewChild<ElementRef<HTMLButtonElement>>('sidebarClose');
+  private readonly mainContent = viewChild<ElementRef<HTMLElement>>('mainContent');
+  private focusMainAfterNavigation = false;
+  private readonly navigationMediaQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(min-width: 1024px)')
+    : null;
 
   readonly sidebarOpen = signal(false);
+  readonly desktopNavigation = signal(this.navigationMediaQuery?.matches ?? true);
   readonly userMenuOpen = signal(false);
   readonly currentUrl = signal(this.router.url);
   readonly user = this.auth.user;
@@ -69,8 +80,18 @@ export class AppShellComponent {
     { label: 'Projects', route: '/projects', match: 'projects', icon: 'M3.5 7.5h6l2-2h9v14h-17v-12Z' },
     { label: 'Create project', route: '/projects/new', match: 'create', icon: 'M12 5v14M5 12h14' },
   ];
+  private readonly navigationMediaListener = (event: MediaQueryListEvent): void => {
+    this.desktopNavigation.set(event.matches);
+    if (event.matches) this.closeNavigation();
+  };
 
   constructor() {
+    this.navigationMediaQuery?.addEventListener('change', this.navigationMediaListener);
+    this.destroyRef.onDestroy(() => {
+      this.navigationMediaQuery?.removeEventListener('change', this.navigationMediaListener);
+      this.workflowContext.clear();
+    });
+
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -78,7 +99,10 @@ export class AppShellComponent {
       )
       .subscribe((event) => {
         this.currentUrl.set(event.urlAfterRedirects);
+        const shouldFocusMain = this.focusMainAfterNavigation;
+        this.focusMainAfterNavigation = false;
         this.closeNavigation();
+        if (shouldFocusMain) setTimeout(() => this.mainContent()?.nativeElement.focus());
       });
   }
 
@@ -90,13 +114,38 @@ export class AppShellComponent {
   }
 
   toggleSidebar(): void {
-    this.sidebarOpen.update((open) => !open);
+    if (this.sidebarOpen()) {
+      this.closeNavigation(true);
+      return;
+    }
+
+    this.sidebarOpen.set(true);
     this.userMenuOpen.set(false);
+    setTimeout(() => this.sidebarClose()?.nativeElement.focus());
   }
 
-  closeNavigation(): void {
+  closeNavigation(restoreFocus = false): void {
+    const wasOpen = this.sidebarOpen();
     this.sidebarOpen.set(false);
     this.userMenuOpen.set(false);
+    if (restoreFocus && wasOpen) {
+      setTimeout(() => this.navigationTrigger()?.nativeElement.focus());
+    }
+  }
+
+  prepareNavigation(targetRoute: string): void {
+    if (!this.desktopNavigation() && this.sidebarOpen()) {
+      if (this.currentPath() !== targetRoute) {
+        this.focusMainAfterNavigation = true;
+        return;
+      }
+
+      this.closeNavigation();
+      setTimeout(() => this.mainContent()?.nativeElement.focus());
+      return;
+    }
+
+    this.closeNavigation();
   }
 
   toggleUserMenu(): void {
@@ -113,6 +162,7 @@ export class AppShellComponent {
   }
 
   logout(): void {
+    this.workflowContext.clear();
     this.auth.logout();
     void this.router.navigate(['/']);
   }
@@ -123,7 +173,7 @@ export class AppShellComponent {
       this.closeUserMenu(true);
       return;
     }
-    this.sidebarOpen.set(false);
+    this.closeNavigation(true);
   }
 
   @HostListener('document:click', ['$event'])

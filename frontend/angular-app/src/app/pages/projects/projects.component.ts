@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Meta, Title } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
@@ -23,6 +23,7 @@ export class ProjectsComponent implements OnInit {
   private readonly workflowContext = inject(ProjectWorkflowContextService);
   private readonly titleService = inject(Title);
   private readonly metaService = inject(Meta);
+  private readonly pageHeading = viewChild<ElementRef<HTMLHeadingElement>>('pageHeading');
 
   readonly projects = signal<ProjectResponse[]>([]);
   readonly loading = signal(false);
@@ -88,6 +89,7 @@ export class ProjectsComponent implements OnInit {
   onProjectDeleted(projectId: number): void {
     this.projects.update((projects) => projects.filter((project) => project.id !== projectId));
     if (this.workflowContext.projectId() === projectId) this.workflowContext.clear();
+    setTimeout(() => this.pageHeading()?.nativeElement.focus());
   }
 
   private compareProjects(left: ProjectResponse, right: ProjectResponse): number {

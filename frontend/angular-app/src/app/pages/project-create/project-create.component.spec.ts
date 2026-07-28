@@ -77,6 +77,18 @@ describe('ProjectCreateComponent', () => {
 
     expect(createProject).toHaveBeenCalledTimes(1);
     expect(component.submitting()).toBe(true);
+    fixture.detectChanges();
+
+    const fields = Array.from(
+      fixture.nativeElement.querySelectorAll('[data-testid="project-name"], [data-testid="project-description"]'),
+    ) as Array<HTMLInputElement | HTMLTextAreaElement>;
+    const cancellationLinks = Array.from(
+      fixture.nativeElement.querySelectorAll('a[aria-disabled="true"]'),
+    ) as HTMLAnchorElement[];
+    expect(fields.every((field) => field.matches(':disabled'))).toBe(true);
+    expect(cancellationLinks).toHaveLength(2);
+    expect(cancellationLinks.every((link) => link.getAttribute('href') === null && link.tabIndex === -1)).toBe(true);
+
     pending.next(createdProject);
     pending.complete();
   });

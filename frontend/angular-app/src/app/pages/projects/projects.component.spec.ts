@@ -95,4 +95,14 @@ describe('ProjectsComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Project service unavailable.');
     expect(fixture.nativeElement.textContent).toContain('Try Again');
   });
+
+  it('moves focus to the persistent page heading after a project is deleted', async () => {
+    fixture.detectChanges();
+    component.onProjectDeleted(projects[0].id);
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(component.projects().map((project) => project.id)).not.toContain(projects[0].id);
+    expect(document.activeElement?.textContent).toBe('Projects');
+  });
 });

@@ -2,17 +2,19 @@
   <header class="page-header">
     <div class="min-w-0">
       <p class="eyebrow">Workspace</p>
-      <h1 class="page-title mt-1">Welcome, {{ greetingName() }}</h1>
+      <h1 #pageHeading class="page-title mt-1" tabindex="-1">Welcome, {{ greetingName() }}</h1>
       <p class="page-subtitle">
         Continue a recent data project or start a new guided workflow.
       </p>
     </div>
-    <a routerLink="/projects/new" class="btn-primary">
-      <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true">
-        <path d="M12 5v14M5 12h14"></path>
-      </svg>
-      Create Project
-    </a>
+    @if (projects().length) {
+      <a routerLink="/projects/new" class="btn-primary">
+        <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2" aria-hidden="true">
+          <path d="M12 5v14M5 12h14"></path>
+        </svg>
+        Create Project
+      </a>
+    }
   </header>
 
   <section aria-labelledby="recent-projects-heading">

@@ -120,6 +120,16 @@ export class ProjectWorkflowShellComponent implements OnInit {
       };
     }
 
+    if (workflow.latestDeploymentStatus?.toLocaleLowerCase() === 'failed') {
+      return {
+        title: 'Deployment needs attention',
+        message: 'The latest deployment failed. Review its details, correct the connection or schema issue, then retry.',
+        targetPath: 'export-deploy',
+        targetLabel: 'Export and Deploy',
+        positive: false,
+      };
+    }
+
     if (workflow.canDeploy) {
       return {
         title: 'Ready to deploy',
