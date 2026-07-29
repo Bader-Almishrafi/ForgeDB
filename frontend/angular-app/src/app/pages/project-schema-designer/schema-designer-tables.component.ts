@@ -1,3 +1,4 @@
+import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideTable2, LucideTriangleAlert, LucideChevronLeft, LucideChevronRight } from '@lucide/angular';
@@ -7,7 +8,7 @@ import { ProjectSchemaDesignerService } from './services/project-schema-designer
 @Component({
   selector: 'app-schema-designer-tables',
   standalone: true,
-  imports: [FormsModule, LucideTable2, LucideTriangleAlert, LucideChevronLeft, LucideChevronRight],
+  imports: [NgClass, FormsModule, LucideTable2, LucideTriangleAlert, LucideChevronLeft, LucideChevronRight],
   templateUrl: './schema-designer-tables.component.html',
   styleUrls: ['./project-schema-designer.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
