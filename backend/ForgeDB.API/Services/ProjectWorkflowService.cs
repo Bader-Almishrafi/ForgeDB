@@ -101,7 +101,6 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
             Status: DesignStatus.Valid,
             ValidatedAt: not null
         } && design.Tables.Count > 0 && schemaMatchesActiveVersions;
-        var allVersionsDeployable = evaluations.All(item => item.ActiveVersion is { IsRawOriginal: false });
         var deploymentInProgress = latestDeployment?.Status == DeploymentStatus.Running;
 
         var canImport = true;
@@ -109,7 +108,7 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
         var canClean = allAnalyzed;
         var canBuildSchema = allAnalyzed && qualityConfirmed;
         var canExport = canBuildSchema && schemaIsValid;
-        var canDeploy = canExport && allVersionsDeployable && !deploymentInProgress;
+        var canDeploy = canExport && !deploymentInProgress;
         var deployed = canDeploy
             && latestDeployment?.Status == DeploymentStatus.Completed
             && latestDeployment.DesignRevision == design!.Revision;
@@ -135,8 +134,7 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
             schemaIsValid,
             canExport,
             canDeploy,
-            deploymentInProgress,
-            allVersionsDeployable);
+            deploymentInProgress);
 
         return new ProjectWorkflowResponseDto
         {
@@ -323,8 +321,7 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
         bool schemaIsValid,
         bool canExport,
         bool canDeploy,
-        bool deploymentInProgress,
-        bool allVersionsDeployable)
+        bool deploymentInProgress)
     {
         var codes = new List<string>();
         var reasons = new List<string>();
@@ -363,9 +360,7 @@ public sealed class ProjectWorkflowService : IProjectWorkflowService
         {
             var reason = deploymentInProgress
                 ? "A deployment is already running for this project."
-                : allVersionsDeployable
-                    ? "Deployment requirements are not yet satisfied."
-                    : "Deployment requires analyzed active cleaned versions rather than raw imports.";
+                : "Deployment requirements are not yet satisfied.";
             Add(deploymentInProgress ? "deployment_in_progress" : "deployment_not_ready", reason);
         }
         return (codes, reasons);

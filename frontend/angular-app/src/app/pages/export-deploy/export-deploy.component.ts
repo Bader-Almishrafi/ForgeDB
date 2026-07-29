@@ -88,11 +88,7 @@ export class ExportDeployComponent implements OnInit {
   }
 
   firstBlockingReason(): string {
-    const reason = this.workflow()?.blockingReasons[0] ?? 'The project is not ready for this action.';
-    if (reason === 'Deployment requires analyzed active cleaned versions rather than raw imports.') {
-      return 'One or more of your active datasets are still raw imports or have unanalyzed changes. You must clean and analyze all datasets before deployment.';
-    }
-    return reason;
+    return this.workflow()?.blockingReasons[0] ?? 'The project is not ready for this action.';
   }
 
   artifactAvailable(name: ExportArtifactName): boolean {
