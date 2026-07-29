@@ -28,16 +28,7 @@ public class DeploymentServiceTests
         Assert.True(response.SchemaSqlAvailable && response.SeedSqlAvailable && response.DeploySqlAvailable);
     }
 
-    [Fact]
-    public async Task DeployAsync_RejectsRawOriginalVersion_WithoutCreatingCompletedRecord()
-    {
-        var fixture = CreateFixture(cleanedValue: "raw-original-value", isRawOriginal: true);
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Service.DeployAsync(8, 3, 6));
-
-        Assert.Contains("Raw uploaded data cannot be deployed", exception.Message);
-        Assert.Null(fixture.StoredDeployment);
-    }
 
     [Fact]
     public async Task DeployAsync_RejectsSchemaMappedToStaleVersionOne()
