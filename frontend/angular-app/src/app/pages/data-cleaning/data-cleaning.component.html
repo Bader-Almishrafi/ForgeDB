@@ -111,14 +111,7 @@
             <h2 class="text-xl font-bold text-slate-950 dark:text-white">Issues</h2>
             <p class="mt-1 text-sm text-slate-500">Select a strategy and preview every operation before applying.</p>
           </div>
-          <div class="text-left lg:text-right">
-            <button type="button" class="btn-primary" data-testid="preview-recommended" (click)="previewRecommendedFixes()" [disabled]="apiService.previewLoading() || apiService.applyLoading() || apiService.reanalyzing()">
-              Preview Recommended Fixes
-            </button>
-            @if (!stateService.safeRecommendations().length) {
-              <p class="mt-2 max-w-sm text-xs text-slate-500">No safe recommendations are available; review issues individually.</p>
-            }
-          </div>
+
         </div>
 
         @if (stateService.scopeSuggestions().length) {
