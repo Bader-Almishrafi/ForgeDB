@@ -95,14 +95,6 @@ export class AppShellComponent {
     void this.router.navigate(['/']);
   }
 
-  scrollToTop(): void {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  scrollToBottom(): void {
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-  }
-
   readonly initials = computed(() => {
     const current = this.user();
     return current ? `${current.firstName[0] ?? ''}${current.lastName[0] ?? ''}`.toUpperCase() : 'FD';
