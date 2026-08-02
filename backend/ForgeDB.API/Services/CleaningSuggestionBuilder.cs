@@ -131,17 +131,17 @@ public static class CleaningSuggestionBuilder
         var strategies = numeric
             ? new List<CleaningStrategyDto>
             {
+                Strategy("zero", "Fill with zero", "fill_missing", new() { ["strategy"] = "zero" }),
                 Strategy("median", "Fill with median", "fill_missing", new() { ["strategy"] = "median" }, true),
                 Strategy("mean", "Fill with mean", "fill_missing", new() { ["strategy"] = "mean" }),
-                Strategy("zero", "Fill with zero", "fill_missing", new() { ["strategy"] = "zero" }),
                 Strategy("custom", "Fill with custom value", "fill_missing", new() { ["strategy"] = "custom", ["value"] = null }),
                 Strategy("delete", "Delete affected rows", "fill_missing", new() { ["strategy"] = "delete_rows" }, false, true),
                 Strategy("leave", "Leave unchanged", "fill_missing", new() { ["strategy"] = "leave" })
             }
             : new List<CleaningStrategyDto>
             {
-                Strategy("mode", "Fill with most frequent value", "fill_missing", new() { ["strategy"] = "mode" }),
                 Strategy("empty", "Fill with empty string", "fill_missing", new() { ["strategy"] = "empty" }),
+                Strategy("mode", "Fill with most frequent value", "fill_missing", new() { ["strategy"] = "mode" }),
                 Strategy("custom", "Fill with custom value", "fill_missing", new() { ["strategy"] = "custom", ["value"] = null }),
                 Strategy("forward", "Forward fill", "fill_missing", new() { ["strategy"] = "forward_fill" }),
                 Strategy("backward", "Backward fill", "fill_missing", new() { ["strategy"] = "backward_fill" }),
